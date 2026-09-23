@@ -50,8 +50,9 @@ CREATE POLICY prom_invite_delete ON public.prom_invite FOR DELETE TO authenticat
 
 -- Role exclusiva do servidor para as rotas públicas do paciente.
 -- NÃO é concedida a anon/authenticated, então o PostgREST do Supabase não alcança estas funções.
-DO $$ BEGIN CREATE ROLE docsholder_public NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-GRANT docsholder_public TO CURRENT_USER;
+-- Role global ao cluster: criação concorrente gera unique_violation (tratado junto com duplicate_object)
+DO $$ BEGIN CREATE ROLE docsholder_public NOLOGIN; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$;
+DO $$ BEGIN GRANT docsholder_public TO CURRENT_USER; EXCEPTION WHEN unique_violation THEN NULL; END $$;
 GRANT USAGE ON SCHEMA public TO docsholder_public;
 
 CREATE OR REPLACE FUNCTION public.prom_invite_info(p_token_hash text)
