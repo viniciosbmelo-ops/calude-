@@ -5,7 +5,7 @@ const ORDER = ['preop', '6w', '3m', '6m', '12m', '24m', 'other'];
 
 export function LineChart({ title, max, points }: { title: string; max: number; points: { timepoint: string; score: number; completed_at: string }[] }) {
   const tps = ORDER.filter((t) => points.some((p) => p.timepoint === t));
-  const W = 460, H = 200, L = 36, R = 12, T = 12, B = 30;
+  const W = 460, H = 200, L = 36, R = 16, T = 18, B = 30;
   const x = (i: number) => (tps.length <= 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (tps.length - 1));
   const y = (v: number) => T + (1 - v / max) * (H - T - B);
   // último registro de cada timepoint
@@ -27,7 +27,8 @@ export function LineChart({ title, max, points }: { title: string; max: number; 
           <g key={p.timepoint}>
             <circle cx={x(i)} cy={y(p.score)} r="4.5" fill="var(--primary)" />
             <text x={x(i)} y={y(p.score) - 9} fontSize="11" textAnchor="middle" fill="var(--text)">{String(p.score).replace('.', ',')}</text>
-            <text x={x(i)} y={H - 10} fontSize="11" textAnchor="middle" fill="var(--muted)">{TIMEPOINT_PT[p.timepoint]}</text>
+            {/* rótulos das pontas ancorados para dentro, para não serem cortados */}
+            <text x={x(i)} y={H - 10} fontSize="11" textAnchor={last.length > 1 && i === 0 ? 'start' : last.length > 1 && i === last.length - 1 ? 'end' : 'middle'} fill="var(--muted)">{TIMEPOINT_PT[p.timepoint]}</text>
           </g>
         ))}
       </svg>
