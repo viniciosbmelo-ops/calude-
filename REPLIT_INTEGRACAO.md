@@ -17,6 +17,9 @@
 
 **Suite:** 118 testes Jest, cobertura de linhas 98%. `npx tsc --noEmit` limpo.
 
+> **Atualização:** a parte de backend dos Prompts 2 e 4–8 (rotas, validação, assinatura, `/verify`, PROMs)
+> já está implementada e testada em `server/` — ver README. Os prompts abaixo continuam valendo para as telas.
+
 ## O que NÃO está aqui (é o trabalho do Replit Agent)
 
 - Telas (formulário dirigido por schema, mapa artroscópico, editor do relatório, leitor de câmera)

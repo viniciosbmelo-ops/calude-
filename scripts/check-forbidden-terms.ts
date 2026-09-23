@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const ROOTS = ['src/clinical/instability', 'src/clinical/report/templates', 'src/clinical/labels.pt.json'];
+const ROOTS = ['server', 'src/clinical/instability', 'src/clinical/report/templates', 'src/clinical/labels.pt.json'];
 const FORBIDDEN = [/indicad[oa]s?\b/i, /recomend/i, /sugere-se/i, /deve(-se)? realizar/i, /conduta ideal/i, /melhor opção/i];
 
 function files(p: string): string[] {
