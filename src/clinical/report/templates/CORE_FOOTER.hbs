@@ -1,0 +1,15 @@
+{{#if implants.length}}
+IMPLANTES
+{{#each implants}}- {{quantity}}× {{manufacturer}} {{model}}{{#if size}} ({{size}}){{/if}}{{#if lot}} — lote {{lot}}{{/if}}{{#if serial}} — série {{serial}}{{/if}}{{#if location}} — {{location}}{{/if}}
+{{/each}}
+
+{{/if}}
+INTERCORRÊNCIAS
+{{#if core.intraop_complications.length}}{{capitalize (list "intraop_complications" core.intraop_complications)}}.{{#if core.intraop_complications_note}} {{core.intraop_complications_note}}{{/if}}{{else}}Sem intercorrências.{{/if}}
+
+FECHAMENTO E IMOBILIZAÇÃO
+{{#if core.drain}}Dreno instalado. {{/if}}Fechamento por planos e curativo. {{#if core.immobilization}}{{capitalize (enum "immobilization" core.immobilization)}}.{{/if}}
+{{#if postop_plan}}
+
+CONDUTA PÓS-OPERATÓRIA
+{{postop_plan}}{{/if}}

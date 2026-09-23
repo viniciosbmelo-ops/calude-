@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CORE_SURGERY.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "surgery_date",
+    "side",
+    "positioning",
+    "anesthesia",
+    "approach",
+    "preop_dx",
+    "postop_dx"
+  ],
+  "properties": {
+    "surgery_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "side": {
+      "enum": [
+        "R",
+        "L"
+      ]
+    },
+    "hospital": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "assistants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "role"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "crm": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "first_assistant",
+              "second_assistant",
+              "scrub_nurse",
+              "resident",
+              "fellow"
+            ]
+          }
+        }
+      }
+    },
+    "anesthesia": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "general",
+            "block_only",
+            "general_plus_block",
+            "sedation_plus_block"
+          ]
+        },
+        "block": {
+          "enum": [
+            "interscalene",
+            "supraclavicular",
+            "infraclavicular",
+            "axillary",
+            "suprascapular_plus_axillary",
+            "none"
+          ]
+        },
+        "catheter": {
+          "type": "boolean"
+        },
+        "controlled_hypotension": {
+          "type": "boolean"
+        },
+        "target_map_mmHg": {
+          "type": "number",
+          "minimum": 40,
+          "maximum": 110
+        }
+      }
+    },
+    "positioning": {
+      "enum": [
+        "beach_chair",
+        "lateral_decubitus",
+        "supine",
+        "prone",
+        "supine_arm_table"
+      ]
+    },
+    "beach_chair_angle_deg": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 90
+    },
+    "traction_kg": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "tourniquet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "used": {
+          "type": "boolean"
+        },
+        "pressure_mmHg": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 350
+        },
+        "time_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 180
+        }
+      }
+    },
+    "approach": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "arthroscopic",
+          "deltopectoral",
+          "anterolateral_deltoid_split",
+          "superolateral",
+          "posterior",
+          "open_subpectoral",
+          "kocher",
+          "kaplan",
+          "boyd",
+          "medial_flexor_pronator_split",
+          "triceps_sparing",
+          "triceps_split",
+          "olecranon_osteotomy",
+          "anterior_elbow_single_incision",
+          "double_incision_elbow"
+        ]
+      }
+    },
+    "portals": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "posterior",
+          "anterior",
+          "anterolateral",
+          "lateral",
+          "neviaser",
+          "portal_5h",
+          "portal_7h",
+          "posterolateral",
+          "el_anteromedial",
+          "el_proximal_anterolateral",
+          "el_posterolateral",
+          "el_transtricipital",
+          "el_soft_spot"
+        ]
+      }
+    },
+    "antibiotic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "drug": {
+          "type": "string"
+        },
+        "dose": {
+          "type": "string"
+        },
+        "minutes_before_incision": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 180
+        }
+      }
+    },
+    "tranexamic_acid": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dose_mg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "route": {
+          "enum": [
+            "iv",
+            "topical",
+            "iv_plus_topical"
+          ]
+        }
+      }
+    },
+    "skin_prep": {
+      "enum": [
+        "chlorhexidine_alcohol",
+        "povidone_iodine",
+        "other"
+      ]
+    },
+    "benzoyl_peroxide_preop": {
+      "type": "boolean"
+    },
+    "start_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "preop_dx": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^(SH|EL)_[A-Z0-9_]+$"
+      }
+    },
+    "postop_dx": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^(SH|EL)_[A-Z0-9_]+$"
+      }
+    },
+    "intraop_complications": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "neurovascular_injury",
+          "intraop_fracture",
+          "implant_failure",
+          "conversion_to_open",
+          "significant_bleeding",
+          "other"
+        ]
+      }
+    },
+    "intraop_complications_note": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "drain": {
+      "type": "boolean"
+    },
+    "immobilization": {
+      "enum": [
+        "simple_sling",
+        "sling_abduction_15",
+        "sling_abduction_30",
+        "neutral_rotation_brace",
+        "long_arm_splint",
+        "splint_90",
+        "hinged_elbow_brace",
+        "none"
+      ]
+    }
+  }
+}

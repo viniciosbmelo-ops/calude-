@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_BICEPS.intraop.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "procedure"
+  ],
+  "properties": {
+    "slap_snyder": {
+      "enum": [
+        "I",
+        "II",
+        "III",
+        "IV"
+      ]
+    },
+    "lhb_tendinopathy": {
+      "enum": [
+        "none",
+        "hyperemia",
+        "thinning",
+        "delamination",
+        "partial_tear"
+      ]
+    },
+    "lhb_partial_tear_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "lhb_instability": {
+      "enum": [
+        "stable",
+        "subluxation",
+        "dislocation_medial"
+      ]
+    },
+    "pulley_habermeyer": {
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "dor_localizacao_obrien": {
+      "enum": [
+        "deep",
+        "superficial_ac",
+        "none",
+        "not_tested"
+      ],
+      "x-note": "Registrado no exame; usado aqui só para coerência"
+    },
+    "procedure": {
+      "enum": [
+        "debridement",
+        "slap_repair",
+        "tenotomy",
+        "tenodesis"
+      ]
+    },
+    "slap_anchors": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "slap_anchor_positions_clock": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 12
+      }
+    },
+    "tenodesis_site": {
+      "enum": [
+        "intraarticular_top_groove",
+        "suprapectoral_arthroscopic",
+        "subpectoral_open",
+        "soft_tissue_to_conjoint_or_tendon"
+      ]
+    },
+    "tenodesis_fixation": {
+      "enum": [
+        "anchor",
+        "interference_screw",
+        "cortical_button",
+        "soft_tissue"
+      ]
+    },
+    "tension_reference": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "observations": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "slap_repair"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "slap_snyder",
+          "slap_anchors"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "tenodesis"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "tenodesis_site",
+          "tenodesis_fixation"
+        ]
+      }
+    }
+  ]
+}

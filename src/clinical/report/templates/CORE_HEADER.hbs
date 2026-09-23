@@ -1,0 +1,15 @@
+DESCRIÇÃO CIRÚRGICA
+
+Paciente: {{patient.name}}{{#if patient.record_number}} — Prontuário {{patient.record_number}}{{/if}}
+Data: {{date core.surgery_date}}{{#if core.hospital}} — {{core.hospital}}{{/if}}
+Lado: {{enum "side" core.side}}
+Cirurgião: {{surgeon.name}}{{#if surgeon.crm}} (CRM {{surgeon.crm}}){{/if}}
+{{#if core.assistants.length}}Equipe: {{#each core.assistants}}{{name}}{{#if crm}} (CRM {{crm}}){{/if}} — {{enum "role" role}}{{#unless @last}}; {{/unless}}{{/each}}{{/if}}
+Diagnóstico pré-operatório: {{dxlist core.preop_dx}}
+Diagnóstico pós-operatório: {{dxlist core.postop_dx}}
+{{#if duration}}Tempo cirúrgico: {{duration}} min{{/if}}
+
+ANESTESIA E POSICIONAMENTO
+{{capitalize (enum "type" core.anesthesia.type)}}{{#if core.anesthesia.block}}{{#unless (eq core.anesthesia.block "none")}} {{enum "block" core.anesthesia.block}}{{#if core.anesthesia.catheter}} com cateter{{/if}}{{/unless}}{{/if}}{{#if core.anesthesia.controlled_hypotension}}, hipotensão controlada{{#if core.anesthesia.target_map_mmHg}} (PAM alvo {{num core.anesthesia.target_map_mmHg}} mmHg){{/if}}{{/if}}. Paciente posicionado em {{enum "positioning" core.positioning}}{{#if core.beach_chair_angle_deg}} a {{num core.beach_chair_angle_deg}}°{{/if}}{{#if core.traction_kg}}, tração de {{num core.traction_kg}} kg{{/if}}.{{#if core.tourniquet.used}} Garrote pneumático a {{num core.tourniquet.pressure_mmHg}} mmHg por {{num core.tourniquet.time_min}} min.{{/if}}
+{{#if core.antibiotic.drug}}Antibioticoprofilaxia com {{core.antibiotic.drug}}{{#if core.antibiotic.dose}} {{core.antibiotic.dose}}{{/if}}{{#if core.antibiotic.minutes_before_incision}}, {{num core.antibiotic.minutes_before_incision}} min antes da incisão{{/if}}.{{/if}}{{#if core.tranexamic_acid.dose_mg}} Ácido tranexâmico {{num core.tranexamic_acid.dose_mg}} mg, via {{enum "route" core.tranexamic_acid.route}}.{{/if}}{{#if core.skin_prep}} Antissepsia com {{enum "skin_prep" core.skin_prep}}{{#if core.benzoyl_peroxide_preop}}, após preparo prévio com peróxido de benzoíla{{/if}}.{{/if}}
+Via de acesso: {{list "approach" core.approach}}{{#if core.portals.length}}; portais {{list "portals" core.portals}}{{/if}}.

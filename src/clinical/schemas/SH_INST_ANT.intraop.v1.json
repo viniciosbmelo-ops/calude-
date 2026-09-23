@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_INST_ANT.intraop.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "labral_lesion",
+    "procedure"
+  ],
+  "properties": {
+    "labral_lesion": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "bankart",
+          "bony_bankart",
+          "perthes",
+          "alpsa",
+          "glad",
+          "hagl",
+          "bhagl",
+          "slap_extension",
+          "posterior_extension"
+        ]
+      }
+    },
+    "labral_extent_clock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from_h",
+        "to_h"
+      ],
+      "properties": {
+        "from_h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "to_h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12
+        }
+      },
+      "x-ui": "clock_face",
+      "x-note": "Convenção ombro direito; espelhar para esquerdo na exibição"
+    },
+    "capsule_quality": {
+      "enum": [
+        "normal",
+        "attenuated",
+        "patulous"
+      ]
+    },
+    "glenoid_bone_loss_arthroscopic_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "hill_sachs_engaging_dynamic": {
+      "enum": [
+        "engaging",
+        "non_engaging",
+        "not_tested"
+      ]
+    },
+    "chondral_lesions": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "procedure": {
+      "enum": [
+        "arthroscopic_bankart",
+        "open_bankart",
+        "bankart_plus_remplissage",
+        "latarjet_open",
+        "latarjet_arthroscopic",
+        "bone_block_iliac_crest",
+        "bone_block_distal_tibia",
+        "bone_block_other",
+        "hagl_repair",
+        "capsular_shift"
+      ]
+    },
+    "anchors_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "anchor_positions_clock": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 12
+      }
+    },
+    "capsular_plication": {
+      "type": "boolean"
+    },
+    "remplissage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchors"
+      ],
+      "properties": {
+        "anchors": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "technique": {
+          "enum": [
+            "double_pulley",
+            "mattress",
+            "other"
+          ]
+        }
+      }
+    },
+    "coracoid_graft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixation",
+        "position_relative_to_glenoid",
+        "subscap_approach"
+      ],
+      "properties": {
+        "graft_length_mm": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 40
+        },
+        "fixation": {
+          "enum": [
+            "two_screws",
+            "cortical_buttons",
+            "one_screw",
+            "other"
+          ]
+        },
+        "screw_size_mm": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "subscap_approach": {
+          "enum": [
+            "split",
+            "tenotomy",
+            "l_shaped"
+          ]
+        },
+        "position_relative_to_glenoid": {
+          "enum": [
+            "flush",
+            "slightly_medial",
+            "lateral_overhang",
+            "medial_gt_5mm"
+          ]
+        },
+        "height_clock": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "bankart_capsule_repair_to_stump": {
+          "type": "boolean"
+        }
+      }
+    },
+    "bone_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dimensions_mm": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "fixation": {
+          "enum": [
+            "two_screws",
+            "cortical_buttons",
+            "one_screw",
+            "other"
+          ]
+        },
+        "position_relative_to_glenoid": {
+          "enum": [
+            "flush",
+            "slightly_medial",
+            "lateral_overhang",
+            "medial_gt_5mm"
+          ]
+        }
+      }
+    },
+    "observations": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "latarjet_open",
+              "latarjet_arthroscopic"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "coracoid_graft"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "bankart_plus_remplissage"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "remplissage",
+          "anchors_count"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "arthroscopic_bankart",
+              "open_bankart"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "anchors_count"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "bone_block_iliac_crest",
+              "bone_block_distal_tibia",
+              "bone_block_other"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "bone_block"
+        ]
+      }
+    }
+  ]
+}

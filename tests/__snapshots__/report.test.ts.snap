@@ -1,0 +1,50 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ReportEngine — conteúdo snapshot completo 1`] = `
+"DESCRIÇÃO CIRÚRGICA
+
+Paciente: Paciente Teste — Prontuário 12345
+Data: 23/09/2026 — Hospital Exemplo
+Lado: direito
+Cirurgião: Dr. Vinicios Barreto Melo (CRM 13416-ES)
+Equipe: Dr. Auxiliar Teste (CRM 00000-ES) — primeiro auxiliar
+Diagnóstico pré-operatório: Rotura completa do manguito rotador e Lesão do cabo longo do bíceps
+Diagnóstico pós-operatório: Rotura completa do manguito rotador, Lesão do cabo longo do bíceps e Artrose acromioclavicular
+Tempo cirúrgico: 85 min
+
+ANESTESIA E POSICIONAMENTO
+Anestesia geral associada a bloqueio interescalênico, hipotensão controlada (PAM alvo 65 mmHg). Paciente posicionado em cadeira de praia a 70°.
+Antibioticoprofilaxia com cefazolina 2 g, 30 min antes da incisão. Ácido tranexâmico 1000 mg, via endovenosa. Antissepsia com clorexidina alcoólica.
+Via de acesso: artroscópica; portais posterior, anterior e lateral.
+
+INVENTÁRIO ARTROSCÓPICO
+- Cabo longo do bíceps intra-articular: lesão tratada — tendinopatia com rotura parcial de 40%.
+- Supraespinal (face articular): lesão tratada — rotura de espessura total.
+Sem alterações: cartilagem da cabeça umeral e cartilagem glenoidal.
+Não avaliados: labrum posterior.
+
+PROCEDIMENTOS
+1. Rotura completa do manguito rotador
+Identificada rotura de espessura total do supraespinal e infraespinal, medindo 28 mm no sentido anteroposterior e 22 mm de retração (Patte 2), com configuração em "L". Tecido de qualidade regular; redutível ao footprint com tensão. Realizada liberação bursal e capsular articular. Preparo do footprint por abrasão leve, com estimulação medular. Convergência de margens com 2 pontos. Reparo em equivalente transósseo sem nós com 2 âncoras na fileira medial e 2 na fileira lateral, sem nós mediais. Cobertura completa do footprint, tensão aceitável.
+
+2. Lesão do cabo longo do bíceps
+Cabo longo do bíceps com rotura parcial (cerca de 40% da largura). Procedimento realizado: tenodese do cabo longo do bíceps, suprapeitoral artroscópica, fixada com âncora.
+
+3. Artrose acromioclavicular
+Procedimento realizado: ressecção da extremidade distal da clavícula (7,5 mm).
+
+IMPLANTES
+- 2× Fabricante A Âncora all-suture (2,6 mm) — lote L123 — fileira medial
+- 2× Fabricante A Âncora knotless PEEK (4,75 mm) — lote L456 — fileira lateral
+- 1× Fabricante B Âncora tenodese — lote L789
+
+INTERCORRÊNCIAS
+Sem intercorrências.
+
+FECHAMENTO E IMOBILIZAÇÃO
+Fechamento por planos e curativo. Tipoia com almofada de abdução de 15°.
+
+CONDUTA PÓS-OPERATÓRIA
+Protocolo de reparo do manguito rotador (padrão).
+"
+`;

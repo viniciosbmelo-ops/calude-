@@ -1,0 +1,380 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_RCT.intraop.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tendons",
+    "tear_type",
+    "procedure"
+  ],
+  "properties": {
+    "tendons": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "SSP",
+          "ISP",
+          "SSC",
+          "TM"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "x-ui": "chips"
+    },
+    "tear_type": {
+      "enum": [
+        "partial_articular",
+        "partial_bursal",
+        "partial_intratendinous",
+        "full_thickness"
+      ]
+    },
+    "ellman_grade": {
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "size_ap_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 80
+    },
+    "retraction_ml_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "patte": {
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "lafosse_ssc": {
+      "enum": [
+        "I",
+        "II",
+        "III",
+        "IV",
+        "V"
+      ]
+    },
+    "tear_shape": {
+      "enum": [
+        "crescent",
+        "U",
+        "L",
+        "reverse_L",
+        "massive_contracted"
+      ]
+    },
+    "delamination": {
+      "type": "boolean"
+    },
+    "tissue_quality": {
+      "enum": [
+        "good",
+        "fair",
+        "poor"
+      ]
+    },
+    "mobility": {
+      "enum": [
+        "reducible_no_tension",
+        "reducible_with_tension",
+        "irreducible"
+      ]
+    },
+    "releases": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "bursal",
+          "articular_capsular",
+          "coracohumeral_ligament",
+          "interval_slide_anterior",
+          "interval_slide_posterior"
+        ]
+      }
+    },
+    "footprint_prep": {
+      "enum": [
+        "decortication",
+        "light_abrasion",
+        "none"
+      ]
+    },
+    "marrow_stimulation": {
+      "type": "boolean",
+      "x-label": "Crimson duvet / microfraturas"
+    },
+    "procedure": {
+      "enum": [
+        "debridement_only",
+        "transtendon_repair",
+        "takedown_and_repair",
+        "single_row",
+        "double_row",
+        "transosseous_equivalent_knotless",
+        "transosseous_equivalent_knotted",
+        "transosseous_true",
+        "partial_repair",
+        "margin_convergence_plus_repair",
+        "graft_augmentation",
+        "superior_capsular_reconstruction",
+        "lower_trapezius_transfer",
+        "latissimus_dorsi_transfer",
+        "pectoralis_major_transfer",
+        "balloon_spacer"
+      ]
+    },
+    "margin_convergence_sutures": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "medial_row_anchors": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+    },
+    "lateral_row_anchors": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+    },
+    "suture_config": {
+      "enum": [
+        "simple",
+        "mattress",
+        "mason_allen_modified",
+        "rip_stop",
+        "medial_knot_tied",
+        "medial_knotless"
+      ]
+    },
+    "graft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "dermal_allograft",
+            "fascia_lata_autograft",
+            "collagen_bioinductive",
+            "xenograft",
+            "long_head_biceps_autograft",
+            "other"
+          ]
+        },
+        "thickness_mm": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "dimensions_mm": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "glenoid_anchors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "humeral_anchors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        }
+      }
+    },
+    "repair_coverage": {
+      "enum": [
+        "complete",
+        "partial",
+        "none"
+      ],
+      "x-label": "Cobertura do footprint ao final"
+    },
+    "repair_tension": {
+      "enum": [
+        "none",
+        "acceptable",
+        "high"
+      ]
+    },
+    "observations": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "tendons": {
+            "type": "array",
+            "contains": {
+              "const": "SSC"
+            }
+          }
+        },
+        "required": [
+          "tendons"
+        ]
+      },
+      "then": {
+        "required": [
+          "lafosse_ssc"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tear_type": {
+            "const": "full_thickness"
+          }
+        },
+        "required": [
+          "tear_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "size_ap_mm",
+          "patte",
+          "tissue_quality",
+          "mobility"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tear_type": {
+            "enum": [
+              "partial_articular",
+              "partial_bursal",
+              "partial_intratendinous"
+            ]
+          }
+        },
+        "required": [
+          "tear_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "ellman_grade"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "graft_augmentation",
+              "superior_capsular_reconstruction"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "graft"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "single_row",
+              "double_row",
+              "transosseous_equivalent_knotless",
+              "transosseous_equivalent_knotted",
+              "transtendon_repair",
+              "takedown_and_repair",
+              "partial_repair",
+              "margin_convergence_plus_repair"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "medial_row_anchors",
+          "suture_config",
+          "repair_coverage",
+          "repair_tension"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "double_row",
+              "transosseous_equivalent_knotless",
+              "transosseous_equivalent_knotted"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "lateral_row_anchors"
+        ],
+        "properties": {
+          "lateral_row_anchors": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "medial_row_anchors": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "margin_convergence_plus_repair"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "margin_convergence_sutures"
+        ]
+      }
+    }
+  ]
+}

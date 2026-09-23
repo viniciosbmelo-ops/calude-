@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_INST_ANT.diagnosis.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "episodes"
+  ],
+  "properties": {
+    "event_type": {
+      "enum": [
+        "dislocation",
+        "subluxation",
+        "apprehension_only"
+      ]
+    },
+    "episodes": {
+      "enum": [
+        "first",
+        "2_to_5",
+        "gt_5"
+      ]
+    },
+    "age_first_episode": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 100
+    },
+    "reduction": {
+      "enum": [
+        "spontaneous",
+        "maneuver",
+        "sedation_or_anesthesia"
+      ]
+    },
+    "sport": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "sport_competitive": {
+      "type": "boolean"
+    },
+    "sport_contact_or_forced_overhead": {
+      "type": "boolean"
+    },
+    "beighton": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9
+    },
+    "er_at_side_gt_85": {
+      "type": "boolean"
+    },
+    "gagey_positive": {
+      "type": "boolean"
+    },
+    "hyperlaxity": {
+      "type": "boolean",
+      "x-note": "Critério ISIS: RE a 0° >85° e/ou hiperabdução — médico decide"
+    },
+    "prior_surgery": {
+      "enum": [
+        "none",
+        "arthroscopic_bankart",
+        "open_bankart",
+        "latarjet",
+        "other"
+      ]
+    },
+    "epilepsy": {
+      "type": "boolean"
+    },
+    "voluntary": {
+      "type": "boolean"
+    },
+    "hs_visible_ap_er": {
+      "type": "boolean"
+    },
+    "glenoid_contour_loss_ap": {
+      "type": "boolean"
+    },
+    "ct_available": {
+      "type": "boolean"
+    },
+    "D_mm": {
+      "type": "number",
+      "minimum": 15,
+      "maximum": 40
+    },
+    "d_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "hsi_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "hs_depth_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "soft_tissue_lesions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "bankart",
+          "bony_bankart",
+          "perthes",
+          "alpsa",
+          "glad",
+          "hagl",
+          "slap_extension"
+        ]
+      }
+    },
+    "bony_bankart_fragment_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "sugaya": {
+      "enum": [
+        "normal",
+        "fragment",
+        "erosion"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "ct_available": {
+            "const": true
+          }
+        },
+        "required": [
+          "ct_available"
+        ]
+      },
+      "then": {
+        "required": [
+          "D_mm",
+          "d_mm"
+        ]
+      }
+    }
+  ]
+}

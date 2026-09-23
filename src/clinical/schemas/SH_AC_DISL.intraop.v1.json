@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_AC_DISL.intraop.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "procedure"
+  ],
+  "properties": {
+    "rockwood": {
+      "enum": [
+        "I",
+        "II",
+        "IIIA",
+        "IIIB",
+        "III_unspecified",
+        "IV",
+        "V",
+        "VI"
+      ]
+    },
+    "chronicity": {
+      "enum": [
+        "acute",
+        "chronic"
+      ]
+    },
+    "chronicity_cutoff_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365,
+      "x-note": "Documentar o corte usado pelo cirurgião"
+    },
+    "cc_distance_injured_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "cc_distance_contralateral_mm": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 40
+    },
+    "horizontal_instability": {
+      "type": "boolean"
+    },
+    "procedure": {
+      "enum": [
+        "cc_button_fixation",
+        "cc_graft_reconstruction",
+        "cc_plus_ac_cerclage",
+        "hook_plate",
+        "modified_weaver_dunn",
+        "distal_clavicle_excision"
+      ]
+    },
+    "button_systems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "clavicle_tunnels": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "graft_type": {
+      "enum": [
+        "semitendinosus_autograft",
+        "gracilis_autograft",
+        "allograft",
+        "synthetic"
+      ]
+    },
+    "resection_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "observations": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "not": {
+              "const": "distal_clavicle_excision"
+            }
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "rockwood",
+          "chronicity"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "cc_button_fixation",
+              "cc_plus_ac_cerclage"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "button_systems"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "cc_graft_reconstruction"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "graft_type"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "distal_clavicle_excision"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "resection_mm"
+        ]
+      }
+    }
+  ]
+}

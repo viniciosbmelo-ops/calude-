@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_ARTHROPLASTY.intraop.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "etiology",
+    "prosthesis_type",
+    "approach",
+    "subscapularis_management"
+  ],
+  "properties": {
+    "etiology": {
+      "enum": [
+        "primary_oa",
+        "cuff_tear_arthropathy",
+        "inflammatory",
+        "avascular_necrosis",
+        "post_traumatic",
+        "instability_arthropathy",
+        "fracture_sequela",
+        "acute_fracture",
+        "revision"
+      ]
+    },
+    "walch": {
+      "enum": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "B3",
+        "C",
+        "D"
+      ]
+    },
+    "hamada": {
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "prosthesis_type": {
+      "enum": [
+        "hemiarthroplasty",
+        "anatomic_tsa",
+        "reverse_tsa"
+      ]
+    },
+    "approach": {
+      "enum": [
+        "deltopectoral",
+        "superolateral"
+      ]
+    },
+    "subscapularis_management": {
+      "enum": [
+        "tenotomy",
+        "peel",
+        "lesser_tuberosity_osteotomy",
+        "not_present"
+      ]
+    },
+    "subscapularis_repaired": {
+      "type": "boolean"
+    },
+    "planning_source": {
+      "enum": [
+        "3d_software",
+        "2d_templating",
+        "none"
+      ]
+    },
+    "planned_version_deg": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 20
+    },
+    "executed_version_deg": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 20
+    },
+    "planned_inclination_deg": {
+      "type": "number",
+      "minimum": -30,
+      "maximum": 30
+    },
+    "executed_inclination_deg": {
+      "type": "number",
+      "minimum": -30,
+      "maximum": 30
+    },
+    "glenoid_component": {
+      "enum": [
+        "cemented_pegged",
+        "cemented_keeled",
+        "metal_backed",
+        "baseplate_standard",
+        "baseplate_augmented",
+        "none"
+      ]
+    },
+    "baseplate_diameter_mm": {
+      "type": "number",
+      "minimum": 20,
+      "maximum": 35
+    },
+    "bone_graft": {
+      "enum": [
+        "none",
+        "humeral_head_bio_rsa",
+        "structural",
+        "morselized"
+      ]
+    },
+    "screws_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "glenosphere_diameter_mm": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 48
+    },
+    "glenosphere_lateralization_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "glenosphere_eccentricity_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 6
+    },
+    "humeral_neck_shaft_deg": {
+      "enum": [
+        125,
+        132.5,
+        135,
+        145,
+        150,
+        155
+      ]
+    },
+    "humeral_design": {
+      "enum": [
+        "stemless",
+        "short_stem",
+        "standard_stem",
+        "long_stem"
+      ]
+    },
+    "humeral_fixation": {
+      "enum": [
+        "press_fit",
+        "cemented"
+      ]
+    },
+    "humeral_retroversion_deg": {
+      "type": "number",
+      "minimum": -10,
+      "maximum": 50
+    },
+    "polyethylene_thickness_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "cement_brand_lot": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "stability_test": {
+      "enum": [
+        "stable",
+        "unstable_corrected",
+        "unstable_residual"
+      ]
+    },
+    "tuberosities_repaired": {
+      "type": "boolean"
+    },
+    "associated_transfer": {
+      "enum": [
+        "none",
+        "latissimus_dorsi",
+        "lower_trapezius",
+        "modified_l_episcopo"
+      ]
+    },
+    "observations": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "prosthesis_type": {
+            "const": "reverse_tsa"
+          }
+        },
+        "required": [
+          "prosthesis_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "glenoid_component",
+          "glenosphere_diameter_mm",
+          "humeral_neck_shaft_deg",
+          "screws_count",
+          "executed_version_deg",
+          "executed_inclination_deg"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "prosthesis_type": {
+            "const": "anatomic_tsa"
+          }
+        },
+        "required": [
+          "prosthesis_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "glenoid_component",
+          "executed_version_deg"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "etiology": {
+            "const": "acute_fracture"
+          }
+        },
+        "required": [
+          "etiology"
+        ]
+      },
+      "then": {
+        "required": [
+          "tuberosities_repaired"
+        ]
+      }
+    }
+  ]
+}

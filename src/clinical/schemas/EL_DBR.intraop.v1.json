@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "EL_DBR.intraop.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tear",
+    "days_since_injury",
+    "procedure"
+  ],
+  "properties": {
+    "tear": {
+      "enum": [
+        "complete",
+        "partial"
+      ]
+    },
+    "partial_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "lacertus_intact": {
+      "type": "boolean"
+    },
+    "retraction_cm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "days_since_injury": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3650
+    },
+    "procedure": {
+      "enum": [
+        "single_incision_repair",
+        "double_incision_repair",
+        "graft_reconstruction"
+      ]
+    },
+    "fixation": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "cortical_button",
+          "interference_screw",
+          "suture_anchors",
+          "transosseous"
+        ]
+      }
+    },
+    "graft_type": {
+      "enum": [
+        "achilles_allograft",
+        "semitendinosus",
+        "fascia_lata",
+        "other"
+      ]
+    },
+    "reinsertion_position": {
+      "enum": [
+        "anatomic_ulnar_tuberosity",
+        "anterior_tuberosity"
+      ]
+    },
+    "lcfn_identified": {
+      "type": "boolean",
+      "x-label": "Nervo cutâneo lateral do antebraço identificado/protegido"
+    },
+    "observations": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "tear": {
+            "const": "partial"
+          }
+        },
+        "required": [
+          "tear"
+        ]
+      },
+      "then": {
+        "required": [
+          "partial_pct"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "enum": [
+              "single_incision_repair",
+              "double_incision_repair"
+            ]
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "fixation"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "procedure": {
+            "const": "graft_reconstruction"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      },
+      "then": {
+        "required": [
+          "graft_type",
+          "fixation"
+        ]
+      }
+    }
+  ]
+}

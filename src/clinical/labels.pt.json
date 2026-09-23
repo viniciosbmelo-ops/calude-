@@ -1,0 +1,410 @@
+{
+  "_default": {
+    "none": "nenhum",
+    "other": "outro",
+    "not_tested": "não testado",
+    "normal": "normal",
+    "R": "direito",
+    "L": "esquerdo"
+  },
+  "side": {
+    "R": "direito",
+    "L": "esquerdo"
+  },
+  "approach": {
+    "arthroscopic": "artroscópica",
+    "deltopectoral": "deltopeitoral",
+    "anterolateral_deltoid_split": "anterolateral com divulsão do deltoide",
+    "superolateral": "superolateral",
+    "posterior": "posterior",
+    "open_subpectoral": "subpeitoral aberta",
+    "kocher": "de Kocher",
+    "kaplan": "de Kaplan",
+    "boyd": "de Boyd",
+    "medial_flexor_pronator_split": "medial com divulsão do flexor-pronador",
+    "triceps_sparing": "com preservação do tríceps",
+    "triceps_split": "com divulsão do tríceps",
+    "olecranon_osteotomy": "com osteotomia do olécrano",
+    "anterior_elbow_single_incision": "anterior em incisão única",
+    "double_incision_elbow": "em dupla incisão"
+  },
+  "portals": {
+    "posterior": "posterior",
+    "anterior": "anterior",
+    "anterolateral": "anterolateral",
+    "lateral": "lateral",
+    "neviaser": "de Neviaser",
+    "portal_5h": "5 horas",
+    "portal_7h": "7 horas",
+    "posterolateral": "posterolateral",
+    "el_anteromedial": "anteromedial",
+    "el_proximal_anterolateral": "anterolateral proximal",
+    "el_posterolateral": "posterolateral",
+    "el_transtricipital": "transtricipital",
+    "el_soft_spot": "soft spot"
+  },
+  "type": {
+    "general": "anestesia geral",
+    "block_only": "bloqueio anestésico",
+    "general_plus_block": "anestesia geral associada a bloqueio",
+    "sedation_plus_block": "sedação associada a bloqueio",
+    "dermal_allograft": "aloenxerto dérmico",
+    "fascia_lata_autograft": "autoenxerto de fáscia lata",
+    "collagen_bioinductive": "implante bioindutivo de colágeno",
+    "xenograft": "xenoenxerto",
+    "long_head_biceps_autograft": "autoenxerto do cabo longo do bíceps",
+    "other": "outro"
+  },
+  "block": {
+    "interscalene": "interescalênico",
+    "supraclavicular": "supraclavicular",
+    "infraclavicular": "infraclavicular",
+    "axillary": "axilar",
+    "suprascapular_plus_axillary": "supraescapular e axilar",
+    "none": "sem bloqueio"
+  },
+  "positioning": {
+    "beach_chair": "cadeira de praia",
+    "lateral_decubitus": "decúbito lateral",
+    "supine": "decúbito dorsal",
+    "prone": "decúbito ventral",
+    "supine_arm_table": "decúbito dorsal com mesa de mão"
+  },
+  "skin_prep": {
+    "chlorhexidine_alcohol": "clorexidina alcoólica",
+    "povidone_iodine": "PVPI",
+    "other": "outro antisséptico"
+  },
+  "route": {
+    "iv": "endovenosa",
+    "topical": "tópica",
+    "iv_plus_topical": "endovenosa e tópica"
+  },
+  "role": {
+    "first_assistant": "primeiro auxiliar",
+    "second_assistant": "segundo auxiliar",
+    "scrub_nurse": "instrumentador(a)",
+    "resident": "residente",
+    "fellow": "fellow"
+  },
+  "intraop_complications": {
+    "neurovascular_injury": "lesão neurovascular",
+    "intraop_fracture": "fratura intraoperatória",
+    "implant_failure": "falha de implante",
+    "conversion_to_open": "conversão para cirurgia aberta",
+    "significant_bleeding": "sangramento relevante",
+    "other": "outra intercorrência"
+  },
+  "immobilization": {
+    "simple_sling": "tipoia simples",
+    "sling_abduction_15": "tipoia com almofada de abdução de 15°",
+    "sling_abduction_30": "tipoia com almofada de abdução de 30°",
+    "neutral_rotation_brace": "órtese em rotação neutra",
+    "long_arm_splint": "tala axilopalmar",
+    "splint_90": "tala em 90° de flexão",
+    "hinged_elbow_brace": "órtese articulada de cotovelo",
+    "none": "sem imobilização"
+  },
+  "tendons": {
+    "SSP": "supraespinal",
+    "ISP": "infraespinal",
+    "SSC": "subescapular",
+    "TM": "redondo menor"
+  },
+  "tear_type": {
+    "partial_articular": "parcial da face articular",
+    "partial_bursal": "parcial da face bursal",
+    "partial_intratendinous": "parcial intratendínea",
+    "full_thickness": "de espessura total"
+  },
+  "tear_shape": {
+    "crescent": "crescente",
+    "U": "\"U\"",
+    "L": "\"L\"",
+    "reverse_L": "\"L\" invertido",
+    "massive_contracted": "rotura maciça contraída"
+  },
+  "tissue_quality": {
+    "good": "boa",
+    "fair": "regular",
+    "poor": "ruim"
+  },
+  "mobility": {
+    "reducible_no_tension": "redutível ao footprint sem tensão",
+    "reducible_with_tension": "redutível ao footprint com tensão",
+    "irreducible": "não redutível ao footprint"
+  },
+  "releases": {
+    "bursal": "bursal",
+    "articular_capsular": "capsular articular",
+    "coracohumeral_ligament": "do ligamento coracoumeral",
+    "interval_slide_anterior": "interval slide anterior",
+    "interval_slide_posterior": "interval slide posterior"
+  },
+  "footprint_prep": {
+    "decortication": "decorticação",
+    "light_abrasion": "abrasão leve",
+    "none": "sem preparo ósseo"
+  },
+  "procedure": {
+    "debridement_only": "desbridamento isolado",
+    "transtendon_repair": "reparo transtendíneo",
+    "takedown_and_repair": "completação e reparo",
+    "single_row": "fileira simples",
+    "double_row": "dupla fileira",
+    "transosseous_equivalent_knotless": "equivalente transósseo sem nós",
+    "transosseous_equivalent_knotted": "equivalente transósseo com nós mediais",
+    "transosseous_true": "transósseo",
+    "partial_repair": "reparo parcial",
+    "margin_convergence_plus_repair": "convergência de margens e reparo",
+    "graft_augmentation": "aumento com enxerto",
+    "superior_capsular_reconstruction": "reconstrução capsular superior",
+    "lower_trapezius_transfer": "transferência do trapézio inferior",
+    "latissimus_dorsi_transfer": "transferência do grande dorsal",
+    "pectoralis_major_transfer": "transferência do peitoral maior",
+    "balloon_spacer": "espaçador subacromial (balão)",
+    "arthroscopic_bankart": "reparo de Bankart artroscópico",
+    "open_bankart": "reparo de Bankart aberto",
+    "bankart_plus_remplissage": "reparo de Bankart artroscópico associado a remplissage",
+    "latarjet_open": "cirurgia de Latarjet aberta",
+    "latarjet_arthroscopic": "cirurgia de Latarjet artroscópica",
+    "bone_block_iliac_crest": "bloqueio ósseo com enxerto de crista ilíaca",
+    "bone_block_distal_tibia": "bloqueio ósseo com aloenxerto de tíbia distal",
+    "bone_block_other": "bloqueio ósseo",
+    "hagl_repair": "reparo de lesão HAGL",
+    "capsular_shift": "capsuloplastia (capsular shift)",
+    "debridement": "desbridamento",
+    "slap_repair": "reparo da lesão SLAP",
+    "tenotomy": "tenotomia do cabo longo do bíceps",
+    "tenodesis": "tenodese do cabo longo do bíceps",
+    "cc_button_fixation": "fixação coracoclavicular com botões",
+    "cc_graft_reconstruction": "reconstrução coracoclavicular com enxerto",
+    "cc_plus_ac_cerclage": "fixação coracoclavicular com botões associada a cerclagem acromioclavicular",
+    "hook_plate": "fixação com placa-gancho",
+    "modified_weaver_dunn": "Weaver-Dunn modificado",
+    "distal_clavicle_excision": "ressecção da extremidade distal da clavícula",
+    "single_incision_repair": "reinserção por via anterior única",
+    "double_incision_repair": "reinserção por dupla incisão",
+    "graft_reconstruction": "reconstrução com enxerto"
+  },
+  "suture_config": {
+    "simple": "pontos simples",
+    "mattress": "pontos em colchoeiro",
+    "mason_allen_modified": "Mason-Allen modificado",
+    "rip_stop": "rip-stop",
+    "medial_knot_tied": "com nós mediais",
+    "medial_knotless": "sem nós mediais"
+  },
+  "repair_coverage": {
+    "complete": "completa",
+    "partial": "parcial",
+    "none": "ausente"
+  },
+  "repair_tension": {
+    "none": "ausente",
+    "acceptable": "aceitável",
+    "high": "elevada"
+  },
+  "labral_lesion": {
+    "bankart": "lesão de Bankart",
+    "bony_bankart": "Bankart ósseo",
+    "perthes": "lesão de Perthes",
+    "alpsa": "lesão ALPSA",
+    "glad": "lesão GLAD",
+    "hagl": "lesão HAGL",
+    "bhagl": "lesão BHAGL",
+    "slap_extension": "extensão superior (SLAP)",
+    "posterior_extension": "extensão posterior"
+  },
+  "soft_tissue_lesions": {
+    "bankart": "Bankart",
+    "bony_bankart": "Bankart ósseo",
+    "perthes": "Perthes",
+    "alpsa": "ALPSA",
+    "glad": "GLAD",
+    "hagl": "HAGL",
+    "slap_extension": "extensão SLAP"
+  },
+  "capsule_quality": {
+    "normal": "normal",
+    "attenuated": "atenuada",
+    "patulous": "redundante"
+  },
+  "hill_sachs_engaging_dynamic": {
+    "engaging": "com engajamento",
+    "non_engaging": "sem engajamento",
+    "not_tested": "não testado"
+  },
+  "technique": {
+    "double_pulley": "duplo polia",
+    "mattress": "colchoeiro",
+    "other": "outra"
+  },
+  "fixation": {
+    "two_screws": "dois parafusos",
+    "one_screw": "um parafuso",
+    "cortical_buttons": "botões corticais",
+    "cortical_button": "botão cortical",
+    "interference_screw": "parafuso de interferência",
+    "suture_anchors": "âncoras",
+    "transosseous": "túneis transósseos",
+    "other": "outro método"
+  },
+  "subscap_approach": {
+    "split": "divulsão do subescapular",
+    "tenotomy": "tenotomia do subescapular",
+    "l_shaped": "incisão em L do subescapular"
+  },
+  "position_relative_to_glenoid": {
+    "flush": "nivelado à superfície glenoidal",
+    "slightly_medial": "levemente medializado",
+    "lateral_overhang": "com excesso lateral",
+    "medial_gt_5mm": "medializado mais de 5 mm"
+  },
+  "event_type": {
+    "dislocation": "luxação",
+    "subluxation": "subluxação",
+    "apprehension_only": "apreensão sem evento"
+  },
+  "episodes": {
+    "first": "primeiro episódio",
+    "2_to_5": "2 a 5 episódios",
+    "gt_5": "mais de 5 episódios"
+  },
+  "reduction": {
+    "spontaneous": "espontânea",
+    "maneuver": "por manobra",
+    "sedation_or_anesthesia": "sob sedação/anestesia"
+  },
+  "prior_surgery": {
+    "none": "nenhuma",
+    "arthroscopic_bankart": "Bankart artroscópico",
+    "open_bankart": "Bankart aberto",
+    "latarjet": "Latarjet",
+    "other": "outra"
+  },
+  "sugaya": {
+    "normal": "normal",
+    "fragment": "fragmento ósseo",
+    "erosion": "erosão"
+  },
+  "lhb_tendinopathy": {
+    "none": "sem tendinopatia",
+    "hyperemia": "hiperemia",
+    "thinning": "afilamento",
+    "delamination": "delaminação",
+    "partial_tear": "rotura parcial"
+  },
+  "lhb_instability": {
+    "stable": "estável",
+    "subluxation": "subluxação",
+    "dislocation_medial": "luxação medial"
+  },
+  "dor_localizacao_obrien": {
+    "deep": "profunda",
+    "superficial_ac": "superficial sobre a AC",
+    "none": "sem dor",
+    "not_tested": "não testado"
+  },
+  "tenodesis_site": {
+    "intraarticular_top_groove": "no topo do sulco intertubercular",
+    "suprapectoral_arthroscopic": "suprapeitoral artroscópica",
+    "subpectoral_open": "subpeitoral aberta",
+    "soft_tissue_to_conjoint_or_tendon": "em partes moles"
+  },
+  "tenodesis_fixation": {
+    "anchor": "âncora",
+    "interference_screw": "parafuso de interferência",
+    "cortical_button": "botão cortical",
+    "soft_tissue": "sutura em partes moles"
+  },
+  "rockwood": {
+    "III_unspecified": "III",
+    "IIIA": "IIIA (ISAKOS)",
+    "IIIB": "IIIB (ISAKOS)"
+  },
+  "chronicity": {
+    "acute": "aguda",
+    "chronic": "crônica"
+  },
+  "graft_type": {
+    "semitendinosus_autograft": "autoenxerto de semitendíneo",
+    "gracilis_autograft": "autoenxerto de grácil",
+    "allograft": "aloenxerto",
+    "synthetic": "enxerto sintético",
+    "achilles_allograft": "aloenxerto de tendão calcâneo",
+    "semitendinosus": "tendão semitendíneo",
+    "fascia_lata": "fáscia lata",
+    "other": "outro enxerto"
+  },
+  "etiology": {
+    "primary_oa": "artrose glenoumeral primária",
+    "cuff_tear_arthropathy": "artropatia do manguito rotador",
+    "inflammatory": "artrite inflamatória",
+    "avascular_necrosis": "necrose avascular da cabeça umeral",
+    "post_traumatic": "artrose pós-traumática",
+    "instability_arthropathy": "artropatia de instabilidade",
+    "fracture_sequela": "sequela de fratura",
+    "acute_fracture": "fratura aguda do úmero proximal",
+    "revision": "revisão de artroplastia"
+  },
+  "prosthesis_type": {
+    "hemiarthroplasty": "hemiartroplastia",
+    "anatomic_tsa": "artroplastia total anatômica",
+    "reverse_tsa": "artroplastia total reversa"
+  },
+  "subscapularis_management": {
+    "tenotomy": "tenotomia",
+    "peel": "desinserção (peel)",
+    "lesser_tuberosity_osteotomy": "osteotomia do tubérculo menor",
+    "not_present": "subescapular ausente"
+  },
+  "planning_source": {
+    "3d_software": "software de planejamento 3D",
+    "2d_templating": "templating 2D",
+    "none": "sem planejamento formal"
+  },
+  "glenoid_component": {
+    "cemented_pegged": "componente glenoidal cimentado com pinos",
+    "cemented_keeled": "componente glenoidal cimentado com quilha",
+    "metal_backed": "componente glenoidal metal-back",
+    "baseplate_standard": "baseplate padrão",
+    "baseplate_augmented": "baseplate aumentado",
+    "none": "sem componente glenoidal"
+  },
+  "bone_graft": {
+    "none": "sem enxerto",
+    "humeral_head_bio_rsa": "enxerto da cabeça umeral (BIO-RSA)",
+    "structural": "enxerto estrutural",
+    "morselized": "enxerto morcelizado"
+  },
+  "humeral_design": {
+    "stemless": "sem haste",
+    "short_stem": "haste curta",
+    "standard_stem": "haste padrão",
+    "long_stem": "haste longa"
+  },
+  "humeral_fixation": {
+    "press_fit": "press-fit",
+    "cemented": "cimentada"
+  },
+  "stability_test": {
+    "stable": "estável",
+    "unstable_corrected": "instável, corrigida",
+    "unstable_residual": "com instabilidade residual"
+  },
+  "associated_transfer": {
+    "none": "nenhuma",
+    "latissimus_dorsi": "transferência do grande dorsal",
+    "lower_trapezius": "transferência do trapézio inferior",
+    "modified_l_episcopo": "L'Episcopo modificado"
+  },
+  "tear": {
+    "complete": "completa",
+    "partial": "parcial"
+  },
+  "reinsertion_position": {
+    "anatomic_ulnar_tuberosity": "anatômica (porção ulnar da tuberosidade)",
+    "anterior_tuberosity": "anterior na tuberosidade"
+  }
+}
