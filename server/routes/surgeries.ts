@@ -89,7 +89,7 @@ export function surgeryRoutes(pool: Pool, registry: SchemaRegistry): Router {
         db.query(`SELECT id, pathology_code, sequence, schema_id, schema_version, data FROM public.surgery_procedure WHERE surgery_id = $1 ORDER BY sequence`, [s.id]),
         db.query(`SELECT structure_code, status, finding_text, justification FROM public.arthroscopic_map WHERE surgery_id = $1`, [s.id]),
         db.query(
-          `SELECT si.id, si.procedure_id, si.implant_id, si.lot, si.serial, si.expiry::text AS expiry, si.quantity, si.location, si.raw_barcode,
+          `SELECT si.id, si.procedure_id, si.implant_id, si.lot, si.serial, si.expiry::text AS expiry, si.quantity, si.location, si.size, si.raw_barcode,
                   ic.category, ic.manufacturer, ic.model, ic.ref_code, ic.gtin
              FROM public.surgery_implant si LEFT JOIN public.implant_catalog ic ON ic.id = si.implant_id
             WHERE si.surgery_id = $1 ORDER BY si.created_at`,
@@ -253,6 +253,8 @@ export function surgeryRoutes(pool: Pool, registry: SchemaRegistry): Router {
     const quantity = b.quantity ?? 1;
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) throw badRequest('quantity deve ser inteiro de 1 a 50.');
     if (b.procedure_id !== undefined && b.procedure_id !== null && !isUuid(b.procedure_id)) throw badRequest('procedure_id inválido.');
+    if (b.size !== undefined && b.size !== null && (typeof b.size !== 'string' || b.size.length > 40)) throw badRequest('size: até 40 caracteres.');
+    if (b.location !== undefined && b.location !== null && (typeof b.location !== 'string' || b.location.length > 120)) throw badRequest('location: até 120 caracteres.');
     if (b.implant_id === undefined && b.new_catalog_item === undefined) throw badRequest('Informe implant_id ou new_catalog_item.');
 
     const row = await withUser(pool, userOf(req), async (db) => {
@@ -276,9 +278,9 @@ export function surgeryRoutes(pool: Pool, registry: SchemaRegistry): Router {
         throw badRequest('procedure_id não pertence a esta cirurgia.');
       }
       return (await db.query(
-        `INSERT INTO public.surgery_implant (surgery_id, procedure_id, implant_id, lot, serial, expiry, quantity, location, raw_barcode)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, implant_id, procedure_id, lot, serial, expiry::text AS expiry, quantity, location, raw_barcode`,
-        [s.id, b.procedure_id ?? null, implantId, lot, serial, expiry, quantity, b.location ?? null, b.raw_barcode ?? null]
+        `INSERT INTO public.surgery_implant (surgery_id, procedure_id, implant_id, lot, serial, expiry, quantity, location, size, raw_barcode)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, implant_id, procedure_id, lot, serial, expiry::text AS expiry, quantity, location, size, raw_barcode`,
+        [s.id, b.procedure_id ?? null, implantId, lot, serial, expiry, quantity, b.location || null, b.size || null, b.raw_barcode ?? null]
       )).rows[0];
     });
     res.status(201).json({ ...row, scanned: scanned ?? null });

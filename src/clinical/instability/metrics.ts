@@ -191,3 +191,12 @@ export function evaluateInstabilityMetrics(bone: BoneInput, isis: IsisInput): Me
     refs: { gbl_pct: [1, 22], gt_mm: [1, 21], track: [1], isis: [3] }
   };
 }
+
+/** Citações (Vancouver) referenciadas em `refs` — para tooltip na UI. */
+export const REFERENCES: Record<number, string> = {
+  1: 'Di Giacomo G, Itoi E, Burkhart SS. Evolving concept of bipolar bone loss and the Hill-Sachs lesion: from "engaging/non-engaging" lesion to "on-track/off-track" lesion. Arthroscopy. 2014;30(1):90-8. PMID 24384275. doi:10.1016/j.arthro.2013.10.004',
+  2: 'Shaha JS, Cook JB, Song DJ, et al. Redefining "critical" bone loss in shoulder instability: functional outcomes worsen with "subcritical" bone loss. Am J Sports Med. 2015;43(7):1719-25. PMID 25883168. doi:10.1177/0363546515578250',
+  3: 'Balg F, Boileau P. The instability severity index score. A simple pre-operative score to select patients for arthroscopic or open shoulder stabilisation. J Bone Joint Surg Br. 2007;89(11):1470-7. PMID 17998184. doi:10.1302/0301-620X.89B11.18962',
+  21: 'Yamamoto N, Itoi E, Abe H, et al. Contact between the glenoid and the humeral head in abduction, external rotation, and horizontal extension: a new concept of glenoid track. J Shoulder Elbow Surg. 2007;16(5):649-56. PMID 17644006. doi:10.1016/j.jse.2006.12.012',
+  22: 'Burkhart SS, De Beer JF. Traumatic glenohumeral bone defects and their relationship to failure of arthroscopic Bankart repairs: significance of the inverted-pear glenoid and the humeral engaging Hill-Sachs lesion. Arthroscopy. 2000;16(7):677-94. PMID 11027751. doi:10.1053/jars.2000.17715'
+};

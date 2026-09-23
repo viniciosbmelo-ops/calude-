@@ -38,13 +38,14 @@ export async function setupDb(): Promise<{ pool: Pool; teardown: () => Promise<v
 
   const c = await pool.connect();
   try {
-    await c.query(`DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
-    await c.query(sql('db/test/000_supabase_stub.sql'));
-    await c.query(sql('db/migrations/001_docsholder_core.sql'));
-    await c.query(sql('db/seeds/002_pathology_catalog.sql'));
-    await c.query(sql('db/migrations/003_api_support.sql'));
-    // Equivalente aos GRANTs padrão do Supabase
-    await c.query(`GRANT USAGE ON SCHEMA public TO authenticated, anon; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;`);
+    for (const f of [
+      'db/standalone/000_supabase_compat.sql',
+      'db/migrations/000_base_patient.sql',
+      'db/migrations/001_docsholder_core.sql',
+      'db/seeds/002_pathology_catalog.sql',
+      'db/migrations/003_api_support.sql',
+      'db/migrations/004_app_features.sql'
+    ]) await c.query(sql(f));
     await c.query(`INSERT INTO public.patient(id, owner_id, clinic_id, name) VALUES ($1,$2,$3,'Paciente Teste'), ($4,$5,NULL,'Paciente B')`, [PATIENTS.A, USERS.A, CLINIC, PATIENTS.B, USERS.B]);
     await c.query(`INSERT INTO public.clinic_member(clinic_id, user_id, role, active) VALUES ($1,$2,'surgeon',true)`, [CLINIC, USERS.C]);
   } finally {

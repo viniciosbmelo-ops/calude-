@@ -36,12 +36,16 @@ export async function withUser<T>(pool: Pool, user: AuthUser, fn: (db: Db) => Pr
   }
 }
 
-/** Transação anônima (role anon) — usada só pela rota pública de verificação. */
-export async function withAnon<T>(pool: Pool, fn: (db: Db) => Promise<T>): Promise<T> {
+/**
+ * Transação sem usuário, com role restrita:
+ *  - 'anon': verificação pública de hash
+ *  - 'docsholder_public': formulário de PROM do paciente (só executa as funções de convite)
+ */
+export async function withRole<T>(pool: Pool, role: 'anon' | 'docsholder_public', fn: (db: Db) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('SET LOCAL ROLE anon');
+    await client.query(`SET LOCAL ROLE ${role}`);
     const out = await fn(client);
     await client.query('COMMIT');
     return out;

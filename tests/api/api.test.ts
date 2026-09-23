@@ -163,7 +163,7 @@ describeDb('API (PostgreSQL real, RLS ativa)', () => {
     for (const imp of multiProcedure.implants!) {
       const r = await A().post(`/api/surgeries/${surgeryId}/implants`, {
         new_catalog_item: { category: 'anchor', manufacturer: imp.manufacturer, model: imp.model },
-        lot: imp.lot, quantity: imp.quantity, location: imp.location
+        lot: imp.lot, quantity: imp.quantity, location: imp.location, size: imp.size
       });
       expect(r.status).toBe(201);
     }
@@ -205,7 +205,7 @@ describeDb('API (PostgreSQL real, RLS ativa)', () => {
       patient: { name: 'Paciente Teste' },
       surgeon: { name: SURGEON.full_name, crm: SURGEON.crm },
       arthroscopic_map: map,
-      implants: multiProcedure.implants!.map(({ size, ...i }) => i)
+      implants: multiProcedure.implants
     });
     expect(g.body.generated_text).toBe(expected.text);
     expect(g.body.final_text).toBe(expected.text);
@@ -237,6 +237,10 @@ describeDb('API (PostgreSQL real, RLS ativa)', () => {
     expect(rep.signed_by).toBe(USERS.A);
     expect(rep.content_hash).toBe(reportHash({ surgery_id: surgeryId, version: 1, template_versions: rep.template_versions, final_text: rep.final_text, signed_by: USERS.A, signed_at: new Date(rep.signed_at).toISOString() }));
     expect(s.body.prom_schedule.map((t: any) => t.code)).toEqual(['6w', '3m', '6m', '12m', '24m']);
+    const agenda = (await A().get('/api/proms/agenda')).body;
+    expect(agenda.map((a: any) => a.timepoint)).toEqual(['6w', '3m', '6m', '12m', '24m']);
+    expect(agenda[0]).toMatchObject({ patient_name: 'Paciente Teste', due: '2026-11-04' });
+    expect((await B().get('/api/proms/agenda')).body).toEqual([]);
 
     expect((await A().get(`/api/reports/${reportId}/integrity`)).body).toMatchObject({ signed: true, intact: true });
     const v = await request(app).get(`/verify/${rep.content_hash}`);
@@ -275,6 +279,8 @@ describeDb('API (PostgreSQL real, RLS ativa)', () => {
     expect(s.body.prom_schedule).toEqual([]);
     expect((await request(app).get(`/verify/${oldHash}`)).body.superseded).toBe(true);
     expect((await A().get(`/api/surgeries/${surgeryId}`)).body.status).toBe('amended');
+    // correção não duplica a agenda
+    expect((await A().get('/api/proms/agenda')).body).toHaveLength(5);
   });
 
   test('B não lê relatório de A', async () => {

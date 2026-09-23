@@ -2,74 +2,14 @@
  * Registro de schemas por patologia (JSON Schema draft 2020-12, validado com ajv).
  * Uso no Express:  router.post('/procedures', validateAgainstSchema(req => `${req.body.pathology_code}.intraop.v${req.body.schema_version}`), handler)
  */
-import Ajv2020, { ErrorObject, ValidateFunction } from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
+import { ValidateFunction } from 'ajv/dist/2020';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ValidationIssue, ValidationResult, buildAjv, toIssues } from './ajvShared';
 
-export interface ValidationIssue {
-  field: string;
-  message_pt: string;
-  keyword: string;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  issues: ValidationIssue[];
-}
+export type { ValidationIssue, ValidationResult } from './ajvShared';
 
 const SCHEMA_DIR = path.join(__dirname, 'schemas');
-
-function buildAjv(): Ajv2020 {
-  const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false, allowUnionTypes: false });
-  addFormats(ajv);
-  // Anotações de UI — ignoradas na validação, lidas pelo renderer de formulário
-  for (const kw of ['x-ui', 'x-label', 'x-note', 'x-example']) ajv.addKeyword({ keyword: kw, schemaType: ['string'] });
-  return ajv;
-}
-
-function fieldOf(e: ErrorObject): string {
-  const base = e.instancePath.replace(/^\//, '').replace(/\//g, '.');
-  if (e.keyword === 'required') {
-    const missing = (e.params as { missingProperty: string }).missingProperty;
-    return base ? `${base}.${missing}` : missing;
-  }
-  if (e.keyword === 'additionalProperties') {
-    const extra = (e.params as { additionalProperty: string }).additionalProperty;
-    return base ? `${base}.${extra}` : extra;
-  }
-  return base || '(raiz)';
-}
-
-function messagePt(e: ErrorObject): string {
-  const p = e.params as Record<string, unknown>;
-  switch (e.keyword) {
-    case 'required':
-      return 'Campo obrigatório não preenchido.';
-    case 'enum':
-      return `Valor não permitido. Opções: ${(p.allowedValues as unknown[]).join(', ')}.`;
-    case 'minimum':
-      return `Valor abaixo do mínimo (${p.limit}).`;
-    case 'maximum':
-      return `Valor acima do máximo (${p.limit}).`;
-    case 'type':
-      return `Tipo inválido (esperado ${p.type}).`;
-    case 'additionalProperties':
-      return 'Campo não previsto no formulário desta patologia.';
-    case 'minItems':
-      return `Selecione pelo menos ${p.limit} item(ns).`;
-    case 'uniqueItems':
-      return 'Itens duplicados.';
-    case 'maxLength':
-      return `Texto excede ${p.limit} caracteres.`;
-    case 'pattern':
-      return 'Formato inválido.';
-    case 'format':
-      return `Formato inválido (${p.format}).`;
-    default:
-      return e.message ?? 'Valor inválido.';
-  }
-}
 
 export class SchemaRegistry {
   private readonly ajv = buildAjv();
@@ -105,11 +45,7 @@ export class SchemaRegistry {
     const valid = v(data) as boolean;
     if (valid) return { valid: true, issues: [] };
     // Remove ruído de if/then (o erro real já vem no 'required' correspondente)
-    const issues = (v.errors ?? [])
-      .filter((e) => e.keyword !== 'if')
-      .map((e) => ({ field: fieldOf(e), keyword: e.keyword, message_pt: messagePt(e) }));
-    const dedup = new Map(issues.map((i) => [`${i.field}|${i.keyword}`, i]));
-    return { valid: false, issues: [...dedup.values()] };
+    return { valid: false, issues: toIssues(v.errors) };
   }
 }
 

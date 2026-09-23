@@ -10,11 +10,13 @@ import {
   ArthroMapEntry, PresignInput, ReportEngine, ReportInput, SchemaRegistry, ValidationIssue,
   reportHash, runPresignChecklist, scheduleTimepoints
 } from '../../src/clinical';
-import { AuthUser, Db, isUuid, withAnon, withUser } from '../db';
+import { AuthUser, Db, isUuid, withRole, withUser } from '../db';
 import { userOf } from '../auth';
 import { changesOnly } from '../diff';
+import { renderReportPdf } from '../pdf';
 import { HttpError, badRequest, h, notFound } from '../http';
 import { CORE_SCHEMA, loadSurgery } from './surgeries';
+import { baseUrl } from './proms';
 
 export const MAX_REPORT_CHARS = 100_000;
 
@@ -46,7 +48,7 @@ interface SurgeryBundle {
   surgery: Awaited<ReturnType<typeof loadSurgery>>;
   procedures: { pathology_code: string; sequence: number; schema_id: string; schema_version: number; data: Record<string, any> }[];
   map: (ArthroMapEntry & { justification?: string })[];
-  implants: { category: string; manufacturer: string; model: string; lot?: string; serial?: string; quantity: number; location?: string }[];
+  implants: { category: string; manufacturer: string; model: string; size?: string; lot?: string; serial?: string; quantity: number; location?: string }[];
 }
 
 async function loadBundle(db: Db, surgeryId: string, lock: boolean): Promise<SurgeryBundle> {
@@ -55,7 +57,7 @@ async function loadBundle(db: Db, surgeryId: string, lock: boolean): Promise<Sur
     db.query(`SELECT pathology_code, sequence, schema_id, schema_version, data FROM public.surgery_procedure WHERE surgery_id = $1 ORDER BY sequence`, [surgery.id]),
     db.query(`SELECT structure_code, status, finding_text, justification FROM public.arthroscopic_map WHERE surgery_id = $1`, [surgery.id]),
     db.query(
-      `SELECT ic.category, ic.manufacturer, ic.model, si.lot, si.serial, si.quantity, si.location
+      `SELECT ic.category, ic.manufacturer, ic.model, si.size, si.lot, si.serial, si.quantity, si.location
          FROM public.surgery_implant si JOIN public.implant_catalog ic ON ic.id = si.implant_id
         WHERE si.surgery_id = $1 ORDER BY si.created_at, si.id`,
       [surgery.id]
@@ -99,8 +101,27 @@ async function loadReport(db: Db, id: string) {
   return r.rows[0];
 }
 
-export function reportRoutes(pool: Pool, registry: SchemaRegistry, engine: ReportEngine, resolveParties: PartiesResolver): Router {
+export function reportRoutes(pool: Pool, registry: SchemaRegistry, engine: ReportEngine, resolveParties: PartiesResolver, publicBaseUrl?: string): Router {
   const r = Router();
+
+  r.get('/surgeries/:id/reports', h(async (req, res) => {
+    const rows = await withUser(pool, userOf(req), async (db) => {
+      const s = await loadSurgery(db, req.params.id);
+      return (await db.query(`SELECT id, version, signed_at, signed_by, content_hash, supersedes, created_at, final_text <> generated_text AS edited FROM public.surgical_report WHERE surgery_id = $1 ORDER BY version`, [s.id])).rows;
+    });
+    res.json(rows);
+  }));
+
+  r.get('/reports/:id/pdf', h(async (req, res) => {
+    const rep = await withUser(pool, userOf(req), (db) => loadReport(db, req.params.id));
+    const signedAt = rep.signed_at ? new Date(rep.signed_at).toISOString() : null;
+    const verifyUrl = rep.content_hash ? `${baseUrl(req, publicBaseUrl)}/verify/${rep.content_hash}` : null;
+    const pdf = await renderReportPdf({ final_text: rep.final_text, version: rep.version, supersedes: rep.supersedes, signed_at: signedAt, content_hash: rep.content_hash }, verifyUrl);
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `inline; filename="relatorio-v${rep.version}${rep.signed_at ? '' : '-rascunho'}.pdf"`);
+    res.set('Cache-Control', 'private, no-store');
+    res.send(pdf);
+  }));
 
   r.post('/surgeries/:id/report/generate', h(async (req, res) => {
     const user = userOf(req);
@@ -196,12 +217,15 @@ export function reportRoutes(pool: Pool, registry: SchemaRegistry, engine: Repor
         [rep.id, user.id, signed_at, content_hash]
       );
       if (u.rowCount === 0) throw new HttpError(409, 'REPORT_SIGNED', 'Relatório já assinado.');
-      return {
-        report: u.rows[0],
-        acknowledged_warnings: check.issues,
-        // Pendências de PROM: o núcleo não tem tabela de agenda — o app persiste onde preferir
-        prom_schedule: rep.supersedes ? [] : scheduleTimepoints(b.surgery.surgery_date)
-      };
+      // Primeira assinatura cria a agenda de PROMs (migração 004); correções não duplicam
+      const schedule = rep.supersedes ? [] : scheduleTimepoints(b.surgery.surgery_date);
+      for (const t of schedule) {
+        await db.query(
+          `INSERT INTO public.prom_schedule (episode_id, surgery_id, timepoint, due, window_start, window_end) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (surgery_id, timepoint) DO NOTHING`,
+          [b.surgery.episode_id, b.surgery.id, t.code, t.due, t.window_start, t.window_end]
+        );
+      }
+      return { report: u.rows[0], acknowledged_warnings: check.issues, prom_schedule: schedule };
     });
     res.json(out);
   }));
@@ -226,10 +250,26 @@ export function verifyRoutes(pool: Pool): Router {
   r.get('/verify/:hash', h(async (req, res) => {
     const hash = req.params.hash.toLowerCase();
     res.set('Cache-Control', 'no-store');
-    if (!/^[0-9a-f]{64}$/.test(hash)) return res.status(404).json({ valid: false });
-    const row = await withAnon(pool, async (db) => (await db.query(`SELECT * FROM public.verify_report_hash($1)`, [hash])).rows[0]);
-    if (!row) return res.status(404).json({ valid: false });
-    res.json({ valid: true, signed_at: row.signed_at, superseded: row.superseded });
+    const row = /^[0-9a-f]{64}$/.test(hash)
+      ? await withRole(pool, 'anon', async (db) => (await db.query(`SELECT * FROM public.verify_report_hash($1)`, [hash])).rows[0])
+      : undefined;
+    const body = row ? { valid: true, signed_at: row.signed_at, superseded: row.superseded } : { valid: false };
+    res.status(row ? 200 : 404);
+    // Navegador (QR lido no celular) → página; demais → JSON
+    if (req.accepts(['json', 'html']) === 'html') return res.type('html').send(verifyPage(body));
+    res.json(body);
   }));
   return r;
+}
+
+function verifyPage(b: { valid: boolean; signed_at?: string; superseded?: boolean }): string {
+  const when = b.signed_at ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(b.signed_at)) : '';
+  const [title, msg, color] = !b.valid
+    ? ['Documento não encontrado', 'Este código não corresponde a nenhum relatório assinado.', '#b42318']
+    : b.superseded
+      ? ['Assinatura válida — versão substituída', `Assinado em ${when}. Existe versão corrigida posterior deste relatório.`, '#b54708']
+      : ['Assinatura válida', `Relatório assinado em ${when}.`, '#067647'];
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Verificação de relatório</title>
+<style>body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#1d2433;margin:0;display:grid;place-items:center;min-height:100vh;padding:16px}main{background:#fff;border-radius:12px;padding:28px;max-width:420px;box-shadow:0 1px 3px rgba(0,0,0,.08)}h1{font-size:20px;color:${color};margin:0 0 8px}p{margin:0;line-height:1.5}small{display:block;margin-top:16px;color:#667}</style></head>
+<body><main><h1>${title}</h1><p>${msg}</p><small>DocSholder — esta página não exibe conteúdo clínico.</small></main></body></html>`;
 }
