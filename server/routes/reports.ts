@@ -55,16 +55,16 @@ interface SurgeryBundle {
 
 async function loadBundle(db: Db, surgeryId: string, lock: boolean): Promise<SurgeryBundle> {
   const surgery = await loadSurgery(db, surgeryId, lock);
-  const [procs, map, implants] = await Promise.all([
-    db.query(`SELECT pathology_code, sequence, schema_id, schema_version, data FROM public.surgery_procedure WHERE surgery_id = $1 ORDER BY sequence`, [surgery.id]),
-    db.query(`SELECT structure_code, status, finding_text, justification FROM public.arthroscopic_map WHERE surgery_id = $1`, [surgery.id]),
-    db.query(
+  const [procs, map, implants] = [
+    await db.query(`SELECT pathology_code, sequence, schema_id, schema_version, data FROM public.surgery_procedure WHERE surgery_id = $1 ORDER BY sequence`, [surgery.id]),
+    await db.query(`SELECT structure_code, status, finding_text, justification FROM public.arthroscopic_map WHERE surgery_id = $1`, [surgery.id]),
+    await db.query(
       `SELECT ic.category, ic.manufacturer, ic.model, si.size, si.lot, si.serial, si.quantity, si.location
          FROM public.surgery_implant si JOIN public.implant_catalog ic ON ic.id = si.implant_id
         WHERE si.surgery_id = $1 ORDER BY si.created_at, si.id`,
       [surgery.id]
     )
-  ]);
+  ];
   const clean = <T extends Record<string, any>>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null)) as T;
   return { surgery, procedures: procs.rows, map: map.rows.map(clean), implants: implants.rows.map(clean) };
 }

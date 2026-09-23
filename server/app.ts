@@ -19,7 +19,10 @@ import { toolRoutes } from './routes/tools';
 
 export interface AppOptions {
   pool: Pool;
-  jwtSecret: string;
+  /** Segredo HS256 (legado). Obrigatório para o login de desenvolvimento. */
+  jwtSecret?: string;
+  /** JWKS do Supabase para tokens assinados com chave assimétrica */
+  jwksUrl?: string;
   resolveParties?: PartiesResolver;
   /** URL pública usada no QR e nos links de PROM (ex.: https://app.docsholder.com.br) */
   publicBaseUrl?: string;
@@ -43,7 +46,14 @@ export function createApp(o: AppOptions): express.Express {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '512kb' }));
+  const supabaseOrigin = o.supabase ? new URL(o.supabase.url).origin : '';
+  const csp = [
+    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob:",
+    `connect-src 'self'${supabaseOrigin ? ' ' + supabaseOrigin : ''}`, "media-src 'self' blob:", "object-src 'none'",
+    "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'"
+  ].join('; ');
   app.use((_req, res, next) => {
+    res.set('Content-Security-Policy', csp);
     res.set('X-Content-Type-Options', 'nosniff');
     res.set('Referrer-Policy', 'no-referrer'); // links de PROM carregam token na URL
     res.set('X-Frame-Options', 'DENY');
@@ -58,6 +68,8 @@ export function createApp(o: AppOptions): express.Express {
     res.json(o.supabase ? { auth: 'supabase', supabaseUrl: o.supabase.url, supabaseAnonKey: o.supabase.anonKey } : { auth: o.devLogin ? 'dev' : 'none' })
   );
   if (o.devLogin) {
+    if (!o.jwtSecret) throw new Error('Login de desenvolvimento exige jwtSecret');
+    const secret = o.jwtSecret;
     pub.post('/public/dev-login', h(async (req, res) => {
       const { email, full_name, crm } = req.body ?? {};
       if (typeof email !== 'string' || !/^[^@\s]+@[^@\s]+$/.test(email)) throw badRequest('E-mail inválido.');
@@ -65,7 +77,7 @@ export function createApp(o: AppOptions): express.Express {
       const sub = devUserId(email);
       const token = jwt.sign(
         { sub, role: 'authenticated', aud: 'authenticated', email, user_metadata: { full_name: full_name.trim(), crm: typeof crm === 'string' ? crm.trim() : undefined } },
-        o.jwtSecret,
+        secret,
         { algorithm: 'HS256', expiresIn: '12h' }
       );
       res.json({ access_token: token, user_id: sub });
@@ -75,7 +87,7 @@ export function createApp(o: AppOptions): express.Express {
   app.use('/api', pub);
 
   const api = express.Router();
-  api.use(requireAuth(o.jwtSecret));
+  api.use(requireAuth({ secret: o.jwtSecret, jwksUrl: o.jwksUrl }));
   api.get('/me', (req, res) => {
     const c = req.user!.claims as Record<string, any>;
     res.json({ id: req.user!.id, email: c.email ?? null, full_name: c.user_metadata?.full_name ?? null, crm: c.user_metadata?.crm ?? null });

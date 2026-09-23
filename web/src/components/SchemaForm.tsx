@@ -5,19 +5,21 @@
  * - Campo que passa a ser obrigatório (if/then) é destacado imediatamente.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { buildAjv, toIssues, ValidationIssue } from '@core/ajvShared';
+import { toIssues, ValidationIssue } from '@core/ajvMessages';
+import { validators } from '../generated/validators';
 import { fieldLabel, Labels, useReference, valueLabel } from '../lib/ref';
 import { ClockFace } from './ClockFace';
 import { PathologyMulti } from './PathologyPicker';
 
 type Obj = Record<string, any>;
-const ajv = buildAjv();
-const compiled = new Map<string, ReturnType<typeof ajv.compile>>();
 
+/**
+ * Valida com o validador PRÉ-COMPILADO do schema (mesma configuração do servidor).
+ * Sem compilação em tempo de execução: a CSP do app proíbe eval.
+ */
 export function validateWith(schema: any, data: unknown): ValidationIssue[] {
-  const id = schema.$id as string;
-  let v = compiled.get(id);
-  if (!v) { v = ajv.getSchema(id) ?? ajv.compile(schema); compiled.set(id, v); }
+  const v = validators[schema.$id as string];
+  if (!v) return [{ field: '(schema)', keyword: 'schema', message_pt: `Validador ausente para ${schema.$id} — rode npm run build.` }];
   return v(data) ? [] : toIssues(v.errors);
 }
 

@@ -2,7 +2,7 @@
   "name": "docsholder-clinical-core",
   "version": "0.1.0",
   "private": true,
-  "description": "DocSholder \u2014 n\u00facleo cl\u00ednico + API HTTP: schemas por patologia, relat\u00f3rio determin\u00edstico, m\u00e9tricas de instabilidade, GS1, PROMs",
+  "description": "DocSholder — núcleo clínico + API HTTP: schemas por patologia, relatório determinístico, métricas de instabilidade, GS1, PROMs",
   "scripts": {
     "setup": "npm ci && npm --prefix web ci",
     "build": "npm --prefix web run build",
@@ -24,6 +24,7 @@
     "ajv-formats": "^3.0.1",
     "express": "^4.22.3",
     "handlebars": "^4.7.8",
+    "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.0",

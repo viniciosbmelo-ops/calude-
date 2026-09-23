@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "gen": "cd .. && npx ts-node scripts/generate-validators.ts",
+    "dev": "npm run gen && vite",
+    "build": "npm run gen && tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

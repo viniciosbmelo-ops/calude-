@@ -8,9 +8,25 @@ const shots = process.env.E2E_SHOTS;
 async function shot(page: Page, name: string) {
   if (shots) await page.screenshot({ path: `${shots}/${test.info().project.name}-${name}.png`, fullPage: true });
 }
+// Qualquer erro de JavaScript ou violação de CSP na página falha o teste
+const pageErrors: string[] = [];
+test.beforeEach(async ({ context }) => {
+  pageErrors.length = 0;
+  context.on('page', (p) => watch(p));
+});
+test.afterEach(() => {
+  expect(pageErrors, 'erros de JavaScript/CSP nas páginas').toEqual([]);
+});
+function watch(p: Page) {
+  if ((p as any).__watched) return;
+  (p as any).__watched = true;
+  p.on('pageerror', (e) => pageErrors.push(`JS: ${e.message}`));
+  p.on('console', (m) => { if (m.type() === 'error' && /Content Security Policy|Refused to/.test(m.text())) pageErrors.push(`CSP: ${m.text()}`); });
+}
 const chip = (page: Page, scope: string, text: string) => page.locator(`[data-field="${scope}"]`).getByRole('button', { name: text, exact: true });
 
 test('registro cirúrgico completo até a assinatura', async ({ page }) => {
+  watch(page);
   const uniq = `${test.info().project.name}-${Date.now()}`;
 
   // login de desenvolvimento
@@ -179,6 +195,7 @@ test('registro cirúrgico completo até a assinatura', async ({ page }) => {
 });
 
 test('paciente responde SANE por link de uso único', async ({ page, browser }) => {
+  watch(page);
   const uniq = `${test.info().project.name}-${Date.now()}`;
   await page.goto('/login');
   await page.getByLabel('E-mail').fill(`sane-${uniq}@exemplo.com`);
@@ -212,6 +229,7 @@ test('paciente responde SANE por link de uso único', async ({ page, browser }) 
   await page.getByRole('button', { name: 'Concluir' }).click();
 
   const patient = await browser.newPage();
+  watch(patient);
   await patient.goto(url);
   await expect(patient.getByRole('heading', { name: 'Avaliação da sua articulação' })).toBeVisible();
   await patient.getByLabel('Nota digitada').fill('72');

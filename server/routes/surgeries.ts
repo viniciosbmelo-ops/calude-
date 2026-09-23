@@ -85,18 +85,18 @@ export function surgeryRoutes(pool: Pool, registry: SchemaRegistry): Router {
   r.get('/surgeries/:id', h(async (req, res) => {
     const out = await withUser(pool, userOf(req), async (db) => {
       const s = await loadSurgery(db, req.params.id);
-      const [procs, map, implants, reports] = await Promise.all([
-        db.query(`SELECT id, pathology_code, sequence, schema_id, schema_version, data FROM public.surgery_procedure WHERE surgery_id = $1 ORDER BY sequence`, [s.id]),
-        db.query(`SELECT structure_code, status, finding_text, justification FROM public.arthroscopic_map WHERE surgery_id = $1`, [s.id]),
-        db.query(
+      const [procs, map, implants, reports] = [
+        await db.query(`SELECT id, pathology_code, sequence, schema_id, schema_version, data FROM public.surgery_procedure WHERE surgery_id = $1 ORDER BY sequence`, [s.id]),
+        await db.query(`SELECT structure_code, status, finding_text, justification FROM public.arthroscopic_map WHERE surgery_id = $1`, [s.id]),
+        await db.query(
           `SELECT si.id, si.procedure_id, si.implant_id, si.lot, si.serial, si.expiry::text AS expiry, si.quantity, si.location, si.size, si.raw_barcode,
                   ic.category, ic.manufacturer, ic.model, ic.ref_code, ic.gtin
              FROM public.surgery_implant si LEFT JOIN public.implant_catalog ic ON ic.id = si.implant_id
             WHERE si.surgery_id = $1 ORDER BY si.created_at`,
           [s.id]
         ),
-        db.query(`SELECT id, version, signed_at, supersedes, content_hash FROM public.surgical_report WHERE surgery_id = $1 ORDER BY version`, [s.id])
-      ]);
+        await db.query(`SELECT id, version, signed_at, supersedes, content_hash FROM public.surgical_report WHERE surgery_id = $1 ORDER BY version`, [s.id])
+      ];
       return {
         ...s,
         validation: registry.validate(CORE_SCHEMA, s.core),

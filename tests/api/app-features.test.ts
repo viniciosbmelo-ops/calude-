@@ -161,5 +161,7 @@ describeDb('API — recursos do app', () => {
     const r = await request(app).get('/health');
     expect(r.headers['x-content-type-options']).toBe('nosniff');
     expect(r.headers['referrer-policy']).toBe('no-referrer');
+    expect(r.headers['content-security-policy']).toMatch(/script-src 'self'/);
+    expect(r.headers['content-security-policy']).toMatch(/frame-ancestors 'none'/);
   });
 });

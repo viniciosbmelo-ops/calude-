@@ -17,8 +17,9 @@
 
 **Suite:** 118 testes Jest, cobertura de linhas 98%. `npx tsc --noEmit` limpo.
 
-> **Atualização:** a parte de backend dos Prompts 2 e 4–8 (rotas, validação, assinatura, `/verify`, PROMs)
-> já está implementada e testada em `server/` — ver README. Os prompts abaixo continuam valendo para as telas.
+> **Atualização:** os Prompts 2 a 8 já estão implementados e testados — API em `server/`, telas em `web/`,
+> PDF com QR, `/verify`, PROM por link e agenda de seguimento. Ver `README.md`. Os prompts abaixo ficam
+> como registro da especificação original; os "3 ajustes obrigatórios" continuam valendo.
 
 ## O que NÃO está aqui (é o trabalho do Replit Agent)
 
