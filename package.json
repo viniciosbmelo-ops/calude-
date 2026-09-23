@@ -2,15 +2,21 @@
   "name": "docsholder-clinical-core",
   "version": "0.1.0",
   "private": true,
-  "description": "DocSholder — núcleo clínico + API HTTP: schemas por patologia, relatório determinístico, métricas de instabilidade, GS1, PROMs",
+  "description": "DocSholder \u2014 n\u00facleo cl\u00ednico + API HTTP: schemas por patologia, relat\u00f3rio determin\u00edstico, m\u00e9tricas de instabilidade, GS1, PROMs",
   "scripts": {
+    "setup": "npm ci && npm --prefix web ci",
+    "build": "npm --prefix web run build",
+    "start": "node -r ts-node/register/transpile-only server/index.ts",
+    "dev:api": "DEV_LOGIN=1 node -r ts-node/register/transpile-only server/index.ts",
+    "dev:web": "npm --prefix web run dev",
+    "db:setup": "./db/setup.sh",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "typecheck": "tsc --noEmit",
+    "test:api": "jest tests/api",
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit && npm --prefix web run typecheck",
     "seed:sql": "ts-node scripts/generate-seed.ts > db/seeds/002_pathology_catalog.sql",
     "lint:no-recommend": "ts-node scripts/check-forbidden-terms.ts",
-    "start": "ts-node server/index.ts",
-    "test:api": "jest tests/api",
     "db:test": "./db/test/run.sh"
   },
   "dependencies": {
@@ -24,6 +30,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "1.56",
     "@types/express": "^4.17.25",
     "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.10",

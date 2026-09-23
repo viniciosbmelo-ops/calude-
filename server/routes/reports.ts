@@ -32,14 +32,16 @@ export interface Parties {
 export type PartiesResolver = (db: Db, ctx: { patient_id: string; surgeon_id: string; user: AuthUser }) => Promise<Parties>;
 
 export const defaultPartiesResolver: PartiesResolver = async (db, { patient_id, user }) => {
-  const p = await db.query(`SELECT name FROM public.patient WHERE id = $1`, [patient_id]);
+  // to_jsonb: tolera prontuários sem a coluna record_number
+  const p = await db.query(`SELECT to_jsonb(p) AS j FROM public.patient p WHERE id = $1`, [patient_id]);
   if (p.rowCount === 0) throw notFound('Paciente');
+  const j = p.rows[0].j as Record<string, any>;
   const meta = (user.claims.user_metadata ?? {}) as Record<string, unknown>;
   if (typeof meta.full_name !== 'string' || !meta.full_name.trim()) {
     throw new HttpError(422, 'SURGEON_PROFILE_INCOMPLETE', 'Nome do cirurgião ausente no perfil (user_metadata.full_name).');
   }
   return {
-    patient: { name: p.rows[0].name },
+    patient: { name: j.name, record_number: typeof j.record_number === 'string' && j.record_number ? j.record_number : undefined },
     surgeon: { name: meta.full_name.trim(), crm: typeof meta.crm === 'string' ? meta.crm : undefined }
   };
 };

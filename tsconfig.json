@@ -13,6 +13,8 @@
     "src",
     "tests",
     "scripts",
-    "server"
+    "server",
+    "e2e",
+    "playwright.config.ts"
   ]
 }

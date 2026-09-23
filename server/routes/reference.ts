@@ -1,7 +1,7 @@
 /** Dados de referência: catálogo, schemas, rótulos, estruturas do mapa, instrumentos. */
 import { Router } from 'express';
 import { Pool } from 'pg';
-import { ARTHRO_STRUCTURES, INSTRUMENTS, SchemaRegistry } from '../../src/clinical';
+import { ARTHRO_STRUCTURES, INSTRUMENTS, REFERENCES, SchemaRegistry } from '../../src/clinical';
 import labels from '../../src/clinical/labels.pt.json';
 import { withUser } from '../db';
 import { userOf } from '../auth';
@@ -15,7 +15,7 @@ export function referenceRoutes(pool: Pool, registry: SchemaRegistry): Router {
     if (region !== undefined && region !== 'shoulder' && region !== 'elbow') throw badRequest('region deve ser shoulder ou elbow.');
     const rows = await withUser(pool, userOf(req), async (db) =>
       (await db.query(
-        `SELECT code, region, name_pt, parent_code, diagnosis_schema_id, intraop_schema_id, report_template, proms_default
+        `SELECT code, region, name_pt, parent_code, diagnosis_schema_id, intraop_schema_id, report_template, proms_default, default_protocol_code
            FROM public.pathology_catalog WHERE active AND ($1::text IS NULL OR region = $1) ORDER BY code`,
         [region ?? null]
       )).rows
@@ -40,6 +40,7 @@ export function referenceRoutes(pool: Pool, registry: SchemaRegistry): Router {
     res.json(s);
   });
   r.get('/instruments', (_req, res) => res.json(INSTRUMENTS));
+  r.get('/references', (_req, res) => res.json(REFERENCES));
 
   return r;
 }
