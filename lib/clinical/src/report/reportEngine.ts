@@ -16,7 +16,17 @@ const L = labels as Labels;
 export interface ReportPatient { name: string; record_number?: string }
 export interface ReportSurgeon { name: string; crm?: string }
 export interface ArthroMapEntry { structure_code: string; status: 'normal' | 'lesion' | 'treated' | 'not_evaluated'; finding_text?: string }
-export interface ReportProcedure { pathology_code: string; sequence: number; schema_version: number; data: Record<string, any> }
+export interface ReportProcedure {
+  /** Ausente em procedimentos sem patologia de catálogo (ex.: ortobiológicos) */
+  pathology_code?: string;
+  sequence: number;
+  schema_version: number;
+  data: Record<string, any>;
+  /** Título exibido quando não há patologia de catálogo */
+  title?: string;
+  /** Texto do cirurgião para procedimentos sem formulário estruturado (usado no lugar do template) */
+  free_text?: string;
+}
 export interface ReportImplant { manufacturer: string; model: string; size?: string; lot?: string; serial?: string; quantity: number; location?: string }
 
 export interface ReportInput {
@@ -149,8 +159,14 @@ export class ReportEngine {
     const procs = [...input.procedures].sort((a, b) => a.sequence - b.sequence);
     const template_versions: Record<string, number> = {};
     const procTexts = procs.map((p, i) => {
-      const def = PATHOLOGY_BY_CODE.get(p.pathology_code);
-      if (!def?.report_template) throw new Error(`Patologia sem template de relatório: ${p.pathology_code}`);
+      const def = p.pathology_code ? PATHOLOGY_BY_CODE.get(p.pathology_code) : undefined;
+      if (p.free_text !== undefined) {
+        // Descrição livre: o texto é do cirurgião, reproduzido sem alteração de conteúdo
+        const title = p.title ?? def?.name_pt;
+        if (!title) throw new Error('Procedimento de descrição livre sem título');
+        return `${i + 1}. ${title}\n${p.free_text.trim()}`;
+      }
+      if (!p.pathology_code || !def?.report_template) throw new Error(`Patologia sem template de relatório: ${p.pathology_code}`);
       const [base] = def.report_template.split('.v');
       const tplName = `${base}.v${p.schema_version}`;
       template_versions[p.pathology_code] = p.schema_version;

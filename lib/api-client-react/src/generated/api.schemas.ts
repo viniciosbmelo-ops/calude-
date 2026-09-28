@@ -235,7 +235,27 @@ export interface Patient {
   createdAt: string;
 }
 
+/**
+ * @nullable
+ */
+export type SurgeryRegiao = typeof SurgeryRegiao[keyof typeof SurgeryRegiao] | null;
+
+
+export const SurgeryRegiao = {
+  shoulder: 'shoulder',
+  elbow: 'elbow',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SurgeryDadosClinicos = { [key: string]: unknown } | null;
+
 export interface Surgery {
+  /** @nullable */
+  regiao?: SurgeryRegiao;
+  /** @nullable */
+  dadosClinicos?: SurgeryDadosClinicos;
   id: number;
   patientId: number;
   doctorId: number;
@@ -341,7 +361,27 @@ export interface UpdatePatientBody {
   cep?: string;
 }
 
+/**
+ * @nullable
+ */
+export type SurgeryWithPatientRegiao = typeof SurgeryWithPatientRegiao[keyof typeof SurgeryWithPatientRegiao] | null;
+
+
+export const SurgeryWithPatientRegiao = {
+  shoulder: 'shoulder',
+  elbow: 'elbow',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SurgeryWithPatientDadosClinicos = { [key: string]: unknown } | null;
+
 export interface SurgeryWithPatient {
+  /** @nullable */
+  regiao?: SurgeryWithPatientRegiao;
+  /** @nullable */
+  dadosClinicos?: SurgeryWithPatientDadosClinicos;
   id: number;
   patientId: number;
   doctorId: number;
@@ -366,6 +406,22 @@ export interface SurgeryWithPatient {
   /** @nullable */
   patientLado?: string | null;
 }
+
+/**
+ * @nullable
+ */
+export type SurgeryDetailRegiao = typeof SurgeryDetailRegiao[keyof typeof SurgeryDetailRegiao] | null;
+
+
+export const SurgeryDetailRegiao = {
+  shoulder: 'shoulder',
+  elbow: 'elbow',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SurgeryDetailDadosClinicos = { [key: string]: unknown } | null;
 
 export interface ExameLigamentar {
   id: number;
@@ -625,6 +681,10 @@ export interface Followup {
 }
 
 export interface SurgeryDetail {
+  /** @nullable */
+  regiao?: SurgeryDetailRegiao;
+  /** @nullable */
+  dadosClinicos?: SurgeryDetailDadosClinicos;
   id: number;
   patientId: number;
   doctorId: number;
@@ -677,6 +737,23 @@ export interface SurgeryDetail {
   picsScore?: PicsScore;
   followups: Followup[];
 }
+
+/**
+ * @nullable
+ */
+export type CreateSurgeryBodyRegiao = typeof CreateSurgeryBodyRegiao[keyof typeof CreateSurgeryBodyRegiao] | null;
+
+
+export const CreateSurgeryBodyRegiao = {
+  shoulder: 'shoulder',
+  elbow: 'elbow',
+} as const;
+
+/**
+ * Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
+ * @nullable
+ */
+export type CreateSurgeryBodyDadosClinicos = { [key: string]: unknown } | null;
 
 export interface ExameLigamenarInput {
   /** @nullable */
@@ -837,6 +914,13 @@ export interface PicsScoreInput {
 }
 
 export interface CreateSurgeryBody {
+  /** @nullable */
+  regiao?: CreateSurgeryBodyRegiao;
+  /**
+     * Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
+     * @nullable
+     */
+  dadosClinicos?: CreateSurgeryBodyDadosClinicos;
   patientId: number;
   dataCirurgia?: string;
   hospital?: string;
@@ -868,7 +952,31 @@ export interface CreateSurgeryBody {
   picsScore?: PicsScoreInput;
 }
 
+/**
+ * @nullable
+ */
+export type UpdateSurgeryBodyRegiao = typeof UpdateSurgeryBodyRegiao[keyof typeof UpdateSurgeryBodyRegiao] | null;
+
+
+export const UpdateSurgeryBodyRegiao = {
+  shoulder: 'shoulder',
+  elbow: 'elbow',
+} as const;
+
+/**
+ * Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
+ * @nullable
+ */
+export type UpdateSurgeryBodyDadosClinicos = { [key: string]: unknown } | null;
+
 export interface UpdateSurgeryBody {
+  /** @nullable */
+  regiao?: UpdateSurgeryBodyRegiao;
+  /**
+     * Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
+     * @nullable
+     */
+  dadosClinicos?: UpdateSurgeryBodyDadosClinicos;
   dataCirurgia?: string;
   hospital?: string;
   /** @nullable */

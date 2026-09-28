@@ -26,6 +26,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, getTableColumns, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { checkClinicalPayload } from "./shoulder-surgeries";
 import {
   CalculateKrirsBody,
   CalculatePicsBody,
@@ -526,6 +527,9 @@ const DraftSurgeryBody = z.object({
   ocdAnalysis: z.any().nullish(),
   // Standard adult tibial tunnel (separate from pediatric)
   tunelTibial: z.string().nullish(),
+  // DocSholder: ombro/cotovelo (forma validada em checkClinicalPayload)
+  regiao: z.enum(["shoulder", "elbow"]).nullish(),
+  dadosClinicos: z.record(z.string(), z.any()).nullish(),
 });
 
 const UpdateSurgeryWithClinicalBody = z.object({
@@ -553,6 +557,8 @@ const UpdateSurgeryWithClinicalBody = z.object({
   observacoes: z.string().optional(),
   procedimentosDetalhados: z.string().nullish(),
   examePatelar: z.record(z.string(), z.any()).nullish(),
+  regiao: z.enum(["shoulder", "elbow"]).nullish(),
+  dadosClinicos: z.record(z.string(), z.any()).nullish(),
 });
 
 const J_SIGN_GRADES = new Set([1, 2, 3, 4]);
@@ -900,6 +906,16 @@ router.post("/surgeries/draft", requireAuth, async (req, res): Promise<void> => 
     res.status(404).json({ error: localizedMessage(locale, "patientNotFound") });
     return;
   }
+  // DocSholder: rascunho aceita dados clínicos incompletos, mas com a forma correta
+  const clinicalDraft = checkClinicalPayload(parsed.data.dadosClinicos, parsed.data, false);
+  if (!clinicalDraft.ok) {
+    res.status(clinicalDraft.status).json(clinicalDraft.body);
+    return;
+  }
+  if (clinicalDraft.payload) {
+    parsed.data.dadosClinicos = clinicalDraft.payload as unknown as Record<string, unknown>;
+    parsed.data.regiao = clinicalDraft.payload.regiao;
+  }
 
   try {
     const { id, exameLigamentar, lcaAlgorithm, lcpReconstruction, cpmReconstruction, cplReconstruction, procedimentoMeniscal, examePatelar, picsScore, periprostheticFracture, distalFemurFracture, tibialPlateauFracture, patellaFracture, tibialSpineFracture, patelarTendonRupture: _ptr1, quadricepsTendonRupture: _qtr1, aclLeapDecision: _ald1, exameOsteocondral: _ocd1, ocdAnalysis: _oca1, ...surgeryFields } = parsed.data;
@@ -975,6 +991,15 @@ router.post("/surgeries/:id/finalize", requireAuth, async (req, res): Promise<vo
     res.status(404).json({ error: localizedMessage(locale, "patientNotFound") });
     return;
   }
+
+  // DocSholder: finalizar exige o registro de ombro/cotovelo completo e válido
+  const clinicalFinal = checkClinicalPayload(parsed.data.dadosClinicos, parsed.data, true);
+  if (!clinicalFinal.ok) {
+    res.status(clinicalFinal.status).json(clinicalFinal.body);
+    return;
+  }
+  parsed.data.dadosClinicos = clinicalFinal.payload as unknown as Record<string, unknown>;
+  parsed.data.regiao = clinicalFinal.payload!.regiao;
 
   const { id: _draftId, exameLigamentar, lcaAlgorithm, lcpReconstruction, cpmReconstruction, cplReconstruction, procedimentoMeniscal, examePatelar, picsScore, periprostheticFracture, distalFemurFracture, tibialPlateauFracture, patellaFracture, tibialSpineFracture, patelarTendonRupture, quadricepsTendonRupture, aclLeapDecision, exameOsteocondral: _exOcd4, ocdAnalysis: _oca4, ...surgeryData } = parsed.data;
 
@@ -1058,6 +1083,15 @@ router.post("/surgeries", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: localizedMessage(locale, "patientNotFound") });
     return;
   }
+
+  // DocSholder: criar cirurgia completa exige o registro de ombro/cotovelo completo e válido
+  const clinicalCreate = checkClinicalPayload(parsed.data.dadosClinicos, parsed.data, true);
+  if (!clinicalCreate.ok) {
+    res.status(clinicalCreate.status).json(clinicalCreate.body);
+    return;
+  }
+  parsed.data.dadosClinicos = clinicalCreate.payload as unknown as Record<string, unknown>;
+  parsed.data.regiao = clinicalCreate.payload!.regiao;
 
   const { id: _draftId, exameLigamentar, lcaAlgorithm, lcpReconstruction, cpmReconstruction, cplReconstruction, procedimentoMeniscal, examePatelar, picsScore, periprostheticFracture, distalFemurFracture, tibialPlateauFracture, patellaFracture, tibialSpineFracture, patelarTendonRupture, quadricepsTendonRupture, aclLeapDecision, exameOsteocondral: _exOcdPost, ocdAnalysis: _ocaPost, ...surgeryData } = parsed.data;
 

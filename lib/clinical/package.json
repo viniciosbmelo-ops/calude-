@@ -3,16 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Núcleo clínico de ombro e cotovelo: catálogo, schemas por patologia, relatório determinístico, métricas de instabilidade, GS1, escores",
+  "description": "N\u00facleo cl\u00ednico de ombro e cotovelo: cat\u00e1logo, schemas por patologia, relat\u00f3rio determin\u00edstico, m\u00e9tricas de instabilidade, GS1, escores",
   "exports": {
     ".": "./src/index.ts",
     "./ajv-messages": "./src/ajvMessages.ts",
     "./labels": "./src/labels.pt.json",
-    "./catalog": "./src/catalog/pathologies.ts"
+    "./catalog": "./src/catalog/pathologies.ts",
+    "./validators": "./src/generated/validators.js"
   },
   "scripts": {
     "test": "vitest run",
-    "lint:no-recommend": "tsx scripts/check-forbidden-terms.ts"
+    "lint:no-recommend": "tsx scripts/check-forbidden-terms.ts",
+    "gen": "tsx scripts/generate-validators.ts"
   },
   "dependencies": {
     "ajv": "^8.17.1",

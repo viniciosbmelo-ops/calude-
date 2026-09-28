@@ -7,3 +7,5 @@ export * from './report/reportEngine';
 export * from './proms/instruments';
 export * from './presign/checklist';
 export * from './catalog/pathologies';
+export * from './catalog/caseTypes';
+export * from './surgery/payload';

@@ -1011,6 +1011,12 @@ components:
     Surgery:
       type: object
       properties:
+        regiao:
+          type: ["string", "null"]
+          enum: ["shoulder", "elbow", null]
+        dadosClinicos:
+          type: ["object", "null"]
+          additionalProperties: true
         id:
           type: integer
         patientId:
@@ -1068,6 +1074,12 @@ components:
     SurgeryWithPatient:
       type: object
       properties:
+        regiao:
+          type: ["string", "null"]
+          enum: ["shoulder", "elbow", null]
+        dadosClinicos:
+          type: ["object", "null"]
+          additionalProperties: true
         id:
           type: integer
         patientId:
@@ -1107,6 +1119,12 @@ components:
     SurgeryDetail:
       type: object
       properties:
+        regiao:
+          type: ["string", "null"]
+          enum: ["shoulder", "elbow", null]
+        dadosClinicos:
+          type: ["object", "null"]
+          additionalProperties: true
         id:
           type: integer
         patientId:
@@ -1182,6 +1200,13 @@ components:
     CreateSurgeryBody:
       type: object
       properties:
+        regiao:
+          type: ["string", "null"]
+          enum: ["shoulder", "elbow", null]
+        dadosClinicos:
+          type: ["object", "null"]
+          additionalProperties: true
+          description: Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
         patientId:
           type: integer
         dataCirurgia:
@@ -1245,6 +1270,13 @@ components:
     UpdateSurgeryBody:
       type: object
       properties:
+        regiao:
+          type: ["string", "null"]
+          enum: ["shoulder", "elbow", null]
+        dadosClinicos:
+          type: ["object", "null"]
+          additionalProperties: true
+          description: Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
         dataCirurgia:
           type: string
         hospital:

@@ -6,8 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExamePatelarInput } from './examePatelarInput';
+import type { UpdateSurgeryBodyDadosClinicos } from './updateSurgeryBodyDadosClinicos';
+import type { UpdateSurgeryBodyRegiao } from './updateSurgeryBodyRegiao';
 
 export interface UpdateSurgeryBody {
+  /** @nullable */
+  regiao?: UpdateSurgeryBodyRegiao;
+  /**
+     * Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
+     * @nullable
+     */
+  dadosClinicos?: UpdateSurgeryBodyDadosClinicos;
   dataCirurgia?: string;
   hospital?: string;
   /** @nullable */

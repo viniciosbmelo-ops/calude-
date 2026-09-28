@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { patientsTable } from "./patients";
@@ -38,6 +38,10 @@ export const surgeriesTable = pgTable("surgeries", {
   // Túneis pediátricos (esqueleto imaturo)
   tunelFemoralPediatrico: text("tunel_femoral_pediatrico"),
   tunelTibialPediatrico: text("tunel_tibial_pediatrico"),
+  // DocSholder: região (shoulder | elbow) e dados clínicos de ombro/cotovelo.
+  // Formato e validação em @workspace/clinical (surgery/payload.ts).
+  regiao: text("regiao"),
+  dadosClinicos: jsonb("dados_clinicos"),
   status: text("status").notNull().default("completo"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

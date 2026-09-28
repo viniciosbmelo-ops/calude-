@@ -5,6 +5,8 @@
  * DocKnee API - Plataforma de Documentação Cirúrgica do Joelho
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateSurgeryBodyDadosClinicos } from './createSurgeryBodyDadosClinicos';
+import type { CreateSurgeryBodyRegiao } from './createSurgeryBodyRegiao';
 import type { ExameLigamenarInput } from './exameLigamenarInput';
 import type { ExamePatelarInput } from './examePatelarInput';
 import type { LcaAlgorithmInput } from './lcaAlgorithmInput';
@@ -12,6 +14,13 @@ import type { PicsScoreInput } from './picsScoreInput';
 import type { ProcedimentoMeniscalInput } from './procedimentoMeniscalInput';
 
 export interface CreateSurgeryBody {
+  /** @nullable */
+  regiao?: CreateSurgeryBodyRegiao;
+  /**
+     * Dados clínicos de ombro/cotovelo (formato em @workspace/clinical surgery/payload.ts)
+     * @nullable
+     */
+  dadosClinicos?: CreateSurgeryBodyDadosClinicos;
   patientId: number;
   dataCirurgia?: string;
   hospital?: string;

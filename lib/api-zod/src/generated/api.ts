@@ -241,6 +241,8 @@ export const ListPatientsResponseItem = zod.object({
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string(),
   "surgeries": zod.array(zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),
@@ -327,6 +329,8 @@ export const GetPatientResponse = zod.object({
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string(),
   "surgeries": zod.array(zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),
@@ -414,6 +418,8 @@ export const DeletePatientResponse = zod.object({
  * @summary List surgeries for current doctor
  */
 export const ListSurgeriesResponseItem = zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),
@@ -441,6 +447,8 @@ export const createSurgeryBodyExamePatelarJSignGrauMax = 4;
 
 
 export const CreateSurgeryBody = zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish().describe('Dados clínicos de ombro\/cotovelo (formato em @workspace\/clinical surgery\/payload.ts)'),
   "patientId": zod.number(),
   "dataCirurgia": zod.string().optional(),
   "hospital": zod.string().optional(),
@@ -597,6 +605,8 @@ export const CreateSurgeryBody = zod.object({
 })
 
 export const CreateSurgeryResponse = zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),
@@ -636,6 +646,8 @@ export const getSurgeryResponseExamePatelarJSignGrauMax = 4;
 
 
 export const GetSurgeryResponse = zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),
@@ -852,6 +864,8 @@ export const updateSurgeryBodyExamePatelarOneJSignGrauMax = 4;
 
 
 export const UpdateSurgeryBody = zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish().describe('Dados clínicos de ombro\/cotovelo (formato em @workspace\/clinical surgery\/payload.ts)'),
   "dataCirurgia": zod.string().optional(),
   "hospital": zod.string().optional(),
   "lado": zod.string().nullish(),
@@ -894,6 +908,8 @@ export const UpdateSurgeryBody = zod.object({
 })
 
 export const UpdateSurgeryResponse = zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),
@@ -1208,6 +1224,8 @@ export const GetDoctorDashboardResponse = zod.object({
   "count": zod.number()
 })),
   "recentSurgeries": zod.array(zod.object({
+  "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
+  "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
   "id": zod.number(),
   "patientId": zod.number(),
   "doctorId": zod.number(),

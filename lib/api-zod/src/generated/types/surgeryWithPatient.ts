@@ -5,8 +5,14 @@
  * DocKnee API - Plataforma de Documentação Cirúrgica do Joelho
  * OpenAPI spec version: 0.1.0
  */
+import type { SurgeryWithPatientDadosClinicos } from './surgeryWithPatientDadosClinicos';
+import type { SurgeryWithPatientRegiao } from './surgeryWithPatientRegiao';
 
 export interface SurgeryWithPatient {
+  /** @nullable */
+  regiao?: SurgeryWithPatientRegiao;
+  /** @nullable */
+  dadosClinicos?: SurgeryWithPatientDadosClinicos;
   id: number;
   patientId: number;
   doctorId: number;

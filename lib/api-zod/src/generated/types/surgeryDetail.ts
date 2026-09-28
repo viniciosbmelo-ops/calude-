@@ -12,8 +12,14 @@ import type { LcaAlgorithm } from './lcaAlgorithm';
 import type { Patient } from './patient';
 import type { PicsScore } from './picsScore';
 import type { ProcedimentoMeniscal } from './procedimentoMeniscal';
+import type { SurgeryDetailDadosClinicos } from './surgeryDetailDadosClinicos';
+import type { SurgeryDetailRegiao } from './surgeryDetailRegiao';
 
 export interface SurgeryDetail {
+  /** @nullable */
+  regiao?: SurgeryDetailRegiao;
+  /** @nullable */
+  dadosClinicos?: SurgeryDetailDadosClinicos;
   id: number;
   patientId: number;
   doctorId: number;
