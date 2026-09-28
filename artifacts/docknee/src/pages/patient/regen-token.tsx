@@ -27,124 +27,13 @@ const SCALES: Record<string, ScaleDef> = {
   "VAS Dor": {
     id: "VAS Dor",
     title: "Escala de Dor (VAS)",
-    description: "Avalie sua dor no joelho. Mova o controle deslizante para indicar o nível de dor.",
+    description: "Avalie a dor na região tratada. Mova o controle deslizante para indicar o nível de dor.",
     maxScore: 10,
     questions: [
-      { id: "vas", label: "Como você avalia sua dor no joelho hoje? (0 = sem dor, 10 = pior dor imaginável)", type: "slider", min: 0, max: 10, step: 1 },
+      { id: "vas", label: "Como você avalia hoje a dor na região tratada? (0 = sem dor, 10 = pior dor imaginável)", type: "slider", min: 0, max: 10, step: 1 },
     ],
     calcScore: (a) => a["vas"] ?? 0,
   },
-  "Tegner": {
-    id: "Tegner",
-    title: "Escala de Atividade de Tegner",
-    description: "Selecione o nível de atividade física que mais se aproxima da sua situação atual.",
-    maxScore: 10,
-    questions: [
-      {
-        id: "tegner",
-        label: "Selecione o nível de atividade que descreve melhor sua situação atual:",
-        type: "radio",
-        options: [
-          { label: "0 — Licença por invalidez ou pensão devido ao joelho", value: 0 },
-          { label: "1 — Atividades sedentárias; trabalho de escritório", value: 1 },
-          { label: "2 — Atividades leves; caminhada em terreno plano", value: 2 },
-          { label: "3 — Natação ou caminhada na floresta", value: 3 },
-          { label: "4 — Ciclismo, ski alpino, jogging 2× por semana", value: 4 },
-          { label: "5 — Jogging pelo menos 5× por semana; futebol recreativo", value: 5 },
-          { label: "6 — Tênis, badminton; handebol recreativo; jogging (mín 1× sem)", value: 6 },
-          { label: "7 — Futebol / handebol em nível de divisão mais baixa", value: 7 },
-          { label: "8 — Futebol, handebol, squash (elite júnior ou master)", value: 8 },
-          { label: "9 — Futebol, handebol, squash (divisão superior)", value: 9 },
-          { label: "10 — Futebol ou handebol (nível nacional / internacional)", value: 10 },
-        ],
-      },
-    ],
-    calcScore: (a) => a["tegner"] ?? 0,
-  },
-  "IKDC": {
-    id: "IKDC",
-    title: "IKDC Subjetivo do Joelho",
-    description: "Responda às perguntas considerando sua situação atual do joelho.",
-    maxScore: 100,
-    questions: [
-      { id: "atividade_atual", label: "1. Qual o mais alto nível de atividade que você consegue realizar sem dor significativa?", type: "radio", options: [{ label: "Atividades muito intensas (saltar, corte em esportes como basquete, futebol)", value: 4 }, { label: "Atividades intensas (trabalho físico pesado, ski, tênis)", value: 3 }, { label: "Atividades moderadas (trabalho físico moderado, corrida)", value: 2 }, { label: "Atividades leves (caminhada, serviço doméstico leve)", value: 1 }, { label: "Incapaz de realizar qualquer atividade citada acima", value: 0 }] },
-      { id: "dor_frequencia", label: "2. Com que frequência você tem dor?", type: "radio", options: [{ label: "Nunca", value: 10 }, { label: "Raramente", value: 8 }, { label: "Às vezes", value: 6 }, { label: "Frequentemente", value: 4 }, { label: "Sempre", value: 0 }] },
-      { id: "dor_intensidade", label: "3. Se você sente dor, qual a intensidade? (0 = sem dor, 10 = pior dor imaginável)", type: "slider", min: 0, max: 10, step: 1 },
-      { id: "rigidez", label: "4. Qual o grau de rigidez do seu joelho?", type: "radio", options: [{ label: "Nenhuma", value: 10 }, { label: "Leve", value: 8 }, { label: "Moderada", value: 6 }, { label: "Grave", value: 2 }, { label: "Extrema", value: 0 }] },
-      { id: "edema", label: "5. Com que frequência o joelho incha?", type: "radio", options: [{ label: "Nunca", value: 10 }, { label: "Raramente", value: 8 }, { label: "Às vezes", value: 6 }, { label: "Frequentemente", value: 4 }, { label: "Sempre", value: 0 }] },
-      { id: "travamento", label: "6. Seu joelho trava ou bloqueia?", type: "radio", options: [{ label: "Nunca", value: 15 }, { label: "Raramente", value: 10 }, { label: "Às vezes", value: 5 }, { label: "Frequentemente", value: 2 }, { label: "Sempre", value: 0 }] },
-      { id: "falseamento", label: "7. Seu joelho falha (cede)?", type: "radio", options: [{ label: "Nunca", value: 15 }, { label: "Raramente", value: 10 }, { label: "Às vezes", value: 5 }, { label: "Frequentemente", value: 2 }, { label: "Sempre", value: 0 }] },
-      { id: "nivel_atual_atividade", label: "8. Qual o mais alto nível de atividade que você consegue realizar ATUALMENTE?", type: "radio", options: [{ label: "Atividades muito intensas", value: 4 }, { label: "Atividades intensas", value: 3 }, { label: "Atividades moderadas", value: 2 }, { label: "Atividades leves", value: 1 }, { label: "Incapaz", value: 0 }] },
-      { id: "funcao_geral", label: "9. Como você classificaria o funcionamento do seu joelho (0 = incapacidade total, 10 = funcionamento normal)?", type: "slider", min: 0, max: 10, step: 1 },
-      { id: "funcao_esporte", label: "10. Como você classificaria seu joelho ANTES DO PROBLEMA? (0 = incapacidade total, 10 = normal)", type: "slider", min: 0, max: 10, step: 1 },
-    ],
-    calcScore: (a) => {
-      const dor = 10 - (a["dor_intensidade"] ?? 5);
-      const rawPoints = (a["atividade_atual"] ?? 0) + (a["dor_frequencia"] ?? 0) + dor + (a["rigidez"] ?? 0) + (a["edema"] ?? 0) + (a["travamento"] ?? 0) + (a["falseamento"] ?? 0) + (a["nivel_atual_atividade"] ?? 0) + (a["funcao_geral"] ?? 0) + (a["funcao_esporte"] ?? 0);
-      return Math.round((rawPoints / (4 + 10 + 10 + 10 + 10 + 15 + 15 + 4 + 10 + 10)) * 100);
-    },
-  },
-  "KOOS-12": {
-    id: "KOOS-12",
-    title: "KOOS-12 — Lesão do Joelho e Osteoartrose",
-    description: "Responda às perguntas considerando seu joelho NA ÚLTIMA SEMANA.",
-    maxScore: 100,
-    questions: [
-      { id: "dor_freq", label: "1. Com que frequência seu joelho dói?", type: "radio", options: [{ label: "Nunca", value: 4 }, { label: "Raramente", value: 3 }, { label: "Às vezes", value: 2 }, { label: "Frequentemente", value: 1 }, { label: "Sempre", value: 0 }] },
-      { id: "dor_torcao", label: "2. Dor ao torcer/girar o joelho", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema", value: 0 }] },
-      { id: "dor_extensao", label: "3. Dor ao estender completamente o joelho", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema", value: 0 }] },
-      { id: "rigidez_manha", label: "4. Rigidez matinal do joelho (ao acordar)", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema", value: 0 }] },
-      { id: "rigidez_tarde", label: "5. Rigidez após sentar, deitar ou descansar o joelho", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema", value: 0 }] },
-      { id: "adl_escadas", label: "6. Dificuldade para subir escadas", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema/impossível", value: 0 }] },
-      { id: "adl_levantar", label: "7. Dificuldade para se levantar da cadeira", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema/impossível", value: 0 }] },
-      { id: "adl_caminhar", label: "8. Dificuldade para caminhar em superfície plana", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema/impossível", value: 0 }] },
-      { id: "sport_agachar", label: "9. Dificuldade para agachar", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema/impossível", value: 0 }] },
-      { id: "sport_correr", label: "10. Dificuldade para correr", type: "radio", options: [{ label: "Nenhuma", value: 4 }, { label: "Leve", value: 3 }, { label: "Moderada", value: 2 }, { label: "Grave", value: 1 }, { label: "Extrema/impossível", value: 0 }] },
-      { id: "qol_consciente", label: "11. Com que frequência você está consciente do problema no seu joelho?", type: "radio", options: [{ label: "Nunca", value: 4 }, { label: "Raramente", value: 3 }, { label: "Às vezes", value: 2 }, { label: "Frequentemente", value: 1 }, { label: "Sempre", value: 0 }] },
-      { id: "qol_modificou", label: "12. Você modificou seu estilo de vida para evitar atividades potencialmente prejudiciais ao joelho?", type: "radio", options: [{ label: "De forma alguma", value: 4 }, { label: "Levemente", value: 3 }, { label: "Moderadamente", value: 2 }, { label: "Muito", value: 1 }, { label: "Totalmente", value: 0 }] },
-    ],
-    calcScore: (a) => {
-      const keys = ["dor_freq","dor_torcao","dor_extensao","rigidez_manha","rigidez_tarde","adl_escadas","adl_levantar","adl_caminhar","sport_agachar","sport_correr","qol_consciente","qol_modificou"];
-      return Math.round((keys.reduce((s, k) => s + (a[k] ?? 0), 0) / (keys.length * 4)) * 100);
-    },
-  },
-  "WOMAC": {
-    id: "WOMAC",
-    title: "WOMAC — Índice de Osteoartrite",
-    description: "Avalie seu joelho nas últimas 48 horas.",
-    maxScore: 100,
-    questions: [
-      { id: "dor_caminhar", label: "DOR 1. Ao caminhar em superfície plana", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "dor_escadas", label: "DOR 2. Ao subir ou descer escadas", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "dor_noite", label: "DOR 3. À noite (ao dormir)", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "dor_repouso", label: "DOR 4. Em repouso (sentado ou deitado)", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "dor_carga", label: "DOR 5. Ao apoiar o peso no joelho", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "rig_manha", label: "RIGIDEZ 1. Rigidez matinal (ao acordar)", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "rig_tarde", label: "RIGIDEZ 2. Rigidez após sentar, deitar ou descansar", type: "radio", options: [{ label: "Nenhuma", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa", value: 4 }] },
-      { id: "fis_descer", label: "FUNÇÃO 1. Descer escadas", type: "radio", options: [{ label: "Nenhuma dificuldade", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa/impossível", value: 4 }] },
-      { id: "fis_subir", label: "FUNÇÃO 2. Subir escadas", type: "radio", options: [{ label: "Nenhuma dificuldade", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa/impossível", value: 4 }] },
-      { id: "fis_levantar", label: "FUNÇÃO 3. Levantar-se de uma cadeira ou cama", type: "radio", options: [{ label: "Nenhuma dificuldade", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa/impossível", value: 4 }] },
-      { id: "fis_caminhar", label: "FUNÇÃO 4. Caminhar em superfície plana", type: "radio", options: [{ label: "Nenhuma dificuldade", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa/impossível", value: 4 }] },
-      { id: "fis_ficar_pe", label: "FUNÇÃO 5. Ficar em pé", type: "radio", options: [{ label: "Nenhuma dificuldade", value: 0 }, { label: "Leve", value: 1 }, { label: "Moderada", value: 2 }, { label: "Intensa", value: 3 }, { label: "Muito intensa/impossível", value: 4 }] },
-    ],
-    calcScore: (a) => {
-      const keys = ["dor_caminhar","dor_escadas","dor_noite","dor_repouso","dor_carga","rig_manha","rig_tarde","fis_descer","fis_subir","fis_levantar","fis_caminhar","fis_ficar_pe"];
-      return Math.round(100 - (keys.reduce((s, k) => s + (a[k] ?? 0), 0) / (keys.length * 4)) * 100);
-    },
-  },
-}; */
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-type PatientInfo = {
-  periodo: string;
-  scales: string[];
-  completedScales: string[];
-  scheduledDate?: string;
-  doctorLocale?: "pt-BR" | "es";
-  /** Presentation-only label; periodo remains the canonical persisted value. */
-  periodoLabel?: string;
-  noScales?: boolean;
 };
 
 async function readJsonSafely(response: Response): Promise<Record<string, unknown>> {

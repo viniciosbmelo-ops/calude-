@@ -143,7 +143,7 @@ describe.sequential("regenerative case patient soft-link concurrency", () => {
       const createPromise = apiRequest("/api/regen/cases", "POST", {
         patientId: patient.id,
         patientName: `Regen Concurrency Gate:${randomUUID()}`,
-        conditionCode: "OA_JOELHO",
+        conditionCode: "OA_OMBRO",
       });
       await waitForInsertGate(patient.id);
 

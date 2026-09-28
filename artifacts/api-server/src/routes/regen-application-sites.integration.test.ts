@@ -58,7 +58,7 @@ function extractPdfText(pdf: Buffer): string {
 }
 
 const firstSite = { localAplicacao: "Intra-articular", guia: "Ultrassom" };
-const secondSite = { localAplicacao: "Tendão patelar", guia: "Referência anatômica (às cegas)" };
+const secondSite = { localAplicacao: "Ligamento", guia: "Referência anatômica (às cegas)" };
 
 beforeAll(async () => {
   await new Promise<void>((resolve, reject) => {
@@ -112,7 +112,7 @@ describe.sequential("regenerative application sites API persistence", () => {
   it("persists POST values, synchronizes legacy fields, and PATCHes all rows", async () => {
     const createResponse = await apiRequest("/api/regen/cases", "POST", {
       patientName: "Application Sites Integration Patient",
-      conditionCode: "OA_JOELHO",
+      conditionCode: "OA_OMBRO",
       plannedProducts: ["PRP"],
       productDetails: {
         locaisAplicacao: JSON.stringify([firstSite]),
@@ -186,7 +186,7 @@ describe.sequential("regenerative application sites API persistence", () => {
       expect(reportResponse.status).toBe(200);
       const reportText = extractPdfText(Buffer.from(await reportResponse.arrayBuffer()));
       expect(reportText).toContain("Intraarticular");
-      expect(reportText).toContain("patelar");
+      expect(reportText).toContain("Ligamento");
       expect(reportText).toContain("PATCH notes");
     }
 
@@ -212,14 +212,14 @@ describe.sequential("regenerative application sites API persistence", () => {
     const malformed = { locaisAplicacao: JSON.stringify([{ localAplicacao: "Ligamento" }]) };
     const createResponse = await apiRequest("/api/regen/cases", "POST", {
       patientName: "Malformed Application Sites Patient",
-      conditionCode: "OA_JOELHO",
+      conditionCode: "OA_OMBRO",
       productDetails: malformed,
     });
     expect(createResponse.status).toBe(400);
 
     const createValidResponse = await apiRequest("/api/regen/cases", "POST", {
       patientName: "Patch Validation Patient",
-      conditionCode: "OA_JOELHO",
+      conditionCode: "OA_OMBRO",
       productDetails: { locaisAplicacao: JSON.stringify([firstSite]) },
     });
     expect(createValidResponse.status).toBe(201);

@@ -23,15 +23,17 @@ import {
 export { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
 
 // ─── Regen follow-up schedule ─────────────────────────────────────────────────
+// Escalas do joelho (WOMAC, IKDC, KOOS-12, Tegner) retiradas; só dor (VAS)
+// até as escalas de ombro/cotovelo serem definidas.
 const REGEN_FOLLOWUP_SCHEDULE = [
-  { periodo: "Pré-op (Baseline)",  days: 0,    scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "1 mês",              days: 30,   scales: ["VAS Dor", "WOMAC"] },
+  { periodo: "Pré-op (Baseline)",  days: 0,    scales: ["VAS Dor"] },
+  { periodo: "1 mês",              days: 30,   scales: ["VAS Dor"] },
   { periodo: "6 semanas (HA)",     days: 42,   scales: ["VAS Dor"] },
-  { periodo: "3 meses",            days: 90,   scales: ["VAS Dor", "WOMAC"] },
-  { periodo: "6 meses ★",          days: 180,  scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "12 meses",           days: 365,  scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "24 meses",           days: 730,  scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "4 anos",             days: 1460, scales: ["VAS Dor", "WOMAC", "IKDC"] },
+  { periodo: "3 meses",            days: 90,   scales: ["VAS Dor"] },
+  { periodo: "6 meses ★",          days: 180,  scales: ["VAS Dor"] },
+  { periodo: "12 meses",           days: 365,  scales: ["VAS Dor"] },
+  { periodo: "24 meses",           days: 730,  scales: ["VAS Dor"] },
+  { periodo: "4 anos",             days: 1460, scales: ["VAS Dor"] },
 ];
 
 const router: IRouter = Router();
@@ -88,7 +90,6 @@ export async function initRegenData() {
     // Seed conditions
     await client.query(`
       INSERT INTO regen_conditions (code, name) VALUES
-        ('OA_JOELHO',       'Osteoartrite de Joelho'),
         ('OA_QUADRIL',      'Osteoartrite de Quadril'),
         ('OA_OMBRO',        'Osteoartrose de Ombro'),
         ('TENDINOPATIA_OMBRO', 'Tendinopatia do Manguito Rotador'),
@@ -106,11 +107,9 @@ export async function initRegenData() {
         ('HERNIA_DISCAL_TORACICA', 'Hérnia Discal Torácica'),
         ('OA_COLUNA_LOMBAR', 'Osteoartrose Lombar'),
         ('HERNIA_DISCAL_LOMBAR', 'Hérnia Discal Lombar'),
-        ('REPARO_MENISCAL', 'Reparo Meniscal / Pós-Sutura Meniscal'),
         ('CONDRAL_FOCAL',   'Lesão Condral Focal'),
         ('OSTEOCONDRAL',    'Lesão Osteocondral'),
         ('TENDINOPATIA',    'Tendinopatia'),
-        ('LESAO_LIGAMENTAR','Lesão Ligamentar (Pós-LCA, etc.)'),
         ('SINOVITE',        'Sinovite / Sinovite Vilonodular'),
         ('BURSITE',         'Bursite'),
         ('FRATURA_FADIGA',  'Fratura por Fadiga / Estresse'),
@@ -711,8 +710,6 @@ router.get("/regen/stats", requireAuth, async (req: any, res) => {
       ...products.rows[0],
       ...complications.rows[0],
       avg_vas:  promMap["VAS"]  ?? null,
-      avg_koos: promMap["KOOS"] ?? null,
-      avg_womac:promMap["WOMAC"] ?? null,
     });
   } catch (e) {
     console.error("[regen/stats]", e);
@@ -824,8 +821,6 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
         (SELECT COUNT(*)::int FROM regen_procedures p WHERE p.case_id = c.id) AS procedure_count,
         (SELECT COUNT(*)::int FROM regen_procedures p WHERE p.case_id = c.id AND p.adverse_event = true) AS adverse_events,
         (SELECT ROUND(AVG(pr.score)::numeric,1) FROM regen_prom_responses pr WHERE pr.case_id = c.id AND pr.instrument = 'VAS') AS avg_vas,
-        (SELECT ROUND(AVG(pr.score)::numeric,1) FROM regen_prom_responses pr WHERE pr.case_id = c.id AND pr.instrument = 'KOOS') AS avg_koos,
-        (SELECT ROUND(AVG(pr.score)::numeric,1) FROM regen_prom_responses pr WHERE pr.case_id = c.id AND pr.instrument = 'WOMAC') AS avg_womac,
         c.dm, c.imc AS bmi, c.goal_vev,
         c.created_at
       FROM regen_cases c
@@ -838,7 +833,7 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
 
     if (format === "csv") {
       const cols = ["id","age","sex","imc","condition","status","procedure_count",
-                    "adverse_events","avg_vas","avg_koos","avg_womac","dm","created_at"];
+                    "adverse_events","avg_vas","dm","created_at"];
       const header = cols.join(",");
       const lines  = rows.map(r => cols.map(c => {
         const v = r[c];
@@ -1416,14 +1411,12 @@ const PRODUCT_NAMES: Record<string, string> = {
 };
 
 const CONDITION_NAMES: Record<string, string> = {
-  knee_oa:    "Osteoartrose de Joelho",
   hip_oa:     "Osteoartrose de Quadril",
   shoulder_oa:"Osteoartrose de Ombro",
   ankle_oa:   "Osteoartrose de Tornozelo",
   tendinopathy:"Tendinopatia",
   chondral:   "Lesão Condral",
   other:      "Outro",
-  OA_JOELHO: "Osteoartrite de Joelho",
   OA_QUADRIL: "Osteoartrite de Quadril",
   OA_OMBRO: "Osteoartrose de Ombro",
   TENDINOPATIA_OMBRO: "Tendinopatia do Manguito Rotador",
@@ -1442,11 +1435,9 @@ const CONDITION_NAMES: Record<string, string> = {
   HERNIA_DISCAL_TORACICA: "Hérnia Discal Torácica",
   OA_COLUNA_LOMBAR: "Osteoartrose Lombar",
   HERNIA_DISCAL_LOMBAR: "Hérnia Discal Lombar",
-  REPARO_MENISCAL: "Reparo Meniscal / Pós-Sutura Meniscal",
   CONDRAL_FOCAL: "Lesão Condral Focal",
   OSTEOCONDRAL: "Lesão Osteocondral",
   TENDINOPATIA: "Tendinopatia",
-  LESAO_LIGAMENTAR: "Lesão Ligamentar (Pós-LCA, etc.)",
   SINOVITE: "Sinovite / Sinovite Vilonodular",
   BURSITE: "Bursite",
   FRATURA_FADIGA: "Fratura por Fadiga / Estresse",
@@ -1466,10 +1457,10 @@ const SPANISH_PRODUCT_NAMES: Record<string, string> = {
   NANOFAT: "Nanofat", OUTRO: "Otro procedimiento",
 };
 const SPANISH_CONDITION_NAMES: Record<string, string> = {
-  knee_oa: "Osteoartritis de rodilla", hip_oa: "Osteoartritis de cadera",
+  hip_oa: "Osteoartritis de cadera",
   shoulder_oa: "Osteoartritis de hombro", ankle_oa: "Osteoartritis de tobillo",
   tendinopathy: "Tendinopatía", chondral: "Lesión condral", other: "Otra condición",
-  OA_JOELHO: "Osteoartritis de rodilla", OA_QUADRIL: "Osteoartritis de cadera",
+  OA_QUADRIL: "Osteoartritis de cadera",
   OA_OMBRO: "Osteoartritis de hombro", TENDINOPATIA_OMBRO: "Tendinopatía del manguito rotador",
   BURSITE_OMBRO: "Bursitis de hombro", LESAO_LABRAL_OMBRO: "Lesión labral de hombro",
   OA_COTOVELO: "Osteoartritis de codo", EPICONDILITE: "Epicondilitis lateral / medial",
@@ -1478,9 +1469,9 @@ const SPANISH_CONDITION_NAMES: Record<string, string> = {
   SINDROME_TUNEL_CARPO: "Síndrome del túnel carpiano", OA_COLUNA_CERVICAL: "Osteoartritis cervical",
   HERNIA_DISCAL_CERVICAL: "Hernia discal cervical", OA_COLUNA_TORACICA: "Osteoartritis torácica",
   HERNIA_DISCAL_TORACICA: "Hernia discal torácica", OA_COLUNA_LOMBAR: "Osteoartritis lumbar",
-  HERNIA_DISCAL_LOMBAR: "Hernia discal lumbar", REPARO_MENISCAL: "Reparación meniscal / posutura meniscal",
+  HERNIA_DISCAL_LOMBAR: "Hernia discal lumbar",
   CONDRAL_FOCAL: "Lesión condral focal", OSTEOCONDRAL: "Lesión osteocondral",
-  TENDINOPATIA: "Tendinopatía", LESAO_LIGAMENTAR: "Lesión ligamentaria (pos-LCA, etc.)",
+  TENDINOPATIA: "Tendinopatía",
   SINOVITE: "Sinovitis / sinovitis villonodular", BURSITE: "Bursitis",
   FRATURA_FADIGA: "Fractura por fatiga / estrés", POS_OPERATORIO: "Posoperatorio / bioestimulación",
   FASCITE_PLANTAR: "Fascitis plantar", CUSTOM: "Otra condición (especificar)",
@@ -1509,8 +1500,6 @@ const SPANISH_APPLICATION_LOCATION_NAMES: Record<string, string> = {
   "intra-articular": "Intraarticular",
   subcondroplastia: "Subcondroplastia",
   "tecido periarticular": "Tejido periarticular",
-  "tendão patelar": "Tendón patelar",
-  "tendão quadricipital": "Tendón cuadricipital",
   ligamento: "Ligamento",
   outro: "Otro",
 };
@@ -2322,7 +2311,7 @@ interface BRInput {
   activeInfection?: boolean; malignancy?: boolean; dm?: boolean; hba1c?: number | null;
   imc?: number | null; anticoagulant?: boolean; immunosuppressed?: boolean;
   anamnese?: Record<string, any>; labFlagCount?: number; plateletCount?: number | null;
-  latestVas?: number | null; latestKoos?: number | null; hasAdverseEvent?: boolean;
+  latestVas?: number | null; hasAdverseEvent?: boolean;
   priorTreatments?: string[];
 }
 
@@ -2604,7 +2593,6 @@ router.get("/regen/cases/:id/clinical-report", requireAuth, async (req: any, res
     // Compute BioReady Score server-side
     const sortedProms = [...proms].sort((a: any, b: any) => new Date(b.answered_at).getTime() - new Date(a.answered_at).getTime());
     const latestVas  = sortedProms.find((p: any) => p.instrument === "VAS")?.score ?? null;
-    const latestKoos = sortedProms.find((p: any) => p.instrument === "KOOS" || p.instrument === "KOOS-12")?.score ?? null;
     const plateletLab = labs.find((l: any) => /plaquet/i.test(l.analyte));
     const labFlagCount = labs.length === 0 ? undefined : labs.filter((l: any) => l.flag === "H" || l.flag === "L").length;
 
@@ -2619,7 +2607,7 @@ router.get("/regen/cases/:id/clinical-report", requireAuth, async (req: any, res
       anamnese:        rawAnamnese ?? {},
       labFlagCount,
       plateletCount:   plateletLab ? parseFloat(String((plateletLab as any).value_num)) : null,
-      latestVas, latestKoos,
+      latestVas,
       hasAdverseEvent: procedures.some((p: any) => p.adverse_event),
       priorTreatments: c.prior_treatments ?? [],
     }), locale);

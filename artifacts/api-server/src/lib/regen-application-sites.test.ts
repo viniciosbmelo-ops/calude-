@@ -39,7 +39,7 @@ describe("regen application-site API boundary", () => {
     expect(synchronizeApplicationSiteLegacyFields({
       locaisAplicacao: JSON.stringify([
         { localAplicacao: "Ligamento", guia: "Fluoroscopia" },
-        { localAplicacao: "Tendão patelar", guia: "Ultrassom" },
+        { localAplicacao: "Ligamento", guia: "Ultrassom" },
       ]),
       localAplicacao: "Intra-articular",
       guia: "Artroscopia",

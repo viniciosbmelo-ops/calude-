@@ -4,7 +4,7 @@ import { buildFollowupMessage, sanitizeWhatsAppError, sendWhatsAppText } from ".
 const params = {
   patientName: "María da Silva",
   periodo: "3 meses",
-  scales: ["IKDC", "KOOS"],
+  scales: ["VAS Dor", "Escala livre"],
   link: "https://example.com/patient/token",
   doctorName: "García",
 };
@@ -15,7 +15,7 @@ describe("buildFollowupMessage", () => {
 
     expect(text).toContain("Olá, *María da Silva*!");
     expect(text).toContain("de *3 meses* após a sua cirurgia");
-    expect(text).toContain("IKDC, KOOS");
+    expect(text).toContain("VAS Dor, Escala livre");
     expect(text).toContain(params.link);
     expect(text).toContain("Dr(a). García");
   });
@@ -24,13 +24,13 @@ describe("buildFollowupMessage", () => {
     const text = buildFollowupMessage({
       ...params,
       periodo: "1 mês",
-      scales: ["VAS Dor", "IKDC", "Escala personalizada"],
+      scales: ["VAS Dor", "Escala livre", "Escala personalizada"],
       locale: "es",
     });
 
     expect(text).toContain("¡Hola, *María da Silva*!");
     expect(text).toContain("de *1 mes* después de su cirugía");
-    expect(text).toContain("EVA Dolor, IKDC, Escala personalizada");
+    expect(text).toContain("EVA Dolor, Escala livre, Escala personalizada");
     expect(text).toContain(params.link);
     expect(text).toContain("Dr(a). García");
     expect(text).not.toContain("Acesse pelo link");

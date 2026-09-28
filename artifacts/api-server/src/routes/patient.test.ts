@@ -177,7 +177,7 @@ describe.sequential("classic public link locale integration", () => {
     await pool.query(
       `INSERT INTO regen_cases (id, doctor_id, condition_code)
        VALUES ($1, $2, $3)`,
-      [caseId, doctorId, "OA_JOELHO"],
+      [caseId, doctorId, "OA_OMBRO"],
     );
     await pool.query(
       `INSERT INTO regen_followup_notifications
@@ -201,7 +201,7 @@ describe.sequential("classic public link locale integration", () => {
     const token = randomUUID();
     await pool.query(
       `INSERT INTO regen_cases (id, doctor_id, condition_code) VALUES ($1, $2, $3)`,
-      [caseId, doctorId, "OA_JOELHO"],
+      [caseId, doctorId, "OA_OMBRO"],
     );
     await pool.query(
       `INSERT INTO regen_followup_notifications
@@ -226,7 +226,7 @@ describe.sequential("classic public link locale integration", () => {
     const token = randomUUID();
     await pool.query(
       `INSERT INTO regen_cases (id, doctor_id, condition_code) VALUES ($1, $2, $3)`,
-      [caseId, doctorId, "OA_JOELHO"],
+      [caseId, doctorId, "OA_OMBRO"],
     );
     await pool.query(
       `INSERT INTO regen_followup_notifications
@@ -255,7 +255,7 @@ describe.sequential("classic public link locale integration", () => {
     await pool.query(
       `INSERT INTO regen_cases (id, doctor_id, patient_id, condition_code)
        VALUES ($1, $2, $3, $4)`,
-      [caseId, doctorId, patient.id, "OA_JOELHO"],
+      [caseId, doctorId, patient.id, "OA_OMBRO"],
     );
     await pool.query(
       `INSERT INTO regen_followup_notifications
@@ -287,7 +287,7 @@ describe.sequential("classic public link locale integration", () => {
     await pool.query(
       `INSERT INTO regen_cases (id, doctor_id, patient_id, condition_code)
        VALUES ($1, $2, $3, $4)`,
-      [caseId, doctorId, patient.id, "OA_JOELHO"],
+      [caseId, doctorId, patient.id, "OA_OMBRO"],
     );
     await pool.query(
       `INSERT INTO regen_followup_notifications

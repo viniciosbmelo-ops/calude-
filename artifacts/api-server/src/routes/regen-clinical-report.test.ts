@@ -22,19 +22,19 @@ describe("Spanish regenerative report controlled values", () => {
 
   it("localizes identification and procedure enums without changing unknown free text", () => {
     const seededCodes = [
-      "OA_JOELHO", "OA_QUADRIL", "OA_OMBRO", "TENDINOPATIA_OMBRO", "BURSITE_OMBRO",
+      "OA_QUADRIL", "OA_OMBRO", "TENDINOPATIA_OMBRO", "BURSITE_OMBRO",
       "LESAO_LABRAL_OMBRO", "OA_COTOVELO", "TENDINOPATIA_COTOVELO", "OA_TORNOZELO",
       "OA_PUNHO", "TENDINOPATIA_PUNHO", "SINDROME_TUNEL_CARPO", "OA_COLUNA_CERVICAL",
       "HERNIA_DISCAL_CERVICAL", "OA_COLUNA_TORACICA", "HERNIA_DISCAL_TORACICA",
-      "OA_COLUNA_LOMBAR", "HERNIA_DISCAL_LOMBAR", "REPARO_MENISCAL", "CONDRAL_FOCAL",
-      "OSTEOCONDRAL", "TENDINOPATIA", "LESAO_LIGAMENTAR", "SINOVITE", "BURSITE",
+      "OA_COLUNA_LOMBAR", "HERNIA_DISCAL_LOMBAR", "CONDRAL_FOCAL",
+      "OSTEOCONDRAL", "TENDINOPATIA", "SINOVITE", "BURSITE",
       "FRATURA_FADIGA", "POS_OPERATORIO", "EPICONDILITE", "FASCITE_PLANTAR", "CUSTOM",
     ];
     for (const code of seededCodes) {
       expect(conditionNameForLocale(code, "pt-BR")).not.toBe(code);
       expect(conditionNameForLocale(code, "es")).not.toBe(code);
     }
-    expect(conditionNameForLocale("OA_JOELHO", "es")).toBe("Osteoartritis de rodilla");
+    expect(conditionNameForLocale("OA_OMBRO", "es")).toBe("Osteoartritis de hombro");
     expect(conditionNameForLocale("OSTEOCONDRAL", "es")).toBe("Lesión osteocondral");
     expect(sexForLocale("feminino", "es")).toBe("Femenino");
     expect(sideForLocale("direito", "es")).toBe("Derecho");
@@ -49,12 +49,12 @@ describe("Spanish regenerative report controlled values", () => {
 
   it("localizes follow-up periods and known scale names only for presentation", () => {
     const persistedPeriod = "30 dias";
-    const persistedScales = ["VAS Dor", "WOMAC", "Escala personalizada"];
+    const persistedScales = ["VAS Dor", "Escala livre", "Escala personalizada"];
 
     expect(regenPeriodForLocale(persistedPeriod, "es")).toBe("30 días");
     expect(persistedScales.map(scale => regenScaleForLocale(scale, "es"))).toEqual([
       "EVA Dolor",
-      "WOMAC",
+      "Escala livre",
       "Escala personalizada",
     ]);
 
@@ -172,7 +172,7 @@ describe("clinical report regenerative anamnesis", () => {
       glp1Agonistas: true,
       medicOutras: "Metformina",
       ciruPrev: true,
-      ciruQual: "Artroscopia de joelho",
+      ciruQual: "Artroscopia de ombro",
       infiltPrev: true,
       infiltTipos: ["Corticoide", "Ácido Hialurônico"],
       infiltData: "Há 3–6 meses",
@@ -200,7 +200,7 @@ describe("clinical report regenerative anamnesis", () => {
       { label: "Perda de peso recente", value: "5 kg" },
       { label: "Suplementos alimentares", value: "Sim — Creatina e ômega-3" },
       { label: "Medicações interferentes", value: "Corticoides · AINEs · Imunossupressores · Anticoagulantes · Agonistas de GLP-1 · Estatinas · Outras: Metformina" },
-      { label: "Cirurgia prévia", value: "Sim — Artroscopia de joelho" },
+      { label: "Cirurgia prévia", value: "Sim — Artroscopia de ombro" },
       {
         label: "Histórico de infiltrações / PRP",
         value: "Infiltrações anteriores: Sim — Corticoide, Ácido Hialurônico · Há 3–6 meses · PRP/HA prévio: Sim — Há mais de 6 meses · Resposta Sem resposta",

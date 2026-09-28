@@ -80,18 +80,15 @@ type RegenCondition = {
 };
 
 const CONDITION_GROUPS = [
-  { id: "joelho" }, { id: "quadril" }, { id: "ombro" }, { id: "cotovelo" },
+  { id: "ombro" }, { id: "cotovelo" }, { id: "quadril" },
   { id: "pe_tornozelo" }, { id: "punho_mao" }, { id: "coluna_cervical" },
   { id: "coluna_toracica" }, { id: "coluna_lombar" }, { id: "outras" },
 ] as const;
 
 const CONDITION_GROUP_BY_CODE: Record<string, (typeof CONDITION_GROUPS)[number]["id"]> = {
-  CONDRAL_FOCAL: "joelho",
-  LESAO_LIGAMENTAR: "joelho",
-  OA_JOELHO: "joelho",
-  OSTEOCONDRAL: "joelho",
-  REPARO_MENISCAL: "joelho",
-  SINOVITE: "joelho",
+  CONDRAL_FOCAL: "outras",
+  OSTEOCONDRAL: "outras",
+  SINOVITE: "outras",
   OA_QUADRIL: "quadril",
   OA_OMBRO: "ombro",
   TENDINOPATIA_OMBRO: "ombro",
@@ -279,7 +276,7 @@ const GOAL_MESSAGE_KEYS: Record<string, RegenMessageKey> = {
 };
 
 const REGION_MESSAGE_KEYS: Record<string, RegenMessageKey> = {
-  joelho: "regionKnee", quadril: "regionHip", ombro: "regionShoulder", cotovelo: "regionElbow",
+  quadril: "regionHip", ombro: "regionShoulder", cotovelo: "regionElbow",
   pe_tornozelo: "regionFootAnkle", punho_mao: "regionWristHand", coluna_cervical: "regionCervical",
   coluna_toracica: "regionThoracic", coluna_lombar: "regionLumbar", outras: "regionOther",
 };
@@ -320,8 +317,8 @@ const ES_DISPLAY_LABELS: Record<string, string> = {
   "Concentração": "Concentración", "Temperatura de aplicação": "Temperatura de aplicación",
   "Tipo de colágeno": "Tipo de colágeno", "Volume / Quantidade": "Volumen / Cantidad",
   "Descrição do produto": "Descripción del producto", "Intra-articular": "Intraarticular",
-  "Tecido periarticular": "Tejido periarticular", "Tendão patelar": "Tendón rotuliano",
-  "Tendão quadricipital": "Tendón cuadricipital", "Ligamento": "Ligamento",
+  "Tecido periarticular": "Tejido periarticular",
+  "Ligamento": "Ligamento",
   "Ultrassom": "Ecografía", "Fluoroscopia": "Fluoroscopia", "Artroscopia": "Artroscopia",
   "Referência anatômica (às cegas)": "Referencia anatómica (a ciegas)",
   "Bloqueio de Nervos Geniculares": "Bloqueo de nervios geniculares",
@@ -346,7 +343,7 @@ const ES_DISPLAY_LABELS: Record<string, string> = {
 };
 
 const CONDITION_ES: Record<string, string> = {
-  OA_JOELHO: "Osteoartritis de rodilla", OA_QUADRIL: "Osteoartritis de cadera", OA_OMBRO: "Osteoartrosis de hombro",
+  OA_QUADRIL: "Osteoartritis de cadera", OA_OMBRO: "Osteoartrosis de hombro",
   TENDINOPATIA_OMBRO: "Tendinopatía del manguito rotador", BURSITE_OMBRO: "Bursitis de hombro",
   LESAO_LABRAL_OMBRO: "Lesión labral de hombro", OA_COTOVELO: "Osteoartrosis de codo",
   TENDINOPATIA_COTOVELO: "Tendinopatía de codo", OA_TORNOZELO: "Osteoartritis de tobillo",
@@ -354,9 +351,9 @@ const CONDITION_ES: Record<string, string> = {
   SINDROME_TUNEL_CARPO: "Síndrome del túnel carpiano", OA_COLUNA_CERVICAL: "Osteoartrosis cervical",
   HERNIA_DISCAL_CERVICAL: "Hernia discal cervical", OA_COLUNA_TORACICA: "Osteoartrosis torácica",
   HERNIA_DISCAL_TORACICA: "Hernia discal torácica", OA_COLUNA_LOMBAR: "Osteoartrosis lumbar",
-  HERNIA_DISCAL_LOMBAR: "Hernia discal lumbar", REPARO_MENISCAL: "Reparación meniscal / Posutura meniscal",
+  HERNIA_DISCAL_LOMBAR: "Hernia discal lumbar",
   CONDRAL_FOCAL: "Lesión condral focal", OSTEOCONDRAL: "Lesión osteocondral", TENDINOPATIA: "Tendinopatía",
-  LESAO_LIGAMENTAR: "Lesión ligamentaria (pos-LCA, etc.)", SINOVITE: "Sinovitis / Sinovitis villonodular",
+  SINOVITE: "Sinovitis / Sinovitis villonodular",
   BURSITE: "Bursitis", FRATURA_FADIGA: "Fractura por fatiga / estrés",
   POS_OPERATORIO: "Posoperatorio / Bioestimulación", EPICONDILITE: "Epicondilitis lateral / medial",
   FASCITE_PLANTAR: "Fascitis plantar", CUSTOM: "Otra condición (especificar)",

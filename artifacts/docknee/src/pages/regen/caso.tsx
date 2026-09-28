@@ -865,7 +865,8 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
 }
 
 // ─── PROM instruments ─────────────────────────────────────────────────────────
-const PROMS      = ["VAS", "KOOS", "KOOS-JR", "IKDC", "Tegner", "UCLA"];
+// Escalas do joelho (KOOS, KOOS-JR, IKDC, Tegner, UCLA) retiradas; só dor (VAS)
+const PROMS      = ["VAS"];
 const TIMEPOINTS = ["Pré-operatório / Basal", "1 mês", "3 meses", "6 meses", "12 meses", "24 meses"];
 
 function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) {
@@ -1000,16 +1001,16 @@ function PatientPhoneField({ caseId, initial }: { caseId: string; initial: strin
 
 // ─── Regen Follow-up Timeline ─────────────────────────────────────────────────
 const REGEN_SCHEDULE_META = [
-  { periodo: "Pré-op (Baseline)", scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "1 mês",             scales: ["VAS Dor", "WOMAC"] },
+  { periodo: "Pré-op (Baseline)", scales: ["VAS Dor"] },
+  { periodo: "1 mês",             scales: ["VAS Dor"] },
   { periodo: "6 semanas (HA)",    scales: ["VAS Dor"] },
-  { periodo: "3 meses",           scales: ["VAS Dor", "WOMAC"] },
-  { periodo: "6 meses ★",         scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "12 meses",          scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "24 meses",          scales: ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"] },
-  { periodo: "4 anos",            scales: ["VAS Dor", "WOMAC", "IKDC"] },
+  { periodo: "3 meses",           scales: ["VAS Dor"] },
+  { periodo: "6 meses ★",         scales: ["VAS Dor"] },
+  { periodo: "12 meses",          scales: ["VAS Dor"] },
+  { periodo: "24 meses",          scales: ["VAS Dor"] },
+  { periodo: "4 anos",            scales: ["VAS Dor"] },
 ];
-const ALL_SCALES = ["VAS Dor", "WOMAC", "IKDC", "KOOS-12", "Tegner"];
+const ALL_SCALES = ["VAS Dor"];
 type PreparedRegenFollowup = { link: string; message: string };
 
 function showPopupStatus(popup: Window, message: string) {
@@ -2619,7 +2620,6 @@ export default function RegenCaso() {
   const bioReady = useMemo(() => {
     if (!c) return null;
     const latestVas  = [...proms].filter(p => p.instrument === "VAS").sort((a, b) => new Date(b.answered_at).getTime() - new Date(a.answered_at).getTime())[0]?.score ?? null;
-    const latestKoos = [...proms].filter(p => p.instrument === "KOOS").sort((a, b) => new Date(b.answered_at).getTime() - new Date(a.answered_at).getTime())[0]?.score ?? null;
     const plateletLab = labs.find(l => /plaquet/i.test(l.analyte));
     return computeBioReadyScore({
       // Only pass when explicitly confirmed (boolean); null = not yet assessed → scorer returns 'na'
@@ -2634,7 +2634,6 @@ export default function RegenCaso() {
       labFlagCount:    labs.length === 0 ? undefined : labs.filter(l => l.flag === "H" || l.flag === "L").length,
       plateletCount:   plateletLab ? parseFloat(String(plateletLab.value_num)) : null,
       latestVas,
-      latestKoos,
       hasAdverseEvent: procedures.some(p => p.adverse_event),
       priorTreatments: c.prior_treatments ?? [],
     });
@@ -2818,7 +2817,6 @@ export default function RegenCaso() {
                : null],
           ];
           const regionLabels: Record<string, string> = {
-             joelho: t("knee"),
              quadril: t("hip"),
              pe_tornozelo: t("footAnkle"),
              punho_mao: t("wristHand"),

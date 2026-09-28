@@ -10,7 +10,7 @@ describe("regenerative application sites", () => {
       { observacoes: "Aplicar conforme avaliação" },
       [
         { localAplicacao: "Intra-articular", guia: "Ultrassom" },
-        { localAplicacao: "Tendão patelar", guia: "Referência anatômica (às cegas)" },
+        { localAplicacao: "Ligamento", guia: "Referência anatômica (às cegas)" },
       ],
     );
 
@@ -18,7 +18,7 @@ describe("regenerative application sites", () => {
     expect(result.guia).toBe("Ultrassom");
     expect(JSON.parse(result.locaisAplicacao)).toEqual([
       { localAplicacao: "Intra-articular", guia: "Ultrassom" },
-      { localAplicacao: "Tendão patelar", guia: "Referência anatômica (às cegas)" },
+      { localAplicacao: "Ligamento", guia: "Referência anatômica (às cegas)" },
     ]);
     expect(result.observacoes).toBe("Aplicar conforme avaliação");
     expect(parseApplicationSites(result)).toHaveLength(2);

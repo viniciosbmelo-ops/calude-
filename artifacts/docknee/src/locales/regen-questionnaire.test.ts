@@ -5,11 +5,12 @@ import { publicPatientFlowMessages } from "./public-patient-flows";
 import { getRegenScales } from "./regen-questionnaire";
 
 describe("Spanish regenerative questionnaire copy", () => {
-  it("provides Spanish text for a representative question and its stored-value option", () => {
-    const question = getRegenScales("es").IKDC.questions.find(({ id }) => id === "dor_frequencia");
+  it("provides Spanish text for the pain scale without naming a specific joint", () => {
+    const question = getRegenScales("es")["VAS Dor"].questions.find(({ id }) => id === "vas");
 
-    expect(question?.label).toBe("2. ¿Con qué frecuencia tiene dolor?");
-    expect(question?.options?.[1]).toEqual({ label: "Rara vez", value: 8 });
+    expect(question?.label).toContain("región tratada");
+    expect(JSON.stringify(getRegenScales("es"))).not.toMatch(/rodilla/i);
+    expect(JSON.stringify(getRegenScales("pt-BR"))).not.toMatch(/joelho/i);
   });
 
   it("provides Spanish validation, loading, progress, completion, and navigation copy", () => {

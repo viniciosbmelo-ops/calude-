@@ -54,7 +54,7 @@ export const DATA: Record<string, ProcData> = {
       ],
       logistica: [
         { title: "Comparecer com acompanhante", desc: "Recomendado para procedimentos em membros inferiores ou pacientes com histórico de lipotimia/ansiedade.", tag: "recomendado" },
-        { title: "Vestir roupas confortáveis", desc: "Facilitar acesso ao joelho, quadril ou ombro. Shorts largos ou camisetas de manga larga são ideais.", tag: "recomendado" },
+        { title: "Vestir roupas confortáveis", desc: "Facilitar acesso à região tratada. Roupas largas ou camisetas de manga larga são ideais.", tag: "recomendado" },
         { title: "Evitar esforço intenso no dia", desc: "Não realizar atividade física vigorosa 24h antes. Repouso relativo otimiza a resposta vascular.", tag: "recomendado" },
       ],
       docs: [
@@ -111,15 +111,12 @@ export const DATA: Record<string, ProcData> = {
     },
     retornos: [
       { tempo: "7-10 dias", tipo: "Retorno inicial", objetivo: "Avaliar resposta ao flare, adesão à analgesia, início de fisioterapia. Ajustar conduta." },
-      { tempo: "4-6 semanas", tipo: "Reavaliação funcional", objetivo: "Aplicar escores (VAS, KOOS/WOMAC). Avaliar progressão da reabilitação. Considerar 2ª sessão se protocolo prever múltiplas infiltrações." },
+      { tempo: "4-6 semanas", tipo: "Reavaliação funcional", objetivo: "Aplicar escores (VAS e escores funcionais). Avaliar progressão da reabilitação. Considerar 2ª sessão se protocolo prever múltiplas infiltrações." },
       { tempo: "3 meses", tipo: "Reavaliação principal", objetivo: "Avaliação clínica completa + escores funcionais. RM de controle se indicado. Decisão sobre necessidade de nova sessão." },
       { tempo: "6-12 meses", tipo: "Acompanhamento de longo prazo", objetivo: "Avaliar durabilidade do efeito. Comparar escores com baseline. Documentar resultado para registro." },
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica. 0 = sem dor, 10 = pior dor imaginável." },
-      { nome: "KOOS", min: 0, max: 100, desc: "Knee Injury and Osteoarthritis Outcome Score. 100 = melhor resultado." },
-      { nome: "WOMAC", min: 0, max: 96, desc: "Western Ontario and McMaster Universities. 0 = melhor (menos sintomas)." },
-      { nome: "Lysholm", min: 0, max: 100, desc: "Escala específica para joelho. 100 = função normal." },
       { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand. 0 = sem incapacidade." },
       { nome: "AOFAS", min: 0, max: 100, desc: "American Orthopaedic Foot & Ankle Society. 100 = melhor." },
     ],
@@ -204,7 +201,6 @@ export const DATA: Record<string, ProcData> = {
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
       { nome: "VISA-A (Aquiles)", min: 0, max: 100, desc: "Victorian Institute of Sport Assessment-Achilles. 100 = melhor." },
-      { nome: "VISA-P (Patelar)", min: 0, max: 100, desc: "Victorian Institute of Sport Assessment-Patella." },
       { nome: "PRTEE (Epicondilite)", min: 0, max: 100, desc: "Patient-Rated Tennis Elbow Evaluation. 0 = melhor." },
       { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand. 0 = sem incapacidade." },
     ],
@@ -219,7 +215,7 @@ export const DATA: Record<string, ProcData> = {
       ],
       meds: [
         { title: "Suspender AINEs 7-10 dias", desc: "Ligamentos dependem de resposta inflamatória para remodelação. AINEs atrasam síntese de colágeno tipo I.", tag: "obrigatorio" },
-        { title: "Informar anticoagulantes", desc: "Risco de hematoma articular (LCA) ou periligamentar. Avaliar risco trombótico vs. risco de sangramento.", tag: "obrigatorio" },
+        { title: "Informar anticoagulantes", desc: "Risco de hematoma articular ou periligamentar. Avaliar risco trombótico vs. risco de sangramento.", tag: "obrigatorio" },
         { title: "Corticoides: intervalo mínimo 3 meses", desc: "Infiltração intra-articular de corticoide reduz resposta a PRP ligamentar.", tag: "obrigatorio" },
       ],
       alimentacao: [
@@ -229,7 +225,7 @@ export const DATA: Record<string, ProcData> = {
       logistica: [
         { title: "Acompanhante obrigatório", desc: "Procedimento em articulação + possível imobilização posterior. Necessário para retorno.", tag: "obrigatorio" },
         { title: "Muletas disponíveis", desc: "Para membros inferiores, providenciar muletas antes do procedimento. Carga protegida por 1-2 semanas.", tag: "obrigatorio" },
-        { title: "Roupa adequada", desc: "Shorts largos para joelho/tornozelo. Facilitar acesso e imobilização posterior.", tag: "recomendado" },
+        { title: "Roupa adequada", desc: "Roupas largas. Facilitar acesso à região tratada e imobilização posterior.", tag: "recomendado" },
       ],
       docs: [
         { title: "RM de articulação recente", desc: "Avaliar grau de lesão ligamentar (parcial vs. completa). PRP indicado para lesões parciais (grau I-II).", tag: "obrigatorio" },
@@ -239,7 +235,7 @@ export const DATA: Record<string, ProcData> = {
     },
     sinaisEsperados: [
       { title: "Dor articular nas primeiras 48-72h", desc: "Resposta inflamatória no ligamento e articulação. Piora com movimentos de stress do ligamento.", periodo: "48-72h" },
-      { title: "Edema articular", desc: "Inchaço por resposta inflamatória e volume injetado. Mais evidente em joelho e tornozelo.", periodo: "3-5 dias" },
+      { title: "Edema articular", desc: "Inchaço por resposta inflamatória e volume injetado.", periodo: "3-5 dias" },
       { title: "Instabilidade subjetiva", desc: "Sensação de 'frouxidão' nas primeiras 2 semanas. Normal durante fase de remodelação. Melhora com fortalecimento.", periodo: "2-4 semanas" },
       { title: "Rigidez articular", desc: "Limitação de amplitude por edema e proteção muscular. Melhora com mobilização progressiva.", periodo: "1-2 semanas" },
     ],
@@ -265,7 +261,7 @@ export const DATA: Record<string, ProcData> = {
       { tempo: "2-4 semanas", titulo: "Mobilização Protegida", desc: "Retirada gradual da imobilização. Mobilização passiva e ativa assistida. Fortalecimento isométrico. NÃO aplicar stress valgo/varo." },
       { tempo: "4-6 semanas", titulo: "Carga Leve", desc: "Carga progressiva sem muletas. Fortalecimento excêntrico leve. Propriocepção. Evitar cortes e giros." },
       { tempo: "6-10 semanas", titulo: "Carga Funcional", desc: "Fortalecimento excêntrico progressivo. Propriocepção avançada (plataforma instável). Início de cortes leves." },
-      { tempo: "10-16 semanas", titulo: "Retorno ao Esporte", desc: "Pliometria, treino de agilidade, testes funcionais (Y-balance, hop test). Retorno gradual. LCA leva 12-16 semanas para remodelação." },
+      { tempo: "10-16 semanas", titulo: "Retorno ao Esporte", desc: "Pliometria, treino de agilidade, testes funcionais (Y-balance, hop test). Retorno gradual." },
     ],
     fisio: {
       frequencia: "3x/semana nas primeiras 6 semanas. 2x/semana nas semanas 7-12. 1x/semana manutenção até 6 meses.",
@@ -278,15 +274,12 @@ export const DATA: Record<string, ProcData> = {
     },
     retornos: [
       { tempo: "7-10 dias", tipo: "Retorno inicial", objetivo: "Avaliar edema, adesão à imobilização, início de fisioterapia." },
-      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores (VAS, IKDC para joelho, AOFAS para tornozelo). Testes de estabilidade. 2ª sessão de PRP se indicado." },
+      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores (VAS, AOFAS para tornozelo). Testes de estabilidade. 2ª sessão de PRP se indicado." },
       { tempo: "3 meses", tipo: "Reavaliação principal", objetivo: "Avaliação clínica + RM de controle. Avaliar sinais de cicatrização ligamentar. Decisão sobre retorno ao esporte." },
       { tempo: "6-12 meses", tipo: "Longo prazo", objetivo: "Avaliar estabilidade articular duradoura. Comparar escores com baseline." },
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "IKDC", min: 0, max: 100, desc: "International Knee Documentation Committee. 100 = melhor." },
-      { nome: "Lysholm", min: 0, max: 100, desc: "Escala para joelho." },
-      { nome: "KOOS", min: 0, max: 100, desc: "Knee Injury and Osteoarthritis Outcome Score." },
       { nome: "AOFAS", min: 0, max: 100, desc: "American Orthopaedic Foot & Ankle Society." },
     ],
   },
@@ -440,15 +433,12 @@ export const DATA: Record<string, ProcData> = {
     },
     retornos: [
       { tempo: "7-10 dias", tipo: "Retorno inicial", objetivo: "Avaliar sítio de coleta e aplicação. Edema, dor, sinais de infecção. Início de fisioterapia." },
-      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores funcionais (VAS, KOOS/WOMAC, DASH). Avaliar progressão." },
+      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores funcionais (VAS, DASH). Avaliar progressão." },
       { tempo: "3 meses", tipo: "Reavaliação principal", objetivo: "Avaliação clínica completa + imagem (RM/TC) de controle. Avaliar integração tecidual. Decisão sobre nova sessão." },
       { tempo: "6-12 meses", tipo: "Longo prazo", objetivo: "Avaliar durabilidade. CTMs podem levar 6-12 meses para efeito máximo." },
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "KOOS", min: 0, max: 100, desc: "Knee Injury and Osteoarthritis Outcome Score." },
-      { nome: "WOMAC", min: 0, max: 96, desc: "Western Ontario and McMaster Universities." },
-      { nome: "Lysholm", min: 0, max: 100, desc: "Escala para joelho." },
       { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand." },
       { nome: "AOFAS", min: 0, max: 100, desc: "American Orthopaedic Foot & Ankle Society." },
     ],
@@ -522,16 +512,15 @@ export const DATA: Record<string, ProcData> = {
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "KOOS", min: 0, max: 100, desc: "Knee Injury and Osteoarthritis Outcome Score." },
       { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand." },
     ],
   },
 };
 
 export const PROCS = [
-  { id: "prp_articular",      label: "PRP Intra-Articular", sub: "Joelho, quadril, ombro, tornozelo",       icon: "🦴" },
-  { id: "prp_tendineo",       label: "PRP Tendíneo",         sub: "Tendão calcâneo, rotuliano, epicondilite", icon: "💪" },
-  { id: "prp_ligamentar",     label: "PRP Ligamentar",       sub: "LCA, ligamentos colaterais, tornozelo",    icon: "🔗" },
+  { id: "prp_articular",      label: "PRP Intra-Articular", sub: "Ombro, cotovelo, quadril, tornozelo",     icon: "🦴" },
+  { id: "prp_tendineo",       label: "PRP Tendíneo",         sub: "Tendão calcâneo, epicondilite",          icon: "💪" },
+  { id: "prp_ligamentar",     label: "PRP Ligamentar",       sub: "Ligamentos colaterais, tornozelo",        icon: "🔗" },
   { id: "prp_muscular",       label: "PRP Muscular",         sub: "Lesões musculares, entorses",              icon: "🏋️" },
   { id: "ctm_osso",           label: "CTM / Condicionado",   sub: "Medula óssea, tecido adiposo, cordão",    icon: "🧬" },
   { id: "fatores_crescimento",label: "Fatores de Crescimento",sub: "Concentrados, BMP, PDGF",                icon: "⚡" },
@@ -570,7 +559,6 @@ function buildSpanishContent() {
   const localizedScoreNames: Record<string, string> = {
     "VAS (Dor)": "VAS (Dolor)",
     "MRC (Força)": "MRC (Fuerza)",
-    "VISA-P (Patelar)": "VISA-P (Rotuliano)",
     "PRTEE (Epicondilite)": "PRTEE (Epicondilitis)",
   };
 

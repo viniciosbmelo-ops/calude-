@@ -286,7 +286,6 @@ export interface BioReadyInput {
   plateletCount?: number | null;
   // ─── PROMs ─────────────────────────────────────────────────────────────────
   latestVas?: number | null;
-  latestKoos?: number | null;
   // ─── Procedimentos ─────────────────────────────────────────────────────────
   hasAdverseEvent?: boolean;
   priorTreatments?: string[];
