@@ -8,6 +8,7 @@
  *  - Lockout: check/record/clear via mocked pool; independent IPs; lock after 5
  *  - validateRespostas: object shape, key/value limits, NaN/Infinity rejection
  *  - computeScore (smoke): VAS
+ *  - SANE: scored server-side by lib/clinical, out-of-range rejected, elbow region exposed
  *  - computeScore: throws on missing required answers, not silent 0
  *  - computeScore: unknown scale validates client score range
  *  - clampScore: per-scale ranges (VAS 0-10)
@@ -33,6 +34,7 @@ import {
   followupTable,
   patientsTable,
   pool,
+  scaleResponsesTable,
   surgeriesTable,
 } from "@workspace/db";
 import app from "../app";
@@ -201,6 +203,97 @@ describe.sequential("classic public link locale integration", () => {
     // DB rows are left untouched.
     const [stored] = await db.select().from(followupTable).where(eq(followupTable.token, token));
     expect(stored.escalasEnviadas).toEqual(["VAS Dor", "Lysholm", "IKDC"]);
+  });
+
+  it("scores SANE server-side, rejects out-of-range answers and names the elbow", async () => {
+    const [patient] = await db.insert(patientsTable).values({
+      doctorId,
+      nome: "Paciente cotovelo SANE",
+      cpf: "111.222.333-44",
+    }).returning();
+    const [surgery] = await db.insert(surgeriesTable).values({
+      doctorId,
+      patientId: patient.id,
+      regiao: "elbow",
+      tiposProcedimento: ["EL_DISTAL_BICEPS"],
+    }).returning();
+    const token = randomUUID();
+    const [followup] = await db.insert(followupTable).values({
+      surgeryId: surgery.id,
+      tempo: "3 meses",
+      token,
+      escalasEnviadas: ["VAS Dor", "SANE"],
+    }).returning();
+
+    const publicResponse = await fetch(`${baseUrl}/api/patient/${token}`);
+    expect(publicResponse.status).toBe(200);
+    await expect(publicResponse.json()).resolves.toMatchObject({
+      escalasEnviadas: ["VAS Dor", "SANE"],
+      regiao: "elbow",
+    });
+
+    const verify = await fetch(`${baseUrl}/api/patient/${token}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cpf: "11122233344" }),
+    });
+    expect(verify.status).toBe(200);
+    await expect(verify.json()).resolves.toMatchObject({
+      escalasEnviadas: ["VAS Dor", "SANE"],
+      regiao: "elbow",
+    });
+    const cookie = (verify.headers.get("set-cookie") ?? "").split(";")[0];
+
+    const postSane = (body: unknown) => fetch(
+      `${baseUrl}/api/patient/${token}/scale/SANE`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie, Origin: baseUrl },
+        body: JSON.stringify(body),
+      },
+    );
+
+    // Out-of-range, non-integer and missing answers are rejected (no clamp, no client score).
+    expect((await postSane({ respostas: { sane: 150 }, score: 50 })).status).toBe(400);
+    expect((await postSane({ respostas: { sane: -5 }, score: 50 })).status).toBe(400);
+    expect((await postSane({ respostas: { sane: 72.5 }, score: 72 })).status).toBe(400);
+    expect((await postSane({ respostas: { outra: 80 }, score: 80 })).status).toBe(400);
+    const rejected = await db.select().from(scaleResponsesTable)
+      .where(eq(scaleResponsesTable.followupId, followup.id));
+    expect(rejected).toEqual([]);
+
+    // The client score is ignored: the server scores the answer itself.
+    const ok = await postSane({ respostas: { sane: 80 }, score: 3 });
+    expect(ok.status).toBe(200);
+    await expect(ok.json()).resolves.toEqual({ ok: true, allCompleted: false });
+
+    const [stored] = await db.select().from(scaleResponsesTable)
+      .where(eq(scaleResponsesTable.followupId, followup.id));
+    expect(stored.nomeEscala).toBe("SANE");
+    expect(stored.score).toBe(80);
+    // SANE has no dedicated followup column: VAS stays untouched.
+    const [row] = await db.select().from(followupTable).where(eq(followupTable.id, followup.id));
+    expect(row.vasDor).toBeNull();
+  });
+
+  it("derives the shoulder region from the case type when surgeries.regiao is empty", async () => {
+    const [patient] = await db.insert(patientsTable).values({ doctorId, nome: "Paciente ombro" }).returning();
+    const [surgery] = await db.insert(surgeriesTable).values({
+      doctorId,
+      patientId: patient.id,
+      tiposProcedimento: ["SH_CUFF"],
+    }).returning();
+    const token = randomUUID();
+    await db.insert(followupTable).values({
+      surgeryId: surgery.id,
+      tempo: "6 semanas",
+      token,
+      escalasEnviadas: ["VAS Dor", "SANE"],
+    });
+
+    const response = await fetch(`${baseUrl}/api/patient/${token}`);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ regiao: "shoulder" });
   });
 
   it("locks out repeated verification attempts for a nonexistent classic token", async () => {
@@ -674,6 +767,11 @@ describe("clampScore per-scale ranges", () => {
     expect(clamp("VAS Dor", 0)).toBe(0);
     expect(clamp("VAS Dor", 10)).toBe(10);
   });
+  it("SANE: range is 0-100 (answers outside are rejected before clamping)", () => {
+    SCALE_SCORE_RANGES["SANE"] = [0, 100];
+    expect(clamp("SANE", 100)).toBe(100);
+    expect(clamp("SANE", 0)).toBe(0);
+  });
   it("unknown scale: passes through without clamping", () => {
     expect(clamp("Escala Desconhecida", 55)).toBe(55);
   });
@@ -684,7 +782,7 @@ describe("clampScore per-scale ranges", () => {
 describe("GET public response minimality", () => {
   it("classic GET must not include internal IDs, name, or clinical dates", () => {
     const banned = ["followupId", "patientNome", "surgeryDate", "dataAvaliacao", "patientId", "surgeryId"];
-    const publicResponse = { tempo: "3m", escalasEnviadas: ["VAS Dor"] };
+    const publicResponse = { tempo: "3m", escalasEnviadas: ["VAS Dor", "SANE"], regiao: "elbow" };
     for (const field of banned) expect(field in publicResponse).toBe(false);
   });
 

@@ -19,6 +19,11 @@ export interface DoctorDashboard {
      * @nullable
      */
   avgPain?: number | null;
+  /**
+     * SANE médio (0–100, % do normal) nos seguimentos respondidos pelo paciente
+     * @nullable
+     */
+  avgSane?: number | null;
   /** @nullable */
   returnToSportRate?: number | null;
 }

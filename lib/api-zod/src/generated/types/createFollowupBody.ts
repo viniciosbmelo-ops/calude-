@@ -5,6 +5,7 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
+import type { ClinicianScalesInput } from './clinicianScalesInput';
 
 export interface CreateFollowupBody {
   surgeryId: number;
@@ -27,4 +28,5 @@ export interface CreateFollowupBody {
   falhaType?: string | null;
   /** @nullable */
   observacoes?: string | null;
+  escalasClinicas?: ClinicianScalesInput;
 }

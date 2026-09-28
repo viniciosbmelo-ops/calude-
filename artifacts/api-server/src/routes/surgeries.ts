@@ -27,6 +27,7 @@ import { z } from "zod/v4";
 import { resolveDoctorLocale } from "../lib/locale";
 import { localeForDoctorId } from "../lib/locale";
 import { message as localizedMessage } from "../lib/locale-catalog";
+import { loadClinicianScales } from "../lib/clinician-scales";
 
 const router: IRouter = Router();
 
@@ -710,12 +711,17 @@ router.get("/surgeries/:id", requireAuth, async (req, res): Promise<void> => {
   const visibleFollowups = hasFractureProcedure(surgery.tiposProcedimento as string[] | null)
     ? followups.filter((followup) => !isPreoperativePeriod(followup.tempo))
     : followups;
+  const clinicianScales = await loadClinicianScales(visibleFollowups.map((f) => f.id));
 
   res.json({
     ...surgery,
     createdAt: surgery.createdAt.toISOString(),
     patient: patient ? { ...patient, createdAt: patient.createdAt.toISOString() } : null,
-    followups: visibleFollowups.map(f => ({ ...f, createdAt: f.createdAt.toISOString() })),
+    followups: visibleFollowups.map(f => ({
+      ...f,
+      createdAt: f.createdAt.toISOString(),
+      escalasClinicas: clinicianScales.get(f.id) ?? [],
+    })),
   });
 });
 

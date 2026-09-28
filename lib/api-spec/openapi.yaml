@@ -449,6 +449,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/Followup"
 
+  /followup/{id}/clinician-scales:
+    put:
+      operationId: updateFollowupClinicianScales
+      tags: [followup]
+      summary: Record or update clinician-completed scales (Constant-Murley, Rowe) on a follow-up
+      description: |
+        The server validates each scale against the surgery (only scales applicable to its
+        pathologies and with a free license are accepted) and scores it with the clinical
+        package; any client-sent score is ignored.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClinicianScalesBody"
+      responses:
+        "200":
+          description: Clinician scales recorded for the follow-up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicianScalesResult"
+        "400":
+          description: Invalid id, body or scale item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Follow-up not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Pre-operative follow-up of a fracture surgery is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Scale not applicable to this surgery or not enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /reports/dashboard:
     get:
       operationId: getDoctorDashboard
@@ -1147,6 +1200,8 @@ components:
           type: ["string", "null"]
         observacoes:
           type: ["string", "null"]
+        escalasClinicas:
+          $ref: "#/components/schemas/ClinicianScalesInput"
       required: [surgeryId, tempo]
 
     UpdateFollowupBody:
@@ -1190,7 +1245,58 @@ components:
           type: ["string", "null"]
         createdAt:
           type: string
+        escalasClinicas:
+          type: array
+          description: Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).
+          items:
+            $ref: "#/components/schemas/ClinicianScaleSummary"
       required: [id, surgeryId, tempo, createdAt]
+
+    ClinicianScalesInput:
+      type: object
+      description: |
+        Clinician scale answers keyed by scale code (e.g. CONSTANT, ROWE). Each value holds the
+        item answers in the clinical package format; the server scores them.
+      additionalProperties:
+        type: object
+        additionalProperties: true
+
+    UpdateClinicianScalesBody:
+      type: object
+      properties:
+        escalasClinicas:
+          $ref: "#/components/schemas/ClinicianScalesInput"
+      required: [escalasClinicas]
+
+    ClinicianScaleSummary:
+      type: object
+      properties:
+        escala:
+          type: string
+        score:
+          type: ["number", "null"]
+        max:
+          type: ["number", "null"]
+        versao:
+          type: ["string", "null"]
+        flags:
+          type: array
+          items:
+            type: string
+        completadoEm:
+          type: ["string", "null"]
+      required: [escala, score, max, versao, flags, completadoEm]
+
+    ClinicianScalesResult:
+      type: object
+      properties:
+        followupId:
+          type: integer
+        escalasClinicas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClinicianScaleSummary"
+      required: [followupId, escalasClinicas]
 
     DoctorDashboard:
       type: object
@@ -1218,6 +1324,9 @@ components:
         avgPain:
           type: ["number", "null"]
           description: Dor média (VAS 0–10) nos seguimentos respondidos
+        avgSane:
+          type: ["number", "null"]
+          description: SANE médio (0–100, % do normal) nos seguimentos respondidos pelo paciente
         returnToSportRate:
           type: ["number", "null"]
       required: [totalPatients, totalSurgeries, surgeriesByType, recentSurgeries, followupCompliance]

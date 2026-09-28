@@ -23,6 +23,7 @@ import type {
   AdminAnalytics,
   AdminDashboard,
   AuthResponse,
+  ClinicianScalesResult,
   CreateFollowupBody,
   CreatePatientBody,
   CreateSurgeryBody,
@@ -41,6 +42,7 @@ import type {
   Surgery,
   SurgeryDetail,
   SurgeryWithPatient,
+  UpdateClinicianScalesBody,
   UpdateDoctorBody,
   UpdateFollowupBody,
   UpdatePatientBody,
@@ -1621,6 +1623,81 @@ export const useUpdateFollowup = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateFollowupMutationOptions(options));
+    }
+
+export const getUpdateFollowupClinicianScalesUrl = (id: number,) => {
+
+
+
+
+  return `/api/followup/${id}/clinician-scales`
+}
+
+/**
+ * The server validates each scale against the surgery (only scales applicable to its
+ * pathologies and with a free license are accepted) and scores it with the clinical
+ * package; any client-sent score is ignored.
+ * @summary Record or update clinician-completed scales (Constant-Murley, Rowe) on a follow-up
+ */
+export const updateFollowupClinicianScales = async (id: number,
+    updateClinicianScalesBody: UpdateClinicianScalesBody, options?: RequestInit): Promise<ClinicianScalesResult> => {
+
+  return customFetch<ClinicianScalesResult>(getUpdateFollowupClinicianScalesUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateClinicianScalesBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateFollowupClinicianScalesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFollowupClinicianScales>>, TError,{id: number;data: BodyType<UpdateClinicianScalesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFollowupClinicianScales>>, TError,{id: number;data: BodyType<UpdateClinicianScalesBody>}, TContext> => {
+
+const mutationKey = ['updateFollowupClinicianScales'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFollowupClinicianScales>>, {id: number;data: BodyType<UpdateClinicianScalesBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFollowupClinicianScales(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFollowupClinicianScalesMutationResult = NonNullable<Awaited<ReturnType<typeof updateFollowupClinicianScales>>>
+    export type UpdateFollowupClinicianScalesMutationBody = BodyType<UpdateClinicianScalesBody>
+    export type UpdateFollowupClinicianScalesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record or update clinician-completed scales (Constant-Murley, Rowe) on a follow-up
+ */
+export const useUpdateFollowupClinicianScales = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFollowupClinicianScales>>, TError,{id: number;data: BodyType<UpdateClinicianScalesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFollowupClinicianScales>>,
+        TError,
+        {id: number;data: BodyType<UpdateClinicianScalesBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateFollowupClinicianScalesMutationOptions(options));
     }
 
 export const getGetDoctorDashboardUrl = () => {

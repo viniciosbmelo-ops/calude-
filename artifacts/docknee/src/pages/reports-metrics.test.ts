@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { excludeDraftRows, summarizeReportCaseTypes, summarizeReportRows } from "./reports";
+import { ESCALAS, excludeDraftRows, summarizeReportCaseTypes, summarizeReportRows, summarizeReportScores } from "./reports";
 import { reportingDashboardMessages } from "@/locales/reporting-dashboard";
 
 const row = (
@@ -46,5 +46,34 @@ describe("reports page metrics", () => {
 
   it("keeps pt-BR and es report messages at parity", () => {
     expect(Object.keys(reportingDashboardMessages.es).sort()).toEqual(Object.keys(reportingDashboardMessages["pt-BR"]).sort());
+  });
+});
+
+describe("reports page SANE", () => {
+  it("shows SANE as a 0–100 column next to VAS (higher is better)", () => {
+    expect(ESCALAS.map((e) => e.key)).toEqual(["vasDor", "sane"]);
+    expect(ESCALAS.find((e) => e.key === "sane")).toMatchObject({ label: "SANE", max: 100, invert: false });
+  });
+
+  it("averages SANE only over answered rows that have it, leaving VAS unchanged", () => {
+    const rows = [
+      { vasDor: 2, sane: 80 },
+      { vasDor: 4, sane: null },
+      { vasDor: null, sane: 60 },
+      { vasDor: 6 },
+    ];
+    expect(summarizeReportScores(rows)).toEqual({ avgVas: 4, avgSane: 70 });
+    expect(summarizeReportScores([{ vasDor: 3 }])).toEqual({ avgVas: 3, avgSane: null });
+  });
+
+  it("has pt-BR and es copy for the SANE KPI and CSV column", () => {
+    for (const locale of ["pt-BR", "es"] as const) {
+      const m = reportingDashboardMessages[locale];
+      expect(m.averageSane).toMatch(/SANE/);
+      expect(m.saneUnit).toBeTruthy();
+      expect(m.csvSane).toMatch(/SANE/);
+      expect(m.painScaleWithSane).toContain("{sane}");
+    }
+    expect(reportingDashboardMessages.es.saneUnit).toBe("% de lo normal");
   });
 });

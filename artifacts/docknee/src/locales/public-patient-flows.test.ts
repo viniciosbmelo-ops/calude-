@@ -14,9 +14,9 @@ describe("pre-consultation public-flow catalog", () => {
 });
 
 describe("surgical public-flow scale catalog", () => {
-  it("offers only the pain scale, with no knee questionnaire left", () => {
-    expect(Object.keys(SCALES)).toEqual(["VAS Dor"]);
-    expect(Object.keys(surgicalScaleSpanish).every((key) => key.startsWith("VAS Dor."))).toBe(true);
+  it("offers only the pain scale and SANE, with no knee questionnaire left", () => {
+    expect(Object.keys(SCALES)).toEqual(["VAS Dor", "SANE"]);
+    expect(Object.keys(surgicalScaleSpanish).every((key) => key.startsWith("VAS Dor.") || key.startsWith("SANE."))).toBe(true);
     expect(JSON.stringify(SCALES)).not.toMatch(/joelho|Lysholm|IKDC|KOOS|Tegner/i);
     expect(surgicalOptionSpanish["Extrema/impossível"]).toBe("Extrema/imposible");
   });
@@ -53,5 +53,42 @@ describe("Spanish surgical patient-flow copy", () => {
         });
       });
     });
+  });
+});
+describe("SANE patient scale", () => {
+  it("is a single 0–100 integer slider scored as the raw answer", () => {
+    const sane = SCALES["SANE"];
+    expect(sane.maxScore).toBe(100);
+    expect(sane.questions).toHaveLength(1);
+    expect(sane.questions[0]).toMatchObject({ id: "sane", type: "slider", min: 0, max: 100, step: 1 });
+    expect(sane.calcScore({ sane: 85 })).toBe(85);
+  });
+
+  it("names the operated joint in Portuguese", () => {
+    expect(displayScale(SCALES["SANE"], "pt-BR", "shoulder").questions[0].label).toBe(
+      "Como você avalia seu ombro hoje, em porcentagem do normal? (0 a 100%, sendo 100% totalmente normal)",
+    );
+    const elbow = displayScale(SCALES["SANE"], "pt-BR", "elbow").questions[0].label;
+    expect(elbow).toContain("seu cotovelo");
+    expect(elbow).not.toMatch(/ombro|\{joint\}/);
+  });
+
+  it("names the operated joint in Spanish without Portuguese", () => {
+    const shoulder = displayScale(SCALES["SANE"], "es", "shoulder");
+    const elbow = displayScale(SCALES["SANE"], "es", "elbow");
+    expect(shoulder.title).toBe("SANE (Evaluación Numérica Única)");
+    expect(shoulder.questions[0].label).toContain("su hombro");
+    expect(elbow.questions[0].label).toContain("su codo");
+    expect([shoulder.title, shoulder.description, elbow.questions[0].label].join(" "))
+      .not.toMatch(/ombro|cotovelo|você|porcentagem|\{joint\}/);
+  });
+
+  it("falls back to a neutral joint phrase when the region is unknown", () => {
+    expect(displayScale(SCALES["SANE"], "pt-BR", null).questions[0].label).toContain("sua articulação operada");
+    expect(displayScale(SCALES["SANE"], "es").questions[0].label).toContain("su articulación operada");
+  });
+
+  it("leaves the VAS wording unchanged", () => {
+    expect(displayScale(SCALES["VAS Dor"], "pt-BR", "elbow").questions[0].label).toBe(SCALES["VAS Dor"].questions[0].label);
   });
 });

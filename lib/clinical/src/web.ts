@@ -19,3 +19,10 @@ export {
 } from './surgery/coreOptions';
 export type { ClinicalPayload, ClinicalProcedure, ClinicalImplant, ClinicalMapEntry, IssueGroup } from './surgery/payload';
 export { default as LABELS } from './labels.pt.json';
+export {
+  CLINICIAN_SCALE_ITEMS, applicableClinicianScales, constantMax, isClinicianScaleEnabled, promsDefaultFor,
+  scoreClinicianScale, surgeryPathologyCodes
+} from './proms/clinicianScales';
+export type { ClinicianItem, SurgeryScaleSource } from './proms/clinicianScales';
+export { ClinicalGuardError } from './errors';
+export type { ScoreResult } from './proms/instruments';

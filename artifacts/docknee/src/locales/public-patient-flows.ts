@@ -167,6 +167,18 @@ export const surgicalScaleSpanish: Record<string, string> = {
   "VAS Dor.title": "Escala de dolor (VAS)",
   "VAS Dor.description": "Evalúe el dolor en la región operada. Mueva el control deslizante para indicar el nivel de dolor.",
   "VAS Dor.vas": "¿Cómo evalúa hoy el dolor en la región operada? (0 = sin dolor, 10 = el peor dolor imaginable)",
+  "SANE.title": "SANE (Evaluación Numérica Única)",
+  "SANE.description": "Mueva el control deslizante para indicar el porcentaje.",
+  "SANE.sane": "¿Cómo evalúa {joint} hoy, en porcentaje de lo normal? (0 a 100 %, siendo 100 % totalmente normal)",
+};
+
+/**
+ * Articulação citada no SANE, com o possessivo ("seu ombro"). A região vem da
+ * cirurgia do link; sem região conhecida usa um termo neutro.
+ */
+export const surgicalJointPhrase: Record<"pt-BR" | "es", Record<"shoulder" | "elbow" | "unknown", string>> = {
+  "pt-BR": { shoulder: "seu ombro", elbow: "seu cotovelo", unknown: "sua articulação operada" },
+  es: { shoulder: "su hombro", elbow: "su codo", unknown: "su articulación operada" },
 };
 
 /** Shared answer text used by several validated questionnaires. */

@@ -13,7 +13,8 @@
  *   POST /patient/regen/:token/scale/:escala  → same guards
  *
  * Security properties:
- *   ✅ Req #1  — public GET returns minimum: scales list + period, no IDs/names/dates
+ *   ✅ Req #1  — public GET returns minimum: scales list + period + joint region
+ *               (shoulder/elbow, for the SANE wording), no IDs/names/dates
  *   ✅ Req #2  — verify denies by default when identifier absent; persistent PG lockout (5 × 15 min)
  *   ✅ Req #3  — scale POST requires session cookie; app.ts CSRF guard applies (patient cookie in SESSION_COOKIE_NAMES)
  *   ✅ Req #4  — score recalculated server-side; no silent 0 fallback for invalid answers
@@ -31,7 +32,9 @@ import {
   hasFractureProcedure,
   isSupportedFollowupScale,
   isPreoperativePeriod,
+  resolveFollowupRegion,
 } from "../lib/followup-schedule";
+import { scoreSANE } from "@workspace/clinical";
 import { eq, sql } from "drizzle-orm";
 import {
   issuePatientSession,
@@ -145,6 +148,7 @@ function validateRespostas(
 // WOMAC) foram retiradas. Escalas de ombro/cotovelo entram aqui com o cálculo.
 const SCALE_SCORE_RANGES: Record<string, [number, number]> = {
   "VAS Dor":  [0, 10],
+  "SANE":     [0, 100],
 };
 
 /** Clamp score to the known range for this scale. */
@@ -180,6 +184,13 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
     const v = a["vas"];
     if (v === undefined || !isFinite(v)) throw new Error("VAS: resposta 'vas' ausente ou inválida");
     return Math.max(0, Math.min(10, v));
+  },
+  // SANE (0–100, % do normal): pontuado pelo núcleo clínico, que rejeita
+  // resposta ausente, não inteira ou fora de 0–100 (sem clamp silencioso).
+  "SANE": (a) => {
+    const v = a["sane"];
+    if (v === undefined) throw new Error("SANE: resposta 'sane' ausente");
+    return scoreSANE({ value: v }).score;
   },
 };
 
@@ -228,6 +239,7 @@ router.get("/patient/:token", async (req: Request, res: Response): Promise<void>
       escalasEnviadas: followupTable.escalasEnviadas,
       tempo: followupTable.tempo,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
+      regiao: surgeriesTable.regiao,
       doctorLocale: doctorsTable.idioma,
     })
     .from(followupTable)
@@ -261,6 +273,11 @@ router.get("/patient/:token", async (req: Request, res: Response): Promise<void>
     escalasEnviadas,
     noScales: escalasEnviadas.length === 0,
     doctorLocale: resolveDoctorLocale(followup.doctorLocale),
+    // Só "shoulder" | "elbow" | null: define a palavra da articulação no SANE.
+    regiao: resolveFollowupRegion(
+      followup.regiao,
+      followup.tiposProcedimento as string[] | null,
+    ),
   });
 });
 
@@ -358,6 +375,10 @@ router.post("/patient/:token/verify", async (req: Request, res: Response): Promi
       tempo: row.followup.tempo,
       escalasEnviadas: filterSupportedFollowupScales(row.followup.escalasEnviadas),
       completedScales: responses.map((response) => response.nomeEscala),
+      regiao: resolveFollowupRegion(
+        row.surgery.regiao,
+        row.surgery.tiposProcedimento as string[] | null,
+      ),
     };
   });
 
@@ -379,6 +400,7 @@ router.post("/patient/:token/verify", async (req: Request, res: Response): Promi
     escalasEnviadas: verification.escalasEnviadas,
     completedScales: verification.completedScales,
     noScales: verification.escalasEnviadas.length === 0,
+    regiao: verification.regiao,
   });
 });
 

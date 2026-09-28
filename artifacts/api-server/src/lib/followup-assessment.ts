@@ -1,7 +1,8 @@
 /**
  * Um registro de follow-up é criado quando o questionário é enviado ao paciente
- * (ou quando o médico abre uma avaliação manual). Ele só conta como avaliação
- * respondida quando tem algum desfecho registrado.
+ * (ou quando o médico abre uma avaliação manual). Ele conta como avaliação
+ * respondida quando tem algum desfecho registrado OU ao menos uma resposta de
+ * escala (scale_responses — p. ex. SANE respondido pelo paciente).
  */
 export function hasRecordedAssessment(followup: {
   id?: number | null;
@@ -13,9 +14,12 @@ export function hasRecordedAssessment(followup: {
   nivelRetorno?: string | null;
   falha?: boolean | null;
   falhaType?: string | null;
+  /** Há ao menos uma linha em scale_responses para este follow-up. */
+  hasScaleResponses?: boolean | null;
 }): boolean {
   if (followup.id == null) return false;
-  return followup.vasDor != null
+  return followup.hasScaleResponses === true
+    || followup.vasDor != null
     || followup.admFlexao != null
     || followup.admExtensao != null
     || (followup.complicacoes?.length ?? 0) > 0
@@ -29,7 +33,7 @@ export type FollowupOverviewBucket = "respondidos" | "aguardando" | "vencidos" |
 
 /**
  * Classifica uma notificação agendada para o painel de seguimentos.
- * "respondidos" exige desfecho registrado (mesma definição dos relatórios);
+ * "respondidos" exige desfecho ou resposta de escala (mesma definição dos relatórios);
  * questionário enviado sem resposta conta como "aguardando".
  */
 export function classifyFollowupNotification(

@@ -4,7 +4,7 @@ import { Link, useLocation, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetSurgeryQueryKey, useDeleteSurgery, useGetSurgery } from "@workspace/api-client-react";
 import { ArrowLeft, Calendar, ClipboardList, Download, ExternalLink, FileText, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
-import { CASE_TYPE_BY_KEY, type ClinicalPayload } from "@workspace/clinical/web";
+import { CASE_TYPE_BY_KEY, applicableClinicianScales, type ClinicalPayload } from "@workspace/clinical/web";
 import { SurgeryClinicalView, useSurgeryReport } from "@/components/shoulder/surgery-clinical-view";
 import { SurgeryFollowupSection, type SurgeryFollowup } from "@/components/shoulder/surgery-followup-section";
 import { SurgeryRehabSection } from "@/components/shoulder/surgery-rehab-section";
@@ -361,6 +361,7 @@ export default function SurgeryDetail() {
               surgeryDate={surgery.dataCirurgia}
               patientPhone={surgery.patient.telefone}
               followups={surgery.followups as SurgeryFollowup[]}
+              clinicianScales={applicableClinicianScales({ dadosClinicos: surgery.dadosClinicos, tiposProcedimento: surgery.tiposProcedimento })}
             />
 
             <div className="md:hidden flex justify-end">{deleteDialog}</div>

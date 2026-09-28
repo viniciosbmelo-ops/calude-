@@ -380,6 +380,19 @@ export const SurgeryDetailRegiao = {
  */
 export type SurgeryDetailDadosClinicos = { [key: string]: unknown } | null;
 
+export interface ClinicianScaleSummary {
+  escala: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  max: number | null;
+  /** @nullable */
+  versao: string | null;
+  flags: string[];
+  /** @nullable */
+  completadoEm: string | null;
+}
+
 export interface Followup {
   id: number;
   surgeryId: number;
@@ -399,6 +412,8 @@ export interface Followup {
   /** @nullable */
   observacoes?: string | null;
   createdAt: string;
+  /** Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail). */
+  escalasClinicas?: ClinicianScaleSummary[];
 }
 
 export interface SurgeryDetail {
@@ -498,6 +513,12 @@ export interface UpdateSurgeryBody {
   observacoes?: string;
 }
 
+/**
+ * Clinician scale answers keyed by scale code (e.g. CONSTANT, ROWE). Each value holds the
+ * item answers in the clinical package format; the server scores them.
+ */
+export interface ClinicianScalesInput {[key: string]: { [key: string]: unknown }}
+
 export interface CreateFollowupBody {
   surgeryId: number;
   tempo: string;
@@ -519,6 +540,7 @@ export interface CreateFollowupBody {
   falhaType?: string | null;
   /** @nullable */
   observacoes?: string | null;
+  escalasClinicas?: ClinicianScalesInput;
 }
 
 export interface UpdateFollowupBody {
@@ -534,6 +556,15 @@ export interface UpdateFollowupBody {
   falhaType?: string | null;
   /** @nullable */
   observacoes?: string | null;
+}
+
+export interface UpdateClinicianScalesBody {
+  escalasClinicas: ClinicianScalesInput;
+}
+
+export interface ClinicianScalesResult {
+  followupId: number;
+  escalasClinicas: ClinicianScaleSummary[];
 }
 
 export type DoctorDashboardSurgeriesByTypeItem = {
@@ -552,6 +583,11 @@ export interface DoctorDashboard {
      * @nullable
      */
   avgPain?: number | null;
+  /**
+     * SANE médio (0–100, % do normal) nos seguimentos respondidos pelo paciente
+     * @nullable
+     */
+  avgSane?: number | null;
   /** @nullable */
   returnToSportRate?: number | null;
 }

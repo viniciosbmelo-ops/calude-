@@ -1,12 +1,12 @@
 /**
  * Seguimento pós-operatório: agenda automática de envio pelo WhatsApp e avaliações
- * registradas. Só dor (VAS), retorno ao esporte, falha e complicações — as escalas
- * de ombro e cotovelo ainda não foram configuradas.
+ * registradas. Dor (VAS), retorno ao esporte, falha, complicações e as escalas do
+ * médico (Constant/Rowe) aplicáveis à cirurgia pelo catálogo de patologias.
  */
 import { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Bell, BellOff, CheckCheck, Clock, Copy, Loader2, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetSurgeryQueryKey, useCreateFollowup } from "@workspace/api-client-react";
+import { getGetSurgeryQueryKey, useCreateFollowup, type ClinicianScaleSummary, type CreateFollowupBody } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { surgeryViewMessages } from "@/locales/surgery-view";
+import { ClinicianScalesFields } from "./clinician-scales-fields";
+import {
+  buildClinicianScalesPayload,
+  emptyDraft,
+  itemLabelKey,
+  scaleNameKey,
+  type ScaleDraft,
+} from "./clinician-scales";
 
 type ScheduledNotif = { id: number; periodo: string; scheduledDate: string | null; sentAt: string | null; scales: string[]; status: string; daysAfterSurgery: number | null; notes: string | null };
 export type SurgeryFollowup = {
@@ -30,18 +38,25 @@ export type SurgeryFollowup = {
   falhaType?: string | null;
   complicacoes?: string[] | null;
   observacoes?: string | null;
+  escalasClinicas?: ClinicianScaleSummary[] | null;
   createdAt: string;
 };
 
+type MessageKey = keyof (typeof surgeryViewMessages)["pt-BR"];
+const emptyDrafts = (codes: readonly string[]) => Object.fromEntries(codes.map((c) => [c, emptyDraft(c)])) as Record<string, ScaleDraft>;
+
 const EMPTY_FORM = { tempo: "", dataAvaliacao: "", vasDor: "", retornoEsporte: false, nivelRetorno: "", falha: false, falhaType: "", complicacoes: "", observacoes: "" };
 
-export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, followups }: {
+export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, followups, clinicianScales = [] }: {
   surgeryId: number;
   surgeryDate?: string | null;
   patientPhone?: string | null;
   followups: SurgeryFollowup[];
+  /** Escalas do médico aplicáveis (applicableClinicianScales do @workspace/clinical). */
+  clinicianScales?: readonly string[];
 }) {
   const t = useScopedTranslations(surgeryViewMessages);
+  const tk = (key: string) => t(key as MessageKey);
   const { formatDate } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -54,6 +69,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [formError, setFormError] = useState<string | null>(null);
+  const [scaleDrafts, setScaleDrafts] = useState<Record<string, ScaleDraft>>(() => emptyDrafts(clinicianScales));
 
   useEffect(() => {
     fetch(`/api/surgeries/${surgeryId}/schedule`, { credentials: "same-origin" })
@@ -145,29 +161,39 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
     const pain = form.vasDor.trim() === "" ? undefined : Number(form.vasDor.replace(",", "."));
     if (pain !== undefined && (!Number.isFinite(pain) || pain < 0 || pain > 10)) { setFormError(t("invalidPain")); return; }
     const complicacoes = form.complicacoes.split(",").map((c) => c.trim()).filter(Boolean);
+    const scales = buildClinicianScalesPayload(scaleDrafts, clinicianScales);
+    if (!scales.ok) {
+      setFormError(t("cs_invalidItem", { scale: tk(scaleNameKey(scales.scale)), item: tk(itemLabelKey(scales.scale, scales.field)) }));
+      return;
+    }
+    // escalasClinicas vai no mesmo POST; o servidor valida, pontua e grava na mesma transação.
+    const data: CreateFollowupBody = {
+      surgeryId,
+      tempo: form.tempo.trim(),
+      dataAvaliacao: form.dataAvaliacao || undefined,
+      vasDor: pain,
+      retornoEsporte: form.retornoEsporte,
+      nivelRetorno: form.nivelRetorno || undefined,
+      falha: form.falha,
+      falhaType: form.falha ? form.falhaType || undefined : undefined,
+      complicacoes: complicacoes.length > 0 ? complicacoes : undefined,
+      observacoes: form.observacoes || undefined,
+      ...(Object.keys(scales.payload).length > 0 ? { escalasClinicas: scales.payload } : {}),
+    };
     createFollowup.mutate(
-      {
-        data: {
-          surgeryId,
-          tempo: form.tempo.trim(),
-          dataAvaliacao: form.dataAvaliacao || undefined,
-          vasDor: pain,
-          retornoEsporte: form.retornoEsporte,
-          nivelRetorno: form.nivelRetorno || undefined,
-          falha: form.falha,
-          falhaType: form.falha ? form.falhaType || undefined : undefined,
-          complicacoes: complicacoes.length > 0 ? complicacoes : undefined,
-          observacoes: form.observacoes || undefined,
-        },
-      },
+      { data },
       {
         onSuccess: () => {
           toast({ title: t("t_followupSaved") });
           void queryClient.invalidateQueries({ queryKey: getGetSurgeryQueryKey(surgeryId) });
           setForm({ ...EMPTY_FORM });
+          setScaleDrafts(emptyDrafts(clinicianScales));
           setFormOpen(false);
         },
-        onError: () => toast({ title: t("t_followupSaveError"), variant: "destructive" }),
+        onError: (err) => {
+          const serverMessage = (err as { data?: { error?: unknown } } | null)?.data?.error;
+          toast({ title: t("t_followupSaveError"), description: typeof serverMessage === "string" ? serverMessage : undefined, variant: "destructive" });
+        },
       },
     );
   };
@@ -278,7 +304,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
 
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h3 className="text-base font-medium">{t("ts_postoperativeEvaluations")}</h3>
-        <Button size="sm" className="gap-1" onClick={() => { setForm({ ...EMPTY_FORM, dataAvaliacao: new Date().toISOString().slice(0, 10) }); setFormError(null); setFormOpen(true); }}>
+        <Button size="sm" className="gap-1" onClick={() => { setForm({ ...EMPTY_FORM, dataAvaliacao: new Date().toISOString().slice(0, 10) }); setScaleDrafts(emptyDrafts(clinicianScales)); setFormError(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4" /> {t("newEvaluation")}
         </Button>
       </div>
@@ -297,6 +323,13 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
                 <Badge variant="outline">{t("vasPain")}: {f.vasDor ?? "—"}</Badge>
                 <Badge variant="outline">{t("returnToSport")}: {yesNo(f.retornoEsporte)}{f.nivelRetorno ? ` (${f.nivelRetorno})` : ""}</Badge>
                 <Badge variant="outline" className={f.falha ? "border-red-300 text-red-700" : undefined}>{t("failure")}: {yesNo(f.falha)}{f.falha && f.falhaType ? ` — ${f.falhaType}` : ""}</Badge>
+                {(f.escalasClinicas ?? []).map((s) => (
+                  <Badge key={s.escala} variant="secondary" data-clinician-scale={s.escala}>
+                    {s.max != null
+                      ? t("cs_scoreBadge", { scale: tk(scaleNameKey(s.escala)), score: s.score ?? "—", max: s.max })
+                      : t("cs_scoreBadgeNoMax", { scale: tk(scaleNameKey(s.escala)), score: s.score ?? "—" })}
+                  </Badge>
+                ))}
               </div>
               {f.complicacoes && f.complicacoes.length > 0 && <p className="text-xs"><span className="text-muted-foreground">{t("complications")}:</span> {f.complicacoes.join(", ")}</p>}
               {f.observacoes && <p className="text-xs whitespace-pre-wrap text-muted-foreground">{f.observacoes}</p>}
@@ -306,7 +339,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
       )}
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("evaluationTitle")}</DialogTitle>
             <DialogDescription>{t("evaluationDescription")}</DialogDescription>
@@ -355,6 +388,11 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
               <Label htmlFor="fu-obs">{t("observations")}</Label>
               <Textarea id="fu-obs" rows={3} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
             </div>
+            <ClinicianScalesFields
+              scales={clinicianScales}
+              drafts={scaleDrafts}
+              onChange={(code, draft) => setScaleDrafts((prev) => ({ ...prev, [code]: draft }))}
+            />
             {formError && <p className="text-sm text-destructive">{formError}</p>}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>{t("t_cancel")}</Button>

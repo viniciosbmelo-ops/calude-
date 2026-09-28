@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { CheckCircle2, ChevronRight, Loader2, Lock, ClipboardList } from "lucide-react";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
-import { normalizeDoctorLocale, publicPatientFlowMessages, surgicalOptionSpanish, surgicalScaleSpanish } from "@/locales/public-patient-flows";
+import { normalizeDoctorLocale, publicPatientFlowMessages, surgicalJointPhrase, surgicalOptionSpanish, surgicalScaleSpanish } from "@/locales/public-patient-flows";
 
 // ─── Scale definitions ────────────────────────────────────────────────────────
 
@@ -31,15 +31,35 @@ type ScaleDef = {
   calcScore: (answers: Record<string, number>) => number;
 };
 
-export function displayScale(def: ScaleDef, locale: "pt-BR" | "es"): ScaleDef {
-  if (locale !== "es") return def;
+export type JointRegion = "shoulder" | "elbow";
+
+/** "{joint}" nos enunciados vira a articulação da cirurgia ("seu ombro"/"su codo"). */
+function withJoint(label: string, locale: "pt-BR" | "es", region: JointRegion | null | undefined): string {
+  const phrases = surgicalJointPhrase[locale === "es" ? "es" : "pt-BR"];
+  return label.replace(/\{joint\}/g, phrases[region ?? "unknown"]);
+}
+
+export function displayScale(
+  def: ScaleDef,
+  locale: "pt-BR" | "es",
+  region?: JointRegion | null,
+): ScaleDef {
+  if (locale !== "es") {
+    return {
+      ...def,
+      questions: def.questions.map((question) => ({
+        ...question,
+        label: withJoint(question.label, locale, region),
+      })),
+    };
+  }
   return {
     ...def,
     title: surgicalScaleSpanish[`${def.id}.title`] ?? def.title,
     description: surgicalScaleSpanish[`${def.id}.description`] ?? def.description,
     questions: def.questions.map((question) => ({
       ...question,
-      label: surgicalScaleSpanish[`${def.id}.${question.id}`] ?? question.label,
+      label: withJoint(surgicalScaleSpanish[`${def.id}.${question.id}`] ?? question.label, locale, region),
       options: question.options?.map((option) => ({
         ...option,
         label: surgicalScaleSpanish[`${def.id}.${question.id}.${option.value}`] ?? surgicalOptionSpanish[option.label] ?? option.label,
@@ -66,6 +86,26 @@ export const SCALES: Record<string, ScaleDef> = {
     ],
     calcScore: (a) => a["vas"] ?? 0,
   },
+  // SANE: item único, inteiro 0–100 (% do normal), pontuado no servidor pelo
+  // núcleo clínico (scoreSANE). O núcleo não traz enunciado para o paciente:
+  // texto mínimo neutro, com a articulação da cirurgia no lugar de {joint}.
+  "SANE": {
+    id: "SANE",
+    title: "SANE (Avaliação Numérica Única)",
+    description: "Mova o controle deslizante para indicar a porcentagem.",
+    maxScore: 100,
+    questions: [
+      {
+        id: "sane",
+        label: "Como você avalia {joint} hoje, em porcentagem do normal? (0 a 100%, sendo 100% totalmente normal)",
+        type: "slider",
+        min: 0,
+        max: 100,
+        step: 1,
+      },
+    ],
+    calcScore: (a) => a["sane"] ?? 0,
+  },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -76,6 +116,7 @@ type PatientInfo = {
   completedScales: string[];
   noScales?: boolean;
   doctorLocale?: "pt-BR" | "es";
+  regiao?: JointRegion | null;
 };
 
 async function readJsonSafely(response: Response): Promise<Record<string, unknown>> {
@@ -199,6 +240,7 @@ export default function PatientScalesPage() {
   const [info, setInfo] = useState<PatientInfo | null>(null);
   const [localeReady, setLocaleReady] = useState(false);
   const [bootstrapInvalid, setBootstrapInvalid] = useState(false);
+  const [bootstrapRegion, setBootstrapRegion] = useState<JointRegion | null>(null);
 
   const [currentScaleIdx, setCurrentScaleIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -229,6 +271,7 @@ export default function PatientScalesPage() {
           throw new Error("invalid-patient-bootstrap");
         }
         releaseDisplayLanguage = beginTemporaryDisplayLanguage(data.doctorLocale);
+        if (data.regiao === "shoulder" || data.regiao === "elbow") setBootstrapRegion(data.regiao);
         setLocaleReady(true);
       })
       .catch(() => {
@@ -351,7 +394,7 @@ export default function PatientScalesPage() {
   const pendingScales = info.escalasEnviadas.filter(e => !completed.includes(e));
   const currentScaleName = info.escalasEnviadas[currentScaleIdx];
   const currentScaleDef = SCALES[currentScaleName];
-  const currentDisplayScaleDef = currentScaleDef && displayScale(currentScaleDef, locale);
+  const currentDisplayScaleDef = currentScaleDef && displayScale(currentScaleDef, locale, info.regiao ?? bootstrapRegion);
 
   const handleAnswerChange = (questionId: string, value: number) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));

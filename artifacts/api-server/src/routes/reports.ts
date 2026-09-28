@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, surgeriesTable, patientsTable, doctorsTable, followupTable, auditLogsTable, pageVisitsTable, appointmentsTable } from "@workspace/db";
+import { db, surgeriesTable, patientsTable, doctorsTable, followupTable, auditLogsTable, pageVisitsTable, appointmentsTable, scaleResponsesTable } from "@workspace/db";
 import { eq, count, avg, sql, and, ilike, gte, isNotNull, lte, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/requireAuth";
 import { toInitials } from "../lib/anonymize";
@@ -57,6 +57,33 @@ export function summarizeDashboardSurgeries(
 
 export { hasRecordedAssessment };
 
+/**
+ * Escore SANE (0–100) respondido pelo paciente neste follow-up, lido da tabela
+ * genérica scale_responses (sem coluna própria em followup).
+ */
+const followupSaneScore = sql<number | null>`(
+  SELECT ${scaleResponsesTable.score}
+  FROM ${scaleResponsesTable}
+  WHERE ${scaleResponsesTable.followupId} = ${followupTable.id}
+    AND ${scaleResponsesTable.nomeEscala} = 'SANE'
+  LIMIT 1
+)`.mapWith((value: unknown) => (value == null ? null : Number(value)));
+
+/**
+ * Se o follow-up tem ao menos uma resposta de escala. Usa o índice único
+ * (followup_id, nome_escala) de scale_responses.
+ */
+const followupHasScaleResponses = sql<boolean>`EXISTS (
+  SELECT 1 FROM ${scaleResponsesTable}
+  WHERE ${scaleResponsesTable.followupId} = ${followupTable.id}
+)`.mapWith((value: unknown) => value === true || value === "t" || value === "true");
+
+/** Média simples dos valores presentes; null quando não há nenhum. */
+export function averageOf(values: readonly (number | null | undefined)[]): number | null {
+  const present = values.filter((v): v is number => v != null && Number.isFinite(v));
+  return present.length > 0 ? present.reduce((sum, v) => sum + v, 0) / present.length : null;
+}
+
 router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> => {
   const doctorId = req.doctorId!;
 
@@ -98,6 +125,7 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
   const allFollowups = (await db
     .select({
       vasDor: followupTable.vasDor,
+      sane: followupSaneScore,
       retornoEsporte: followupTable.retornoEsporte,
       tempo: followupTable.tempo,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
@@ -116,6 +144,7 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
   const avgPain = followupsWithPain.length > 0
     ? followupsWithPain.reduce((sum, f) => sum + (f.vasDor ?? 0), 0) / followupsWithPain.length
     : null;
+  const avgSane = averageOf(allFollowups.map(f => f.sane));
 
   const withRetornoData = allFollowups.filter(f => f.retornoEsporte != null);
   const returnToSportRate = withRetornoData.length > 0
@@ -133,6 +162,7 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
     recentSurgeries,
     followupCompliance: Math.min(followupCompliance, 100),
     avgPain,
+    avgSane,
     returnToSportRate,
   });
 });
@@ -413,6 +443,8 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       followupTempo: followupTable.tempo,
       followupDataAvaliacao: followupTable.dataAvaliacao,
       followupVasDor: followupTable.vasDor,
+      followupSane: followupSaneScore,
+      followupHasScaleResponses,
       followupAdmFlexao: followupTable.admFlexao,
       followupAdmExtensao: followupTable.admExtensao,
       followupComplicacoes: followupTable.complicacoes,
@@ -456,7 +488,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       row.followupTempo,
     ))
     .map(({ patientDatNasc, followupId, followupTempo, followupDataAvaliacao,
-    followupVasDor, followupAdmFlexao, followupAdmExtensao, followupComplicacoes,
+    followupVasDor, followupSane, followupHasScaleResponses, followupAdmFlexao, followupAdmExtensao, followupComplicacoes,
     followupRetornoEsporte, followupNivelRetorno,
     followupFalha, followupFalhaType, followupObservacoes, followupCreatedAt, surgeryCreatedAt,
     ...rest }) => {
@@ -474,6 +506,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       tempo: followupTempo ?? null,
       dataAvaliacao: followupDataAvaliacao ?? null,
       vasDor: followupVasDor ?? null,
+      sane: followupSane ?? null,
       retornoEsporte: followupRetornoEsporte ?? null,
       nivelRetorno: followupNivelRetorno ?? null,
       falha: followupFalha ?? null,
@@ -489,6 +522,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
         nivelRetorno: followupNivelRetorno,
         falha: followupFalha,
         falhaType: followupFalhaType,
+        hasScaleResponses: followupHasScaleResponses,
       }),
       createdAt: followupCreatedAt?.toISOString() ?? surgeryCreatedAt.toISOString(),
       ...rest,

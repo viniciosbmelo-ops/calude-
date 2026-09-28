@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, scheduledNotificationsTable, patientsTable, surgeriesTable, doctorsTable, followupTable, whatsappOutboxTable } from "@workspace/db";
+import { db, scheduledNotificationsTable, patientsTable, surgeriesTable, doctorsTable, followupTable, scaleResponsesTable, whatsappOutboxTable } from "@workspace/db";
 import { eq, and, lte, lt, inArray, isNotNull, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { buildFollowupMessage } from "../lib/whatsapp";
@@ -525,6 +525,11 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
         fuNivelRetorno: followupTable.nivelRetorno,
         fuFalha: followupTable.falha,
         fuFalhaType: followupTable.falhaType,
+        // Respostas de escala (ex.: SANE) também contam como resposta.
+        fuHasScaleResponses: sql<boolean>`EXISTS (
+          SELECT 1 FROM ${scaleResponsesTable}
+          WHERE ${scaleResponsesTable.followupId} = ${followupTable.id}
+        )`.mapWith((value: unknown) => value === true || value === "t" || value === "true"),
       })
       .from(scheduledNotificationsTable)
       .innerJoin(patientsTable, eq(scheduledNotificationsTable.patientId, patientsTable.id))
@@ -557,13 +562,13 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
       const {
         tiposProcedimento: _tiposProcedimento,
         fuId, fuVasDor, fuAdmFlexao, fuAdmExtensao, fuComplicacoes,
-        fuRetornoEsporte, fuNivelRetorno, fuFalha, fuFalhaType,
+        fuRetornoEsporte, fuNivelRetorno, fuFalha, fuFalhaType, fuHasScaleResponses,
         ...rest
       } = row;
       // Linhas antigas podem listar escalas do joelho já retiradas.
       const publicRow: PublicRow = { ...rest, scales: filterSupportedFollowupScales(rest.scales) };
       // O registro de follow-up nasce no envio do questionário; só conta como
-      // respondido quando há desfecho registrado (mesma regra dos relatórios).
+      // respondido quando há desfecho ou resposta de escala (mesma regra dos relatórios).
       const answered = hasRecordedAssessment({
         id: fuId,
         vasDor: fuVasDor,
@@ -574,6 +579,7 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
         nivelRetorno: fuNivelRetorno,
         falha: fuFalha,
         falhaType: fuFalhaType,
+        hasScaleResponses: fuHasScaleResponses,
       });
       const bucket = classifyFollowupNotification(publicRow, answered, today);
       ({ respondidos, aguardando, vencidos, agendados })[bucket].push(publicRow);

@@ -33,15 +33,15 @@ export function isHiddenFracturePreoperative(
 
 /**
  * Cronograma de seguimento de ombro e cotovelo. Os momentos são os do cronograma
- * genérico herdado; as escalas específicas de ombro/cotovelo ainda não foram
- * definidas pelo médico, então só a dor (VAS) é enviada ao paciente.
+ * genérico herdado. Em todos os tipos de caso o paciente responde a dor (VAS) e
+ * o SANE (0–100, % do normal). ASES/MEPS seguem desabilitados até a licença.
  */
 export const FOLLOWUP_SCHEDULE: ScheduleEntry[] = [
-  { periodo: PREOPERATIVE_PERIOD, daysAfterSurgery: 0,   scales: ["VAS Dor"], notes: "Avaliação baseline pré-operatório" },
-  { periodo: "6 semanas",         daysAfterSurgery: 42,  scales: ["VAS Dor"], notes: "Controle pós-operatório precoce" },
-  { periodo: "3 meses",           daysAfterSurgery: 90,  scales: ["VAS Dor"], notes: "Avaliação funcional intermediária" },
-  { periodo: "6 meses",           daysAfterSurgery: 180, scales: ["VAS Dor"], notes: "Avaliação de retorno às atividades" },
-  { periodo: "1 ano",             daysAfterSurgery: 365, scales: ["VAS Dor"], notes: "Resultado de longo prazo" },
+  { periodo: PREOPERATIVE_PERIOD, daysAfterSurgery: 0,   scales: ["VAS Dor", "SANE"], notes: "Avaliação baseline pré-operatório" },
+  { periodo: "6 semanas",         daysAfterSurgery: 42,  scales: ["VAS Dor", "SANE"], notes: "Controle pós-operatório precoce" },
+  { periodo: "3 meses",           daysAfterSurgery: 90,  scales: ["VAS Dor", "SANE"], notes: "Avaliação funcional intermediária" },
+  { periodo: "6 meses",           daysAfterSurgery: 180, scales: ["VAS Dor", "SANE"], notes: "Avaliação de retorno às atividades" },
+  { periodo: "1 ano",             daysAfterSurgery: 365, scales: ["VAS Dor", "SANE"], notes: "Resultado de longo prazo" },
 ];
 
 /**
@@ -60,6 +60,28 @@ export function isSupportedFollowupScale(scale: string): boolean {
 
 export function filterSupportedFollowupScales(scales: readonly string[] | null | undefined): string[] {
   return [...new Set((scales ?? []).filter(isSupportedFollowupScale))];
+}
+
+export type FollowupRegion = "shoulder" | "elbow";
+
+/**
+ * Região da cirurgia para o texto do paciente ("ombro"/"cotovelo").
+ * Usa surgeries.regiao; em registros antigos sem região, deduz pelo tipo de
+ * caso (SH_* = ombro, EL_* = cotovelo) quando todos apontam para a mesma região.
+ */
+export function resolveFollowupRegion(
+  regiao: string | null | undefined,
+  tiposProcedimento?: readonly string[] | null,
+): FollowupRegion | null {
+  if (regiao === "shoulder" || regiao === "elbow") return regiao;
+  const regions = new Set(
+    (tiposProcedimento ?? []).map((tipo) =>
+      tipo.startsWith("SH_") ? "shoulder" : tipo.startsWith("EL_") ? "elbow" : null,
+    ),
+  );
+  if (regions.size !== 1) return null;
+  const [only] = [...regions];
+  return only ?? null;
 }
 
 export function computeScheduledDate(dataCirurgia: string | null | undefined, daysAfterSurgery: number): string | null {

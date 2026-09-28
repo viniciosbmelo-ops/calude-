@@ -478,7 +478,15 @@ export const GetSurgeryResponse = zod.object({
   "falha": zod.boolean().nullish(),
   "falhaType": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "escalasClinicas": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "max": zod.number().nullable(),
+  "versao": zod.string().nullable(),
+  "flags": zod.array(zod.string()),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
 }))
 })
 
@@ -544,7 +552,8 @@ export const CreateFollowupBody = zod.object({
   "nivelRetorno": zod.string().nullish(),
   "falha": zod.boolean().nullish(),
   "falhaType": zod.string().nullish(),
-  "observacoes": zod.string().nullish()
+  "observacoes": zod.string().nullish(),
+  "escalasClinicas": zod.record(zod.string(), zod.record(zod.string(), zod.unknown())).optional().describe('Clinician scale answers keyed by scale code (e.g. CONSTANT, ROWE). Each value holds the\nitem answers in the clinical package format; the server scores them.\n')
 })
 
 export const CreateFollowupResponse = zod.object({
@@ -558,7 +567,15 @@ export const CreateFollowupResponse = zod.object({
   "falha": zod.boolean().nullish(),
   "falhaType": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "escalasClinicas": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "max": zod.number().nullable(),
+  "versao": zod.string().nullable(),
+  "flags": zod.array(zod.string()),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
 })
 
 
@@ -580,7 +597,15 @@ export const ListFollowupResponseItem = zod.object({
   "falha": zod.boolean().nullish(),
   "falhaType": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "escalasClinicas": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "max": zod.number().nullable(),
+  "versao": zod.string().nullable(),
+  "flags": zod.array(zod.string()),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
 })
 export const ListFollowupResponse = zod.array(ListFollowupResponseItem)
 
@@ -612,7 +637,42 @@ export const UpdateFollowupResponse = zod.object({
   "falha": zod.boolean().nullish(),
   "falhaType": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "escalasClinicas": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "max": zod.number().nullable(),
+  "versao": zod.string().nullable(),
+  "flags": zod.array(zod.string()),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
+})
+
+
+/**
+ * The server validates each scale against the surgery (only scales applicable to its
+ * pathologies and with a free license are accepted) and scores it with the clinical
+ * package; any client-sent score is ignored.
+ * @summary Record or update clinician-completed scales (Constant-Murley, Rowe) on a follow-up
+ */
+export const UpdateFollowupClinicianScalesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateFollowupClinicianScalesBody = zod.object({
+  "escalasClinicas": zod.record(zod.string(), zod.record(zod.string(), zod.unknown())).describe('Clinician scale answers keyed by scale code (e.g. CONSTANT, ROWE). Each value holds the\nitem answers in the clinical package format; the server scores them.\n')
+})
+
+export const UpdateFollowupClinicianScalesResponse = zod.object({
+  "followupId": zod.number(),
+  "escalasClinicas": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "max": zod.number().nullable(),
+  "versao": zod.string().nullable(),
+  "flags": zod.array(zod.string()),
+  "completadoEm": zod.string().nullable()
+}))
 })
 
 
@@ -645,6 +705,7 @@ export const GetDoctorDashboardResponse = zod.object({
 })),
   "followupCompliance": zod.number(),
   "avgPain": zod.number().nullish().describe('Dor média (VAS 0–10) nos seguimentos respondidos'),
+  "avgSane": zod.number().nullish().describe('SANE médio (0–100, % do normal) nos seguimentos respondidos pelo paciente'),
   "returnToSportRate": zod.number().nullish()
 })
 

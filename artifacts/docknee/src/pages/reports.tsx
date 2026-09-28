@@ -32,14 +32,17 @@ const TEMPOS = ["Pré-operatório", "6 semanas", "3 meses", "6 meses", "1 ano"];
 const NIVEIS_ATIVIDADE = ["Sedentário", "Recreacional", "Amador", "Semi-profissional", "Profissional"];
 const LADOS = ["Direito", "Esquerdo"];
 
-const ESCALAS = [
+export const ESCALAS = [
   { key: "vasDor", label: "VAS", full: "VAS Dor", max: 10, invert: true },
+  { key: "sane", label: "SANE", full: "SANE", max: 100, invert: false },
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FollowupRecord {
   id: number | null; surgeryId: number; tempo: string | null; dataAvaliacao: string | null;
   vasDor: number | null;
+  /** SANE (0–100) respondido pelo paciente; null quando não respondido. */
+  sane?: number | null;
   retornoEsporte: boolean | null; nivelRetorno: string | null;
   falha: boolean | null; falhaType: string | null; observacoes: string | null;
   /** Registro de follow-up com algum desfecho registrado (resposta do paciente ou do médico). */
@@ -151,6 +154,13 @@ function scoreCell(v: number | null, max: number = 100, invert = false) {
 function avg(arr: (number | null)[]): number | null {
   const v = arr.filter((x): x is number => x != null);
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+/** Médias das escalas do paciente nas avaliações respondidas (VAS 0–10, SANE 0–100). */
+export function summarizeReportScores(rows: readonly { vasDor: number | null; sane?: number | null }[]) {
+  return {
+    avgVas: avg(rows.map((r) => r.vasDor)),
+    avgSane: avg(rows.map((r) => r.sane ?? null)),
+  };
 }
 function fmtAvg(v: number | null, d = 1) { return v == null ? "—" : v.toFixed(d); }
 
@@ -554,14 +564,14 @@ export default function Reports() {
     const isAdminExport = user?.isAdmin ?? false;
     const headers = [isAdminExport ? tx("csvSurgeryId") : tx("csvPatient"), tx("csvSex"), tx("csvAge"), tx("csvSide"), tx("csvActivityLevel"),
       tx("csvDoctor"), tx("region"), tx("csvType"), tx("csvDiagnosis"), tx("csvHospital"),
-      tx("csvSurgeryDate"), tx("csvFollowupTime"), tx("csvAssessmentDate"), tx("csvVasPain"),
+      tx("csvSurgeryDate"), tx("csvFollowupTime"), tx("csvAssessmentDate"), tx("csvVasPain"), tx("csvSane"),
       tx("csvReturnSport"), tx("csvReturnLevel"), tx("csvFailure"), tx("csvFailureType")];
     const yesNo = (v: boolean | null) => v == null ? "" : v ? documentText(locale, "yes") : documentText(locale, "no");
     const rows = filtered.map(r => [
       isAdminExport ? tx("surgeryId", { id: r.surgeryId }) : (r.patientNome ?? ""), r.patientSexo ?? "", r.idade ?? "", r.patientLado ?? "",
       r.patientNivelAtividade ?? "",
       r.doctorNome ?? "", regionLabel(r.regiao), r.tiposProcedimento.map(caseTypeLabel).join("; "), r.diagnostico ?? "",
-      r.hospital ?? "", r.dataCirurgia ?? "", r.tempo, r.dataAvaliacao ?? "", r.vasDor ?? "",
+      r.hospital ?? "", r.dataCirurgia ?? "", r.tempo, r.dataAvaliacao ?? "", r.vasDor ?? "", r.sane ?? "",
       yesNo(r.retornoEsporte), r.nivelRetorno ?? "", yesNo(r.falha), r.falhaType ?? "",
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -572,7 +582,7 @@ export default function Reports() {
   };
 
   // Summary stats
-  const avgVas = avg(answered.map(r => r.vasDor));
+  const { avgVas, avgSane } = summarizeReportScores(answered);
   const withRetorno = answered.filter(r => r.retornoEsporte != null);
   const taxaRetorno = withRetorno.length > 0 ? (withRetorno.filter(r => r.retornoEsporte).length / withRetorno.length * 100) : null;
   const withFalha = answered.filter(r => r.falha != null);
@@ -1067,11 +1077,11 @@ export default function Reports() {
       {/* Summary Cards */}
       <div className="max-w-7xl mx-auto">
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-border shadow-sm bg-primary text-primary-foreground">
               <CardContent className="pt-4 pb-4">
                 <div className="text-xs text-primary-foreground/70 mb-1">{tx("answeredAssessments")}</div>
@@ -1083,6 +1093,7 @@ export default function Reports() {
             </Card>
             {[
               { label: tx("averageVas"), val: fmtAvg(avgVas, 1), unit: "/10" },
+              { label: tx("averageSane"), val: fmtAvg(avgSane, 0), unit: tx("saneUnit") },
             ].map(c => (
               <Card key={c.label} className="border-border shadow-sm">
                 <CardContent className="pt-4 pb-4">

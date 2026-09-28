@@ -333,6 +333,7 @@ export default function Dashboard() {
   const vencidosBadge = fuData?.counts.vencidos ?? 0;
   const doctorNome = user?.nome ?? "";
   const avgPain = data.avgPain ?? null;
+  const avgSane = data.avgSane ?? null;
 
   /* ── Cirurgias por tipo de caso (catálogo de ombro/cotovelo) ── */
   const pieData = data.surgeriesByType.length > 0
@@ -449,7 +450,9 @@ export default function Dashboard() {
     {
       label: tx("averagePain"),
       value: avgPain != null ? avgPain.toFixed(1) : "—",
-      sub: tx("painScale"),
+      sub: avgSane != null
+        ? tx("painScaleWithSane", { sane: avgSane.toFixed(0) })
+        : tx("painScale"),
       href: null,
       accent: "#7C3AED",
     },
