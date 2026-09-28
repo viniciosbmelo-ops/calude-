@@ -139,16 +139,10 @@ function validateRespostas(
 
 // ─── Score ranges ─────────────────────────────────────────────────────────────
 
+// As escalas do joelho (IKDC, Lysholm, KOOS, Tegner, Kujala, ACL-RSI, Marx,
+// WOMAC) foram retiradas. Escalas de ombro/cotovelo entram aqui com o cálculo.
 const SCALE_SCORE_RANGES: Record<string, [number, number]> = {
   "VAS Dor":  [0, 10],
-  "Tegner":   [0, 10],
-  "Lysholm":  [0, 100],
-  "IKDC":     [0, 100],
-  "Kujala":   [0, 100],
-  "ACL-RSI":  [0, 100],
-  "Marx":     [0, 16],
-  "WOMAC":    [0, 100],
-  "KOOS-12":  [0, 100],
 };
 
 /** Clamp score to the known range for this scale. */
@@ -184,82 +178,6 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
     const v = a["vas"];
     if (v === undefined || !isFinite(v)) throw new Error("VAS: resposta 'vas' ausente ou inválida");
     return Math.max(0, Math.min(10, v));
-  },
-  "Tegner": (a) => {
-    const v = a["tegner"];
-    if (v === undefined || !isFinite(v)) throw new Error("Tegner: resposta 'tegner' ausente ou inválida");
-    return Math.max(0, Math.min(10, Math.round(v)));
-  },
-  "Lysholm": (a) => {
-    const keys = ["claudicacao","apoio","bloqueio","instabilidade","dor","edema","escadas","agachar"];
-    for (const k of keys) {
-      if (a[k] === undefined) throw new Error(`Lysholm: resposta '${k}' ausente`);
-    }
-    return keys.reduce((s, k) => s + a[k]!, 0);
-  },
-  "IKDC": (a) => {
-    const required = ["atividade_atual","dor_frequencia","dor_intensidade","rigidez","edema",
-      "travamento","falseamento","nivel_atual_atividade","funcao_geral","funcao_esporte"];
-    for (const k of required) {
-      if (a[k] === undefined) throw new Error(`IKDC: resposta '${k}' ausente`);
-    }
-    const dor = 10 - (a["dor_intensidade"]!);
-    const keys: Array<[string, number]> = [
-      ["atividade_atual", 4], ["dor_frequencia", 10], ["rigidez", 10],
-      ["edema", 10], ["travamento", 15], ["falseamento", 15],
-      ["nivel_atual_atividade", 4], ["funcao_geral", 10], ["funcao_esporte", 10],
-    ];
-    const rawPoints = keys.reduce((s, [k]) => s + a[k]!, 0) + dor;
-    const maxRaw = keys.reduce((s, [, m]) => s + m, 0) + 10;
-    return Math.round((rawPoints / maxRaw) * 100);
-  },
-  "Kujala": (a) => {
-    const keys = ["claudicacao","apoio","andar","escadas","agachar","correr","pular","ajoelhar",
-      "dor_frente","edema","luxacao","atrofia","flexao"];
-    for (const k of keys) {
-      if (a[k] === undefined) throw new Error(`Kujala: resposta '${k}' ausente`);
-    }
-    return keys.reduce((s, k) => s + a[k]!, 0);
-  },
-  "ACL-RSI": (a) => {
-    const negative = ["medo_lesao","nervoso_esporte","nao_recuperado","frustracao_nivel","preocupacao_ceder","arriscado_retornar"];
-    const positive = ["confianca_suportar","joelho_aguentara","satisfeito_nivel","seguro_dedicar","nivel_anterior","animado_retorno"];
-    const all = [...negative, ...positive];
-    for (const k of all) {
-      if (a[k] === undefined) throw new Error(`ACL-RSI: resposta '${k}' ausente`);
-    }
-    let total = 0; let count = 0;
-    for (const k of negative) { total += (10 - a[k]!); count++; }
-    for (const k of positive) { total += a[k]!; count++; }
-    return Math.round((total / count) * 10);
-  },
-  "Marx": (a) => {
-    const keys = ["correr","desacelerar","corte_lateral","pivotar"];
-    for (const k of keys) {
-      if (a[k] === undefined) throw new Error(`Marx: resposta '${k}' ausente`);
-    }
-    return keys.reduce((s, k) => s + a[k]!, 0);
-  },
-  "KOOS-12": (a) => {
-    const keys = ["dor_freq","dor_torcao","dor_extensao","rigidez_manha","rigidez_tarde",
-      "adl_escadas","adl_levantar","adl_caminhar","sport_agachar","sport_correr",
-      "qol_consciente","qol_modificou"];
-    for (const k of keys) {
-      if (a[k] === undefined) throw new Error(`KOOS-12: resposta '${k}' ausente`);
-    }
-    const total = keys.reduce((s, k) => s + a[k]!, 0);
-    return Math.round((total / (keys.length * 4)) * 100);
-  },
-  "WOMAC": (a) => {
-    const keys = ["dor_caminhar","dor_escadas","dor_noite","dor_repouso","dor_carga",
-      "rig_manha","rig_tarde","fis_descer","fis_subir","fis_levantar","fis_ficar_pe",
-      "fis_caminhar","fis_carro","fis_compras","fis_meias","fis_cama","fis_banho",
-      "fis_sentado","fis_vaso","fis_tarefas","fis_tarefas_leves"];
-    for (const k of keys) {
-      if (a[k] === undefined) throw new Error(`WOMAC: resposta '${k}' ausente`);
-    }
-    const total = keys.reduce((s, k) => s + a[k]!, 0);
-    return Math.round(100 - (total / (keys.length * 4)) * 100);
   },
 };
 
@@ -515,14 +433,6 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
 
   const scoreField = ({
     "VAS Dor": ["vas_dor", Math.round(score)],
-    "Tegner": ["tegner", Math.round(score)],
-    "Lysholm": ["lysholm", Math.round(score)],
-    "IKDC": ["ikdc", score],
-    "Kujala": ["kujala", Math.round(score)],
-    "ACL-RSI": ["acl_rsi", Math.round(score)],
-    "Marx": ["marx", Math.round(score)],
-    "WOMAC": ["womac", Math.round(score)],
-    "KOOS-12": ["koos12", Math.round(score)],
   } as const)[escala];
   const lockKey = `classic:${followupPointer.id}:${escala}`;
 

@@ -229,7 +229,6 @@ export interface Patient {
   lado?: string | null;
   /** @nullable */
   nivelAtividade?: string | null;
-  esportePivot: boolean;
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;
@@ -265,34 +264,7 @@ export interface Surgery {
   hospital?: string | null;
   /** @nullable */
   tipoCaso?: string | null;
-  /** @nullable */
-  alinhamento?: string | null;
-  /** @nullable */
-  grauAlinhamento?: string | null;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  /** @nullable */
-  enxerto?: string | null;
-  /** @nullable */
-  diametroEnxerto?: string | null;
-  /** @nullable */
-  fixacaoFemoral?: string | null;
-  /** @nullable */
-  fixacaoTibial?: string | null;
-  /** @nullable */
-  internalBrace?: string | null;
-  /** @nullable */
-  tipoLca?: string | null;
-  /** @nullable */
-  localizacaoLesaoLca?: string | null;
-  /** @nullable */
-  fixacaoReparoLca?: string | null;
-  /** @nullable */
-  preservacaoRemanescente?: string | null;
-  /** @nullable */
-  reforco?: string | null;
   /** @nullable */
   procedimentoRealizado?: string | null;
   /** @nullable */
@@ -314,7 +286,6 @@ export interface PatientWithSurgeries {
   lado?: string | null;
   /** @nullable */
   nivelAtividade?: string | null;
-  esportePivot: boolean;
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;
@@ -330,7 +301,6 @@ export interface CreatePatientBody {
   telefone?: string;
   lado?: string;
   nivelAtividade?: string;
-  esportePivot?: boolean;
   beightonScore?: number;
   planoSaude?: string;
   indicadoPor?: string;
@@ -349,7 +319,6 @@ export interface UpdatePatientBody {
   telefone?: string;
   lado?: string;
   nivelAtividade?: string;
-  esportePivot?: boolean;
   beightonScore?: number;
   anamnese?: string | null;
   laudos?: string | null;
@@ -391,10 +360,7 @@ export interface SurgeryWithPatient {
   hospital?: string | null;
   /** @nullable */
   tipoCaso?: string | null;
-  /** @nullable */
-  alinhamento?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
   /** @nullable */
   observacoes?: string | null;
   /** @nullable */
@@ -423,248 +389,12 @@ export const SurgeryDetailRegiao = {
  */
 export type SurgeryDetailDadosClinicos = { [key: string]: unknown } | null;
 
-export interface ExameLigamentar {
-  id: number;
-  surgeryId: number;
-  /** @nullable */
-  lachman?: number | null;
-  /** @nullable */
-  gavetaNeutra?: number | null;
-  /** @nullable */
-  pivotShift?: number | null;
-  /** @nullable */
-  aderTest?: boolean | null;
-  /** @nullable */
-  gavetaRotInterna?: boolean | null;
-  /** @nullable */
-  estresseValgo0?: number | null;
-  /** @nullable */
-  estresseValgo30?: number | null;
-  /** @nullable */
-  estresseVaro0?: number | null;
-  /** @nullable */
-  estresseVaro30?: number | null;
-  /** @nullable */
-  gavetaPosterior?: number | null;
-  /** @nullable */
-  sagSign?: boolean | null;
-  /** @nullable */
-  quadricepsAtivo?: boolean | null;
-  /** @nullable */
-  dialTest?: boolean | null;
-  /** @nullable */
-  recurvato?: boolean | null;
-  /** @nullable */
-  hiperextensao?: string | null;
-  /** @nullable */
-  slopeTibialPts?: number | null;
-}
-
-export interface LcaAlgorithm {
-  id: number;
-  surgeryId: number;
-  /** @nullable */
-  idade?: number | null;
-  /** @nullable */
-  esportePivot?: boolean | null;
-  /** @nullable */
-  pivotShift?: number | null;
-  /** @nullable */
-  revisao?: boolean | null;
-  /** @nullable */
-  hiperlaxidade?: boolean | null;
-  /** @nullable */
-  meniscoLateral?: boolean | null;
-  /** @nullable */
-  lesaoCronica?: boolean | null;
-  /** @nullable */
-  krirsScore?: number | null;
-  /** @nullable */
-  krirsInterpretacao?: string | null;
-  /** @nullable */
-  tecnicaRecomendada?: string | null;
-  /** @nullable */
-  justificativa?: string | null;
-  /** @nullable */
-  flagAltoRisco?: boolean | null;
-}
-
-export interface MeniscalSideDetails {
-  /** @nullable */
-  sutura?: boolean | null;
-  /** @nullable */
-  lesaoRampa?: boolean | null;
-  /** @nullable */
-  lesaoRaiz?: boolean | null;
-  /** @nullable */
-  lesaoRaizAnterior?: boolean | null;
-  /** @nullable */
-  lesaoCornoAnterior?: boolean | null;
-  /** @nullable */
-  lesaoCornoPosterior?: boolean | null;
-  /** @nullable */
-  lesaoAlcaBalde?: boolean | null;
-  /** @nullable */
-  lesaoRadial?: boolean | null;
-  /** @nullable */
-  lesaoCorpo?: boolean | null;
-  /** @nullable */
-  lesaoDiscoide?: boolean | null;
-  /** @nullable */
-  fixacaoRaiz?: string | null;
-  /** @nullable */
-  centralizacaoRaiz?: boolean | null;
-  /** @nullable */
-  centralizacaoMetodo?: string | null;
-  tecnicasSutura?: string[];
-  /** @nullable */
-  numPontos?: number | null;
-  /** @nullable */
-  pontosPorTecnica?: string | null;
-  /** @nullable */
-  tipoFio?: string | null;
-  /** @nullable */
-  estimuloBiologico?: boolean | null;
-  /** @nullable */
-  estimuloPerfuracaoIntercondilo?: boolean | null;
-  /** @nullable */
-  estimuloCoaguloFibrina?: boolean | null;
-  /** @nullable */
-  estimuloOrtobiologico?: boolean | null;
-  /** @nullable */
-  estimuloOrtobiologicoTipo?: string | null;
-  /** @nullable */
-  saucerizacao?: boolean | null;
-  /** @nullable */
-  meniscectomia?: boolean | null;
-}
-
-export interface ProcedimentoMeniscal {
-  id: number;
-  surgeryId: number;
-  /** @nullable */
-  dorInterlinha?: string | null;
-  /** @nullable */
-  mcMurrayMedial?: boolean | null;
-  /** @nullable */
-  mcMurrayLateral?: boolean | null;
-  /** @nullable */
-  apleyCompressao?: boolean | null;
-  /** @nullable */
-  apleyTracao?: boolean | null;
-  /** @nullable */
-  marchaPato?: boolean | null;
-  /** @nullable */
-  steinmann1?: boolean | null;
-  /** @nullable */
-  steinmann2?: boolean | null;
-  /** @nullable */
-  observacoesExame?: string | null;
-  /** @nullable */
-  contexto?: string | null;
-  /** @nullable */
-  meniscectomia?: boolean | null;
-  /** @nullable */
-  sutura?: boolean | null;
-  /** @nullable */
-  ladoMedial?: boolean | null;
-  /** @nullable */
-  ladoLateral?: boolean | null;
-  /** @nullable */
-  lesaoRampa?: boolean | null;
-  /** @nullable */
-  lesaoRaiz?: boolean | null;
-  /** @nullable */
-  lesaoAlcaBalde?: boolean | null;
-  /** @nullable */
-  lesaoRadial?: boolean | null;
-  /** @nullable */
-  lesaoCorpo?: boolean | null;
-  tecnicasSutura?: string[];
-  /** @nullable */
-  numPontos?: number | null;
-  /** @nullable */
-  pontosPorTecnica?: string | null;
-  /** @nullable */
-  tipoFio?: string | null;
-  detalhesMedial?: MeniscalSideDetails | null;
-  detalhesLateral?: MeniscalSideDetails | null;
-}
-
-export interface ExamePatelar {
-  id: number;
-  surgeryId: number;
-  /** @nullable */
-  luxacaoAguda?: boolean | null;
-  /** @nullable */
-  luxacaoCronica?: boolean | null;
-  /** @nullable */
-  numEpisodios?: number | null;
-  /** @nullable */
-  apprehensionTest?: boolean | null;
-  /** @nullable */
-  jSign?: boolean | null;
-  /**
-     * @minimum 1
-     * @maximum 4
-     * @nullable
-     */
-  jSignGrau?: number | null;
-  /** @nullable */
-  tiltPatelar?: string | null;
-  /** @nullable */
-  ttTgMm?: number | null;
-  /** @nullable */
-  catonDeschamps?: number | null;
-  /** @nullable */
-  dejourTipo?: string | null;
-  /** @nullable */
-  inclinacaoPatelarGraus?: number | null;
-  /** @nullable */
-  inclinacaoPatelarCategoria?: string | null;
-  /** @nullable */
-  lesaoCondral?: boolean | null;
-  /** @nullable */
-  maltrackingDinamico?: boolean | null;
-}
-
-export interface PicsScore {
-  id: number;
-  surgeryId: number;
-  /** @nullable */
-  ptsTotal?: number | null;
-  /** @nullable */
-  ptsRisco?: string | null;
-  /** @nullable */
-  ptsConduta?: string | null;
-  /** @nullable */
-  fatorDominante?: string | null;
-}
-
 export interface Followup {
   id: number;
   surgeryId: number;
   tempo: string;
   /** @nullable */
   dataAvaliacao?: string | null;
-  /** @nullable */
-  ikdc?: number | null;
-  /** @nullable */
-  koosSintomas?: number | null;
-  /** @nullable */
-  koosDor?: number | null;
-  /** @nullable */
-  koosFuncao?: number | null;
-  /** @nullable */
-  koosEsporte?: number | null;
-  /** @nullable */
-  koosQualidade?: number | null;
-  /** @nullable */
-  lysholm?: number | null;
-  /** @nullable */
-  tegner?: number | null;
-  /** @nullable */
-  kujala?: number | null;
   /** @nullable */
   vasDor?: number | null;
   /** @nullable */
@@ -694,34 +424,7 @@ export interface SurgeryDetail {
   hospital?: string | null;
   /** @nullable */
   tipoCaso?: string | null;
-  /** @nullable */
-  alinhamento?: string | null;
-  /** @nullable */
-  grauAlinhamento?: string | null;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  /** @nullable */
-  enxerto?: string | null;
-  /** @nullable */
-  diametroEnxerto?: string | null;
-  /** @nullable */
-  fixacaoFemoral?: string | null;
-  /** @nullable */
-  fixacaoTibial?: string | null;
-  /** @nullable */
-  internalBrace?: string | null;
-  /** @nullable */
-  tipoLca?: string | null;
-  /** @nullable */
-  localizacaoLesaoLca?: string | null;
-  /** @nullable */
-  fixacaoReparoLca?: string | null;
-  /** @nullable */
-  preservacaoRemanescente?: string | null;
-  /** @nullable */
-  reforco?: string | null;
   /** @nullable */
   procedimentoRealizado?: string | null;
   /** @nullable */
@@ -730,11 +433,6 @@ export interface SurgeryDetail {
   diagnostico?: string | null;
   createdAt: string;
   patient: Patient;
-  exameLigamentar?: ExameLigamentar;
-  lcaAlgorithm?: LcaAlgorithm;
-  procedimentoMeniscal?: ProcedimentoMeniscal;
-  examePatelar?: ExamePatelar;
-  picsScore?: PicsScore;
   followups: Followup[];
 }
 
@@ -755,164 +453,6 @@ export const CreateSurgeryBodyRegiao = {
  */
 export type CreateSurgeryBodyDadosClinicos = { [key: string]: unknown } | null;
 
-export interface ExameLigamenarInput {
-  /** @nullable */
-  lachman?: number | null;
-  /** @nullable */
-  gavetaNeutra?: number | null;
-  /** @nullable */
-  pivotShift?: number | null;
-  /** @nullable */
-  aderTest?: boolean | null;
-  /** @nullable */
-  gavetaRotInterna?: boolean | null;
-  /** @nullable */
-  estresseValgo0?: number | null;
-  /** @nullable */
-  estresseValgo30?: number | null;
-  /** @nullable */
-  estresseVaro0?: number | null;
-  /** @nullable */
-  estresseVaro30?: number | null;
-  /** @nullable */
-  gavetaPosterior?: number | null;
-  /** @nullable */
-  sagSign?: boolean | null;
-  /** @nullable */
-  quadricepsAtivo?: boolean | null;
-  /** @nullable */
-  dialTest?: boolean | null;
-  /** @nullable */
-  recurvato?: boolean | null;
-  /** @nullable */
-  hiperextensao?: string | null;
-  /** @nullable */
-  slopeTibialPts?: number | null;
-}
-
-export interface LcaAlgorithmInput {
-  /** @nullable */
-  idade?: number | null;
-  /** @nullable */
-  esportePivot?: boolean | null;
-  /** @nullable */
-  pivotShift?: number | null;
-  /** @nullable */
-  revisao?: boolean | null;
-  /** @nullable */
-  hiperlaxidade?: boolean | null;
-  /** @nullable */
-  meniscoLateral?: boolean | null;
-  /** @nullable */
-  lesaoCronica?: boolean | null;
-  /** @nullable */
-  krirsScore?: number | null;
-  /** @nullable */
-  krirsInterpretacao?: string | null;
-  /** @nullable */
-  tecnicaRecomendada?: string | null;
-  /** @nullable */
-  justificativa?: string | null;
-  /** @nullable */
-  flagAltoRisco?: boolean | null;
-}
-
-export interface ProcedimentoMeniscalInput {
-  /** @nullable */
-  dorInterlinha?: string | null;
-  /** @nullable */
-  mcMurrayMedial?: boolean | null;
-  /** @nullable */
-  mcMurrayLateral?: boolean | null;
-  /** @nullable */
-  apleyCompressao?: boolean | null;
-  /** @nullable */
-  apleyTracao?: boolean | null;
-  /** @nullable */
-  marchaPato?: boolean | null;
-  /** @nullable */
-  steinmann1?: boolean | null;
-  /** @nullable */
-  steinmann2?: boolean | null;
-  /** @nullable */
-  observacoesExame?: string | null;
-  /** @nullable */
-  contexto?: string | null;
-  /** @nullable */
-  meniscectomia?: boolean | null;
-  /** @nullable */
-  sutura?: boolean | null;
-  /** @nullable */
-  ladoMedial?: boolean | null;
-  /** @nullable */
-  ladoLateral?: boolean | null;
-  /** @nullable */
-  lesaoRampa?: boolean | null;
-  /** @nullable */
-  lesaoRaiz?: boolean | null;
-  /** @nullable */
-  lesaoAlcaBalde?: boolean | null;
-  /** @nullable */
-  lesaoRadial?: boolean | null;
-  /** @nullable */
-  lesaoCorpo?: boolean | null;
-  tecnicasSutura?: string[];
-  /** @nullable */
-  numPontos?: number | null;
-  /** @nullable */
-  pontosPorTecnica?: string | null;
-  /** @nullable */
-  tipoFio?: string | null;
-  detalhesMedial?: MeniscalSideDetails | null;
-  detalhesLateral?: MeniscalSideDetails | null;
-}
-
-export interface ExamePatelarInput {
-  /** @nullable */
-  luxacaoAguda?: boolean | null;
-  /** @nullable */
-  luxacaoCronica?: boolean | null;
-  /** @nullable */
-  numEpisodios?: number | null;
-  /** @nullable */
-  apprehensionTest?: boolean | null;
-  /** @nullable */
-  jSign?: boolean | null;
-  /**
-     * @minimum 1
-     * @maximum 4
-     * @nullable
-     */
-  jSignGrau?: number | null;
-  /** @nullable */
-  tiltPatelar?: string | null;
-  /** @nullable */
-  ttTgMm?: number | null;
-  /** @nullable */
-  catonDeschamps?: number | null;
-  /** @nullable */
-  dejourTipo?: string | null;
-  /** @nullable */
-  inclinacaoPatelarGraus?: number | null;
-  /** @nullable */
-  inclinacaoPatelarCategoria?: string | null;
-  /** @nullable */
-  lesaoCondral?: boolean | null;
-  /** @nullable */
-  maltrackingDinamico?: boolean | null;
-}
-
-export interface PicsScoreInput {
-  /** @nullable */
-  ptsTotal?: number | null;
-  /** @nullable */
-  ptsRisco?: string | null;
-  /** @nullable */
-  ptsConduta?: string | null;
-  /** @nullable */
-  fatorDominante?: string | null;
-}
-
 export interface CreateSurgeryBody {
   /** @nullable */
   regiao?: CreateSurgeryBodyRegiao;
@@ -925,31 +465,9 @@ export interface CreateSurgeryBody {
   dataCirurgia?: string;
   hospital?: string;
   tipoCaso?: string;
-  alinhamento?: string;
-  grauAlinhamento?: string;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  enxerto?: string;
-  diametroEnxerto?: string;
-  fixacaoFemoral?: string;
-  fixacaoTibial?: string;
-  internalBrace?: string;
-  tipoLca?: string;
-  localizacaoLesaoLca?: string;
-  fixacaoReparoLca?: string;
-  preservacaoRemanescente?: string;
-  reforco?: string;
   procedimentoRealizado?: string;
   observacoes?: string;
-  /** @nullable */
-  procedimentosDetalhados?: string | null;
-  exameLigamentar?: ExameLigamenarInput;
-  lcaAlgorithm?: LcaAlgorithmInput;
-  procedimentoMeniscal?: ProcedimentoMeniscalInput;
-  examePatelar?: ExamePatelarInput;
-  picsScore?: PicsScoreInput;
 }
 
 /**
@@ -984,205 +502,9 @@ export interface UpdateSurgeryBody {
   tipoCaso?: string;
   /** @nullable */
   diagnostico?: string | null;
-  alinhamento?: string;
-  grauAlinhamento?: string;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento?: string[];
-  ligamentosAcometidos?: string[];
-  enxerto?: string;
-  diametroEnxerto?: string;
-  fixacaoFemoral?: string;
-  fixacaoTibial?: string;
-  internalBrace?: string;
-  tipoLca?: string;
-  localizacaoLesaoLca?: string;
-  fixacaoReparoLca?: string;
-  preservacaoRemanescente?: string;
-  reforco?: string;
   procedimentoRealizado?: string;
   observacoes?: string;
-  /** @nullable */
-  procedimentosDetalhados?: string | null;
-  examePatelar?: ExamePatelarInput | null;
-}
-
-export interface KrirsInput {
-  idade: number;
-  esportePivot: boolean;
-  pivotShift: number;
-  revisao: boolean;
-  hiperlaxidade: boolean;
-  meniscoLateral: boolean;
-  lesaoCronica: boolean;
-  aderTest?: boolean;
-  gavetaRotInterna?: boolean;
-}
-
-export type KrirsResultNivelRisco = typeof KrirsResultNivelRisco[keyof typeof KrirsResultNivelRisco];
-
-
-export const KrirsResultNivelRisco = {
-  alto: 'alto',
-  intermediario: 'intermediario',
-  baixo: 'baixo',
-} as const;
-
-export interface KrirsResult {
-  score: number;
-  nivelRisco: KrirsResultNivelRisco;
-  tecnica: string;
-  justificativa: string;
-  flagAltoRisco: boolean;
-  instabAnteromedial: boolean;
-  instabAnterolateral: boolean;
-  instabCombinada: boolean;
-  duplaExtraArticular: boolean;
-  recomendacao: string[];
-  /** @nullable */
-  alerta?: string | null;
-}
-
-export interface PicsInput {
-  dejourTipo: string;
-  numEpisodios: number;
-  luxacaoCronica: boolean;
-  idade: number;
-  ttTgMm: number;
-  catonDeschamps: number;
-  maltrackingDinamico: boolean;
-  inclinacaoPatelarGraus: number;
-  lesaoCondral: boolean;
-  hiperlaxidade: boolean;
-  sexo: string;
-}
-
-export interface PicsResult {
-  picsTotal: number;
-  picsRisco: string;
-  picsConduta: string;
-  fatorDominante: string;
-  sugestoes: string[];
-}
-
-export interface AclDecisionInput {
-  idade: number;
-  /** @nullable */
-  sexo?: string | null;
-  /** @nullable */
-  enxerto?: string | null;
-  /** @nullable */
-  pivotShift?: number | null;
-  /** @nullable */
-  lachman?: number | null;
-  /** @nullable */
-  hiperextensaoGraus?: number | null;
-  revisao: boolean;
-  /** @nullable */
-  esqueletoImaturo?: boolean | null;
-  /** @nullable */
-  lesaoCronica?: boolean | null;
-  /** @nullable */
-  esportePivot?: boolean | null;
-  /** @nullable */
-  ptsGraus?: number | null;
-  /** @nullable */
-  contralateralLca?: boolean | null;
-  /** @nullable */
-  tabagismo?: boolean | null;
-  /** @nullable */
-  atrasoCirurgicoDias?: number | null;
-  /** @nullable */
-  earlyRtsPivot?: boolean | null;
-  /** @nullable */
-  tunelComprometido?: boolean | null;
-  /** @nullable */
-  aloenxertoJovem?: boolean | null;
-  /** @nullable */
-  allIsoladaConduta?: boolean | null;
-  /** @nullable */
-  segondFratura?: boolean | null;
-  /** @nullable */
-  notchEstreito?: boolean | null;
-  /** @nullable */
-  lesaoAlcImagem?: boolean | null;
-  /** @nullable */
-  meniscalConcomitante?: boolean | null;
-  /** @nullable */
-  graftDiametroMm?: number | null;
-}
-
-export type AclDecisionRegraModulo = typeof AclDecisionRegraModulo[keyof typeof AclDecisionRegraModulo];
-
-
-export const AclDecisionRegraModulo = {
-  leap: 'leap',
-  pts: 'pts',
-  graft: 'graft',
-  revision: 'revision',
-  behavioral: 'behavioral',
-} as const;
-
-export interface AclDecisionRegra {
-  id: string;
-  modulo: AclDecisionRegraModulo;
-  forca: string;
-  evidencia: string[];
-  titulo: string;
-  alavanca: string;
-  justificativa: string;
-  /** @nullable */
-  contraindicado?: string | null;
-}
-
-export type AclDecisionResultDisclaimers = {
-  naoCalibrado: string;
-  populacao: string;
-  vies: string;
-};
-
-export type AclDecisionResultDriversNaoModificaveisItem = {
-  id: string;
-  label: string;
-  presente: boolean;
-};
-
-export type AclDecisionResultFatoresAcessoriosItem = {
-  id: string;
-  label: string;
-  presente: boolean;
-};
-
-/**
- * @nullable
- */
-export type AclDecisionResultCamadaSeguranca = {
-  reassurance?: string[];
-  caveats?: string[];
-  consentComplications?: string[];
-} | null;
-
-/**
- * @nullable
- */
-export type AclDecisionResultExecucaoTecnica = {
-  nota?: string;
-  itens?: string[];
-} | null;
-
-export interface AclDecisionResult {
-  disclaimers: AclDecisionResultDisclaimers;
-  driversNaoModificaveis: AclDecisionResultDriversNaoModificaveisItem[];
-  regras: AclDecisionRegra[];
-  leapIndicado: boolean;
-  /** @nullable */
-  forcaMaxima: string | null;
-  fatoresAcessorios: AclDecisionResultFatoresAcessoriosItem[];
-  fatoresAcessoriosCount: number;
-  /** @nullable */
-  camadaSeguranca?: AclDecisionResultCamadaSeguranca;
-  /** @nullable */
-  execucaoTecnica?: AclDecisionResultExecucaoTecnica;
 }
 
 export interface CreateFollowupBody {
@@ -1190,33 +512,7 @@ export interface CreateFollowupBody {
   tempo: string;
   dataAvaliacao?: string;
   /** @nullable */
-  ikdc?: number | null;
-  /** @nullable */
-  koos12?: number | null;
-  /** @nullable */
-  koosSintomas?: number | null;
-  /** @nullable */
-  koosDor?: number | null;
-  /** @nullable */
-  koosFuncao?: number | null;
-  /** @nullable */
-  koosEsporte?: number | null;
-  /** @nullable */
-  koosQualidade?: number | null;
-  /** @nullable */
-  lysholm?: number | null;
-  /** @nullable */
-  tegner?: number | null;
-  /** @nullable */
-  kujala?: number | null;
-  /** @nullable */
   vasDor?: number | null;
-  /** @nullable */
-  aclRsi?: number | null;
-  /** @nullable */
-  marx?: number | null;
-  /** @nullable */
-  womac?: number | null;
   /** @nullable */
   admFlexao?: number | null;
   /** @nullable */
@@ -1236,24 +532,6 @@ export interface CreateFollowupBody {
 
 export interface UpdateFollowupBody {
   /** @nullable */
-  ikdc?: number | null;
-  /** @nullable */
-  koosSintomas?: number | null;
-  /** @nullable */
-  koosDor?: number | null;
-  /** @nullable */
-  koosFuncao?: number | null;
-  /** @nullable */
-  koosEsporte?: number | null;
-  /** @nullable */
-  koosQualidade?: number | null;
-  /** @nullable */
-  lysholm?: number | null;
-  /** @nullable */
-  tegner?: number | null;
-  /** @nullable */
-  kujala?: number | null;
-  /** @nullable */
   vasDor?: number | null;
   /** @nullable */
   retornoEsporte?: boolean | null;
@@ -1272,31 +550,23 @@ export type DoctorDashboardSurgeriesByTypeItem = {
   count: number;
 };
 
-export type DoctorDashboardSurgeriesByLigamentItem = {
-  ligamento: string;
-  count: number;
-};
-
 export interface DoctorDashboard {
   totalPatients: number;
   totalSurgeries: number;
   surgeriesByType: DoctorDashboardSurgeriesByTypeItem[];
-  surgeriesByLigament: DoctorDashboardSurgeriesByLigamentItem[];
   recentSurgeries: SurgeryWithPatient[];
   followupCompliance: number;
-  /** @nullable */
-  avgIkdc?: number | null;
+  /**
+     * Dor média (VAS 0–10) nos seguimentos respondidos
+     * @nullable
+     */
+  avgPain?: number | null;
   /** @nullable */
   returnToSportRate?: number | null;
 }
 
 export type AdminDashboardSurgeriesByTypeItem = {
   tipo: string;
-  count: number;
-};
-
-export type AdminDashboardSurgeriesByLigamentItem = {
-  ligamento: string;
   count: number;
 };
 
@@ -1333,11 +603,8 @@ export interface AdminDashboard {
   totalPatients: number;
   totalSurgeries: number;
   surgeriesByType: AdminDashboardSurgeriesByTypeItem[];
-  surgeriesByLigament: AdminDashboardSurgeriesByLigamentItem[];
   /** @nullable */
-  avgIkdc?: number | null;
-  /** @nullable */
-  avgLysholm?: number | null;
+  avgPain?: number | null;
   /** @nullable */
   returnToSportRate?: number | null;
   doctorStats: AdminDoctorWithStats[];

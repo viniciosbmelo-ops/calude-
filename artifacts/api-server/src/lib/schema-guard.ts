@@ -28,7 +28,6 @@ export const REQUIRED_TABLES: string[] = [
   "services",
   "patients",
   "surgeries",
-  "lcp_reconstruction",
   "followup",
   "scale_responses",
   "scheduled_notifications",
@@ -41,9 +40,6 @@ export const REQUIRED_TABLES: string[] = [
   "pre_consult_questionnaires",
   "pre_consult_invites",
   "password_reset_tokens",
-  "patelar_tendon_rupture",
-  "quadriceps_tendon_rupture",
-  "exame_osteocondral",
   "regen_products",
   "regen_conditions",
   "regen_terms_acceptance",
@@ -117,8 +113,9 @@ export const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "whatsapp_outbox", column: "alternate_escalated_at" },
   { table: "whatsapp_outbox", column: "scheduled_notification_id" },
   { table: "whatsapp_delivery_audit", column: "outcome" },
-  { table: "surgeries", column: "flip_cutter" },
-  { table: "lcp_reconstruction", column: "flip_cutter" },
+  // Registro de ombro/cotovelo
+  { table: "surgeries", column: "regiao" },
+  { table: "surgeries", column: "dados_clinicos" },
 ];
 
 /**

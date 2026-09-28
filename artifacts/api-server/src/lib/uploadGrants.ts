@@ -22,8 +22,7 @@ export type GrantPurpose =
   | "surgery_media"
   | "patient_attachment"
   | "pre_consult_attachment"
-  | "whatsapp_broadcast"
-  | "xray";
+  | "whatsapp_broadcast";
 
 export interface GrantInput {
   purpose: GrantPurpose;
@@ -139,29 +138,6 @@ export async function claimGrant(
     .where(and(
       eq(uploadGrantsTable.id, expectedGrantId),
       eq(uploadGrantsTable.tokenHash, hashToken(rawToken)),
-      isNull(uploadGrantsTable.usedAt),
-      gt(uploadGrantsTable.expiresAt, new Date()),
-      or(isNull(uploadGrantsTable.objectGeneration), eq(uploadGrantsTable.objectGeneration, objectGeneration)),
-    ))
-    .returning({ id: uploadGrantsTable.id });
-  return claimed.length === 1;
-}
-
-/** Claims the pending X-ray grant bound to a trusted path during surgery save. */
-export async function claimXrayGrantForObjectPath(
-  tx: DbTransaction,
-  doctorId: number,
-  objectPath: string,
-  objectGeneration: string,
-): Promise<boolean> {
-  await lockStoragePath(tx, objectPath);
-  const claimed = await tx
-    .update(uploadGrantsTable)
-    .set({ usedAt: new Date(), objectGeneration })
-    .where(and(
-      eq(uploadGrantsTable.purpose, "xray"),
-      eq(uploadGrantsTable.doctorId, doctorId),
-      eq(uploadGrantsTable.objectPath, objectPath),
       isNull(uploadGrantsTable.usedAt),
       gt(uploadGrantsTable.expiresAt, new Date()),
       or(isNull(uploadGrantsTable.objectGeneration), eq(uploadGrantsTable.objectGeneration, objectGeneration)),

@@ -131,11 +131,20 @@ describe.sequential("follow-up WhatsApp Spanish defaults", () => {
           Authorization: `Bearer ${auth}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ikdc: "invalid" }),
+        body: JSON.stringify({ vasDor: "invalid" }),
       }),
     ]);
+    // Só campos desconhecidos (ex.: escore que não existe mais) também é um corpo inválido
+    const emptyUpdate = await fetch(`${baseUrl}/api/followup/${followup.id}/update`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${auth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ikdc: 80 }),
+    });
 
-    for (const response of [createResponse, updateResponse]) {
+    for (const response of [createResponse, updateResponse, emptyUpdate]) {
       expect(response.status).toBe(400);
       expect(await response.json()).toEqual({ error: "Datos no válidos" });
     }

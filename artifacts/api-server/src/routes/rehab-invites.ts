@@ -11,12 +11,11 @@ import {
   rehabAssessmentsTable,
   physioFollowupsTable,
 } from "@workspace/db";
-import { procedimentoMeniscalTable } from "@workspace/db/schema";
 import { and, eq, desc, asc, gte, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getBaseUrl } from "../lib/base-url";
-import { mapSurgeryToProtocol, patientInitials, PROTOCOL_LABELS } from "../services/surgeryProtocolMap";
+import { mapSurgeryToProtocol, patientInitials, PROTOCOL_LABELS, surgeryProcedureLabel } from "../services/surgeryProtocolMap";
 
 const router: IRouter = Router();
 
@@ -69,11 +68,8 @@ router.post("/patients/:patientId/rehab-invite", requireAuth, async (req, res): 
 
   const link = `${getBaseUrl()}/fisio/convite/${rawToken}`;
   const initials = patientInitials(patient.nome);
-  const protocolCode = mapSurgeryToProtocol(surgery, await db.select({
-    sutura: procedimentoMeniscalTable.sutura,
-    meniscectomia: procedimentoMeniscalTable.meniscectomia,
-  }).from(procedimentoMeniscalTable).where(eq(procedimentoMeniscalTable.surgeryId, surgery.id)));
-  const procedureLabel = protocolCode ? PROTOCOL_LABELS[protocolCode] : (surgery.diagnostico ?? "Cirurgia de joelho");
+  const protocolCode = mapSurgeryToProtocol(surgery);
+  const procedureLabel = protocolCode ? PROTOCOL_LABELS[protocolCode] : surgeryProcedureLabel(surgery);
 
   const whatsappText =
     `Olá! Sou Dr(a). ${doctor?.nome ?? ""} e encaminho o paciente ${initials} ` +
@@ -142,9 +138,7 @@ router.get("/patients/:patientId/rehab", requireAuth, async (req, res): Promise<
     }));
 
     const latestOf = (type: string) => rows.find((a) => a.assessmentType === type);
-    const forca = latestOf("forca");
-    const hop = latestOf("hop");
-    const aclRsi = latestOf("acl_rsi");
+    const retorno = latestOf("retorno_esporte");
 
     const followups = await db.select().from(physioFollowupsTable)
       .where(inArray(physioFollowupsTable.careLinkId, activeLinkIds))
@@ -164,9 +158,7 @@ router.get("/patients/:patientId/rehab", requireAuth, async (req, res): Promise<
       progressPercent: protocolFollowups.length > 0
         ? Math.round((doneCount / protocolFollowups.length) * 100)
         : null,
-      lsiQuadriceps: (forca?.computed as Record<string, unknown> | null)?.["lsi_quadriceps"] ?? null,
-      lsiHop: (hop?.computed as Record<string, unknown> | null)?.["lsi_hop_medio"] ?? null,
-      aclRsi: aclRsi ? (aclRsi.payload as Record<string, unknown>)["escore"] ?? null : null,
+      returnToSport: retorno ? (retorno.payload as Record<string, unknown>)["decisao"] ?? null : null,
       nextFollowup: nextPending ? { title: nextPending.title, dueDate: nextPending.dueDate } : null,
       totalAssessments: rows.length,
       redFlags: redFlagsAll.slice(0, 10),

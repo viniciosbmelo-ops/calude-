@@ -14,7 +14,6 @@ export const patientsTable = pgTable("patients", {
   telefone: text("telefone"),
   lado: text("lado"),
   nivelAtividade: text("nivel_atividade"),
-  esportePivot: boolean("esporte_pivot").notNull().default(false),
   beightonScore: integer("beighton_score"),
   anamnese: text("anamnese"),
   laudos: text("laudos"),

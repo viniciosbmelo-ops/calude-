@@ -177,8 +177,7 @@ router.get("/lgpd/dados", requireAuth, async (req, res): Promise<void> => {
         surgeryId: f.surgeryId,
         tempo: f.tempo,
         dataAvaliacao: f.dataAvaliacao,
-        ikdc: f.ikdc,
-        lysholm: f.lysholm,
+        vasDor: f.vasDor,
         retornoEsporte: f.retornoEsporte,
         falha: f.falha,
         createdAt: f.createdAt,
@@ -299,7 +298,7 @@ router.get("/lgpd/exportar", requireAuth, async (req, res): Promise<void> => {
         csvCell(f.tempo),
         csvCell(f.dataAvaliacao ?? f.createdAt.toISOString()),
         csvCell(f.falha ? "falha" : "ok"),
-        csvCell(`surgeryId=${f.surgeryId}|ikdc=${f.ikdc ?? ""}|lysholm=${f.lysholm ?? ""}`),
+        csvCell(`surgeryId=${f.surgeryId}|vasDor=${f.vasDor ?? ""}`),
       ].join(",")
     );
     const preConsultRows = preConsultations.map(questionnaire =>

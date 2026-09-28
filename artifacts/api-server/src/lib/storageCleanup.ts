@@ -115,7 +115,6 @@ export async function isStoredObjectLinked(objectPath: string, tx?: DbTransactio
       SELECT (
         EXISTS (SELECT 1 FROM patient_attachments WHERE object_path = ${objectPath})
         OR EXISTS (SELECT 1 FROM surgery_media WHERE original_path = ${objectPath} OR preview_path = ${objectPath})
-        OR EXISTS (SELECT 1 FROM surgeries WHERE rx_image_url = ${objectPath})
       ) AS linked`)
     : await pool.query<{ linked: boolean }>(
     `SELECT (
@@ -124,7 +123,6 @@ export async function isStoredObjectLinked(objectPath: string, tx?: DbTransactio
          SELECT 1 FROM surgery_media
           WHERE original_path = $1 OR preview_path = $1
        )
-       OR EXISTS (SELECT 1 FROM surgeries WHERE rx_image_url = $1)
      ) AS linked`,
     [objectPath],
   );

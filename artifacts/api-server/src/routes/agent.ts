@@ -4,6 +4,7 @@ import multer from "multer";
 import { toFile } from "openai/uploads";
 import { z } from "zod/v4";
 import { pool } from "@workspace/db";
+import { CASE_TYPES } from "@workspace/clinical";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   authorizeAgentScope,
@@ -52,7 +53,7 @@ router.post("/agent/transcribe", requireAuth, voiceUpload.single("audio"), async
   }
   try {
     const transcription = await openai.audio.transcriptions.create({
-      file: await toFile(req.file.buffer, `joia-audio.${extension}`, { type: req.file.mimetype }),
+      file: await toFile(req.file.buffer, `assistente-audio.${extension}`, { type: req.file.mimetype }),
       model: "gpt-4o-mini-transcribe",
       language: locale === "es" ? "es" : "pt",
     });
@@ -71,37 +72,22 @@ const APP_GUIDE = `
 ## Guia da Plataforma DocSholder
 
 ### Navegação principal
-- **Dashboard**: visão geral com estatísticas de pacientes, procedimentos e score IKDC médio
-- **Pacientes**: lista de pacientes cadastrados. Clique em um paciente para ver prontuário completo
-- **Procedimentos**: lista de cirurgias/procedimentos. Use "Novo Procedimento" para cadastrar
-- **Planejamento RX**: análise radiológica com ferramentas de medição (HKA, MPTA, LDFA, slope tibial)
-- **Relatórios**: geração de relatórios e documentos
-- **Admin**: gestão administrativa da plataforma
-- **Perfil**: dados do médico logado, CRM, especialidade
-
-### Como cadastrar um paciente
-1. Clique em "Novo Paciente" no Dashboard ou na página Pacientes
-2. Preencha os dados clínicos solicitados
-3. Informe nível de atividade, esporte pivot e Beighton Score, quando aplicável
-4. Salve — o paciente aparece na lista imediatamente
+- **Painel**: visão geral com pacientes, cirurgias, seguimentos e dor média (VAS)
+- **Pacientes**: lista de pacientes cadastrados. Clique em um paciente para ver o prontuário
+- **Procedimentos**: lista de cirurgias de ombro e cotovelo. Use "Novo Procedimento" para cadastrar
+- **Relatórios**: relatórios de cirurgias e seguimentos
+- **Perfil**: dados do médico logado, CRM e especialidade
 
 ### Como cadastrar um procedimento
-1. Clique em "Novo Procedimento" ou acesse um paciente e use a aba Procedimentos
-2. Preencha data, hospital, lado, tipo de caso, diagnóstico e enxerto
-3. Detalhe ligamentos acometidos e fixações
-4. Adicione observações e protocolo pós-operatório
-5. Salve como rascunho ou marque como completo
+1. Clique em "Novo Procedimento" ou acesse um paciente
+2. Dados Básicos: paciente, data, lado, região (ombro ou cotovelo), hospital e diagnósticos
+3. Tipo do Caso: um ou mais tipos (ex.: Manguito Rotador + Bíceps e SLAP)
+4. Técnica Cirúrgica: dados gerais, formulário de cada tipo de caso, inventário artroscópico e implantes (o código GS1 preenche lote, série e validade)
+5. Observações e fotos; salve como rascunho ou finalize. Ao finalizar, o relatório cirúrgico é gerado a partir do registro
 
-### Funcionalidades por paciente
-- **Prontuário**: dados clínicos e histórico
-- **Procedimentos**: lista de cirurgias
-- **Questionários**: IKDC, KOOS, Lysholm e VAS
-- **Raio-X**: upload e análise de imagens radiológicas com IA
-- **Seguimento**: protocolo de follow-up e envio via WhatsApp
-- **Laudo INSS**: geração de laudo médico para INSS em PDF
-
-### Algoritmos clínicos disponíveis
-- KRIRS, PICS 2.0, IKDC Subjetivo, KOOS, Lysholm e Beighton Score
+### Seguimento
+- O cronograma de seguimento envia ao paciente, pelo WhatsApp, a escala de dor (VAS)
+- As escalas específicas de ombro e cotovelo ainda não estão configuradas na plataforma
 `;
 
 function buildSystemPrompt(isAdmin: boolean): string {
@@ -121,13 +107,13 @@ function buildSystemPrompt(isAdmin: boolean): string {
 - Nunca tente consultar dados de outros profissionais.
 `;
 
-  return `Você é JoIA (Joelho Inteligência Artificial), assistente da plataforma DocSholder.
+  return `Você é o Assistente IA da plataforma DocSholder, de documentação cirúrgica de ombro e cotovelo. Você é uma inteligência artificial e deve se apresentar assim quando perguntado.
 
 Ajude com:
 1. Dúvidas de uso da plataforma.
 2. Estatísticas clínicas agregadas usando query_statistics.
 3. Relatórios autorizados usando generate_report.
-4. Conhecimento geral sobre cirurgia do joelho e reabilitação.
+4. Conhecimento geral sobre cirurgia de ombro e cotovelo e reabilitação.
 
 Regras de segurança:
 - Você não escreve nem executa SQL.
@@ -141,12 +127,10 @@ Regras de segurança:
 - Para contagens, médias e taxas, use query_statistics.
 
 Regras de interpretação clínica:
-- Extraia todos os critérios clínicos mencionados, mesmo quando o usuário usar uma forma abreviada.
-- "LCA com reto femoral" significa ligamento="LCA" e enxerto="Tendão do Reto Femoral".
-- "reto femoral" e "tendão do reto femoral" representam o mesmo enxerto.
-- "LCA + LAL", "LCA + ALL" e "LCA associado ao ligamento anterolateral" representam a mesma associação.
-- A frase "reconstrução do ligamento cruzado anterior associado ao ligamento anterolateral utilizando o enxerto do reto femoral" significa ligamento="LCA", reforco="ALL (Ligamento Anterolateral)" e enxerto="Tendão do Reto Femoral".
+- Use regiao="shoulder" para ombro e regiao="elbow" para cotovelo.
+- Use tipo_caso com a chave do catálogo quando o usuário citar um tipo de caso: ${CASE_TYPES.filter((c) => !c.freeOnly).map((c) => `${c.key} (${c.label}, ${c.region === "shoulder" ? "ombro" : "cotovelo"})`).join("; ")}.
 - Siglas, nomes por extenso, diferenças de acento e maiúsculas não mudam o significado da busca.
+- Os únicos desfechos registrados no seguimento são dor (VAS), retorno ao esporte e falha; escores funcionais específicos ainda não são registrados. Se pedirem outro escore, explique isso.
 
 Regras de PDF:
 - Ao concluir um relatório, pergunte se o usuário deseja baixá-lo em PDF.
@@ -170,25 +154,19 @@ const commonFilterProperties = {
     description: "Nome ou parte do nome do médico. Obrigatório apenas com scope=doctor.",
   },
   sexo: { type: "string", enum: ["M", "F"] },
-  enxerto: {
+  regiao: {
     type: "string",
-    description: "Tipo de enxerto; a busca ignora diferenças de maiúsculas e acentos.",
+    enum: ["shoulder", "elbow"],
+    description: "Região operada: shoulder (ombro) ou elbow (cotovelo).",
   },
-  ligamento: {
+  tipo_caso: {
     type: "string",
-    description: "Sigla ou nome do ligamento, como LCA, LCP, LCM ou CPL. Também reconhece nomes por extenso e procura em todos os campos cirúrgicos equivalentes.",
-  },
-  reforco: {
-    type: "string",
-    description: "Associação ou reforço extra-articular, como LAL/ALL (ligamento anterolateral), LET ou LOA.",
+    enum: CASE_TYPES.filter((c) => !c.freeOnly).map((c) => c.key),
+    description: "Chave do tipo de caso no catálogo, como SH_CUFF (manguito rotador).",
   },
   diagnostico: {
     type: "string",
     description: "Diagnóstico clínico; a busca ignora diferenças de maiúsculas e acentos.",
-  },
-  tipo_procedimento: {
-    type: "string",
-    description: "Categoria geral cadastrada no campo tipo de procedimento, não a sigla isolada do ligamento.",
   },
   periodo_inicio: { type: "string", description: "Data inicial YYYY-MM-DD" },
   periodo_fim: { type: "string", description: "Data final YYYY-MM-DD" },
@@ -211,8 +189,6 @@ const tools: Parameters<typeof openai.chat.completions.create>[0]["tools"] = [
               "patient_count",
               "surgery_count",
               "followup_count",
-              "average_ikdc",
-              "average_lysholm",
               "average_pain",
               "return_to_sport_rate",
               "failure_rate",
@@ -311,9 +287,9 @@ function auditAgentAccess(
   };
 
   if (req.isAdmin && details.resolvedScope.kind === "all") {
-    req.log.warn(payload, "Admin JoIA access to platform-wide clinical data");
+    req.log.warn(payload, "Admin AI assistant access to platform-wide clinical data");
   } else {
-    req.log.info(payload, "JoIA clinical data access");
+    req.log.info(payload, "AI assistant clinical data access");
   }
 }
 
@@ -475,7 +451,7 @@ router.post("/agent/chat", requireAuth, async (req, res): Promise<void> => {
             operation: parsedArgs.data.operation,
             requestedScope: parsedArgs.data.scope,
             reason: error instanceof Error ? error.message : "unknown",
-          }, "JoIA data access rejected");
+          }, "AI assistant data access rejected");
           toolResults.push({
             role: "tool",
             tool_call_id: call.id,
@@ -526,7 +502,7 @@ router.post("/agent/chat", requireAuth, async (req, res): Promise<void> => {
             operation: "generate_report",
             requestedScope: parsedArgs.data.scope,
             reason: error instanceof Error ? error.message : "unknown",
-          }, "JoIA report access rejected");
+          }, "AI assistant report access rejected");
           toolResults.push({
             role: "tool",
             tool_call_id: call.id,
@@ -560,7 +536,7 @@ router.post("/agent/chat", requireAuth, async (req, res): Promise<void> => {
       reportData,
     });
   } catch (error) {
-    req.log.error({ err: error }, "Erro no agente JoIA");
+    req.log.error({ err: error }, "Erro no assistente de IA");
     res.status(500).json({ error: "Erro interno no agente de IA" });
   }
 });

@@ -9,7 +9,6 @@ import {
 export interface SurgeryScheduleSource {
   id: number;
   patientId: number;
-  ligamentosAcometidos?: readonly string[] | null;
   tiposProcedimento?: readonly string[] | null;
   dataCirurgia?: string | null;
 }
@@ -78,7 +77,6 @@ async function reconcileDesiredEntries(
       .select({
         id: surgeriesTable.id,
         patientId: surgeriesTable.patientId,
-        ligamentosAcometidos: surgeriesTable.ligamentosAcometidos,
         tiposProcedimento: surgeriesTable.tiposProcedimento,
         dataCirurgia: surgeriesTable.dataCirurgia,
       })
@@ -168,7 +166,6 @@ function buildDesired(source: SurgeryScheduleSource): DesiredNotification[] {
   return buildNotificationsForSurgery(
     source.id,
     source.patientId,
-    [...(source.ligamentosAcometidos ?? [])],
     source.dataCirurgia,
     [...(source.tiposProcedimento ?? [])],
   );

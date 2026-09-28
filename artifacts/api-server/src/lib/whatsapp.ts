@@ -237,11 +237,11 @@ export function buildFollowupMessage(params: {
 
   const contexto = isPre
     ? spanish
-      ? "para su *cirugía de rodilla* (evaluación preoperatoria)"
-      : "para a sua *cirurgia do joelho* (avaliação pré-operatória)"
+      ? "para su *cirugía* (evaluación preoperatoria)"
+      : "para a sua *cirurgia* (avaliação pré-operatória)"
     : spanish
-      ? `de *${presentedPeriod}* después de su cirugía de rodilla`
-      : `de *${presentedPeriod}* após a sua cirurgia do joelho`;
+      ? `de *${presentedPeriod}* después de su cirugía`
+      : `de *${presentedPeriod}* após a sua cirurgia`;
 
   if (spanish) {
     return (

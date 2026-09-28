@@ -10,12 +10,9 @@ import {
   patientsTable,
   scheduledNotificationsTable,
   surgeriesTable,
-  procedimentoMeniscalTable,
-  cpmReconstructionTable,
 } from "@workspace/db";
 import app from "../app";
 import { hashPassword, signToken } from "../lib/auth";
-import { cleanSubtable } from "./surgeries";
 
 let server: Server;
 let baseUrl: string;
@@ -153,31 +150,6 @@ afterAll(async () => {
 });
 
 describe.sequential("surgery and follow-up ownership", () => {
-  it("accepts a null patellar exam in a surgery patch", async () => {
-    const response = await apiRequest(`/api/surgeries/${surgeryAId}`, "PATCH", {
-      examePatelar: null,
-    });
-
-    expect(response.status).toBe(200);
-  });
-
-  it("removes metadata and undefined values before subtable writes", () => {
-    expect(cleanSubtable({
-      id: 123,
-      surgeryId: 456,
-      createdAt: "2026-08-28T12:00:00.000Z",
-      updatedAt: "2026-08-28T12:00:00.000Z",
-      contexto: undefined,
-      ladoMedial: false,
-      observacoesExame: "",
-      classificacao: null,
-    })).toEqual({
-      ladoMedial: false,
-      observacoesExame: "",
-      classificacao: null,
-    });
-  });
-
   it("rejects another doctor's patient in draft and final creation", async () => {
     const draft = await apiRequest("/api/surgeries/draft", "POST", {
       patientId: patientBId,
@@ -284,50 +256,5 @@ describe.sequential("surgery and follow-up ownership", () => {
     }
   });
 
-  it("saves a draft when a subtable contains only metadata or unknown fields", async () => {
-    const [meniscal] = await db
-      .insert(procedimentoMeniscalTable)
-      .values({
-        surgeryId: surgeryAId,
-        contexto: "preservar ao recarregar rascunho",
-      })
-      .returning();
-
-    const response = await apiRequest("/api/surgeries/draft", "POST", {
-      id: surgeryAId,
-      patientId: patientAId,
-      procedimentoMeniscal: {
-        id: meniscal.id,
-        surgeryId: surgeryAId,
-        createdAt: meniscal.createdAt.toISOString(),
-        unsupportedFutureField: true,
-      },
-    });
-
-    expect(response.status).toBe(200);
-
-    const [unchanged] = await db
-      .select({ contexto: procedimentoMeniscalTable.contexto })
-      .from(procedimentoMeniscalTable)
-      .where(eq(procedimentoMeniscalTable.surgeryId, surgeryAId))
-      .limit(1);
-    expect(unchanged.contexto).toBe("preservar ao recarregar rascunho");
-  });
-
-  it("rejects malformed side-specific meniscal details", async () => {
-    const response = await apiRequest("/api/surgeries/draft", "POST", {
-      id: surgeryAId,
-      patientId: patientAId,
-      procedimentoMeniscal: {
-        ladoMedial: true,
-        detalhesMedial: {
-          sutura: "sim",
-          campoDesconhecido: true,
-        },
-      },
-    });
-
-    expect(response.status).toBe(400);
-  });
 
 });

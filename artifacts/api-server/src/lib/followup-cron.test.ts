@@ -120,7 +120,7 @@ function makeNotifPatientRow(overrides: Record<string, unknown> = {}) {
     },
     surgery: {
       id: 10,
-      tiposProcedimento: ["Lesão Meniscal"],
+      tiposProcedimento: ["SH_CUFF"],
     },
   };
 }
@@ -140,7 +140,7 @@ function makeFullRow(overrides: Record<string, unknown> = {}) {
       ...overrides,
     },
     patient: { id: 20, nome: "João", telefone: "+5511999999999" },
-    surgery: { id: 10, doctorId: 5, tiposProcedimento: ["Lesão Meniscal"] },
+    surgery: { id: 10, doctorId: 5, tiposProcedimento: ["SH_CUFF"] },
     doctor: { id: 5, nome: "Dr. Silva" },
   };
 }
@@ -307,7 +307,7 @@ describe("claimNextNotification — atomic claim", () => {
     expect(mockPoolQuery.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("does not create a token when Fraturas wins before the locked claim phase", async () => {
+  it("does not create a token when a fracture wins before the locked claim phase", async () => {
     mockDbSelect.mockReset();
     mockDbUpdate.mockReset();
     mockDbInsert.mockReset();
@@ -317,7 +317,7 @@ describe("claimNextNotification — atomic claim", () => {
       .mockResolvedValueOnce({ rows: [] });
     const row = makeNotifPatientRow();
     row.notif.periodo = "Pré-operatório";
-    row.surgery.tiposProcedimento = ["Lesão Meniscal", "Fraturas"];
+    row.surgery.tiposProcedimento = ["SH_CUFF", "SH_FRACTURE"];
     mockDbSelect.mockReturnValueOnce(makeSelectChain([row]));
     const fractureUpdateSets: Record<string, unknown>[] = [];
     mockDbUpdate.mockReturnValue(makeUpdateCapture(fractureUpdateSets));
@@ -404,7 +404,7 @@ describe("processDueNotifications — durable outbox handoff", () => {
     expect(updateSets).toContainEqual(expect.objectContaining({ followupId: 55 }));
   });
 
-  it("revalidates Fraturas under lock immediately before sending", async () => {
+  it("revalidates a fracture under lock immediately before sending", async () => {
     mockDbSelect.mockReset();
     mockDbUpdate.mockReset();
     mockDbInsert.mockReset();
@@ -416,7 +416,7 @@ describe("processDueNotifications — durable outbox handoff", () => {
       .mockReturnValueOnce(makeSelectChain([makeNotifPatientRow({ periodo: "Pré-operatório" })]))
       .mockReturnValueOnce(makeSelectChain([{
         ...makeFullRow({ periodo: "Pré-operatório" }),
-        surgery: { id: 10, doctorId: 5, tiposProcedimento: ["Fraturas"] },
+        surgery: { id: 10, doctorId: 5, tiposProcedimento: ["SH_FRACTURE"] },
       }]));
     mockDbInsert.mockReturnValue(makeInsertChain([{ id: 42, token: "stable-token" }]));
     const fractureUpdateSets: Record<string, unknown>[] = [];

@@ -99,7 +99,9 @@ router.patch("/followup/:id/update", requireAuth, async (req, res): Promise<void
   if (isNaN(id)) { res.status(400).json({ error: message(locale, "invalidId") }); return; }
 
   const parsed = UpdateFollowupBody.safeParse(req.body);
-  if (!parsed.success) {
+  // Campos desconhecidos são descartados pelo schema; sem nenhum campo válido
+  // não há o que gravar (e um UPDATE vazio quebraria no banco).
+  if (!parsed.success || Object.keys(parsed.data).length === 0) {
     res.status(400).json({ error: message(locale, "invalidData") });
     return;
   }

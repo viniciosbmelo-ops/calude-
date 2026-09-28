@@ -179,13 +179,6 @@ router.delete("/patients/:id", requireAuth, async (req, res): Promise<void> => {
         eq(surgeriesTable.patientId, id),
         eq(surgeriesTable.doctorId, req.doctorId!),
       ));
-    const surgeryFiles = await tx
-      .select({ rxImageUrl: surgeriesTable.rxImageUrl })
-      .from(surgeriesTable)
-      .where(and(
-        eq(surgeriesTable.patientId, id),
-        eq(surgeriesTable.doctorId, req.doctorId!),
-      ));
     const uploadGrants = await tx
       .select({ objectPath: uploadGrantsTable.objectPath })
       .from(uploadGrantsTable)
@@ -197,7 +190,6 @@ router.delete("/patients/:id", requireAuth, async (req, res): Promise<void> => {
     const cleanupJobs = await enqueueStorageCleanup(tx, [
       ...attachments.map((item) => item.objectPath),
       ...media.flatMap((item) => [item.originalPath, item.previewPath]),
-      ...surgeryFiles.map((item) => item.rxImageUrl),
       ...uploadGrants.map((item) => item.objectPath),
     ]);
 

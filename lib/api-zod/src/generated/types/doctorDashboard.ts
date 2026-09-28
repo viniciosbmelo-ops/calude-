@@ -5,7 +5,6 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
-import type { DoctorDashboardSurgeriesByLigamentItem } from './doctorDashboardSurgeriesByLigamentItem';
 import type { DoctorDashboardSurgeriesByTypeItem } from './doctorDashboardSurgeriesByTypeItem';
 import type { SurgeryWithPatient } from './surgeryWithPatient';
 
@@ -13,11 +12,13 @@ export interface DoctorDashboard {
   totalPatients: number;
   totalSurgeries: number;
   surgeriesByType: DoctorDashboardSurgeriesByTypeItem[];
-  surgeriesByLigament: DoctorDashboardSurgeriesByLigamentItem[];
   recentSurgeries: SurgeryWithPatient[];
   followupCompliance: number;
-  /** @nullable */
-  avgIkdc?: number | null;
+  /**
+     * Dor média (VAS 0–10) nos seguimentos respondidos
+     * @nullable
+     */
+  avgPain?: number | null;
   /** @nullable */
   returnToSportRate?: number | null;
 }

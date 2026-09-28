@@ -11,10 +11,10 @@ describe("red flag alert content", () => {
     const text = buildRedFlagMessage({
       patientName: "Maria da Silva",
       physioName: "Ana Souza",
-      redFlags: ["extension_deficit"],
+      redFlags: ["sinal_desconhecido"],
     });
     expect(text).toContain("M.D.S.");
-    expect(text).toContain("Déficit de extensão do joelho");
+    expect(text).toContain("Sinal clínico de atenção");
     expect(text).not.toContain("Maria da Silva");
   });
 

@@ -7,11 +7,6 @@
  */
 import type { CreateSurgeryBodyDadosClinicos } from './createSurgeryBodyDadosClinicos';
 import type { CreateSurgeryBodyRegiao } from './createSurgeryBodyRegiao';
-import type { ExameLigamenarInput } from './exameLigamenarInput';
-import type { ExamePatelarInput } from './examePatelarInput';
-import type { LcaAlgorithmInput } from './lcaAlgorithmInput';
-import type { PicsScoreInput } from './picsScoreInput';
-import type { ProcedimentoMeniscalInput } from './procedimentoMeniscalInput';
 
 export interface CreateSurgeryBody {
   /** @nullable */
@@ -25,29 +20,7 @@ export interface CreateSurgeryBody {
   dataCirurgia?: string;
   hospital?: string;
   tipoCaso?: string;
-  alinhamento?: string;
-  grauAlinhamento?: string;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  enxerto?: string;
-  diametroEnxerto?: string;
-  fixacaoFemoral?: string;
-  fixacaoTibial?: string;
-  internalBrace?: string;
-  tipoLca?: string;
-  localizacaoLesaoLca?: string;
-  fixacaoReparoLca?: string;
-  preservacaoRemanescente?: string;
-  reforco?: string;
   procedimentoRealizado?: string;
   observacoes?: string;
-  /** @nullable */
-  procedimentosDetalhados?: string | null;
-  exameLigamentar?: ExameLigamenarInput;
-  lcaAlgorithm?: LcaAlgorithmInput;
-  procedimentoMeniscal?: ProcedimentoMeniscalInput;
-  examePatelar?: ExamePatelarInput;
-  picsScore?: PicsScoreInput;
 }

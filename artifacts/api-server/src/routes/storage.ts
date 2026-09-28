@@ -51,15 +51,6 @@ const ATTACHMENT_ALLOWED_MIMES = new Set([
   "text/plain",
 ]);
 
-const XRAY_ALLOWED_MIMES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-]);
-
 // ─── Filename sanitization ────────────────────────────────────────────────────
 
 function sanitizeFilename(name: string): string | null {
@@ -88,9 +79,7 @@ const RequestUploadUrlBody = z.object({
   // purpose controls how the grant will be consumed (required).
   //   patient_attachment → POST /patients/:id/attachments
   //   whatsapp_broadcast → POST /storage/uploads/finalize
-  //   xray               → POST /storage/uploads/finalize, then objectPath is
-  //                        saved to surgeries.rx_image_url
-  purpose: z.enum(["patient_attachment", "whatsapp_broadcast", "xray"]),
+  purpose: z.enum(["patient_attachment", "whatsapp_broadcast"]),
   // patientId required when purpose = patient_attachment
   patientId: z.number().int().positive().optional(),
 }).transform((body, ctx) => {
@@ -111,7 +100,6 @@ const RequestUploadUrlBody = z.object({
  *
  * purpose = "patient_attachment" → token consumed by POST /patients/:id/attachments
  * purpose = "whatsapp_broadcast" → token consumed by POST /storage/uploads/finalize
- * purpose = "xray" → token consumed by POST /storage/uploads/finalize
  *
  * No share URL is returned here. For WA broadcast the client must upload the
  * file and then call /storage/uploads/finalize, which validates the real object
@@ -145,9 +133,7 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   const allowedMimes =
     purpose === "patient_attachment"
       ? ATTACHMENT_ALLOWED_MIMES
-      : purpose === "xray"
-        ? XRAY_ALLOWED_MIMES
-        : GENERIC_ALLOWED_MIMES;
+      : GENERIC_ALLOWED_MIMES;
   if (!allowedMimes.has(contentType)) {
     res.status(400).json({ error: message(locale, "mediaFileTypeNotAllowed") });
     return;
@@ -203,7 +189,7 @@ const FinalizeUploadBody = z.object({
 /**
  * POST /storage/uploads/finalize
  *
- * Authenticated. Consumes a whatsapp_broadcast or xray upload grant
+ * Authenticated. Consumes a whatsapp_broadcast upload grant
  * (single-use, atomic), verifies the grant belongs to the requesting doctor, then
  * validates the REAL GCS object metadata (existence, size within limit,
  * exact size match, Content-Type match). Only after all checks pass does it
@@ -224,7 +210,7 @@ router.post("/storage/uploads/finalize", requireAuth, async (req: Request, res: 
     return;
   }
 
-  if (grant.purpose !== "whatsapp_broadcast" && grant.purpose !== "xray") {
+  if (grant.purpose !== "whatsapp_broadcast") {
     res.status(403).json({ error: message(locale, "invalidUploadEndpoint") });
     return;
   }
@@ -293,12 +279,7 @@ router.post("/storage/uploads/finalize", requireAuth, async (req: Request, res: 
     }
   }
 
-  // X-ray grants remain pending. The surgery save claims the pending grant and
-  // writes surgeries.rx_image_url in one transaction, preventing an orphaned
-  // consumed grant when the user abandons the draft.
-  res.json(grant.purpose === "xray"
-    ? { ...response, token: parsed.data.token, uploadToken: parsed.data.token, pending: true }
-    : response);
+  res.json(response);
 });
 
 // ─── GET /storage/public-objects/* ───────────────────────────────────────────
@@ -343,14 +324,13 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
  * Authorization rules:
  *   - Admin: access any object (audited).
  *   - Regular doctor: the objectPath must be traceable to one of:
- *       1. surgeries.rx_image_url  (joined to doctorId)
- *       2. surgery_media.original_path or preview_path  (via surgeriesTable.doctorId)
- *       3. patient_attachments.object_path  (joined to doctorId)
+ *       1. surgery_media.original_path or preview_path  (via surgeriesTable.doctorId)
+ *       2. patient_attachments.object_path  (joined to doctorId)
  *   If none match → 404 (not 403, to avoid confirming the object exists).
  *
  * Callers should prefer signed-URL responses (media routes) over this endpoint.
  * This route is retained for same-origin authenticated contexts
- * (X-ray viewer, PDF generation, etc.).
+ * (PDF generation, etc.).
  */
 router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Response) => {
   try {
@@ -392,24 +372,12 @@ router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Resp
 
 /**
  * Verify that `objectPath` is accessible by `doctorId` by checking:
- *  1. surgeries.rx_image_url
- *  2. surgery_media.original_path or preview_path (via surgery ownership)
- *  3. patient_attachments.object_path
+ *  1. surgery_media.original_path or preview_path (via surgery ownership)
+ *  2. patient_attachments.object_path
  *
  * Returns true if any check passes.
  */
 async function isObjectAuthorizedForDoctor(objectPath: string, doctorId: number): Promise<boolean> {
-  // Check 1: X-ray image stored directly on surgeries row
-  const [rxMatch] = await db
-    .select({ id: surgeriesTable.id })
-    .from(surgeriesTable)
-    .where(and(
-      eq(surgeriesTable.doctorId, doctorId),
-      eq(surgeriesTable.rxImageUrl, objectPath),
-    ))
-    .limit(1);
-  if (rxMatch) return true;
-
   // Check 2: surgery_media original or preview path (join ensures doctor owns the surgery)
   const [mediaMatch] = await db
     .select({ id: surgeryMediaTable.id })

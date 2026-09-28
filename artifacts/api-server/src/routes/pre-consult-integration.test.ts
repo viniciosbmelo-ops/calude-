@@ -267,7 +267,7 @@ describe.sequential("pre-consult API integration", () => {
     expect(cookie).toContain("docknee_patient_session=");
 
     const originalAnswers = PreConsultAnswersSchema.parse({
-      queixaPrincipal: "Dor anterior no joelho",
+      queixaPrincipal: "Dor no ombro direito",
       intensidadeDor: 7,
       pioraSintomas: ["escadas", "agachar"],
       tratamentosPrevios: ["fisioterapia", "prp"],

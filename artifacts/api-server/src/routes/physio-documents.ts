@@ -32,8 +32,7 @@ const anamneseContent = z.object({
     tipo: z.string().default(""),
     data: z.string().nullable().default(null),
     cirurgiao: z.string().default(""),
-    enxerto: z.string().default(""),
-  }).default({ tipo: "", data: null, cirurgiao: "", enxerto: "" }),
+  }).default({ tipo: "", data: null, cirurgiao: "" }),
   medicamentos: z.string().default(""),
   nivel_atividade_pre: z.string().default(""),
   objetivo_paciente: z.string().default(""),
@@ -133,21 +132,14 @@ async function buildObjectiveSnapshot(physioPatientId: number) {
     .orderBy(desc(rehabAssessmentsTable.createdAt))
     .limit(100);
 
+  // Índices objetivos da reabilitação do joelho (LSI, hop, ACL-RSI) retirados;
+  // o laudo registra só as avaliações estruturadas vigentes.
   const snapshot: Record<string, unknown> = {};
   for (const row of rows) {
-    const computed = (row.computed ?? {}) as Record<string, unknown>;
-    if (row.assessmentType === "forca" && snapshot.lsi_quadriceps === undefined && computed.lsi_quadriceps !== undefined) {
-      snapshot.lsi_quadriceps = computed.lsi_quadriceps;
-      snapshot.lsi_quadriceps_data = row.createdAt;
-    }
-    if (row.assessmentType === "hop" && snapshot.lsi_hop_medio === undefined && computed.lsi_hop_medio !== undefined) {
-      snapshot.lsi_hop_medio = computed.lsi_hop_medio;
-      snapshot.lsi_hop_data = row.createdAt;
-    }
-    if (row.assessmentType === "acl_rsi" && snapshot.acl_rsi === undefined) {
+    if (row.assessmentType === "retorno_esporte" && snapshot.retorno_esporte === undefined) {
       const payload = (row.payload ?? {}) as Record<string, unknown>;
-      snapshot.acl_rsi = computed.acl_rsi ?? computed.escore ?? payload.escore;
-      snapshot.acl_rsi_data = row.createdAt;
+      snapshot.retorno_esporte = payload.decisao;
+      snapshot.retorno_esporte_data = row.createdAt;
     }
   }
   return Object.keys(snapshot).length > 0 ? snapshot : null;
@@ -239,9 +231,13 @@ function generateDocumentPdf(opts: {
       doc.fontSize(11).font("Helvetica-Bold").text(locale === "es" ? "Datos objetivos (evaluaciones estructuradas)" : "Dados objetivos (avaliações estruturadas)");
       doc.moveDown(0.35);
       if (snap && Object.keys(snap).length > 0) {
-        if (snap.lsi_quadriceps !== undefined) field(locale === "es" ? "LSI cuádriceps" : "LSI Quadríceps", `${snap.lsi_quadriceps}%`);
-        if (snap.lsi_hop_medio !== undefined) field(locale === "es" ? "LSI Hop Tests (promedio)" : "LSI Hop Tests (média)", `${snap.lsi_hop_medio}%`);
-        if (snap.acl_rsi !== undefined) field("ACL-RSI", snap.acl_rsi);
+        if (snap.retorno_esporte !== undefined) {
+          const decisao = String(snap.retorno_esporte);
+          const label = locale === "es"
+            ? ({ apto: "apto", nao_apto: "no apto", parcial: "parcial" } as Record<string, string>)[decisao]
+            : ({ apto: "apto", nao_apto: "não apto", parcial: "parcial" } as Record<string, string>)[decisao];
+          field(locale === "es" ? "Retorno al deporte" : "Retorno ao esporte", label ?? decisao);
+        }
       } else {
         doc.fontSize(10).font("Helvetica").text(locale === "es" ? "No hay evaluaciones estructuradas registradas." : "Sem avaliações estruturadas registradas.");
         doc.moveDown(0.35);

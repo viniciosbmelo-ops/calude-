@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { CASE_TYPES } from "@workspace/clinical";
 
 export type SqlQuery = {
   text: string;
@@ -11,7 +12,10 @@ export type ResolvedAgentScope =
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const VISIBLE_FOLLOWUP_SQL = `NOT (
-  'Fraturas' = ANY(COALESCE(s.tipos_procedimento, '{}'::text[]))
+  EXISTS (
+    SELECT 1 FROM unnest(COALESCE(s.tipos_procedimento, '{}'::text[])) AS tipo
+    WHERE tipo LIKE '%\\_FRACTURE' ESCAPE '\\'
+  )
   AND f.tempo ~* '^pr(é|e)(-|[[:space:]])?op(eratório|eratorio)?([[:space:]]|[(]|$)'
 )`;
 
@@ -27,11 +31,9 @@ const ScopeFields = {
 
 const ClinicalFilters = {
   sexo: z.enum(["M", "F"]).optional(),
-  enxerto: z.string().trim().min(1).max(100).optional(),
-  ligamento: z.string().trim().min(1).max(40).optional(),
-  reforco: z.string().trim().min(1).max(100).optional(),
+  regiao: z.enum(["shoulder", "elbow"]).optional(),
+  tipo_caso: z.string().trim().min(1).max(40).optional(),
   diagnostico: z.string().trim().min(1).max(160).optional(),
-  tipo_procedimento: z.string().trim().min(1).max(100).optional(),
   periodo_inicio: ValidDate.optional(),
   periodo_fim: ValidDate.optional(),
 };
@@ -43,8 +45,6 @@ export const StatisticsArgsSchema = z.object({
     "patient_count",
     "surgery_count",
     "followup_count",
-    "average_ikdc",
-    "average_lysholm",
     "average_pain",
     "return_to_sport_rate",
     "failure_rate",
@@ -68,71 +68,9 @@ export const ReportArgsSchema = z.object({
 export type StatisticsArgs = z.infer<typeof StatisticsArgsSchema>;
 export type ReportArgs = z.infer<typeof ReportArgsSchema>;
 
-const GRAFT_ALIASES: Array<{ canonical: string; aliases: string[] }> = [
-  {
-    canonical: "Tendão do Reto Femoral",
-    aliases: ["tendao do reto femoral", "tendao reto femoral", "reto femoral"],
-  },
-  {
-    canonical: "Tendão Patelar (BTB)",
-    aliases: ["tendao patelar", "patelar", "btb"],
-  },
-  {
-    canonical: "Isquiotibiais (Grácil + Semitendíneo)",
-    aliases: [
-      "isquiotibiais",
-      "gracil + semitendineo",
-      "gracil e semitendineo",
-      "semitendineo + gracil",
-      "semitendineo e gracil",
-    ],
-  },
-  {
-    canonical: "Tendão Quadricipital",
-    aliases: ["tendao quadricipital", "quadricipital"],
-  },
-  { canonical: "Grácil", aliases: ["gracil"] },
-  { canonical: "Semitendíneo", aliases: ["semitendineo"] },
-  { canonical: "Fibular Longo", aliases: ["fibular longo"] },
-  { canonical: "Hemifibular", aliases: ["hemifibular"] },
-  { canonical: "Aloenxerto", aliases: ["aloenxerto"] },
-  {
-    canonical: "Ligamento Sintético (LARS)",
-    aliases: ["ligamento sintetico", "lars"],
-  },
-];
-
-const LIGAMENT_ALIASES: Array<{ canonical: string; aliases: string[] }> = [
-  {
-    canonical: "LCA",
-    aliases: [
-      "lca",
-      "ligamento cruzado anterior",
-      "reconstrucao do ligamento cruzado anterior",
-    ],
-  },
-  {
-    canonical: "LCP",
-    aliases: ["lcp", "ligamento cruzado posterior"],
-  },
-  { canonical: "CPL", aliases: ["cpl", "canto posterolateral"] },
-  { canonical: "CPM", aliases: ["cpm", "canto posteromedial"] },
-  { canonical: "LOA", aliases: ["loa", "ligamento obliquo anterior"] },
-];
-
-const REINFORCEMENT_ALIASES: Array<{
-  canonical: string;
-  aliases: string[];
-}> = [
-  {
-    canonical: "ALL (Ligamento Anterolateral)",
-    aliases: [
-      "lal",
-      "all",
-      "ligamento anterolateral",
-      "ligamento extra articular anterolateral",
-    ],
-  },
+const REGION_ALIASES: Array<{ canonical: "shoulder" | "elbow"; aliases: string[] }> = [
+  { canonical: "shoulder", aliases: ["ombro", "ombros", "hombro", "hombros"] },
+  { canonical: "elbow", aliases: ["cotovelo", "cotovelos", "codo", "codos"] },
 ];
 
 function normalizeClinicalText(value: string): string {
@@ -167,20 +105,18 @@ export function enrichClinicalFiltersFromMessage<
     enriched.sexo = mentionsFemale ? "F" : "M";
   }
 
-  const ligament = LIGAMENT_ALIASES.find(({ aliases }) =>
+  const regions = REGION_ALIASES.filter(({ aliases }) =>
     aliases.some((alias) => containsClinicalAlias(normalizedMessage, alias))
   );
-  if (ligament) enriched.ligamento = ligament.canonical;
+  if (regions.length === 1) enriched.regiao = regions[0]!.canonical;
 
-  const graft = GRAFT_ALIASES.find(({ aliases }) =>
-    aliases.some((alias) => containsClinicalAlias(normalizedMessage, alias))
+  // Tipo de caso pelo nome do catálogo (ex.: "manguito rotador" → SH_CUFF)
+  const caseTypes = CASE_TYPES.filter((caseType) =>
+    (!enriched.regiao || caseType.region === enriched.regiao)
+    && !caseType.freeOnly
+    && containsClinicalAlias(normalizedMessage, caseType.label)
   );
-  if (graft) enriched.enxerto = graft.canonical;
-
-  const reinforcement = REINFORCEMENT_ALIASES.find(({ aliases }) =>
-    aliases.some((alias) => containsClinicalAlias(normalizedMessage, alias))
-  );
-  if (reinforcement) enriched.reforco = reinforcement.canonical;
+  if (caseTypes.length === 1) enriched.tipo_caso = caseTypes[0]!.key;
 
   return enriched;
 }
@@ -269,11 +205,9 @@ function addClinicalConditions(
   args: Pick<
     ReportArgs,
     | "sexo"
-    | "enxerto"
-    | "ligamento"
-    | "reforco"
+    | "regiao"
+    | "tipo_caso"
     | "diagnostico"
-    | "tipo_procedimento"
     | "periodo_inicio"
     | "periodo_fim"
   >,
@@ -283,81 +217,17 @@ function addClinicalConditions(
   if (args.sexo) {
     conditions.push(`p.sexo = ${addValue(values, args.sexo)}`);
   }
-  if (args.enxerto) {
-    const normalizedGraft = normalizeClinicalText(args.enxerto);
-    if (
-      normalizedGraft.includes("isquiotibiais") ||
-      (
-        containsClinicalAlias(normalizedGraft, "gracil") &&
-        containsClinicalAlias(normalizedGraft, "semitendineo")
-      )
-    ) {
-      const isquiotibiais = normalizedTextSql(addValue(values, "%isquiotibiais%"));
-      const gracil = normalizedTextSql(addValue(values, "%gracil%"));
-      const semitendineo = normalizedTextSql(addValue(values, "%semitendineo%"));
-      const documentedGraft = normalizedTextSql("s.enxerto");
-      conditions.push(
-        `(${documentedGraft} LIKE ${isquiotibiais} ESCAPE '\\' OR (${documentedGraft} LIKE ${gracil} ESCAPE '\\' AND ${documentedGraft} LIKE ${semitendineo} ESCAPE '\\'))`,
-      );
-    } else {
-      conditions.push(
-        `${normalizedTextSql("s.enxerto")} LIKE ${normalizedTextSql(addValue(values, `%${escapeLike(args.enxerto)}%`))} ESCAPE '\\'`,
-      );
-    }
+  if (args.regiao) {
+    conditions.push(`s.regiao = ${addValue(values, args.regiao)}`);
   }
-  if (args.ligamento) {
-    const ligament = addValue(values, args.ligamento);
-    const ligamentLike = addValue(values, `%${escapeLike(args.ligamento)}%`);
+  if (args.tipo_caso) {
     conditions.push(
-      `(
-        EXISTS (
-          SELECT 1
-          FROM unnest(COALESCE(s.ligamentos_acometidos, '{}'::text[])) AS ligament_value
-          WHERE ${normalizedTextSql("ligament_value")} = ${normalizedTextSql(ligament)}
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM unnest(COALESCE(s.tipos_procedimento, '{}'::text[])) AS procedure_value
-          WHERE ${normalizedTextSql("procedure_value")} = ${normalizedTextSql(ligament)}
-        )
-        OR ${normalizedTextSql("s.diagnostico")} LIKE ${normalizedTextSql(ligamentLike)} ESCAPE '\\'
-        OR ${normalizedTextSql("s.procedimento_realizado")} LIKE ${normalizedTextSql(ligamentLike)} ESCAPE '\\'
-      )`,
+      `${addValue(values, args.tipo_caso)} = ANY(COALESCE(s.tipos_procedimento, '{}'::text[]))`,
     );
-  }
-  if (args.reforco) {
-    const normalizedReinforcement = normalizeClinicalText(args.reforco);
-    const jsonKey = normalizedReinforcement.includes("anterolateral") ||
-      containsClinicalAlias(normalizedReinforcement, "lal") ||
-      containsClinicalAlias(normalizedReinforcement, "all")
-      ? "lal"
-      : null;
-    const textPattern = addValue(values, `%${escapeLike(args.reforco)}%`);
-    const normalizedTextPattern = normalizedTextSql(textPattern);
-    if (jsonKey) {
-      const jsonPattern = addValue(values, `%"${jsonKey}":true%`);
-      conditions.push(
-        `(s.reforco::text LIKE ${jsonPattern} OR ${normalizedTextSql("s.reforco")} LIKE ${normalizedTextPattern} ESCAPE '\\')`,
-      );
-    } else {
-      conditions.push(
-        `${normalizedTextSql("s.reforco")} LIKE ${normalizedTextPattern} ESCAPE '\\'`,
-      );
-    }
   }
   if (args.diagnostico) {
     conditions.push(
       `${normalizedTextSql("s.diagnostico")} LIKE ${normalizedTextSql(addValue(values, `%${escapeLike(args.diagnostico)}%`))} ESCAPE '\\'`,
-    );
-  }
-  if (args.tipo_procedimento) {
-    const procedureType = addValue(values, args.tipo_procedimento);
-    conditions.push(
-      `EXISTS (
-        SELECT 1
-        FROM unnest(COALESCE(s.tipos_procedimento, '{}'::text[])) AS procedure_value
-        WHERE ${normalizedTextSql("procedure_value")} = ${normalizedTextSql(procedureType)}
-      )`,
     );
   }
   if (args.periodo_inicio) {
@@ -390,8 +260,6 @@ export function buildStatisticsQuery(
     patient_count: "COUNT(DISTINCT p.id)::int",
     surgery_count: "COUNT(DISTINCT s.id)::int",
     followup_count: "COUNT(DISTINCT f.id)::int",
-    average_ikdc: "ROUND(AVG(f.ikdc)::numeric, 1)",
-    average_lysholm: "ROUND(AVG(f.lysholm)::numeric, 1)",
     average_pain: "ROUND(AVG(f.vas_dor)::numeric, 1)",
     return_to_sport_rate:
       "ROUND(100.0 * AVG(CASE WHEN f.retorno_esporte = true THEN 1 ELSE 0 END)::numeric, 1)",
@@ -456,9 +324,10 @@ export function buildReportQuery(
         s.data_cirurgia,
         s.lado,
         s.hospital,
-        s.enxerto,
+        s.regiao,
+        s.tipo_caso,
         s.diagnostico,
-        s.ligamentos_acometidos,
+        s.procedimento_realizado,
         s.id AS surgery_id,
         d.nome AS doctor_nome
       FROM surgeries s
@@ -481,19 +350,7 @@ export function buildFollowupStatsQuery(surgeryIds: number[]): SqlQuery {
     text: `
       SELECT
         COUNT(*)::int AS total_followups,
-        ROUND(AVG(f.ikdc)::numeric, 1) AS avg_ikdc,
-        ROUND(AVG(f.lysholm)::numeric, 1) AS avg_lysholm,
-        ROUND(AVG(f.tegner)::numeric, 1) AS avg_tegner,
-        ROUND(AVG(f.kujala)::numeric, 1) AS avg_kujala,
-        ROUND(AVG(f.marx)::numeric, 1) AS avg_marx,
-        ROUND(AVG(f.koos_dor)::numeric, 1) AS avg_koos_dor,
-        ROUND(AVG(f.koos_esporte)::numeric, 1) AS avg_koos_esporte,
-        ROUND(AVG(f.koos_qualidade)::numeric, 1) AS avg_koos_qualidade,
-        ROUND(AVG(f.koos_sintomas)::numeric, 1) AS avg_koos_sintomas,
-        ROUND(AVG(f.koos_funcao)::numeric, 1) AS avg_koos_funcao,
-        ROUND(AVG(f.koos12)::numeric, 1) AS avg_koos12,
         ROUND(AVG(f.vas_dor)::numeric, 1) AS avg_vas,
-        ROUND(AVG(f.acl_rsi)::numeric, 1) AS avg_acl_rsi,
         COUNT(*) FILTER (WHERE f.retorno_esporte = true)::int AS retornou_esporte,
         COUNT(*) FILTER (WHERE f.falha = true)::int AS falhas
       FROM followup f

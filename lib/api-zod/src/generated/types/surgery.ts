@@ -22,34 +22,7 @@ export interface Surgery {
   hospital?: string | null;
   /** @nullable */
   tipoCaso?: string | null;
-  /** @nullable */
-  alinhamento?: string | null;
-  /** @nullable */
-  grauAlinhamento?: string | null;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  /** @nullable */
-  enxerto?: string | null;
-  /** @nullable */
-  diametroEnxerto?: string | null;
-  /** @nullable */
-  fixacaoFemoral?: string | null;
-  /** @nullable */
-  fixacaoTibial?: string | null;
-  /** @nullable */
-  internalBrace?: string | null;
-  /** @nullable */
-  tipoLca?: string | null;
-  /** @nullable */
-  localizacaoLesaoLca?: string | null;
-  /** @nullable */
-  fixacaoReparoLca?: string | null;
-  /** @nullable */
-  preservacaoRemanescente?: string | null;
-  /** @nullable */
-  reforco?: string | null;
   /** @nullable */
   procedimentoRealizado?: string | null;
   /** @nullable */

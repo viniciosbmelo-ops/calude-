@@ -130,10 +130,6 @@ function SurgeryFollowupsSection({ surgery }: { surgery: SurgeryItem }) {
               )}
             </div>
             <div className="flex flex-wrap gap-1">
-              {scoreChip("IKDC", fu.ikdc, 100)}
-              {scoreChip("Lysholm", fu.lysholm, 100)}
-              {fu.tegner != null && scoreChip("Tegner", fu.tegner, 10)}
-              {scoreChip("Kujala", fu.kujala, 100)}
               {scoreChip("VAS", fu.vasDor, 10)}
             </div>
             {fu.observacoes && (

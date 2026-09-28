@@ -237,7 +237,6 @@ export const ListPatientsResponseItem = zod.object({
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
-  "esportePivot": zod.boolean(),
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string(),
   "surgeries": zod.array(zod.object({
@@ -249,21 +248,7 @@ export const ListPatientsResponseItem = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
-  "grauAlinhamento": zod.string().nullish(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
-  "enxerto": zod.string().nullish(),
-  "diametroEnxerto": zod.string().nullish(),
-  "fixacaoFemoral": zod.string().nullish(),
-  "fixacaoTibial": zod.string().nullish(),
-  "internalBrace": zod.string().nullish(),
-  "tipoLca": zod.string().nullish(),
-  "localizacaoLesaoLca": zod.string().nullish(),
-  "fixacaoReparoLca": zod.string().nullish(),
-  "preservacaoRemanescente": zod.string().nullish(),
-  "reforco": zod.string().nullish(),
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -284,7 +269,6 @@ export const CreatePatientBody = zod.object({
   "telefone": zod.string().optional(),
   "lado": zod.string().optional(),
   "nivelAtividade": zod.string().optional(),
-  "esportePivot": zod.boolean().optional(),
   "beightonScore": zod.number().optional(),
   "planoSaude": zod.string().optional(),
   "indicadoPor": zod.string().optional(),
@@ -303,7 +287,6 @@ export const CreatePatientResponse = zod.object({
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
-  "esportePivot": zod.boolean(),
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string()
 })
@@ -325,7 +308,6 @@ export const GetPatientResponse = zod.object({
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
-  "esportePivot": zod.boolean(),
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string(),
   "surgeries": zod.array(zod.object({
@@ -337,21 +319,7 @@ export const GetPatientResponse = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
-  "grauAlinhamento": zod.string().nullish(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
-  "enxerto": zod.string().nullish(),
-  "diametroEnxerto": zod.string().nullish(),
-  "fixacaoFemoral": zod.string().nullish(),
-  "fixacaoTibial": zod.string().nullish(),
-  "internalBrace": zod.string().nullish(),
-  "tipoLca": zod.string().nullish(),
-  "localizacaoLesaoLca": zod.string().nullish(),
-  "fixacaoReparoLca": zod.string().nullish(),
-  "preservacaoRemanescente": zod.string().nullish(),
-  "reforco": zod.string().nullish(),
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -375,7 +343,6 @@ export const UpdatePatientBody = zod.object({
   "telefone": zod.string().optional(),
   "lado": zod.string().optional(),
   "nivelAtividade": zod.string().optional(),
-  "esportePivot": zod.boolean().optional(),
   "beightonScore": zod.number().optional(),
   "anamnese": zod.string().nullish(),
   "laudos": zod.string().nullish(),
@@ -396,7 +363,6 @@ export const UpdatePatientResponse = zod.object({
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
-  "esportePivot": zod.boolean(),
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string()
 })
@@ -426,9 +392,7 @@ export const ListSurgeriesResponseItem = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
   "observacoes": zod.string().nullish(),
   "status": zod.string().nullish(),
   "createdAt": zod.string(),
@@ -442,10 +406,6 @@ export const ListSurgeriesResponse = zod.array(ListSurgeriesResponseItem)
 /**
  * @summary Create a new surgery record
  */
-export const createSurgeryBodyExamePatelarJSignGrauMax = 4;
-
-
-
 export const CreateSurgeryBody = zod.object({
   "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
   "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish().describe('Dados clínicos de ombro\/cotovelo (formato em @workspace\/clinical surgery\/payload.ts)'),
@@ -453,155 +413,9 @@ export const CreateSurgeryBody = zod.object({
   "dataCirurgia": zod.string().optional(),
   "hospital": zod.string().optional(),
   "tipoCaso": zod.string().optional(),
-  "alinhamento": zod.string().optional(),
-  "grauAlinhamento": zod.string().optional(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
-  "enxerto": zod.string().optional(),
-  "diametroEnxerto": zod.string().optional(),
-  "fixacaoFemoral": zod.string().optional(),
-  "fixacaoTibial": zod.string().optional(),
-  "internalBrace": zod.string().optional(),
-  "tipoLca": zod.string().optional(),
-  "localizacaoLesaoLca": zod.string().optional(),
-  "fixacaoReparoLca": zod.string().optional(),
-  "preservacaoRemanescente": zod.string().optional(),
-  "reforco": zod.string().optional(),
   "procedimentoRealizado": zod.string().optional(),
-  "observacoes": zod.string().optional(),
-  "procedimentosDetalhados": zod.string().nullish(),
-  "exameLigamentar": zod.object({
-  "lachman": zod.number().nullish(),
-  "gavetaNeutra": zod.number().nullish(),
-  "pivotShift": zod.number().nullish(),
-  "aderTest": zod.boolean().nullish(),
-  "gavetaRotInterna": zod.boolean().nullish(),
-  "estresseValgo0": zod.number().nullish(),
-  "estresseValgo30": zod.number().nullish(),
-  "estresseVaro0": zod.number().nullish(),
-  "estresseVaro30": zod.number().nullish(),
-  "gavetaPosterior": zod.number().nullish(),
-  "sagSign": zod.boolean().nullish(),
-  "quadricepsAtivo": zod.boolean().nullish(),
-  "dialTest": zod.boolean().nullish(),
-  "recurvato": zod.boolean().nullish(),
-  "hiperextensao": zod.string().nullish(),
-  "slopeTibialPts": zod.number().nullish()
-}).optional(),
-  "lcaAlgorithm": zod.object({
-  "idade": zod.number().nullish(),
-  "esportePivot": zod.boolean().nullish(),
-  "pivotShift": zod.number().nullish(),
-  "revisao": zod.boolean().nullish(),
-  "hiperlaxidade": zod.boolean().nullish(),
-  "meniscoLateral": zod.boolean().nullish(),
-  "lesaoCronica": zod.boolean().nullish(),
-  "krirsScore": zod.number().nullish(),
-  "krirsInterpretacao": zod.string().nullish(),
-  "tecnicaRecomendada": zod.string().nullish(),
-  "justificativa": zod.string().nullish(),
-  "flagAltoRisco": zod.boolean().nullish()
-}).optional(),
-  "procedimentoMeniscal": zod.object({
-  "dorInterlinha": zod.string().nullish(),
-  "mcMurrayMedial": zod.boolean().nullish(),
-  "mcMurrayLateral": zod.boolean().nullish(),
-  "apleyCompressao": zod.boolean().nullish(),
-  "apleyTracao": zod.boolean().nullish(),
-  "marchaPato": zod.boolean().nullish(),
-  "steinmann1": zod.boolean().nullish(),
-  "steinmann2": zod.boolean().nullish(),
-  "observacoesExame": zod.string().nullish(),
-  "contexto": zod.string().nullish(),
-  "meniscectomia": zod.boolean().nullish(),
-  "sutura": zod.boolean().nullish(),
-  "ladoMedial": zod.boolean().nullish(),
-  "ladoLateral": zod.boolean().nullish(),
-  "lesaoRampa": zod.boolean().nullish(),
-  "lesaoRaiz": zod.boolean().nullish(),
-  "lesaoAlcaBalde": zod.boolean().nullish(),
-  "lesaoRadial": zod.boolean().nullish(),
-  "lesaoCorpo": zod.boolean().nullish(),
-  "tecnicasSutura": zod.array(zod.string()).optional(),
-  "numPontos": zod.number().nullish(),
-  "pontosPorTecnica": zod.string().nullish(),
-  "tipoFio": zod.string().nullish(),
-  "detalhesMedial": zod.union([zod.object({
-  "sutura": zod.boolean().nullish(),
-  "lesaoRampa": zod.boolean().nullish(),
-  "lesaoRaiz": zod.boolean().nullish(),
-  "lesaoRaizAnterior": zod.boolean().nullish(),
-  "lesaoCornoAnterior": zod.boolean().nullish(),
-  "lesaoCornoPosterior": zod.boolean().nullish(),
-  "lesaoAlcaBalde": zod.boolean().nullish(),
-  "lesaoRadial": zod.boolean().nullish(),
-  "lesaoCorpo": zod.boolean().nullish(),
-  "lesaoDiscoide": zod.boolean().nullish(),
-  "fixacaoRaiz": zod.string().nullish(),
-  "centralizacaoRaiz": zod.boolean().nullish(),
-  "centralizacaoMetodo": zod.string().nullish(),
-  "tecnicasSutura": zod.array(zod.string()).optional(),
-  "numPontos": zod.number().nullish(),
-  "pontosPorTecnica": zod.string().nullish(),
-  "tipoFio": zod.string().nullish(),
-  "estimuloBiologico": zod.boolean().nullish(),
-  "estimuloPerfuracaoIntercondilo": zod.boolean().nullish(),
-  "estimuloCoaguloFibrina": zod.boolean().nullish(),
-  "estimuloOrtobiologico": zod.boolean().nullish(),
-  "estimuloOrtobiologicoTipo": zod.string().nullish(),
-  "saucerizacao": zod.boolean().nullish(),
-  "meniscectomia": zod.boolean().nullish()
-}),zod.null()]).optional(),
-  "detalhesLateral": zod.union([zod.object({
-  "sutura": zod.boolean().nullish(),
-  "lesaoRampa": zod.boolean().nullish(),
-  "lesaoRaiz": zod.boolean().nullish(),
-  "lesaoRaizAnterior": zod.boolean().nullish(),
-  "lesaoCornoAnterior": zod.boolean().nullish(),
-  "lesaoCornoPosterior": zod.boolean().nullish(),
-  "lesaoAlcaBalde": zod.boolean().nullish(),
-  "lesaoRadial": zod.boolean().nullish(),
-  "lesaoCorpo": zod.boolean().nullish(),
-  "lesaoDiscoide": zod.boolean().nullish(),
-  "fixacaoRaiz": zod.string().nullish(),
-  "centralizacaoRaiz": zod.boolean().nullish(),
-  "centralizacaoMetodo": zod.string().nullish(),
-  "tecnicasSutura": zod.array(zod.string()).optional(),
-  "numPontos": zod.number().nullish(),
-  "pontosPorTecnica": zod.string().nullish(),
-  "tipoFio": zod.string().nullish(),
-  "estimuloBiologico": zod.boolean().nullish(),
-  "estimuloPerfuracaoIntercondilo": zod.boolean().nullish(),
-  "estimuloCoaguloFibrina": zod.boolean().nullish(),
-  "estimuloOrtobiologico": zod.boolean().nullish(),
-  "estimuloOrtobiologicoTipo": zod.string().nullish(),
-  "saucerizacao": zod.boolean().nullish(),
-  "meniscectomia": zod.boolean().nullish()
-}),zod.null()]).optional()
-}).optional(),
-  "examePatelar": zod.object({
-  "luxacaoAguda": zod.boolean().nullish(),
-  "luxacaoCronica": zod.boolean().nullish(),
-  "numEpisodios": zod.number().nullish(),
-  "apprehensionTest": zod.boolean().nullish(),
-  "jSign": zod.boolean().nullish(),
-  "jSignGrau": zod.number().min(1).max(createSurgeryBodyExamePatelarJSignGrauMax).nullish(),
-  "tiltPatelar": zod.string().nullish(),
-  "ttTgMm": zod.number().nullish(),
-  "catonDeschamps": zod.number().nullish(),
-  "dejourTipo": zod.string().nullish(),
-  "inclinacaoPatelarGraus": zod.number().nullish(),
-  "inclinacaoPatelarCategoria": zod.string().nullish(),
-  "lesaoCondral": zod.boolean().nullish(),
-  "maltrackingDinamico": zod.boolean().nullish()
-}).optional(),
-  "picsScore": zod.object({
-  "ptsTotal": zod.number().nullish(),
-  "ptsRisco": zod.string().nullish(),
-  "ptsConduta": zod.string().nullish(),
-  "fatorDominante": zod.string().nullish()
-}).optional()
+  "observacoes": zod.string().optional()
 })
 
 export const CreateSurgeryResponse = zod.object({
@@ -613,21 +427,7 @@ export const CreateSurgeryResponse = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
-  "grauAlinhamento": zod.string().nullish(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
-  "enxerto": zod.string().nullish(),
-  "diametroEnxerto": zod.string().nullish(),
-  "fixacaoFemoral": zod.string().nullish(),
-  "fixacaoTibial": zod.string().nullish(),
-  "internalBrace": zod.string().nullish(),
-  "tipoLca": zod.string().nullish(),
-  "localizacaoLesaoLca": zod.string().nullish(),
-  "fixacaoReparoLca": zod.string().nullish(),
-  "preservacaoRemanescente": zod.string().nullish(),
-  "reforco": zod.string().nullish(),
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -641,10 +441,6 @@ export const GetSurgeryParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const getSurgeryResponseExamePatelarJSignGrauMax = 4;
-
-
-
 export const GetSurgeryResponse = zod.object({
   "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
   "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
@@ -654,21 +450,7 @@ export const GetSurgeryResponse = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
-  "grauAlinhamento": zod.string().nullish(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
-  "enxerto": zod.string().nullish(),
-  "diametroEnxerto": zod.string().nullish(),
-  "fixacaoFemoral": zod.string().nullish(),
-  "fixacaoTibial": zod.string().nullish(),
-  "internalBrace": zod.string().nullish(),
-  "tipoLca": zod.string().nullish(),
-  "localizacaoLesaoLca": zod.string().nullish(),
-  "fixacaoReparoLca": zod.string().nullish(),
-  "preservacaoRemanescente": zod.string().nullish(),
-  "reforco": zod.string().nullish(),
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "diagnostico": zod.string().nullish(),
@@ -682,165 +464,14 @@ export const GetSurgeryResponse = zod.object({
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
-  "esportePivot": zod.boolean(),
   "beightonScore": zod.number().nullish(),
   "createdAt": zod.string()
 }),
-  "exameLigamentar": zod.object({
-  "id": zod.number(),
-  "surgeryId": zod.number(),
-  "lachman": zod.number().nullish(),
-  "gavetaNeutra": zod.number().nullish(),
-  "pivotShift": zod.number().nullish(),
-  "aderTest": zod.boolean().nullish(),
-  "gavetaRotInterna": zod.boolean().nullish(),
-  "estresseValgo0": zod.number().nullish(),
-  "estresseValgo30": zod.number().nullish(),
-  "estresseVaro0": zod.number().nullish(),
-  "estresseVaro30": zod.number().nullish(),
-  "gavetaPosterior": zod.number().nullish(),
-  "sagSign": zod.boolean().nullish(),
-  "quadricepsAtivo": zod.boolean().nullish(),
-  "dialTest": zod.boolean().nullish(),
-  "recurvato": zod.boolean().nullish(),
-  "hiperextensao": zod.string().nullish(),
-  "slopeTibialPts": zod.number().nullish()
-}).optional(),
-  "lcaAlgorithm": zod.object({
-  "id": zod.number(),
-  "surgeryId": zod.number(),
-  "idade": zod.number().nullish(),
-  "esportePivot": zod.boolean().nullish(),
-  "pivotShift": zod.number().nullish(),
-  "revisao": zod.boolean().nullish(),
-  "hiperlaxidade": zod.boolean().nullish(),
-  "meniscoLateral": zod.boolean().nullish(),
-  "lesaoCronica": zod.boolean().nullish(),
-  "krirsScore": zod.number().nullish(),
-  "krirsInterpretacao": zod.string().nullish(),
-  "tecnicaRecomendada": zod.string().nullish(),
-  "justificativa": zod.string().nullish(),
-  "flagAltoRisco": zod.boolean().nullish()
-}).optional(),
-  "procedimentoMeniscal": zod.object({
-  "id": zod.number(),
-  "surgeryId": zod.number(),
-  "dorInterlinha": zod.string().nullish(),
-  "mcMurrayMedial": zod.boolean().nullish(),
-  "mcMurrayLateral": zod.boolean().nullish(),
-  "apleyCompressao": zod.boolean().nullish(),
-  "apleyTracao": zod.boolean().nullish(),
-  "marchaPato": zod.boolean().nullish(),
-  "steinmann1": zod.boolean().nullish(),
-  "steinmann2": zod.boolean().nullish(),
-  "observacoesExame": zod.string().nullish(),
-  "contexto": zod.string().nullish(),
-  "meniscectomia": zod.boolean().nullish(),
-  "sutura": zod.boolean().nullish(),
-  "ladoMedial": zod.boolean().nullish(),
-  "ladoLateral": zod.boolean().nullish(),
-  "lesaoRampa": zod.boolean().nullish(),
-  "lesaoRaiz": zod.boolean().nullish(),
-  "lesaoAlcaBalde": zod.boolean().nullish(),
-  "lesaoRadial": zod.boolean().nullish(),
-  "lesaoCorpo": zod.boolean().nullish(),
-  "tecnicasSutura": zod.array(zod.string()).optional(),
-  "numPontos": zod.number().nullish(),
-  "pontosPorTecnica": zod.string().nullish(),
-  "tipoFio": zod.string().nullish(),
-  "detalhesMedial": zod.union([zod.object({
-  "sutura": zod.boolean().nullish(),
-  "lesaoRampa": zod.boolean().nullish(),
-  "lesaoRaiz": zod.boolean().nullish(),
-  "lesaoRaizAnterior": zod.boolean().nullish(),
-  "lesaoCornoAnterior": zod.boolean().nullish(),
-  "lesaoCornoPosterior": zod.boolean().nullish(),
-  "lesaoAlcaBalde": zod.boolean().nullish(),
-  "lesaoRadial": zod.boolean().nullish(),
-  "lesaoCorpo": zod.boolean().nullish(),
-  "lesaoDiscoide": zod.boolean().nullish(),
-  "fixacaoRaiz": zod.string().nullish(),
-  "centralizacaoRaiz": zod.boolean().nullish(),
-  "centralizacaoMetodo": zod.string().nullish(),
-  "tecnicasSutura": zod.array(zod.string()).optional(),
-  "numPontos": zod.number().nullish(),
-  "pontosPorTecnica": zod.string().nullish(),
-  "tipoFio": zod.string().nullish(),
-  "estimuloBiologico": zod.boolean().nullish(),
-  "estimuloPerfuracaoIntercondilo": zod.boolean().nullish(),
-  "estimuloCoaguloFibrina": zod.boolean().nullish(),
-  "estimuloOrtobiologico": zod.boolean().nullish(),
-  "estimuloOrtobiologicoTipo": zod.string().nullish(),
-  "saucerizacao": zod.boolean().nullish(),
-  "meniscectomia": zod.boolean().nullish()
-}),zod.null()]).optional(),
-  "detalhesLateral": zod.union([zod.object({
-  "sutura": zod.boolean().nullish(),
-  "lesaoRampa": zod.boolean().nullish(),
-  "lesaoRaiz": zod.boolean().nullish(),
-  "lesaoRaizAnterior": zod.boolean().nullish(),
-  "lesaoCornoAnterior": zod.boolean().nullish(),
-  "lesaoCornoPosterior": zod.boolean().nullish(),
-  "lesaoAlcaBalde": zod.boolean().nullish(),
-  "lesaoRadial": zod.boolean().nullish(),
-  "lesaoCorpo": zod.boolean().nullish(),
-  "lesaoDiscoide": zod.boolean().nullish(),
-  "fixacaoRaiz": zod.string().nullish(),
-  "centralizacaoRaiz": zod.boolean().nullish(),
-  "centralizacaoMetodo": zod.string().nullish(),
-  "tecnicasSutura": zod.array(zod.string()).optional(),
-  "numPontos": zod.number().nullish(),
-  "pontosPorTecnica": zod.string().nullish(),
-  "tipoFio": zod.string().nullish(),
-  "estimuloBiologico": zod.boolean().nullish(),
-  "estimuloPerfuracaoIntercondilo": zod.boolean().nullish(),
-  "estimuloCoaguloFibrina": zod.boolean().nullish(),
-  "estimuloOrtobiologico": zod.boolean().nullish(),
-  "estimuloOrtobiologicoTipo": zod.string().nullish(),
-  "saucerizacao": zod.boolean().nullish(),
-  "meniscectomia": zod.boolean().nullish()
-}),zod.null()]).optional()
-}).optional(),
-  "examePatelar": zod.object({
-  "id": zod.number(),
-  "surgeryId": zod.number(),
-  "luxacaoAguda": zod.boolean().nullish(),
-  "luxacaoCronica": zod.boolean().nullish(),
-  "numEpisodios": zod.number().nullish(),
-  "apprehensionTest": zod.boolean().nullish(),
-  "jSign": zod.boolean().nullish(),
-  "jSignGrau": zod.number().min(1).max(getSurgeryResponseExamePatelarJSignGrauMax).nullish(),
-  "tiltPatelar": zod.string().nullish(),
-  "ttTgMm": zod.number().nullish(),
-  "catonDeschamps": zod.number().nullish(),
-  "dejourTipo": zod.string().nullish(),
-  "inclinacaoPatelarGraus": zod.number().nullish(),
-  "inclinacaoPatelarCategoria": zod.string().nullish(),
-  "lesaoCondral": zod.boolean().nullish(),
-  "maltrackingDinamico": zod.boolean().nullish()
-}).optional(),
-  "picsScore": zod.object({
-  "id": zod.number(),
-  "surgeryId": zod.number(),
-  "ptsTotal": zod.number().nullish(),
-  "ptsRisco": zod.string().nullish(),
-  "ptsConduta": zod.string().nullish(),
-  "fatorDominante": zod.string().nullish()
-}).optional(),
   "followups": zod.array(zod.object({
   "id": zod.number(),
   "surgeryId": zod.number(),
   "tempo": zod.string(),
   "dataAvaliacao": zod.string().nullish(),
-  "ikdc": zod.number().nullish(),
-  "koosSintomas": zod.number().nullish(),
-  "koosDor": zod.number().nullish(),
-  "koosFuncao": zod.number().nullish(),
-  "koosEsporte": zod.number().nullish(),
-  "koosQualidade": zod.number().nullish(),
-  "lysholm": zod.number().nullish(),
-  "tegner": zod.number().nullish(),
-  "kujala": zod.number().nullish(),
   "vasDor": zod.number().nullish(),
   "retornoEsporte": zod.boolean().nullish(),
   "nivelRetorno": zod.string().nullish(),
@@ -859,10 +490,6 @@ export const UpdateSurgeryParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const updateSurgeryBodyExamePatelarOneJSignGrauMax = 4;
-
-
-
 export const UpdateSurgeryBody = zod.object({
   "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
   "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish().describe('Dados clínicos de ombro\/cotovelo (formato em @workspace\/clinical surgery\/payload.ts)'),
@@ -871,40 +498,9 @@ export const UpdateSurgeryBody = zod.object({
   "lado": zod.string().nullish(),
   "tipoCaso": zod.string().optional(),
   "diagnostico": zod.string().nullish(),
-  "alinhamento": zod.string().optional(),
-  "grauAlinhamento": zod.string().optional(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()).optional(),
-  "ligamentosAcometidos": zod.array(zod.string()).optional(),
-  "enxerto": zod.string().optional(),
-  "diametroEnxerto": zod.string().optional(),
-  "fixacaoFemoral": zod.string().optional(),
-  "fixacaoTibial": zod.string().optional(),
-  "internalBrace": zod.string().optional(),
-  "tipoLca": zod.string().optional(),
-  "localizacaoLesaoLca": zod.string().optional(),
-  "fixacaoReparoLca": zod.string().optional(),
-  "preservacaoRemanescente": zod.string().optional(),
-  "reforco": zod.string().optional(),
   "procedimentoRealizado": zod.string().optional(),
-  "observacoes": zod.string().optional(),
-  "procedimentosDetalhados": zod.string().nullish(),
-  "examePatelar": zod.union([zod.object({
-  "luxacaoAguda": zod.boolean().nullish(),
-  "luxacaoCronica": zod.boolean().nullish(),
-  "numEpisodios": zod.number().nullish(),
-  "apprehensionTest": zod.boolean().nullish(),
-  "jSign": zod.boolean().nullish(),
-  "jSignGrau": zod.number().min(1).max(updateSurgeryBodyExamePatelarOneJSignGrauMax).nullish(),
-  "tiltPatelar": zod.string().nullish(),
-  "ttTgMm": zod.number().nullish(),
-  "catonDeschamps": zod.number().nullish(),
-  "dejourTipo": zod.string().nullish(),
-  "inclinacaoPatelarGraus": zod.number().nullish(),
-  "inclinacaoPatelarCategoria": zod.string().nullish(),
-  "lesaoCondral": zod.boolean().nullish(),
-  "maltrackingDinamico": zod.boolean().nullish()
-}),zod.null()]).optional()
+  "observacoes": zod.string().optional()
 })
 
 export const UpdateSurgeryResponse = zod.object({
@@ -916,21 +512,7 @@ export const UpdateSurgeryResponse = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
-  "grauAlinhamento": zod.string().nullish(),
-  "rxAnaliseJson": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
-  "enxerto": zod.string().nullish(),
-  "diametroEnxerto": zod.string().nullish(),
-  "fixacaoFemoral": zod.string().nullish(),
-  "fixacaoTibial": zod.string().nullish(),
-  "internalBrace": zod.string().nullish(),
-  "tipoLca": zod.string().nullish(),
-  "localizacaoLesaoLca": zod.string().nullish(),
-  "fixacaoReparoLca": zod.string().nullish(),
-  "preservacaoRemanescente": zod.string().nullish(),
-  "reforco": zod.string().nullish(),
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -948,152 +530,13 @@ export const DeleteSurgeryResponse = zod.void()
 
 
 /**
- * @summary Classify KRIRS risk for ACL reconstruction
- */
-export const CalculateKrirsBody = zod.object({
-  "idade": zod.number(),
-  "esportePivot": zod.boolean(),
-  "pivotShift": zod.number(),
-  "revisao": zod.boolean(),
-  "hiperlaxidade": zod.boolean(),
-  "meniscoLateral": zod.boolean(),
-  "lesaoCronica": zod.boolean(),
-  "aderTest": zod.boolean().optional(),
-  "gavetaRotInterna": zod.boolean().optional()
-})
-
-export const CalculateKrirsResponse = zod.object({
-  "score": zod.number(),
-  "nivelRisco": zod.enum(['alto', 'intermediario', 'baixo']),
-  "tecnica": zod.string(),
-  "justificativa": zod.string(),
-  "flagAltoRisco": zod.boolean(),
-  "instabAnteromedial": zod.boolean(),
-  "instabAnterolateral": zod.boolean(),
-  "instabCombinada": zod.boolean(),
-  "duplaExtraArticular": zod.boolean(),
-  "recomendacao": zod.array(zod.string()),
-  "alerta": zod.string().nullish()
-})
-
-
-/**
- * @summary Calculate PICS 2.0 score for patellar instability
- */
-export const CalculatePicsBody = zod.object({
-  "dejourTipo": zod.string(),
-  "numEpisodios": zod.number(),
-  "luxacaoCronica": zod.boolean(),
-  "idade": zod.number(),
-  "ttTgMm": zod.number(),
-  "catonDeschamps": zod.number(),
-  "maltrackingDinamico": zod.boolean(),
-  "inclinacaoPatelarGraus": zod.number(),
-  "lesaoCondral": zod.boolean(),
-  "hiperlaxidade": zod.boolean(),
-  "sexo": zod.string()
-})
-
-export const CalculatePicsResponse = zod.object({
-  "picsTotal": zod.number(),
-  "picsRisco": zod.string(),
-  "picsConduta": zod.string(),
-  "fatorDominante": zod.string(),
-  "sugestoes": zod.array(zod.string())
-})
-
-
-/**
- * @summary Compute LEAP (LET/ALLR) decision-support recommendations for ACL reconstruction
- */
-export const CalculateAclDecisionBody = zod.object({
-  "idade": zod.number(),
-  "sexo": zod.string().nullish(),
-  "enxerto": zod.string().nullish(),
-  "pivotShift": zod.number().nullish(),
-  "lachman": zod.number().nullish(),
-  "hiperextensaoGraus": zod.number().nullish(),
-  "revisao": zod.boolean(),
-  "esqueletoImaturo": zod.boolean().nullish(),
-  "lesaoCronica": zod.boolean().nullish(),
-  "esportePivot": zod.boolean().nullish(),
-  "ptsGraus": zod.number().nullish(),
-  "contralateralLca": zod.boolean().nullish(),
-  "tabagismo": zod.boolean().nullish(),
-  "atrasoCirurgicoDias": zod.number().nullish(),
-  "earlyRtsPivot": zod.boolean().nullish(),
-  "tunelComprometido": zod.boolean().nullish(),
-  "aloenxertoJovem": zod.boolean().nullish(),
-  "allIsoladaConduta": zod.boolean().nullish(),
-  "segondFratura": zod.boolean().nullish(),
-  "notchEstreito": zod.boolean().nullish(),
-  "lesaoAlcImagem": zod.boolean().nullish(),
-  "meniscalConcomitante": zod.boolean().nullish(),
-  "graftDiametroMm": zod.number().nullish()
-})
-
-export const CalculateAclDecisionResponse = zod.object({
-  "disclaimers": zod.object({
-  "naoCalibrado": zod.string(),
-  "populacao": zod.string(),
-  "vies": zod.string()
-}),
-  "driversNaoModificaveis": zod.array(zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
-  "presente": zod.boolean()
-})),
-  "regras": zod.array(zod.object({
-  "id": zod.string(),
-  "modulo": zod.enum(['leap', 'pts', 'graft', 'revision', 'behavioral']),
-  "forca": zod.string(),
-  "evidencia": zod.array(zod.string()),
-  "titulo": zod.string(),
-  "alavanca": zod.string(),
-  "justificativa": zod.string(),
-  "contraindicado": zod.string().nullish()
-})),
-  "leapIndicado": zod.boolean(),
-  "forcaMaxima": zod.string().nullable(),
-  "fatoresAcessorios": zod.array(zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
-  "presente": zod.boolean()
-})),
-  "fatoresAcessoriosCount": zod.number(),
-  "camadaSeguranca": zod.object({
-  "reassurance": zod.array(zod.string()).optional(),
-  "caveats": zod.array(zod.string()).optional(),
-  "consentComplications": zod.array(zod.string()).optional()
-}).nullish(),
-  "execucaoTecnica": zod.object({
-  "nota": zod.string().optional(),
-  "itens": zod.array(zod.string()).optional()
-}).nullish()
-})
-
-
-/**
  * @summary Create a follow-up record
  */
 export const CreateFollowupBody = zod.object({
   "surgeryId": zod.number(),
   "tempo": zod.string(),
   "dataAvaliacao": zod.string().optional(),
-  "ikdc": zod.number().nullish(),
-  "koos12": zod.number().nullish(),
-  "koosSintomas": zod.number().nullish(),
-  "koosDor": zod.number().nullish(),
-  "koosFuncao": zod.number().nullish(),
-  "koosEsporte": zod.number().nullish(),
-  "koosQualidade": zod.number().nullish(),
-  "lysholm": zod.number().nullish(),
-  "tegner": zod.number().nullish(),
-  "kujala": zod.number().nullish(),
   "vasDor": zod.number().nullish(),
-  "aclRsi": zod.number().nullish(),
-  "marx": zod.number().nullish(),
-  "womac": zod.number().nullish(),
   "admFlexao": zod.number().nullish(),
   "admExtensao": zod.number().nullish(),
   "complicacoes": zod.array(zod.string()).optional(),
@@ -1109,15 +552,6 @@ export const CreateFollowupResponse = zod.object({
   "surgeryId": zod.number(),
   "tempo": zod.string(),
   "dataAvaliacao": zod.string().nullish(),
-  "ikdc": zod.number().nullish(),
-  "koosSintomas": zod.number().nullish(),
-  "koosDor": zod.number().nullish(),
-  "koosFuncao": zod.number().nullish(),
-  "koosEsporte": zod.number().nullish(),
-  "koosQualidade": zod.number().nullish(),
-  "lysholm": zod.number().nullish(),
-  "tegner": zod.number().nullish(),
-  "kujala": zod.number().nullish(),
   "vasDor": zod.number().nullish(),
   "retornoEsporte": zod.boolean().nullish(),
   "nivelRetorno": zod.string().nullish(),
@@ -1140,15 +574,6 @@ export const ListFollowupResponseItem = zod.object({
   "surgeryId": zod.number(),
   "tempo": zod.string(),
   "dataAvaliacao": zod.string().nullish(),
-  "ikdc": zod.number().nullish(),
-  "koosSintomas": zod.number().nullish(),
-  "koosDor": zod.number().nullish(),
-  "koosFuncao": zod.number().nullish(),
-  "koosEsporte": zod.number().nullish(),
-  "koosQualidade": zod.number().nullish(),
-  "lysholm": zod.number().nullish(),
-  "tegner": zod.number().nullish(),
-  "kujala": zod.number().nullish(),
   "vasDor": zod.number().nullish(),
   "retornoEsporte": zod.boolean().nullish(),
   "nivelRetorno": zod.string().nullish(),
@@ -1168,15 +593,6 @@ export const UpdateFollowupParams = zod.object({
 })
 
 export const UpdateFollowupBody = zod.object({
-  "ikdc": zod.number().nullish(),
-  "koosSintomas": zod.number().nullish(),
-  "koosDor": zod.number().nullish(),
-  "koosFuncao": zod.number().nullish(),
-  "koosEsporte": zod.number().nullish(),
-  "koosQualidade": zod.number().nullish(),
-  "lysholm": zod.number().nullish(),
-  "tegner": zod.number().nullish(),
-  "kujala": zod.number().nullish(),
   "vasDor": zod.number().nullish(),
   "retornoEsporte": zod.boolean().nullish(),
   "nivelRetorno": zod.string().nullish(),
@@ -1190,15 +606,6 @@ export const UpdateFollowupResponse = zod.object({
   "surgeryId": zod.number(),
   "tempo": zod.string(),
   "dataAvaliacao": zod.string().nullish(),
-  "ikdc": zod.number().nullish(),
-  "koosSintomas": zod.number().nullish(),
-  "koosDor": zod.number().nullish(),
-  "koosFuncao": zod.number().nullish(),
-  "koosEsporte": zod.number().nullish(),
-  "koosQualidade": zod.number().nullish(),
-  "lysholm": zod.number().nullish(),
-  "tegner": zod.number().nullish(),
-  "kujala": zod.number().nullish(),
   "vasDor": zod.number().nullish(),
   "retornoEsporte": zod.boolean().nullish(),
   "nivelRetorno": zod.string().nullish(),
@@ -1219,10 +626,6 @@ export const GetDoctorDashboardResponse = zod.object({
   "tipo": zod.string(),
   "count": zod.number()
 })),
-  "surgeriesByLigament": zod.array(zod.object({
-  "ligamento": zod.string(),
-  "count": zod.number()
-})),
   "recentSurgeries": zod.array(zod.object({
   "regiao": zod.union([zod.literal('shoulder'),zod.literal('elbow'),zod.literal(null)]).nullish(),
   "dadosClinicos": zod.record(zod.string(), zod.unknown()).nullish(),
@@ -1232,9 +635,7 @@ export const GetDoctorDashboardResponse = zod.object({
   "dataCirurgia": zod.string().nullish(),
   "hospital": zod.string().nullish(),
   "tipoCaso": zod.string().nullish(),
-  "alinhamento": zod.string().nullish(),
   "tiposProcedimento": zod.array(zod.string()),
-  "ligamentosAcometidos": zod.array(zod.string()),
   "observacoes": zod.string().nullish(),
   "status": zod.string().nullish(),
   "createdAt": zod.string(),
@@ -1243,7 +644,7 @@ export const GetDoctorDashboardResponse = zod.object({
   "patientLado": zod.string().nullish()
 })),
   "followupCompliance": zod.number(),
-  "avgIkdc": zod.number().nullish(),
+  "avgPain": zod.number().nullish().describe('Dor média (VAS 0–10) nos seguimentos respondidos'),
   "returnToSportRate": zod.number().nullish()
 })
 
@@ -1259,12 +660,7 @@ export const GetAdminDashboardResponse = zod.object({
   "tipo": zod.string(),
   "count": zod.number()
 })),
-  "surgeriesByLigament": zod.array(zod.object({
-  "ligamento": zod.string(),
-  "count": zod.number()
-})),
-  "avgIkdc": zod.number().nullish(),
-  "avgLysholm": zod.number().nullish(),
+  "avgPain": zod.number().nullish(),
   "returnToSportRate": zod.number().nullish(),
   "doctorStats": zod.array(zod.object({
   "id": zod.number(),

@@ -1,76 +1,22 @@
 import type { Surgery } from "@workspace/db";
 
 /**
- * Mapeia a cirurgia documentada pelo médico para o código de protocolo de
- * reabilitação. Regra da especificação: cirurgia combinada → protocolo MAIS
- * restritivo (ex.: LCA + sutura meniscal → lca_r).
- *
- * Ordem de restritividade (mais → menos restritivo):
- *   lca_r > lcp_r > osteotomia > atj > mpfl > menisc_sutura > meniscectomia
+ * Mapeia a cirurgia documentada para o protocolo de reabilitação publicado em
+ * rehab_protocols. Os protocolos de ombro e cotovelo ainda não foram definidos
+ * pelo médico: enquanto o catálogo estiver vazio, nenhuma cirurgia recebe
+ * protocolo automático e o fisioterapeuta registra o plano livremente.
  */
-export type ProtocolCode =
-  | "lca_r"
-  | "lcp_r"
-  | "menisc_sutura"
-  | "meniscectomia"
-  | "atj"
-  | "osteotomia"
-  | "mpfl"
-  | "tend_patelar";
-
-const PRIORITY: ProtocolCode[] = [
-  "lca_r",
-  "lcp_r",
-  "osteotomia",
-  "atj",
-  "mpfl",
-  "menisc_sutura",
-  "meniscectomia",
-];
-
-export const PROTOCOL_LABELS: Record<ProtocolCode, string> = {
-  lca_r: "Reconstrução do LCA",
-  lcp_r: "Reconstrução do LCP",
-  menisc_sutura: "Sutura meniscal",
-  meniscectomia: "Meniscectomia parcial",
-  atj: "Artroplastia total de joelho",
-  osteotomia: "Osteotomia (HTO/DFO)",
-  mpfl: "Reconstrução do MPFL",
-  tend_patelar: "Tendinopatia patelar",
-};
-
-export interface MeniscalInfo {
-  sutura: boolean | null;
-  meniscectomia: boolean | null;
-}
+export const PROTOCOL_LABELS: Record<string, string> = {};
 
 export function mapSurgeryToProtocol(
-  surgery: Pick<Surgery, "tiposProcedimento" | "ligamentosAcometidos">,
-  meniscal: MeniscalInfo[],
-): ProtocolCode | null {
-  const candidates = new Set<ProtocolCode>();
-  const ligamentos = surgery.ligamentosAcometidos ?? [];
-  const tipos = surgery.tiposProcedimento ?? [];
-
-  if (ligamentos.includes("LCA")) candidates.add("lca_r");
-  if (ligamentos.includes("LCP")) candidates.add("lcp_r");
-  if (tipos.includes("Osteotomia")) candidates.add("osteotomia");
-  if (tipos.includes("Artroplastias")) candidates.add("atj");
-  if (tipos.includes("Instabilidade Patelar")) candidates.add("mpfl");
-
-  const hasSutura = meniscal.some((m) => m.sutura === true);
-  const hasMeniscectomia = meniscal.some((m) => m.meniscectomia === true);
-  if (hasSutura) candidates.add("menisc_sutura");
-  if (hasMeniscectomia) candidates.add("meniscectomia");
-  // Lesão meniscal marcada mas sem detalhe → assume o mais restritivo (sutura)
-  if (!hasSutura && !hasMeniscectomia && tipos.includes("Lesão Meniscal")) {
-    candidates.add("menisc_sutura");
-  }
-
-  for (const code of PRIORITY) {
-    if (candidates.has(code)) return code;
-  }
+  _surgery: Pick<Surgery, "tiposProcedimento">,
+): string | null {
   return null;
+}
+
+/** Rótulo do procedimento para convites e cabeçalhos, sem dado clínico sensível. */
+export function surgeryProcedureLabel(surgery: Pick<Surgery, "tipoCaso" | "diagnostico">): string {
+  return surgery.tipoCaso || surgery.diagnostico || "Cirurgia de ombro/cotovelo";
 }
 
 /** Iniciais do paciente para exibição no convite (privacidade). */

@@ -1,4 +1,5 @@
 import { useGetDoctorDashboard } from "@workspace/api-client-react";
+import { CASE_TYPE_BY_KEY } from "@workspace/clinical/web";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -77,11 +78,11 @@ export function buildDashboardFollowupMessage(
 ) {
   const scaleList = scales.length > 0
     ? reportScaleLabels(locale, scales).join(", ")
-    : locale === "es" ? "evaluaciones de la rodilla" : "avaliações do joelho";
+    : locale === "es" ? "evaluaciones postoperatorias" : "avaliações pós-operatórias";
   if (locale === "es") {
     return (
       `¡Hola, *${patientNome}*! 👋\n\n` +
-      `Dr(a). ${doctorNome} solicita que complete sus evaluaciones de *${reportFollowupPeriodLabel(locale, periodo)}* después de la cirugía de rodilla.\n\n` +
+      `Dr(a). ${doctorNome} solicita que complete sus evaluaciones de *${reportFollowupPeriodLabel(locale, periodo)}* después de la cirugía.\n\n` +
       `📋 *Escalas por completar:* ${scaleList}\n\n` +
       `Acceda mediante el siguiente enlace; le tomará menos de 5 minutos:\n_(enlace enviado por separado)_\n\n` +
       `🔐 *Contraseña de acceso:* su CPF (solo números)\n\n` +
@@ -90,7 +91,7 @@ export function buildDashboardFollowupMessage(
   }
   return (
     `Olá, *${patientNome}*! 👋\n\n` +
-    `Dr(a). ${doctorNome} solicita o preenchimento das suas avaliações de *${periodo}* após a cirurgia do joelho.\n\n` +
+    `Dr(a). ${doctorNome} solicita o preenchimento das suas avaliações de *${periodo}* após a cirurgia.\n\n` +
     `📋 *Escalas a preencher:* ${scaleList}\n\n` +
     `Acesse pelo link abaixo — leva menos de 5 minutos:\n_(link enviado em separado)_\n\n` +
     `🔐 *Senha de acesso:* seu CPF (somente números)\n\n` +
@@ -331,32 +332,18 @@ export default function Dashboard() {
   /* ── KPI derivations ── */
   const vencidosBadge = fuData?.counts.vencidos ?? 0;
   const doctorNome = user?.nome ?? "";
-  const avgIkdc = data.avgIkdc ?? null;
+  const avgPain = data.avgPain ?? null;
 
-  /* ── IKDC evolution line chart data ── */
-  const ikdcLineData = avgIkdc
-    ? [
-        { periodo: tx("preoperativeAbbreviation"), ikdc: Math.round(Math.max(20, avgIkdc * 0.50)) },
-        { periodo: "3m",     ikdc: Math.round(Math.max(35, avgIkdc * 0.64)) },
-        { periodo: "6m",     ikdc: Math.round(Math.max(50, avgIkdc * 0.77)) },
-        { periodo: "12m",    ikdc: Math.round(Math.max(65, avgIkdc * 0.90)) },
-        { periodo: "24m",    ikdc: Math.round(avgIkdc) },
-      ]
-    : null;
-
-  /* ── Surgeries by type donut data ── */
-  const pieData = (data.surgeriesByLigament?.length ?? 0) > 0
-    ? (() => {
-        // Merge "PLC" (legacy) into "CPL" before building chart slices
-        const merged = new Map<string, number>();
-        for (const item of data.surgeriesByLigament) {
-          const name = item.ligamento === "PLC" ? "CPL" : item.ligamento;
-          merged.set(name, (merged.get(name) ?? 0) + item.count);
-        }
-        return [...merged.entries()].slice(0, 6).map(([name, value], i) => ({
-          name, value, color: CHART_COLORS[i % CHART_COLORS.length],
-        }));
-      })()
+  /* ── Cirurgias por tipo de caso (catálogo de ombro/cotovelo) ── */
+  const pieData = data.surgeriesByType.length > 0
+    ? [...data.surgeriesByType]
+        .sort((x, y) => y.count - x.count)
+        .slice(0, 6)
+        .map((item, i) => ({
+          name: CASE_TYPE_BY_KEY.get(item.tipo)?.label ?? item.tipo,
+          value: item.count,
+          color: CHART_COLORS[i % CHART_COLORS.length],
+        }))
     : null;
 
   /* ── Ortobiológicos by product donut data ── */
@@ -389,9 +376,6 @@ export default function Dashboard() {
     green:  { card: "border-green-400 bg-green-50", num: "text-green-600",  icon: "bg-green-100",  iconColor: "#16A34A" },
     blue:   { card: "border-blue-400 bg-blue-50",   num: "text-blue-600",   icon: "bg-blue-100",   iconColor: "#2563EB" },
   };
-
-  /* ── IKDC bar chart data ── */
-  const ikdcBarData = ikdcLineData;
 
   /* ── Regen outcomes line chart data ── */
   const PERIODO_ORDER = ["preop","30d","90d","180d","1y","2y","5y"];
@@ -461,9 +445,9 @@ export default function Dashboard() {
       accent: "#059669",
     },
     {
-      label: t("dashboardAverageIkdc"),
-      value: avgIkdc ? avgIkdc.toFixed(0) : "—",
-      sub: tx("functionalScore"),
+      label: tx("averagePain"),
+      value: avgPain != null ? avgPain.toFixed(1) : "—",
+      sub: tx("painScale"),
       href: null,
       accent: "#7C3AED",
     },
@@ -570,34 +554,6 @@ export default function Dashboard() {
         {/* ══════════════ OVERVIEW TAB ══════════════ */}
         {tab === "overview" && (
           <div className="space-y-4">
-
-            {/* ── Line chart: Evolução funcional ── */}
-            {ikdcLineData && (
-              <div style={CARD} className="p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{tx("functionalEvolution")}</p>
-                    <p className="text-xs mt-0.5 text-slate-400">{tx("estimatedProgression")}</p>
-                  </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(37,99,235,0.1)", color: "#2563EB" }}>
-                    {tx("score")}: {avgIkdc?.toFixed(0)}
-                  </span>
-                </div>
-                <ResponsiveContainer width="100%" height={170}>
-                  <LineChart data={ikdcLineData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis dataKey="periodo" stroke="#CBD5E1" tick={{ fontSize: 11, fill: "#94A3B8" }} />
-                    <YAxis domain={[0, 100]} stroke="#E2E8F0" tick={{ fontSize: 11, fill: "#94A3B8" }} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Line
-                      type="monotone" dataKey="ikdc" stroke="#2563EB" strokeWidth={2.5}
-                      dot={{ fill: "#2563EB", r: 4, strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: "#fff", stroke: "#2563EB", strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
 
             {/* ── Charts row: Donut Cirurgias + Donut Ortobiológicos ── */}
             <div className="grid md:grid-cols-2 gap-4">
@@ -708,31 +664,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* ── Bar: IKDC por período ── */}
-            <div style={CARD} className="p-5">
-              <p className="text-sm font-bold text-slate-800 mb-4">{tx("ikdcByPeriod")}</p>
-              {ikdcBarData ? (
-                <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={ikdcBarData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                    <XAxis dataKey="periodo" stroke="#CBD5E1" tick={{ fontSize: 11, fill: "#94A3B8" }} />
-                    <YAxis domain={[0, 100]} stroke="#E2E8F0" tick={{ fontSize: 11, fill: "#94A3B8" }} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Bar dataKey="ikdc" radius={[5, 5, 0, 0]} maxBarSize={34}>
-                      {ikdcBarData.map((_, i) => (
-                        <Cell key={i} fill={i === ikdcBarData.length - 1 ? "#2563EB" : "#93C5FD"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Activity className="h-8 w-8 text-slate-200" />
-                  <p className="text-xs text-slate-400">{t("dashboardRegisterFollowupsForEvolution")}</p>
-                </div>
-              )}
-            </div>
-
             {/* ── Line: Evolução de scores regenerativos ── */}
             <div style={CARD} className="p-5">
               <div className="flex items-center gap-2 mb-4">
@@ -841,9 +772,7 @@ export default function Dashboard() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 truncate">{toTitleCase(s.patientNome)}</p>
                           <p className="text-xs text-slate-400 truncate">
-                            {s.ligamentosAcometidos.length > 0
-                              ? reportCatalogLabels(locale, s.ligamentosAcometidos).join(", ")
-                              : reportCatalogLabels(locale, s.tiposProcedimento).join(", ") || tx("procedureFallback")}
+                            {s.tiposProcedimento.map((k) => CASE_TYPE_BY_KEY.get(k)?.label ?? k).join(", ") || tx("procedureFallback")}
                             {s.dataCirurgia ? ` · ${formatDate(s.dataCirurgia)}` : ""}
                           </p>
                         </div>

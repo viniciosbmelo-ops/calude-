@@ -148,7 +148,7 @@ describe("cirurgia de ombro e cotovelo", () => {
   });
 
   it("criar cirurgia completa com procedimento de descrição livre", async () => {
-    const r = await api("/api/surgeries", "POST", body({ regiao: "shoulder", geral: { ...geral, preop_dx: ["SH_FX_PROX_HUM"], postop_dx: ["SH_FX_PROX_HUM"] }, procedimentos: [{ tipoCaso: "SH_FRACTURE", codigo: "SH_FX_PROX_HUM", dados: { descricao: "Osteossíntese com placa bloqueada." } }] }, { tipoCaso: "Fraturas", tiposProcedimento: ["SH_FRACTURE"] }));
+    const r = await api("/api/surgeries", "POST", body({ regiao: "shoulder", geral: { ...geral, preop_dx: ["SH_FX_PROX_HUM"], postop_dx: ["SH_FX_PROX_HUM"] }, procedimentos: [{ tipoCaso: "SH_FRACTURE", codigo: "SH_FX_PROX_HUM", dados: { descricao: "Osteossíntese com placa bloqueada." } }] }, { tipoCaso: "Fratura", tiposProcedimento: ["SH_FRACTURE"] }));
     expect(r.status).toBe(201);
     const id = (await json(r)).id;
     createdSurgeries.push(id);

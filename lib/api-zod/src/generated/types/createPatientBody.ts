@@ -15,7 +15,6 @@ export interface CreatePatientBody {
   telefone?: string;
   lado?: string;
   nivelAtividade?: string;
-  esportePivot?: boolean;
   beightonScore?: number;
   planoSaude?: string;
   indicadoPor?: string;

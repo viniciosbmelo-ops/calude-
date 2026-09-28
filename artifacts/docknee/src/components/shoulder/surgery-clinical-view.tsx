@@ -34,12 +34,13 @@ export function useSurgeryReport(surgeryId: number | null, enabled: boolean, key
   return state;
 }
 
-export function SurgeryClinicalView({ payload, report }: { payload: ClinicalPayload; report: SurgeryReportState }) {
+/** `report` ausente: só inventário e implantes (ex.: visão do administrador, sem acesso ao relatório nominal). */
+export function SurgeryClinicalView({ payload, report }: { payload: ClinicalPayload; report?: SurgeryReportState }) {
   const [copied, setCopied] = useState(false);
   const region = payload.regiao as Region;
 
   async function copy() {
-    if (report.status !== "ready") return;
+    if (report?.status !== "ready") return;
     await navigator.clipboard.writeText(report.texto);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -47,7 +48,7 @@ export function SurgeryClinicalView({ payload, report }: { payload: ClinicalPayl
 
   return (
     <>
-      <Card className="min-w-0 shadow-sm">
+      {report && <Card className="min-w-0 shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-lg flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Relatório cirúrgico</CardTitle>
@@ -67,7 +68,7 @@ export function SurgeryClinicalView({ payload, report }: { payload: ClinicalPayl
             <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed bg-muted/30 p-4 rounded-md">{report.texto}</pre>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {payload.mapaArtroscopico.length > 0 && (
         <Card className="min-w-0 shadow-sm">

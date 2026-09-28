@@ -11,33 +11,7 @@ export interface CreateFollowupBody {
   tempo: string;
   dataAvaliacao?: string;
   /** @nullable */
-  ikdc?: number | null;
-  /** @nullable */
-  koos12?: number | null;
-  /** @nullable */
-  koosSintomas?: number | null;
-  /** @nullable */
-  koosDor?: number | null;
-  /** @nullable */
-  koosFuncao?: number | null;
-  /** @nullable */
-  koosEsporte?: number | null;
-  /** @nullable */
-  koosQualidade?: number | null;
-  /** @nullable */
-  lysholm?: number | null;
-  /** @nullable */
-  tegner?: number | null;
-  /** @nullable */
-  kujala?: number | null;
-  /** @nullable */
   vasDor?: number | null;
-  /** @nullable */
-  aclRsi?: number | null;
-  /** @nullable */
-  marx?: number | null;
-  /** @nullable */
-  womac?: number | null;
   /** @nullable */
   admFlexao?: number | null;
   /** @nullable */

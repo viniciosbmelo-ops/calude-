@@ -1,5 +1,5 @@
 /**
- * MIME/extension contract shared by the JoIA transcription route and its
+ * MIME/extension contract shared by the AI assistant transcription route and its
  * browser recorder. Codec parameters are removed because browsers commonly
  * submit values such as audio/webm;codecs=opus.
  */

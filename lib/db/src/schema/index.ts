@@ -2,7 +2,6 @@ export * from "./doctors";
 export * from "./patients";
 export * from "./pre-consult";
 export * from "./surgeries";
-export * from "./exams";
 export * from "./followup";
 export * from "./media";
 export * from "./admin-messages";

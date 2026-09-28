@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminDashboardMonthlySurgeriesItem } from './adminDashboardMonthlySurgeriesItem';
-import type { AdminDashboardSurgeriesByLigamentItem } from './adminDashboardSurgeriesByLigamentItem';
 import type { AdminDashboardSurgeriesByTypeItem } from './adminDashboardSurgeriesByTypeItem';
 import type { AdminDoctorWithStats } from './adminDoctorWithStats';
 import type { GeographicAccessSummary } from './geographicAccessSummary';
@@ -16,11 +15,8 @@ export interface AdminDashboard {
   totalPatients: number;
   totalSurgeries: number;
   surgeriesByType: AdminDashboardSurgeriesByTypeItem[];
-  surgeriesByLigament: AdminDashboardSurgeriesByLigamentItem[];
   /** @nullable */
-  avgIkdc?: number | null;
-  /** @nullable */
-  avgLysholm?: number | null;
+  avgPain?: number | null;
   /** @nullable */
   returnToSportRate?: number | null;
   doctorStats: AdminDoctorWithStats[];

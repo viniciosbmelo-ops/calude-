@@ -5,13 +5,8 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
-import type { ExameLigamentar } from './exameLigamentar';
-import type { ExamePatelar } from './examePatelar';
 import type { Followup } from './followup';
-import type { LcaAlgorithm } from './lcaAlgorithm';
 import type { Patient } from './patient';
-import type { PicsScore } from './picsScore';
-import type { ProcedimentoMeniscal } from './procedimentoMeniscal';
 import type { SurgeryDetailDadosClinicos } from './surgeryDetailDadosClinicos';
 import type { SurgeryDetailRegiao } from './surgeryDetailRegiao';
 
@@ -29,34 +24,7 @@ export interface SurgeryDetail {
   hospital?: string | null;
   /** @nullable */
   tipoCaso?: string | null;
-  /** @nullable */
-  alinhamento?: string | null;
-  /** @nullable */
-  grauAlinhamento?: string | null;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  /** @nullable */
-  enxerto?: string | null;
-  /** @nullable */
-  diametroEnxerto?: string | null;
-  /** @nullable */
-  fixacaoFemoral?: string | null;
-  /** @nullable */
-  fixacaoTibial?: string | null;
-  /** @nullable */
-  internalBrace?: string | null;
-  /** @nullable */
-  tipoLca?: string | null;
-  /** @nullable */
-  localizacaoLesaoLca?: string | null;
-  /** @nullable */
-  fixacaoReparoLca?: string | null;
-  /** @nullable */
-  preservacaoRemanescente?: string | null;
-  /** @nullable */
-  reforco?: string | null;
   /** @nullable */
   procedimentoRealizado?: string | null;
   /** @nullable */
@@ -65,10 +33,5 @@ export interface SurgeryDetail {
   diagnostico?: string | null;
   createdAt: string;
   patient: Patient;
-  exameLigamentar?: ExameLigamentar;
-  lcaAlgorithm?: LcaAlgorithm;
-  procedimentoMeniscal?: ProcedimentoMeniscal;
-  examePatelar?: ExamePatelar;
-  picsScore?: PicsScore;
   followups: Followup[];
 }

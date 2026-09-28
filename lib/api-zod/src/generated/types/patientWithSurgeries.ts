@@ -21,7 +21,6 @@ export interface PatientWithSurgeries {
   lado?: string | null;
   /** @nullable */
   nivelAtividade?: string | null;
-  esportePivot: boolean;
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;

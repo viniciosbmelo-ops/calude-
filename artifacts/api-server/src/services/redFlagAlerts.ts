@@ -9,15 +9,9 @@ const MAX_ATTEMPTS = 5;
 const PROCESSING_LEASE_MINUTES = 5;
 const BACKOFF_MINUTES = [1, 5, 30, 120, 480];
 
-const FLAG_LABELS: Record<string, string> = {
-  quadriceps_lsi_below_90: "LSI de quadríceps abaixo de 90% na fase 4",
-  hop_lsi_below_90: "Bateria de hop tests abaixo de 90% na fase 4",
-  acl_rsi_below_65: "ACL-RSI abaixo de 65 (prontidão psicológica)",
-  extension_deficit: "Déficit de extensão do joelho",
-  persistent_effusion: "Derrame articular 2+ persistente",
-  atj_stiffness_risk: "Flexão <90° na semana 4–6 (risco de rigidez — ATJ)",
-  giving_way_episode: "Episódio de falseio relatado",
-};
+// Sinais de alerta da reabilitação do joelho retirados; os de ombro/cotovelo
+// entram com o protocolo.
+const FLAG_LABELS: Record<string, string> = {};
 
 export function flagLabel(flag: string): string {
   return FLAG_LABELS[flag] ?? "Sinal clínico de atenção";

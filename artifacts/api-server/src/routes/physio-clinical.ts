@@ -15,10 +15,9 @@ import {
   whatsappOutboxTable,
   whatsappDeliveryAuditTable,
 } from "@workspace/db";
-import { procedimentoMeniscalTable } from "@workspace/db/schema";
 import crypto from "crypto";
 import { and, or, eq, sql, desc, asc, lt, gt, gte, lte, inArray } from "drizzle-orm";
-import { mapSurgeryToProtocol, PROTOCOL_LABELS } from "../services/surgeryProtocolMap";
+import { mapSurgeryToProtocol, PROTOCOL_LABELS, surgeryProcedureLabel } from "../services/surgeryProtocolMap";
 import { buildRedFlagMessage } from "../services/redFlagAlerts";
 import { requirePhysio } from "../middlewares/requireAuth";
 import { enforcePatientLimit, physioWriteGuard } from "../middlewares/physioPlanGuard";
@@ -42,10 +41,8 @@ router.use("/physio", requirePhysio);
 router.use("/physio", physioWriteGuard);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const KNEE_CODES = [
-  "lca_r", "lcp_r", "menisc_sutura", "meniscectomia",
-  "atj", "osteotomia", "mpfl", "tend_patelar",
-] as const;
+// Códigos com protocolo publicado (vazio até os protocolos de ombro/cotovelo existirem)
+const PROTOCOL_CODES = Object.keys(PROTOCOL_LABELS);
 
 function parseId(raw: unknown): number | null {
   const id = parseInt(String(raw ?? ""), 10);
@@ -107,9 +104,9 @@ router.post("/physio/patients", enforcePatientLimit, async (req, res): Promise<v
     return;
   }
   const body = parsed.data;
-  const isKnee = (KNEE_CODES as readonly string[]).includes(body.diagnosisCode);
+  const hasProtocol = PROTOCOL_CODES.includes(body.diagnosisCode);
 
-  if (!isKnee && body.diagnosisCode !== "outro") {
+  if (!hasProtocol && body.diagnosisCode !== "outro") {
     res.status(400).json({ error: "Diagnóstico inválido" });
     return;
   }
@@ -119,7 +116,7 @@ router.post("/physio/patients", enforcePatientLimit, async (req, res): Promise<v
   }
 
   let protocol = null;
-  if (isKnee) {
+  if (hasProtocol) {
     if (!body.protocolStartDate) {
       res.status(400).json({ error: "Informe a data da cirurgia (ou início do tratamento)" });
       return;
@@ -152,7 +149,7 @@ router.post("/physio/patients", enforcePatientLimit, async (req, res): Promise<v
       diagnosisCode: body.diagnosisCode,
       diagnosis: body.diagnosisCode === "outro" ? body.diagnosis!.trim() : null,
       protocolId: protocolRef?.id ?? null,
-      protocolStartDate: isKnee ? body.protocolStartDate! : null,
+      protocolStartDate: hasProtocol ? body.protocolStartDate! : null,
     }).returning();
     return created;
   });
@@ -260,7 +257,7 @@ router.post("/physio/patients/:id/confirm-protocol", async (req, res): Promise<v
   const patient = await getOwnedPatient(req.physioId!, id);
   if (!patient) { res.status(404).json({ error: "Paciente não encontrado" }); return; }
   if (!patient.protocolId) {
-    res.status(400).json({ error: "Paciente sem protocolo de joelho — cronograma não se aplica" });
+    res.status(400).json({ error: "Paciente sem protocolo publicado — cronograma não se aplica" });
     return;
   }
 
@@ -557,14 +554,8 @@ router.get("/physio/invites/:token", async (req, res): Promise<void> => {
   let procedureLabel: string | null = null;
   let protocolCode: string | null = null;
   if (surgery) {
-    const meniscal = await db.select({
-      sutura: procedimentoMeniscalTable.sutura,
-      meniscectomia: procedimentoMeniscalTable.meniscectomia,
-    }).from(procedimentoMeniscalTable).where(eq(procedimentoMeniscalTable.surgeryId, surgery.id));
-    protocolCode = mapSurgeryToProtocol(surgery, meniscal);
-    procedureLabel = protocolCode
-      ? PROTOCOL_LABELS[protocolCode as keyof typeof PROTOCOL_LABELS]
-      : (surgery.diagnostico ?? "Cirurgia de joelho");
+    protocolCode = mapSurgeryToProtocol(surgery);
+    procedureLabel = protocolCode ? PROTOCOL_LABELS[protocolCode] : surgeryProcedureLabel(surgery);
   }
 
   const initials = patient
@@ -616,11 +607,7 @@ router.post("/physio/invites/accept", enforcePatientLimit, async (req, res): Pro
     return;
   }
 
-  const meniscal = await db.select({
-    sutura: procedimentoMeniscalTable.sutura,
-    meniscectomia: procedimentoMeniscalTable.meniscectomia,
-  }).from(procedimentoMeniscalTable).where(eq(procedimentoMeniscalTable.surgeryId, surgery.id));
-  const protocolCode = mapSurgeryToProtocol(surgery, meniscal);
+  const protocolCode = mapSurgeryToProtocol(surgery);
 
   let protocol = null;
   if (protocolCode) {

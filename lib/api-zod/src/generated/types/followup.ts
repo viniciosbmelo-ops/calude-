@@ -13,24 +13,6 @@ export interface Followup {
   /** @nullable */
   dataAvaliacao?: string | null;
   /** @nullable */
-  ikdc?: number | null;
-  /** @nullable */
-  koosSintomas?: number | null;
-  /** @nullable */
-  koosDor?: number | null;
-  /** @nullable */
-  koosFuncao?: number | null;
-  /** @nullable */
-  koosEsporte?: number | null;
-  /** @nullable */
-  koosQualidade?: number | null;
-  /** @nullable */
-  lysholm?: number | null;
-  /** @nullable */
-  tegner?: number | null;
-  /** @nullable */
-  kujala?: number | null;
-  /** @nullable */
   vasDor?: number | null;
   /** @nullable */
   retornoEsporte?: boolean | null;

@@ -14,7 +14,7 @@ describe("buildFollowupMessage", () => {
     const text = buildFollowupMessage(params);
 
     expect(text).toContain("Olá, *María da Silva*!");
-    expect(text).toContain("de *3 meses* após a sua cirurgia do joelho");
+    expect(text).toContain("de *3 meses* após a sua cirurgia");
     expect(text).toContain("IKDC, KOOS");
     expect(text).toContain(params.link);
     expect(text).toContain("Dr(a). García");
@@ -29,7 +29,7 @@ describe("buildFollowupMessage", () => {
     });
 
     expect(text).toContain("¡Hola, *María da Silva*!");
-    expect(text).toContain("de *1 mes* después de su cirugía de rodilla");
+    expect(text).toContain("de *1 mes* después de su cirugía");
     expect(text).toContain("EVA Dolor, IKDC, Escala personalizada");
     expect(text).toContain(params.link);
     expect(text).toContain("Dr(a). García");
@@ -44,7 +44,7 @@ describe("buildFollowupMessage", () => {
       locale: "es",
     });
 
-    expect(text).toContain("de *retorno personalizado* después de su cirugía de rodilla");
+    expect(text).toContain("de *retorno personalizado* después de su cirugía");
     expect(text).toContain("Escala livre");
   });
 

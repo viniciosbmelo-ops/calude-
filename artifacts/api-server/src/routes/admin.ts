@@ -6,14 +6,6 @@ import {
   doctorsTable,
   surgeriesTable,
   patientsTable,
-  exameLigamentarTable,
-  lcaAlgorithmTable,
-  lcpReconstructionTable,
-  cpmReconstructionTable,
-  cplReconstructionTable,
-  procedimentoMeniscalTable,
-  examePatelarTable,
-  picsScoreTable,
   followupTable,
   adminContactMessages,
   auditLogsTable,
@@ -107,7 +99,6 @@ router.get("/admin/all-surgeries", requireAdmin, async (req, res): Promise<void>
       hospital: surgeriesTable.hospital,
       tipoCaso: surgeriesTable.tipoCaso,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
-      ligamentosAcometidos: surgeriesTable.ligamentosAcometidos,
       createdAt: surgeriesTable.createdAt,
       doctorId: surgeriesTable.doctorId,
       doctorNome: doctorsTable.nome,
@@ -166,14 +157,6 @@ router.get("/admin/surgeries/:id", requireAdmin, async (req, res): Promise<void>
     .where(eq(patientsTable.id, surgery.patientId))
     .limit(1);
 
-  const [exame] = await db.select().from(exameLigamentarTable).where(eq(exameLigamentarTable.surgeryId, id)).limit(1);
-  const [lca] = await db.select().from(lcaAlgorithmTable).where(eq(lcaAlgorithmTable.surgeryId, id)).limit(1);
-  const [lcp] = await db.select().from(lcpReconstructionTable).where(eq(lcpReconstructionTable.surgeryId, id)).limit(1);
-  const [cpm] = await db.select().from(cpmReconstructionTable).where(eq(cpmReconstructionTable.surgeryId, id)).limit(1);
-  const [cpl] = await db.select().from(cplReconstructionTable).where(eq(cplReconstructionTable.surgeryId, id)).limit(1);
-  const [menisco] = await db.select().from(procedimentoMeniscalTable).where(eq(procedimentoMeniscalTable.surgeryId, id)).limit(1);
-  const [patelar] = await db.select().from(examePatelarTable).where(eq(examePatelarTable.surgeryId, id)).limit(1);
-  const [pics] = await db.select().from(picsScoreTable).where(eq(picsScoreTable.surgeryId, id)).limit(1);
   const followups = (await db.select().from(followupTable)
     .where(eq(followupTable.surgeryId, id))
     .orderBy(followupTable.createdAt))
@@ -186,14 +169,6 @@ router.get("/admin/surgeries/:id", requireAdmin, async (req, res): Promise<void>
     ...surgery,
     createdAt: surgery.createdAt.toISOString(),
     patient: patient ? { ...patient, nome: toInitials(patient.nome) } : null,
-    exameLigamentar: exame ?? null,
-    lcaAlgorithm: lca ?? null,
-    lcpReconstruction: lcp ?? null,
-    cpmReconstruction: cpm ?? null,
-    cplReconstruction: cpl ?? null,
-    procedimentoMeniscal: menisco ?? null,
-    examePatelar: patelar ?? null,
-    picsScore: pics ?? null,
     followups: followups.map(f => ({ ...f, createdAt: f.createdAt.toISOString() })),
   });
 });
@@ -378,10 +353,6 @@ router.delete("/admin/doctors/:doctorId", requireAdmin, async (req, res): Promis
       .from(surgeryMediaTable)
       .innerJoin(surgeriesTable, eq(surgeryMediaTable.surgeryId, surgeriesTable.id))
       .where(eq(surgeriesTable.doctorId, doctorId));
-    const surgeryFiles = await tx
-      .select({ rxImageUrl: surgeriesTable.rxImageUrl })
-      .from(surgeriesTable)
-      .where(eq(surgeriesTable.doctorId, doctorId));
     const uploadGrants = await tx
       .select({ objectPath: uploadGrantsTable.objectPath })
       .from(uploadGrantsTable)
@@ -390,7 +361,6 @@ router.delete("/admin/doctors/:doctorId", requireAdmin, async (req, res): Promis
     const cleanupJobs = await enqueueStorageCleanup(tx, [
       ...attachments.map((item) => item.objectPath),
       ...media.flatMap((item) => [item.originalPath, item.previewPath]),
-      ...surgeryFiles.map((item) => item.rxImageUrl),
       ...uploadGrants.map((item) => item.objectPath),
     ]);
 
@@ -719,7 +689,7 @@ router.get("/admin/lgpd/compliance-report", requireAdmin, async (req, res): Prom
     lei: "Lei nº 13.709/2018 — LGPD",
     plataforma: {
       nome: "DocSholder",
-      finalidade: "Documentação e análise de cirurgias ortopédicas do joelho",
+      finalidade: "Documentação e análise de cirurgias ortopédicas de ombro e cotovelo",
       classificacaoDados: "Dados pessoais sensíveis — Art. 5º, II (dados de saúde)",
     },
     estatisticasAtivas: {

@@ -43,7 +43,7 @@ async function letFractureTransitionWin(request: () => Promise<Response>): Promi
     await client.query("SELECT pg_advisory_xact_lock($1, $2)", [87001, surgeryId]);
     await client.query(
       "UPDATE surgeries SET tipos_procedimento = $1 WHERE id = $2",
-      [["LCA", "Fraturas"], surgeryId],
+      [["SH_CUFF", "SH_FRACTURE"], surgeryId],
     );
 
     const responsePromise = request();
@@ -94,7 +94,7 @@ beforeAll(async () => {
     .values({
       doctorId,
       patientId,
-      tiposProcedimento: ["LCA"],
+      tiposProcedimento: ["SH_CUFF"],
       status: "rascunho",
     })
     .returning();
@@ -112,7 +112,7 @@ beforeEach(async () => {
   await db.delete(followupTable).where(eq(followupTable.surgeryId, surgeryId));
   await db
     .update(surgeriesTable)
-    .set({ tiposProcedimento: ["LCA"], status: "rascunho" })
+    .set({ tiposProcedimento: ["SH_CUFF"], status: "rascunho" })
     .where(eq(surgeriesTable.id, surgeryId));
 });
 
@@ -126,7 +126,7 @@ afterAll(async () => {
 });
 
 describe.sequential("preoperative follow-up fracture concurrency", () => {
-  it("returns 409 and creates no follow-up when Fraturas wins against manual creation", async () => {
+  it("returns 409 and creates no follow-up when a fracture wins against manual creation", async () => {
     const response = await letFractureTransitionWin(() =>
       apiRequest("/api/followup", "POST", {
         surgeryId,
@@ -142,14 +142,14 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     expect(followups).toHaveLength(0);
   });
 
-  it("returns 409, skips delivery, and creates no token when Fraturas wins against preparation", async () => {
+  it("returns 409, skips delivery, and creates no token when a fracture wins against preparation", async () => {
     const [notification] = await db
       .insert(scheduledNotificationsTable)
       .values({
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
       })
       .returning();
 
@@ -182,7 +182,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
       })
       .returning();
 
@@ -194,7 +194,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     const preparedBody = await prepared.json() as { followupId: number; token: string };
 
     const transitioned = await apiRequest(`/api/surgeries/${surgeryId}`, "PATCH", {
-      tiposProcedimento: ["LCA", "Fraturas"],
+      tiposProcedimento: ["SH_CUFF", "SH_FRACTURE"],
     });
     expect(transitioned.status).toBe(200);
 
@@ -222,14 +222,14 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     });
   });
 
-  it("cannot overwrite skipped with sent when Fraturas wins against a status update", async () => {
+  it("cannot overwrite skipped with sent when a fracture wins against a status update", async () => {
     const [notification] = await db
       .insert(scheduledNotificationsTable)
       .values({
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
       })
       .returning();
 
@@ -250,7 +250,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     expect(stored.status).toBe("skipped");
   });
 
-  it("accepts no public scale response when Fraturas wins before submission", async () => {
+  it("accepts no public scale response when a fracture wins before submission", async () => {
     const token = randomUUID();
     const scale = "Teste Concorrência";
     const [followup] = await db
@@ -293,14 +293,14 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     expect(responses).toHaveLength(0);
   });
 
-  it("blocks individual notification dispatch when Fraturas wins first", async () => {
+  it("blocks individual notification dispatch when a fracture wins first", async () => {
     const [notification] = await db
       .insert(scheduledNotificationsTable)
       .values({
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
         scheduledDate: new Date().toISOString().slice(0, 10),
       })
       .returning();
@@ -323,14 +323,14 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     expect(followups).toHaveLength(0);
   });
 
-  it("skips batch notification dispatch when Fraturas wins first", async () => {
+  it("skips batch notification dispatch when a fracture wins first", async () => {
     const [notification] = await db
       .insert(scheduledNotificationsTable)
       .values({
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
         scheduledDate: new Date().toISOString().slice(0, 10),
       })
       .returning();
@@ -350,14 +350,14 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
     expect(stored).toEqual({ status: "skipped", followupId: null });
   });
 
-  it("cannot reset or list a skipped pre-op notification when Fraturas wins first", async () => {
+  it("cannot reset or list a skipped pre-op notification when a fracture wins first", async () => {
     const [notification] = await db
       .insert(scheduledNotificationsTable)
       .values({
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
         status: "skipped",
         scheduledDate: new Date().toISOString().slice(0, 10),
       })
@@ -390,7 +390,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         surgeryId,
         tempo: PREOPERATIVE_PERIOD,
         token,
-        escalasEnviadas: ["IKDC"],
+        escalasEnviadas: ["VAS Dor"],
       })
       .returning();
     const [notification] = await db
@@ -399,7 +399,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         surgeryId,
         patientId,
         periodo: PREOPERATIVE_PERIOD,
-        scales: ["IKDC"],
+        scales: ["VAS Dor"],
         status: "pending",
         followupId: followup.id,
         scheduledDate: new Date().toISOString().slice(0, 10),
@@ -407,7 +407,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
       .returning();
 
     const transition = await apiRequest(`/api/surgeries/${surgeryId}`, "PATCH", {
-      tiposProcedimento: ["Lesão Ligamentar", "Fraturas"],
+      tiposProcedimento: ["SH_CUFF", "SH_FRACTURE"],
     });
     expect(transition.status).toBe(200);
 

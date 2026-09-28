@@ -15,7 +15,6 @@ export interface UpdatePatientBody {
   telefone?: string;
   lado?: string;
   nivelAtividade?: string;
-  esportePivot?: boolean;
   beightonScore?: number;
   anamnese?: string | null;
   laudos?: string | null;

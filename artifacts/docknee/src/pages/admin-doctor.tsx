@@ -12,11 +12,11 @@ import {
   Microscope, Brain, Dumbbell, RotateCcw, Loader2, KeyRound,
   CalendarClock,
 } from "lucide-react";
-import { SurgeryFullSummary } from "@/components/surgery-full-summary";
+import { SurgeryClinicalView } from "@/components/shoulder/surgery-clinical-view";
+import { CASE_TYPE_BY_KEY, type ClinicalPayload } from "@workspace/clinical/web";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { adminConsoleMessages } from "@/locales/admin-console";
-import { getKrirsRiskLabel, getKrirsRiskLevel } from "@/lib/krirs-risk";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Surgery = {
@@ -24,34 +24,18 @@ type Surgery = {
   dataCirurgia: string | null;
   tipoCaso: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
-  alinhamento: string | null;
+  regiao?: string | null;
   hospital: string | null;
-  procedimentosDetalhados: string | null;
   patientSexo: string | null;
   patientLado: string | null;
   createdAt: string;
 };
 
 type FullSurgery = Surgery & {
-  enxerto?: string | null;
-  diametroEnxerto?: string | null;
-  fixacaoFemoral?: string | null;
-  fixacaoTibial?: string | null;
-  reforco?: string | null;
-  tuneisFemorais?: string | null;
-  tuneisTibiais?: string | null;
-  grauAlinhamento?: string | null;
+  diagnostico?: string | null;
   procedimentoRealizado?: string | null;
-  patient?: { id: number; sexo?: string | null; lado?: string | null } | null;
-  exameLigamentar?: Record<string, any> | null;
-  lcaAlgorithm?: Record<string, any> | null;
-  lcpReconstruction?: Record<string, any> | null;
-  cpmReconstruction?: Record<string, any> | null;
-  cplReconstruction?: Record<string, any> | null;
-  procedimentoMeniscal?: Record<string, any> | null;
-  examePatelar?: Record<string, any> | null;
-  picsScore?: Record<string, any> | null;
+  dadosClinicos?: ClinicalPayload | null;
+  patient?: { id: number; nome?: string | null; sexo?: string | null; lado?: string | null } | null;
   followups?: Followup[];
 };
 
@@ -59,14 +43,7 @@ type Followup = {
   id: number;
   tempo: string;
   dataAvaliacao: string | null;
-  ikdc?: number | null;
-  lysholm?: number | null;
-  koosDor?: number | null;
-  koosQualidade?: number | null;
-  tegner?: number | null;
   vasDor?: number | null;
-  aclRsi?: number | null;
-  kujala?: number | null;
   retornoEsporte?: boolean | null;
   falha?: boolean | null;
   complicacoes?: string[] | null;
@@ -98,67 +75,14 @@ type DoctorInfo = {
 };
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
-const TEMPO_LABEL_KEYS: Record<string, keyof typeof adminConsoleMessages["pt-BR"]> = {
-  "3m": "clinical.months3", "6m": "clinical.months6", "1a": "clinical.year1", "2a": "clinical.years2", "5a": "clinical.years5",
-};
-
-const EXAME_LABEL_KEYS: Record<string, keyof typeof adminConsoleMessages["pt-BR"]> = {
-  lachman: "clinical.lachman", gavetaNeutra: "clinical.anteriorDrawer", pivotShift: "clinical.pivotShift",
-  aderTest: "clinical.aderTest", gavetaRotInterna: "clinical.internalRotationDrawer",
-  estresseValgo0: "clinical.valgusStress0", estresseValgo30: "clinical.valgusStress30",
-  estresseVaro0: "clinical.varusStress0", estresseVaro30: "clinical.varusStress30",
-  gavetaPosterior: "clinical.posteriorDrawer", sagSign: "clinical.sagSign",
-  quadricepsAtivo: "clinical.activeQuadriceps", dialTest: "clinical.dialTest",
-  recurvato: "clinical.recurvatum", gavetaRotExterna: "clinical.externalRotationDrawer",
-  hiperextensao: "clinical.hyperextension",
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(d: string | null | undefined, locale: string) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString(locale);
 }
 
-function parseReforco(raw: string | null | undefined, t: (key: keyof typeof adminConsoleMessages["pt-BR"]) => string): string[] {
-  if (!raw) return [];
-  try {
-    const r = JSON.parse(raw);
-    const out: string[] = [];
-    if (r.let) out.push(t("clinical.let"));
-    if (r.lal) {
-      let s = t("clinical.lal");
-      if (r.lalBanda) s += ` (${r.lalBanda})`;
-      if (r.lalEnxerto) s += ` · ${r.lalEnxerto}`;
-      out.push(s);
-    }
-    if (r.loa) {
-      let s = t("clinical.loa");
-      if (r.loaEnxerto) s += ` · ${r.loaEnxerto}`;
-      if (r.loaFixacao) s += ` · ${t("explicit.172")}: ${r.loaFixacao}`;
-      out.push(s);
-    }
-    return out;
-  } catch { return []; }
-}
-
-function parseProcedimentos(surgery: Surgery): string[] {
-  const items: string[] = [];
-  if (surgery.ligamentosAcometidos?.length) items.push(...surgery.ligamentosAcometidos);
-  if (surgery.tiposProcedimento?.length) {
-    surgery.tiposProcedimento.forEach(t => {
-      if (t !== "Lesão Ligamentar" || surgery.ligamentosAcometidos?.length === 0) items.push(t);
-    });
-  }
-  try {
-    if (surgery.procedimentosDetalhados) {
-      const d = JSON.parse(surgery.procedimentosDetalhados);
-      const ost = d.osteotomia;
-      if (ost?.dupla) items.push("HTO + DFO");
-      else if (ost?.tibial) items.push(`HTO${ost.tibialAngulo ? ` ${ost.tibialAngulo}°` : ""}`);
-      else if (ost?.femoral) items.push(`DFO${ost.femoralAngulo ? ` ${ost.femoralAngulo}°` : ""}`);
-    }
-  } catch { /* ignore */ }
-  return [...new Set(items)];
+function caseTypeLabels(surgery: Surgery): string[] {
+  return surgery.tiposProcedimento.map((key) => CASE_TYPE_BY_KEY.get(key)?.label ?? key);
 }
 
 // ─── UI sub-components ────────────────────────────────────────────────────────
@@ -220,125 +144,11 @@ function AdminSurgerySheet({ surgeryId, onClose }: { surgeryId: number | null; o
       .catch(() => setLoading(false));
   }, [surgeryId]);
 
-  const open = surgeryId !== null;
-
-  const renderExame = (exame: Record<string, any>) => {
-    const skip = ["id", "surgeryId", "createdAt"];
-    return Object.entries(exame)
-      .filter(([k, v]) => !skip.includes(k) && v != null)
-      .map(([k, v]) => {
-        const labelKey = EXAME_LABEL_KEYS[k];
-        const label = labelKey ? t(labelKey) : k;
-        let val: string;
-        if (typeof v === "boolean") val = v ? t("clinical.positive") : t("clinical.negative");
-        else val = String(v);
-        return <Row key={k} label={label} value={val} />;
-      });
-  };
-
-  const renderProcedimentosDetalhados = (raw: string) => {
-    try {
-      const d = JSON.parse(raw);
-      const sections: React.ReactNode[] = [];
-
-      // ── Osteotomia ──
-      const ost = d.osteotomia;
-      if (ost) {
-        const ostRows: React.ReactNode[] = [];
-        if (ost.dupla) {
-          const tp = [ost.duplaTibialLado, ost.duplaTibialTipo && `de ${ost.duplaTibialTipo}`, ost.duplaTibialAngulo && `${ost.duplaTibialAngulo}°`].filter(Boolean).join(" ");
-          const fp = [ost.duplaFemoralLado, ost.duplaFemoralTipo && `de ${ost.duplaFemoralTipo}`, ost.duplaFemoralAngulo && `${ost.duplaFemoralAngulo}°`].filter(Boolean).join(" ");
-          ostRows.push(<Row key="dupla" label={t("explicit.224")} value={[tp && `Tibial: ${tp}`, fp && `Femoral: ${fp}`].filter(Boolean).join(" / ")} />);
-        } else {
-          if (ost.tibial) {
-            ostRows.push(<Row key="htotipo" label={t("explicit.141")} value={[ost.tibialLado, ost.tibialTipo && `de ${ost.tibialTipo}`, ost.tibialAngulo && `${ost.tibialAngulo}°`].filter(Boolean).join(" ")} />);
-          }
-          if (ost.femoral) {
-            ostRows.push(<Row key="dfotipo" label={t("explicit.142")} value={[ost.femoralLado, ost.femoralTipo && `de ${ost.femoralTipo}`, ost.femoralAngulo && `${ost.femoralAngulo}°`].filter(Boolean).join(" ")} />);
-          }
-        }
-        if (ost.slop) ostRows.push(<Row key="slop" label={t("explicit.143")} value={ost.slopGrau ? `${ost.slopGrau}°` : t("explicit.001")} />);
-        if (ost.enxertoOsseo) ostRows.push(<Row key="enxosseo" label={t("explicit.144")} value={ost.enxertoOsseoTipo ?? t("explicit.001")} />);
-        if (ostRows.length > 0) {
-          sections.push(
-            <div key="ost" className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("explicit.225")}</p>
-              {ostRows}
-            </div>
-          );
-        }
-      }
-
-      // ── LCM ──
-      const lcm = d.lcm as { tecnica?: string; enxerto?: string; fixacaoProximal?: string; fixacaoDistal?: string } | undefined;
-      if (lcm && (lcm.tecnica || lcm.enxerto || lcm.fixacaoProximal || lcm.fixacaoDistal)) {
-        sections.push(
-          <div key="lcm" className="space-y-0.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("explicit.226")}</p>
-            <Row label={t("explicit.145")} value={lcm.tecnica} />
-            <Row label={t("explicit.146")} value={lcm.enxerto} />
-            <Row label={t("explicit.227")} value={lcm.fixacaoProximal} />
-            <Row label={t("explicit.228")} value={lcm.fixacaoDistal} />
-          </div>
-        );
-      }
-
-      // ── Ortobiológicos ──
-      const orto = d.ortobiologico as Record<string, any> | undefined;
-      if (orto) {
-        const ortoMap: Record<string, string> = {
-          bma: "BMA", haBma: t("explicit.147"), prp: "PRP", prpAh: "PRP + AH",
-          hidrogelBma: "Hidrogel + BMA", hidrogel: "Hidrogel", nanofat: "Nanofat", coaguloFibrina: t("explicit.148"),
-        };
-        const tipos = Object.entries(ortoMap).filter(([k]) => orto[k]).map(([, label]) => label);
-        const diagTipos: string[] = Array.isArray(orto.diagnosticoTipos) ? orto.diagnosticoTipos
-          : orto.diagnosticoTipo ? [orto.diagnosticoTipo] : [];
-        const diagMap: Record<string, string> = { osteoartrose: "Osteoartrose", condromalacia: "Condromalacia", lesaoMeniscal: t("explicit.149"), lesaoLigamentar: t("explicit.150"), edemaOsseo: t("explicit.151"), lesaoMuscular: t("explicit.152") };
-        if (tipos.length > 0 || diagTipos.length > 0) {
-          sections.push(
-            <div key="orto" className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("explicit.002")}</p>
-              {tipos.length > 0 && <Row label={t("explicit.229")} value={tipos.join(", ")} />}
-              {diagTipos.length > 0 && <Row label={t("explicit.153")} value={diagTipos.map(t => diagMap[t] ?? t).join(", ")} />}
-              <Row label={t("explicit.230")} value={orto.diagnosticoAhlback ? `Grau ${orto.diagnosticoAhlback}` : null} />
-            </div>
-          );
-        }
-      }
-
-      // ── Artroplastia ──
-      const art = d.artroplastia as Record<string, any> | undefined;
-      if (art && (art.tipo || art.fixacao || art.tecnologia || art.compartimento)) {
-        sections.push(
-          <div key="art" className="space-y-0.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("explicit.003")}</p>
-            <Row label={t("explicit.050")} value={art.tipo === "UKA" ? "UKA — Unicompartimental" : art.tipo === "TKA" ? t("explicit.004") : art.tipo} />
-            <Row label={t("explicit.231")} value={art.compartimento} />
-            <Row label={t("explicit.232")} value={art.tecnologia} />
-            <Row label={t("explicit.154")} value={art.fixacao} />
-            <Row label={t("explicit.155")} value={art.alinhamentoMembro} />
-            <Row label={t("explicit.233")} value={art.instabilidade === "Presente" ? `Presente${art.instabilidadeGrau ? ` — ${art.instabilidadeGrau}` : ""}` : art.instabilidade} />
-            <Row label={t("explicit.234")} value={[art.gonartroseMedial, art.gonartroseMedialAhlback && `Ahlbäck ${art.gonartroseMedialAhlback}`].filter(Boolean).join(" — ")} />
-            <Row label={t("explicit.235")} value={art.gonartroseLateral} />
-            <Row label={t("explicit.236")} value={art.femoropatelar} />
-            <Row label={t("explicit.156")} value={art.flexaoGraus ? `${art.flexaoGraus}°` : null} />
-            <Row label={t("explicit.157")} value={art.extensaoGraus != null && art.extensaoGraus !== "" ? `${art.extensaoGraus}°` : null} />
-            <Row label={t("explicit.237")} value={art.garrote} />
-            <Row label={t("explicit.158")} value={art.txa} />
-            {art.revisaoComponentes && <Row label={t("explicit.159")} value={art.revisaoComponentes} />}
-            {art.calcosFemoral?.length > 0 && <Row label={t("explicit.160")} value={(art.calcosFemoral as string[]).join(", ")} />}
-            {art.calcosTibial?.length > 0 && <Row label={t("explicit.161")} value={(art.calcosTibial as string[]).join(", ")} />}
-            {art.observacoes && <Row label={t("explicit.162")} value={art.observacoes} />}
-          </div>
-        );
-      }
-
-      return sections.length > 0 ? <div className="space-y-3">{sections}</div> : null;
-    } catch { return null; }
-  };
+  const followups = detail?.followups ?? [];
+  const region = detail?.regiao === "shoulder" ? "Ombro" : detail?.regiao === "elbow" ? "Cotovelo" : null;
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+    <Sheet open={surgeryId !== null} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-0">
         <SheetHeader className="px-5 pt-5 pb-3 border-b border-border sticky top-0 bg-background z-10">
           <SheetTitle className="text-base">{t("explicit.005")}</SheetTitle>
@@ -352,361 +162,55 @@ function AdminSurgerySheet({ surgeryId, onClose }: { surgeryId: number | null; o
         <div className="px-5 py-4 space-y-5">
           {loading && (
             <div className="space-y-3">
-              {[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
             </div>
           )}
 
-          {!loading && detail && (() => {
-            const exame = detail.exameLigamentar;
-            const lca = detail.lcaAlgorithm;
-            const lcp = detail.lcpReconstruction;
-            const cpm = detail.cpmReconstruction;
-            const cpl = detail.cplReconstruction;
-            const menisco = detail.procedimentoMeniscal;
-            const patelar = detail.examePatelar;
-            const pics = detail.picsScore;
-            const followups = detail.followups ?? [];
-            const reforcos = parseReforco(detail.reforco, t);
+          {!loading && detail && (
+            <>
+              <SectionBlock title={t("explicit.007")} icon={Calendar}>
+                <Row label={t("explicit.163")} value={fmtDate(detail.dataCirurgia, locale)} />
+                <Row label={t("explicit.164")} value={detail.hospital} />
+                <Row label={t("explicit.165")} value={detail.patient?.sexo ?? detail.patientSexo} />
+                <Row label={t("explicit.166")} value={detail.patient?.lado ?? detail.patientLado} />
+                <Row label="Região" value={region} />
+                <Row label={t("doctor.caseType")} value={detail.tipoCaso} />
+                <Row label="Diagnóstico" value={detail.diagnostico} />
+                <Row label="Procedimentos" value={detail.procedimentoRealizado} />
+              </SectionBlock>
 
-            const hasExame = exame && Object.keys(exame).some(k => !["id","surgeryId","createdAt"].includes(k) && exame[k] != null);
-            const hasLca = lca && Object.keys(lca).some(k => !["id","surgeryId","createdAt"].includes(k) && lca[k] != null);
-            const hasLcp = lcp && Object.keys(lcp).some(k => !["id","surgeryId","createdAt"].includes(k) && lcp[k] != null);
-            const hasCpm = cpm && Object.keys(cpm).some(k => !["id","surgeryId","createdAt"].includes(k) && cpm[k] != null);
-            const hasCpl = cpl && Object.keys(cpl).some(k => !["id","surgeryId","createdAt"].includes(k) && cpl[k] != null);
-            const hasMenisco = menisco && Object.keys(menisco).some(k => !["id","surgeryId"].includes(k) && menisco[k] != null) && !(detail.tiposProcedimento ?? []).includes("Artroplastias");
-            const hasPatelar = patelar && Object.keys(patelar).some(k => !["id","surgeryId","createdAt"].includes(k) && patelar[k] != null);
-            const hasTecnica = detail.enxerto || detail.diametroEnxerto || detail.fixacaoFemoral || detail.fixacaoTibial || reforcos.length > 0;
+              {detail.regiao && detail.dadosClinicos && (
+                <SurgeryClinicalView payload={detail.dadosClinicos} />
+              )}
 
-            return (
-              <>
-                {/* 1. Dados Básicos */}
-                <SectionBlock title={t("explicit.007")} icon={Calendar}>
-                  <Row label={t("explicit.163")} value={fmtDate(detail.dataCirurgia, locale)} />
-                  <Row label={t("explicit.164")} value={detail.hospital} />
-                  <Row label={t("explicit.165")} value={detail.patient?.sexo ?? detail.patientSexo} />
-                  <Row label={t("explicit.166")} value={detail.patient?.lado ?? detail.patientLado} />
-                  <Row label={t("doctor.caseType")} value={detail.tipoCaso} />
-                  <Row label={t("explicit.167")} value={detail.alinhamento} />
-                  <Row label={t("explicit.168")} value={detail.grauAlinhamento} />
-                  {(detail.tiposProcedimento ?? []).length > 0 && (
-                    <div className="py-1.5">
-                      <p className="text-xs text-muted-foreground mb-1">{t("staff.procedures")}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {detail.tiposProcedimento.map((p: string) => (
-                          <Badge key={p} variant="outline" className="text-xs">{p}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {(detail.ligamentosAcometidos ?? []).length > 0 && (
-                    <div className="py-1.5 border-t border-border/30">
-                      <p className="text-xs text-muted-foreground mb-1">{t("explicit.238")}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {detail.ligamentosAcometidos.map((l: string) => (
-                          <Badge key={l}>{l === "PLC" ? "CPL" : l}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </SectionBlock>
-
-                {/* 2. Exame Físico */}
-                {hasExame && (
-                  <SectionBlock title={t("explicit.008")} icon={Stethoscope}>
-                    {renderExame(exame!)}
-                  </SectionBlock>
-                )}
-
-                {/* 3. Osteotomia / Artroplastia / Ortobiológicos / LCM */}
-                {detail.procedimentosDetalhados && (() => {
-                  const nodes = renderProcedimentosDetalhados(detail.procedimentosDetalhados!);
-                  return nodes ? (
-                    <SectionBlock title={t("explicit.009")} icon={Activity}>
-                      {nodes}
-                    </SectionBlock>
-                  ) : null;
-                })()}
-
-                {/* 4. Técnica LCA */}
-                {hasTecnica && (
-                  <SectionBlock title={t("explicit.010")} icon={Microscope}>
-                    <Row label={t("explicit.146")} value={detail.enxerto} />
-                    <Row label={t("explicit.169")} value={detail.diametroEnxerto} />
-                    <Row label={t("explicit.170")} value={detail.tuneisFemorais} />
-                    <Row label={t("explicit.171")} value={detail.tuneisTibiais} />
-                    <Row label={t("explicit.172")} value={detail.fixacaoFemoral} />
-                    <Row label={t("explicit.173")} value={detail.fixacaoTibial} />
-                    {reforcos.length > 0 && (
-                      <div className="py-1.5 border-t border-border/30">
-                        <p className="text-xs text-muted-foreground mb-1">{t("explicit.011")}</p>
-                        <ul className="text-xs space-y-0.5">
-                          {reforcos.map((r, i) => <li key={i} className="font-medium">· {r}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                    <Row label={t("explicit.174")} value={detail.procedimentoRealizado} />
-                  </SectionBlock>
-                )}
-
-                {/* 5. LCA Algorithm */}
-                {hasLca && (
-                  <SectionBlock title={t("explicit.239")} icon={Brain}>
-                    {(lca!.krirsInterpretacao != null || lca!.krirsScore != null) && (
-                      <Row
-                        label={t("explicit.240")}
-                        value={getKrirsRiskLabel(
-                          getKrirsRiskLevel(lca!.krirsScore, lca!.flagAltoRisco, lca!.krirsInterpretacao),
-                          locale,
-                        )}
-                      />
-                    )}
-                    <Row label={t("explicit.175")} value={lca!.tecnicaRecomendada} />
-                    <Row label={t("explicit.176")} value={lca!.nivelAtividade} />
-                    <Row label={t("explicit.241")} value={lca!.esportePivot != null ? (lca!.esportePivot ? t("explicit.001") : t("explicit.012")) : null} />
-                    <Row label={t("explicit.177")} value={lca!.lesaoOssea != null ? (lca!.lesaoOssea ? t("explicit.001") : t("explicit.012")) : null} />
-                    <Row label={t("explicit.178")} value={lca!.lesaoAssociada != null ? (lca!.lesaoAssociada ? t("explicit.001") : t("explicit.012")) : null} />
-                    <Row label={t("explicit.179")} value={lca!.frouxidaoContralateral != null ? (lca!.frouxidaoContralateral ? t("explicit.001") : t("explicit.012")) : null} />
-                    <Row label={t("explicit.242")} value={lca!.hiperlaxidade != null ? (lca!.hiperlaxidade ? t("explicit.001") : t("explicit.012")) : null} />
-                    <Row label={t("explicit.180")} value={lca!.falhaPrev != null ? (lca!.falhaPrev ? t("explicit.001") : t("explicit.012")) : null} />
-                  </SectionBlock>
-                )}
-
-                {/* 6. LCP */}
-                {hasLcp && (
-                  <SectionBlock title={t("explicit.013")} icon={RotateCcw}>
-                    <Row label={t("explicit.181")} value={lcp!.grauLesao} />
-                    <Row label={t("explicit.145")} value={lcp!.tecnica} />
-                    <Row label={t("explicit.182")} value={lcp!.enxertoFemoral} />
-                    <Row label={t("explicit.183")} value={lcp!.enxertoTibial} />
-                    <Row label={t("explicit.184")} value={lcp!.diametroFemoral} />
-                    <Row label={t("explicit.185")} value={lcp!.diametroTibial} />
-                    <Row label={t("explicit.172")} value={lcp!.fixacaoFemoral} />
-                    <Row label={t("explicit.173")} value={lcp!.fixacaoTibial} />
-                    <Row label={t("explicit.243")} value={lcp!.fixacaoAnteromedial} />
-                    <Row label={t("explicit.244")} value={lcp!.fixacaoPosterolateral} />
-                    <Row label={t("explicit.186")} value={lcp!.justificativa} />
-                  </SectionBlock>
-                )}
-
-                {/* 7. CPM */}
-                {hasCpm && (
-                  <SectionBlock title={t("explicit.014")} icon={Activity}>
-                    <Row label={t("explicit.187")} value={
-                      cpm!.abordagem === "lcm_isolado" ? "LCM Isolado"
-                      : cpm!.abordagem === "lcm_lop" ? "LCM + LOP"
-                      : cpm!.abordagem
-                    } />
-                    {(cpm!.lcmTecnica || cpm!.lcmEnxerto) && (
-                      <div className="pt-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-0.5">LCM</p>
-                        <Row label={t("explicit.145")} value={cpm!.lcmTecnica} />
-                        <Row label={t("explicit.146")} value={cpm!.lcmEnxerto} />
-                        <Row label={t("explicit.227")} value={cpm!.lcmFixacaoProximal} />
-                        <Row label={t("explicit.228")} value={cpm!.lcmFixacaoDistal} />
-                      </div>
-                    )}
-                    {(cpm!.lopTecnica || cpm!.lopEnxerto) && (
-                      <div className="pt-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-0.5">LOP</p>
-                        <Row label={t("explicit.145")} value={cpm!.lopTecnica} />
-                        <Row label={t("explicit.146")} value={cpm!.lopEnxerto} />
-                        <Row label={t("explicit.154")} value={cpm!.lopFixacao} />
-                      </div>
-                    )}
-                    <Row label={t("explicit.186")} value={cpm!.justificativa} />
-                  </SectionBlock>
-                )}
-
-                {/* 8. CPL */}
-                {hasCpl && (
-                  <SectionBlock title={t("explicit.015")} icon={Activity}>
-                    <Row label={t("explicit.145")} value={cpl!.tecnica} />
-                    {(cpl!.enxertos ?? []).filter((e: any) => e.nome).map((e: any, i: number) => (
-                      <Row key={i} label={`Enxerto ${i + 1}`} value={`${e.nome}${e.diametro ? ` — Ø ${e.diametro}` : ""}`} />
-                    ))}
-                    <Row label={t("explicit.188")} value={cpl!.fixacaoFemoral1} />
-                    <Row label={t("explicit.189")} value={cpl!.fixacaoFemoral2} />
-                    <Row label={t("explicit.190")} value={cpl!.fixacaoFibular} />
-                    <Row label={t("explicit.191")} value={cpl!.fixacaoTibial} />
-                    <Row label={t("explicit.192")} value={cpl!.reaArtroscopica != null ? (cpl!.reaArtroscopica ? t("explicit.001") : t("explicit.012")) : null} />
-                  </SectionBlock>
-                )}
-
-                {/* 9. Menisco */}
-                {hasMenisco && (
-                  <SectionBlock title={t("explicit.193")} icon={Activity}>
-                    {/* Estímulo biológico */}
-                    {menisco!.estimuloBiologico && (
-                      <div className="flex items-start gap-2 px-3 py-2 rounded-lg border border-green-300 bg-green-50 text-green-800 mb-2 text-xs">
-                        <span className="font-bold shrink-0">{t("explicit.245")}</span>
-                        <span className="font-medium">
-                          {[
-                            menisco!.estimuloPerfuracaoIntercondilo && t("explicit.016"),
-                            menisco!.estimuloOrtobiologico && (menisco!.estimuloOrtobiologicoTipo
-                              ? `Ortobiológico: ${menisco!.estimuloOrtobiologicoTipo}`
-                              : t("explicit.017")),
-                          ].filter(Boolean).join(" · ") || t("explicit.001")}
-                        </span>
-                      </div>
-                    )}
-                    {/* All other menisco fields via labelMap */}
-                    {(() => {
-                      const SKIP = ["id","surgeryId","createdAt","estimuloBiologico","estimuloPerfuracaoIntercondilo","estimuloOrtobiologico","estimuloOrtobiologicoTipo"];
-                      const labelMap: Record<string, string> = {
-                        contexto: "Contexto", meniscectomia: "Meniscectomia", sutura: "Sutura",
-                        ladoMedial: "Menisco Medial", ladoLateral: "Menisco Lateral",
-                        lesaoRampa: t("explicit.194"), lesaoRaiz: "Raiz Posterior",
-                        lesaoRaizAnterior: "Raiz Anterior", lesaoCornoAnterior: "Corno Anterior",
-                        lesaoCornoPosterior: "Corno Posterior",
-                        lesaoAlcaBalde: t("explicit.195"), lesaoRadial: t("explicit.196"),
-                        lesaoCorpo: t("explicit.197"), tecnicasSutura: t("explicit.198"),
-                        numPontos: t("explicit.199"), tipoFio: t("explicit.200"),
-                        fixacaoRaiz: t("explicit.201"),
-                        centralizacaoRaiz: t("explicit.202"),
-                        centralizacaoMetodo: t("explicit.203"),
-                      };
-                      return Object.entries(menisco!).flatMap(([k, v]) => {
-                        if (SKIP.includes(k) || v == null || v === false || v === "") return [];
-                        if (k === "pontosPorTecnica") {
-                          try {
-                            const parsed: Record<string, number> = typeof v === "string" ? JSON.parse(v as string) : (v as any);
-                            return Object.entries(parsed).flatMap(([tec, pts]) => [
-                              <Row key={`ppt-${tec}-t`} label={t("explicit.204")} value={tec} />,
-                              <Row key={`ppt-${tec}-p`} label={t("explicit.205")} value={String(pts)} />,
-                            ]);
-                          } catch { return [<Row key={k} label={t("explicit.206")} value={String(v)} />]; }
-                        }
-                        const label = labelMap[k] ?? k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim();
-                        const display = Array.isArray(v) ? (v as any[]).join(", ")
-                          : typeof v === "boolean" ? t("explicit.001")
-                          : String(v);
-                        return [<Row key={k} label={label} value={display} />];
-                      });
-                    })()}
-                  </SectionBlock>
-                )}
-
-                {/* 10. Exame Patelar */}
-                {hasPatelar && (
-                  <SectionBlock title={t("explicit.246")} icon={Activity}>
-                    {(() => {
-                      const labelMap: Record<string, string> = {
-                        dejourTipo: t("explicit.207"),
-                        catonDeschamps: "Caton-Deschamps (CDI)",
-                        phiIndex: "Phi Index (Insall-Salvati mod.)",
-                        ttTgMm: "TT-TG (mm)",
-                        numEpisodios: t("explicit.208"),
-                        luxacaoCronica: t("explicit.209"),
-                        maltrackingDinamico: "Maltracking Dinâmico",
-                        inclinacaoPatelarGraus: t("explicit.210"),
-                        lesaoCondral: t("explicit.211"),
-                        subluxacaoSemLuxacao: t("explicit.212"),
-                        apprehensionTest: "Apprehension Test",
-                        jSign: "J-Sign",
-                        jSignGrau: t("explicit.266"),
-                        retinaculoTenso: t("explicit.213"),
-                        clarkSign: t("explicit.214"),
-                        tiltPatelar: "Tilt Patelar",
-                        glideTest: "Glide Test Patelar",
-                      };
-                      const SKIP = ["id","surgeryId","createdAt"];
-                      return Object.entries(patelar!).flatMap(([k, v]) => {
-                        if (SKIP.includes(k) || v == null || v === "" || v === false) return [];
-                        const label = labelMap[k] ?? k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim();
-                        const display = typeof v === "boolean" ? t("explicit.001")
-                          : typeof v === "number" ? String(v)
-                          : String(v);
-                        return [<Row key={k} label={label} value={display} />];
-                      });
-                    })()}
-                    {/* Técnica Patelar (from procedimentosDetalhados.patelar) */}
-                    {detail.procedimentosDetalhados && (() => {
-                      try {
-                        const d = JSON.parse(detail.procedimentosDetalhados!);
-                        const pat = d.patelar as Record<string, any> | undefined;
-                        if (!pat) return null;
-                        return (
-                          <div className="mt-2 pt-2 border-t border-border/30 space-y-0.5">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("explicit.247")}</p>
-                            {pat.tecnicas?.length > 0 && (
-                              <div className="py-1">
-                                <div className="flex flex-wrap gap-1">
-                                  {(pat.tecnicas as string[]).map((t: string) => (
-                                    <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <Row label={t("explicit.215")} value={pat.mpflEnxerto} />
-                            <Row label={t("explicit.248")} value={pat.mpflFixacaoPatelar} />
-                            <Row label={t("explicit.249")} value={pat.mpflFixacaoFemoral} />
-                            <Row label={t("explicit.250")} value={pat.mpflTensao} />
-                            <Row label={t("explicit.216")} value={pat.ttoTipo} />
-                            <Row label={t("explicit.217")} value={pat.ttoFixacao} />
-                            <Row label={t("explicit.218")} value={pat.trocleoplastiaTipo} />
-                            <Row label={t("explicit.219")} value={pat.trocleoplastiaFixacao} />
-                            <Row label={t("explicit.220")} value={pat.retinaculoLateral} />
-                            <Row label={t("explicit.162")} value={pat.observacoes} />
-                          </div>
-                        );
-                      } catch { return null; }
-                    })()}
-                  </SectionBlock>
-                )}
-
-                {/* 11. PICS Score */}
-                {pics && pics.ptsTotal != null && (
-                  <SectionBlock title="PICS Score" icon={Brain}>
-                    <Row label={t("clinical.totalPics")} value={pics.ptsTotal} />
-                    <Row label={t("explicit.221")} value={pics.risco} />
-                  </SectionBlock>
-                )}
-
-                {/* 12. Follow-ups */}
-                <SectionBlock title={t("explicit.018")} icon={Dumbbell}>
-                  {followups.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic py-2">{t("explicit.019")}</p>
-                  ) : followups.map((fu) => (
-                    <div key={fu.id} className="rounded-lg border border-border/60 bg-muted/20 p-3 mb-2">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <Badge variant="secondary" className="text-xs font-mono">
-                          {TEMPO_LABEL_KEYS[fu.tempo] ? t(TEMPO_LABEL_KEYS[fu.tempo]) : fu.tempo}
-                        </Badge>
-                        {fu.dataAvaliacao && (
-                          <span className="text-xs text-muted-foreground">{fmtDate(fu.dataAvaliacao, locale)}</span>
-                        )}
-                        {fu.retornoEsporte === true && (
-                          <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">{t("explicit.020")}</Badge>
-                        )}
-                        {fu.falha === true && (
-                          <Badge variant="destructive" className="text-xs">{t("explicit.021")}</Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <ScorePill label="IKDC" value={fu.ikdc} />
-                        <ScorePill label="Lysholm" value={fu.lysholm} />
-                        <ScorePill label="Tegner" value={fu.tegner} />
-                        <ScorePill label="Kujala" value={fu.kujala} />
-                        <ScorePill label={t("explicit.251")} value={fu.vasDor} />
-                        <ScorePill label="ACL-RSI" value={fu.aclRsi} />
-                        <ScorePill label={t("explicit.252")} value={fu.koosDor} />
-                        <ScorePill label={t("explicit.253")} value={fu.koosQualidade} />
-                      </div>
-                      {fu.complicacoes && fu.complicacoes.length > 0 && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-destructive">
-                          <AlertTriangle className="h-3 w-3" />
-                          {fu.complicacoes.join(", ")}
-                        </div>
+              <SectionBlock title={t("explicit.018")} icon={Dumbbell}>
+                {followups.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-2">{t("explicit.019")}</p>
+                ) : followups.map((fu) => (
+                  <div key={fu.id} className="rounded-lg border border-border/60 bg-muted/20 p-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="text-xs font-mono">{fu.tempo}</Badge>
+                      {fu.dataAvaliacao && <span className="text-xs text-muted-foreground">{fmtDate(fu.dataAvaliacao, locale)}</span>}
+                      {fu.retornoEsporte === true && (
+                        <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">{t("explicit.020")}</Badge>
                       )}
-                      {fu.observacoes && (
-                        <p className="mt-2 text-xs text-muted-foreground italic">{fu.observacoes}</p>
-                      )}
+                      {fu.falha === true && <Badge variant="destructive" className="text-xs">{t("explicit.021")}</Badge>}
                     </div>
-                  ))}
-                </SectionBlock>
-              </>
-            );
-          })()}
+                    <div className="flex flex-wrap gap-2">
+                      <ScorePill label={t("explicit.251")} value={fu.vasDor} />
+                    </div>
+                    {fu.complicacoes && fu.complicacoes.length > 0 && (
+                      <div className="mt-2 flex items-center gap-1 text-xs text-destructive">
+                        <AlertTriangle className="h-3 w-3" />
+                        {fu.complicacoes.join(", ")}
+                      </div>
+                    )}
+                    {fu.observacoes && <p className="mt-2 text-xs text-muted-foreground italic">{fu.observacoes}</p>}
+                  </div>
+                ))}
+              </SectionBlock>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -716,7 +220,7 @@ function AdminSurgerySheet({ surgeryId, onClose }: { surgeryId: number | null; o
 // ─── Surgery table row ────────────────────────────────────────────────────────
 function SurgeryRow({ surgery, onSelect }: { surgery: Surgery; onSelect: (id: number) => void }) {
   const { locale } = useLanguage();
-  const procedimentos = parseProcedimentos(surgery);
+  const procedimentos = caseTypeLabels(surgery);
   return (
     <TableRow
       className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -731,9 +235,6 @@ function SurgeryRow({ surgery, onSelect }: { surgery: Surgery; onSelect: (id: nu
         {surgery.tipoCaso
           ? <Badge variant="secondary" className="text-xs font-normal">{surgery.tipoCaso}</Badge>
           : <span className="text-muted-foreground">–</span>}
-        {surgery.alinhamento && (
-          <span className="ml-1.5 text-xs text-amber-700 font-medium">{surgery.alinhamento}</span>
-        )}
       </TableCell>
       <TableCell>
         {procedimentos.length > 0
@@ -862,18 +363,6 @@ export default function AdminDoctorView() {
       setTemporaryAccessLoading(false);
     }
   };
-
-  const [selectedSurgeryData, setSelectedSurgeryData] = useState<any>(null);
-  const [loadingSurgery, setLoadingSurgery] = useState(false);
-
-  useEffect(() => {
-    if (!selectedSurgeryId) { setSelectedSurgeryData(null); return; }
-    setLoadingSurgery(true);
-    fetch(`/api/admin/surgeries/${selectedSurgeryId}`, { credentials: "same-origin" })
-      .then(r => r.json())
-      .then(d => { setSelectedSurgeryData(d); setLoadingSurgery(false); })
-      .catch(() => setLoadingSurgery(false));
-  }, [selectedSurgeryId]);
 
   if (doctorLoading || surgeriesLoading) {
     return (
@@ -1127,21 +616,8 @@ export default function AdminDoctorView() {
         {t("doctor.privacy")}
       </p>
 
-      {/* Detail: full procedure summary with patient privacy */}
-      {loadingSurgery && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-background rounded-xl p-6 shadow-xl flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-             <span className="text-sm font-medium">{t("doctor.loadingSummary")}</span>
-          </div>
-        </div>
-      )}
-      <SurgeryFullSummary
-        open={selectedSurgeryId !== null && !loadingSurgery && selectedSurgeryData !== null}
-        onClose={() => { setSelectedSurgeryId(null); setSelectedSurgeryData(null); }}
-        surgery={selectedSurgeryData}
-        privacyMode={true}
-      />
+      {/* Detalhe da cirurgia com privacidade do paciente (iniciais) */}
+      <AdminSurgerySheet surgeryId={selectedSurgeryId} onClose={() => setSelectedSurgeryId(null)} />
 
       {/* ── Doctor full profile sheet ── */}
       <Sheet open={profileOpen} onOpenChange={setProfileOpen}>

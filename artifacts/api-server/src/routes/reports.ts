@@ -52,14 +52,6 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
     }
   }
 
-  // Count by ligament
-  const ligCount: Record<string, number> = {};
-  for (const s of surgeries) {
-    for (const l of s.ligamentosAcometidos) {
-      ligCount[l] = (ligCount[l] ?? 0) + 1;
-    }
-  }
-
   // Recent surgeries
   const recentSurgeriesRaw = await db
     .select({
@@ -85,7 +77,7 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
   // Follow-up stats
   const allFollowups = (await db
     .select({
-      ikdc: followupTable.ikdc,
+      vasDor: followupTable.vasDor,
       retornoEsporte: followupTable.retornoEsporte,
       tempo: followupTable.tempo,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
@@ -98,9 +90,9 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
       followup.tempo,
     ));
 
-  const followupsWithIkdc = allFollowups.filter(f => f.ikdc != null);
-  const avgIkdc = followupsWithIkdc.length > 0
-    ? followupsWithIkdc.reduce((sum, f) => sum + (f.ikdc ?? 0), 0) / followupsWithIkdc.length
+  const followupsWithPain = allFollowups.filter(f => f.vasDor != null);
+  const avgPain = followupsWithPain.length > 0
+    ? followupsWithPain.reduce((sum, f) => sum + (f.vasDor ?? 0), 0) / followupsWithPain.length
     : null;
 
   const withRetornoData = allFollowups.filter(f => f.retornoEsporte != null);
@@ -116,10 +108,9 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
     totalPatients: Number(totalPatients),
     totalSurgeries: Number(totalSurgeries),
     surgeriesByType: Object.entries(typeCount).map(([tipo, count]) => ({ tipo, count })),
-    surgeriesByLigament: Object.entries(ligCount).map(([ligamento, count]) => ({ ligamento, count })),
     recentSurgeries,
     followupCompliance: Math.min(followupCompliance, 100),
-    avgIkdc,
+    avgPain,
     returnToSportRate,
   });
 });
@@ -138,17 +129,9 @@ router.get("/reports/admin", requireAdmin, async (req, res): Promise<void> => {
     }
   }
 
-  const ligCount: Record<string, number> = {};
-  for (const s of allSurgeries) {
-    for (const l of s.ligamentosAcometidos) {
-      ligCount[l] = (ligCount[l] ?? 0) + 1;
-    }
-  }
-
   const allFollowups = (await db
     .select({
-      ikdc: followupTable.ikdc,
-      lysholm: followupTable.lysholm,
+      vasDor: followupTable.vasDor,
       retornoEsporte: followupTable.retornoEsporte,
       tempo: followupTable.tempo,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
@@ -160,14 +143,9 @@ router.get("/reports/admin", requireAdmin, async (req, res): Promise<void> => {
       followup.tempo,
     ));
 
-  const withIkdc = allFollowups.filter(f => f.ikdc != null);
-  const avgIkdc = withIkdc.length > 0
-    ? withIkdc.reduce((s, f) => s + (f.ikdc ?? 0), 0) / withIkdc.length
-    : null;
-
-  const withLysholm = allFollowups.filter(f => f.lysholm != null);
-  const avgLysholm = withLysholm.length > 0
-    ? withLysholm.reduce((s, f) => s + (f.lysholm ?? 0), 0) / withLysholm.length
+  const withPain = allFollowups.filter(f => f.vasDor != null);
+  const avgPain = withPain.length > 0
+    ? withPain.reduce((s, f) => s + (f.vasDor ?? 0), 0) / withPain.length
     : null;
 
   const withRetorno = allFollowups.filter(f => f.retornoEsporte != null);
@@ -320,9 +298,7 @@ router.get("/reports/admin", requireAdmin, async (req, res): Promise<void> => {
     totalPatients: Number(totalPatients),
     totalSurgeries: Number(totalSurgeries),
     surgeriesByType: Object.entries(typeCount).map(([tipo, count]) => ({ tipo, count })),
-    surgeriesByLigament: Object.entries(ligCount).map(([ligamento, count]) => ({ ligamento, count })),
-    avgIkdc,
-    avgLysholm,
+    avgPain,
     returnToSportRate,
     doctorStats,
     monthlySurgeries,
@@ -352,10 +328,9 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
 
   const q = req.query as Record<string, string | undefined>;
   const {
-    ligamentos, tipoCaso, dataInicio, dataFim, medicoId, tempo,
-    enxerto, diametroEnxerto, fixacaoFemoral, fixacaoTibial,
-    alinhamento, hospital, reforco, procedimento,
-    sexo, nivelAtividade, esportePivot, lado,
+    regiao, tipoCaso, dataInicio, dataFim, medicoId, tempo,
+    hospital, procedimento,
+    sexo, nivelAtividade, lado,
     beightonMin, beightonMax, idadeMin, idadeMax,
     retornoEsporte, falha,
   } = q;
@@ -368,50 +343,17 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
     conditions.push(eq(surgeriesTable.doctorId, parseInt(medicoId)));
   }
 
-  // Surgery filters — multi-ligament OR condition
-  if (ligamentos) {
-    const ligList = ligamentos.split(",").map(l => l.trim()).filter(Boolean);
-    if (ligList.length === 1) {
-      conditions.push(sql`${ligList[0]} = ANY(${surgeriesTable.ligamentosAcometidos})` as any);
-    } else if (ligList.length > 1) {
-      const orParts = ligList.map(l => sql`${l} = ANY(${surgeriesTable.ligamentosAcometidos})`);
-      conditions.push(sql`(${sql.join(orParts, sql` OR `)})` as any);
-    }
-  }
+  // Filtros da cirurgia
+  if (regiao === "shoulder" || regiao === "elbow") conditions.push(eq(surgeriesTable.regiao, regiao));
   if (tipoCaso) conditions.push(sql`${tipoCaso} = ANY(${surgeriesTable.tiposProcedimento})` as any);
   if (dataInicio) conditions.push(sql`${surgeriesTable.dataCirurgia} >= ${dataInicio}` as any);
   if (dataFim) conditions.push(sql`${surgeriesTable.dataCirurgia} <= ${dataFim}` as any);
-  if (enxerto) conditions.push(ilike(surgeriesTable.enxerto, enxerto));
-  if (diametroEnxerto) conditions.push(eq(surgeriesTable.diametroEnxerto, diametroEnxerto));
-  if (fixacaoFemoral) conditions.push(eq(surgeriesTable.fixacaoFemoral, fixacaoFemoral));
-  if (fixacaoTibial) conditions.push(eq(surgeriesTable.fixacaoTibial, fixacaoTibial));
-  if (alinhamento) conditions.push(eq(surgeriesTable.alinhamento, alinhamento));
   if (hospital) conditions.push(sql`LOWER(${surgeriesTable.hospital}) LIKE ${'%' + hospital.toLowerCase() + '%'}` as any);
-  if (reforco) {
-    // reforco may be stored as JSON {"lal":true,"let":false,"loa":false} (new surgeries)
-    // or as free-text (legacy). Map known labels to their JSON key for JSON-stored rows.
-    const REFORCO_KEY_MAP: Record<string, string> = {
-      'all (ligamento anterolateral)': 'lal',
-      'let (ligamento extra-articular tecidual)': 'let',
-      'ligamento oblíquo anterior (loa)': 'loa',
-    };
-    const jsonKey = REFORCO_KEY_MAP[reforco.toLowerCase()];
-    if (jsonKey) {
-      // Match JSON-stored: {"lal":true} — JSON.stringify never inserts spaces
-      // Also fall back to plain-text LIKE for legacy rows
-      conditions.push(sql`(${surgeriesTable.reforco}::text LIKE ${'%"' + jsonKey + '":true%'} OR LOWER(${surgeriesTable.reforco}::text) LIKE ${'%' + jsonKey + '%'})` as any);
-    } else {
-      conditions.push(sql`LOWER(${surgeriesTable.reforco}) LIKE ${'%' + reforco.toLowerCase() + '%'}` as any);
-    }
-  }
   if (procedimento) conditions.push(sql`LOWER(${surgeriesTable.procedimentoRealizado}) LIKE ${'%' + procedimento.toLowerCase() + '%'}` as any);
 
   // Patient filters
   if (sexo) conditions.push(eq(patientsTable.sexo, sexo));
   if (nivelAtividade) conditions.push(eq(patientsTable.nivelAtividade, nivelAtividade));
-  if (esportePivot !== undefined && esportePivot !== "") {
-    conditions.push(eq(patientsTable.esportePivot, esportePivot === "true"));
-  }
   if (lado) conditions.push(eq(patientsTable.lado, lado));
   if (beightonMin) conditions.push(sql`${patientsTable.beightonScore} >= ${parseInt(beightonMin)}` as any);
   if (beightonMax) conditions.push(sql`${patientsTable.beightonScore} <= ${parseInt(beightonMax)}` as any);
@@ -446,14 +388,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       followupId: followupTable.id,
       followupTempo: followupTable.tempo,
       followupDataAvaliacao: followupTable.dataAvaliacao,
-      followupIkdc: followupTable.ikdc,
-      followupLysholm: followupTable.lysholm,
-      followupTegner: followupTable.tegner,
-      followupKujala: followupTable.kujala,
       followupVasDor: followupTable.vasDor,
-      followupAclRsi: followupTable.aclRsi,
-      followupMarx: followupTable.marx,
-      followupKoos12: followupTable.koos12,
       followupRetornoEsporte: followupTable.retornoEsporte,
       followupNivelRetorno: followupTable.nivelRetorno,
       followupFalha: followupTable.falha,
@@ -463,14 +398,10 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       surgeryId: surgeriesTable.id,
       dataCirurgia: surgeriesTable.dataCirurgia,
       hospital: surgeriesTable.hospital,
+      regiao: surgeriesTable.regiao,
+      tipoCaso: surgeriesTable.tipoCaso,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
-      ligamentosAcometidos: surgeriesTable.ligamentosAcometidos,
-      enxerto: surgeriesTable.enxerto,
-      diametroEnxerto: surgeriesTable.diametroEnxerto,
-      fixacaoFemoral: surgeriesTable.fixacaoFemoral,
-      fixacaoTibial: surgeriesTable.fixacaoTibial,
-      alinhamento: surgeriesTable.alinhamento,
-      reforco: surgeriesTable.reforco,
+      diagnostico: surgeriesTable.diagnostico,
       procedimentoRealizado: surgeriesTable.procedimentoRealizado,
       surgeryDoctorId: surgeriesTable.doctorId,
       surgeryCreatedAt: surgeriesTable.createdAt,
@@ -478,7 +409,6 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       patientSexo: patientsTable.sexo,
       patientLado: patientsTable.lado,
       patientNivelAtividade: patientsTable.nivelAtividade,
-      patientEsportePivot: patientsTable.esportePivot,
       patientBeighton: patientsTable.beightonScore,
       patientDatNasc: patientsTable.dataNascimento,
       doctorNome: doctorsTable.nome,
@@ -497,8 +427,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       row.followupTempo,
     ))
     .map(({ patientDatNasc, followupId, followupTempo, followupDataAvaliacao,
-    followupIkdc, followupLysholm, followupTegner, followupKujala, followupVasDor,
-    followupAclRsi, followupMarx, followupKoos12, followupRetornoEsporte, followupNivelRetorno,
+    followupVasDor, followupRetornoEsporte, followupNivelRetorno,
     followupFalha, followupFalhaType, followupObservacoes, followupCreatedAt, surgeryCreatedAt,
     ...rest }) => {
     let idade: number | null = null;
@@ -514,14 +443,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       id: followupId ?? null,
       tempo: followupTempo ?? null,
       dataAvaliacao: followupDataAvaliacao ?? null,
-      ikdc: followupIkdc ?? null,
-      lysholm: followupLysholm ?? null,
-      tegner: followupTegner ?? null,
-      kujala: followupKujala ?? null,
       vasDor: followupVasDor ?? null,
-      aclRsi: followupAclRsi ?? null,
-      marx: followupMarx ?? null,
-      koos12: followupKoos12 ?? null,
       retornoEsporte: followupRetornoEsporte ?? null,
       nivelRetorno: followupNivelRetorno ?? null,
       falha: followupFalha ?? null,

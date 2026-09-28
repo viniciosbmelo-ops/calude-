@@ -5,7 +5,6 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
-import type { ExamePatelarInput } from './examePatelarInput';
 import type { UpdateSurgeryBodyDadosClinicos } from './updateSurgeryBodyDadosClinicos';
 import type { UpdateSurgeryBodyRegiao } from './updateSurgeryBodyRegiao';
 
@@ -24,25 +23,7 @@ export interface UpdateSurgeryBody {
   tipoCaso?: string;
   /** @nullable */
   diagnostico?: string | null;
-  alinhamento?: string;
-  grauAlinhamento?: string;
-  /** @nullable */
-  rxAnaliseJson?: string | null;
   tiposProcedimento?: string[];
-  ligamentosAcometidos?: string[];
-  enxerto?: string;
-  diametroEnxerto?: string;
-  fixacaoFemoral?: string;
-  fixacaoTibial?: string;
-  internalBrace?: string;
-  tipoLca?: string;
-  localizacaoLesaoLca?: string;
-  fixacaoReparoLca?: string;
-  preservacaoRemanescente?: string;
-  reforco?: string;
   procedimentoRealizado?: string;
   observacoes?: string;
-  /** @nullable */
-  procedimentosDetalhados?: string | null;
-  examePatelar?: ExamePatelarInput | null;
 }

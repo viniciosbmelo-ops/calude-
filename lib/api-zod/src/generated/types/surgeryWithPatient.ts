@@ -22,10 +22,7 @@ export interface SurgeryWithPatient {
   hospital?: string | null;
   /** @nullable */
   tipoCaso?: string | null;
-  /** @nullable */
-  alinhamento?: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
   /** @nullable */
   observacoes?: string | null;
   /** @nullable */

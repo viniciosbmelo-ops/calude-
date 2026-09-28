@@ -7,10 +7,10 @@
  *  - Token: getPatientSession with missing/empty/invalid/expired cookies
  *  - Lockout: check/record/clear via mocked pool; independent IPs; lock after 5
  *  - validateRespostas: object shape, key/value limits, NaN/Infinity rejection
- *  - computeScore (smoke): VAS, Tegner, Lysholm, KOOS-12, WOMAC, ACL-RSI, Marx
+ *  - computeScore (smoke): VAS
  *  - computeScore: throws on missing required answers, not silent 0
  *  - computeScore: unknown scale validates client score range
- *  - clampScore: per-scale ranges (VAS 0-10, Marx 0-16, WOMAC 0-100)
+ *  - clampScore: per-scale ranges (VAS 0-10)
  *  - GET response minimality: no IDs/names/dates
  *  - verify response minimality: no IDs/names/dates
  *  - session binding: wrong tokenType or linkToken rejected
@@ -576,75 +576,6 @@ describe("score calculators (mirrored from patient.ts)", () => {
     expect(Math.max(0, Math.min(10, 15))).toBe(10);
   });
 
-  it("Tegner: clamps to 0-10", () => {
-    expect(Math.max(0, Math.min(10, Math.round(5)))).toBe(5);
-  });
-
-  it("Lysholm: sum of 8 components (perfect = 100)", () => {
-    const a: Record<string, number> = {
-      claudicacao: 5, apoio: 5, bloqueio: 15, instabilidade: 25,
-      dor: 25, edema: 10, escadas: 10, agachar: 5,
-    };
-    const keys = ["claudicacao","apoio","bloqueio","instabilidade","dor","edema","escadas","agachar"];
-    const score = keys.reduce((s, k) => s + a[k]!, 0);
-    expect(score).toBe(100);
-  });
-
-  it("Lysholm: throws when a required key is missing", () => {
-    // Simulate the calculator throwing when key is absent
-    const a: Record<string, number> = { claudicacao: 5 }; // missing others
-    const keys = ["claudicacao","apoio","bloqueio","instabilidade","dor","edema","escadas","agachar"];
-    let threw = false;
-    try {
-      for (const k of keys) {
-        if (a[k] === undefined) throw new Error(`Lysholm: resposta '${k}' ausente`);
-      }
-    } catch {
-      threw = true;
-    }
-    expect(threw).toBe(true);
-  });
-
-  it("ACL-RSI: full score (100) when negatives=0 and positives=10", () => {
-    const a: Record<string, number> = {
-      medo_lesao: 0, nervoso_esporte: 0, nao_recuperado: 0,
-      frustracao_nivel: 0, preocupacao_ceder: 0, arriscado_retornar: 0,
-      confianca_suportar: 10, joelho_aguentara: 10, satisfeito_nivel: 10,
-      seguro_dedicar: 10, nivel_anterior: 10, animado_retorno: 10,
-    };
-    const negative = ["medo_lesao","nervoso_esporte","nao_recuperado","frustracao_nivel","preocupacao_ceder","arriscado_retornar"];
-    const positive = ["confianca_suportar","joelho_aguentara","satisfeito_nivel","seguro_dedicar","nivel_anterior","animado_retorno"];
-    let total = 0; let count = 0;
-    for (const k of negative) { total += (10 - a[k]!); count++; }
-    for (const k of positive) { total += a[k]!; count++; }
-    expect(Math.round((total / count) * 10)).toBe(100);
-  });
-
-  it("KOOS-12: 100 when all items = 4", () => {
-    const keys = ["dor_freq","dor_torcao","dor_extensao","rigidez_manha","rigidez_tarde",
-      "adl_escadas","adl_levantar","adl_caminhar","sport_agachar","sport_correr",
-      "qol_consciente","qol_modificou"];
-    const a: Record<string, number> = Object.fromEntries(keys.map(k => [k, 4]));
-    const total = keys.reduce((s, k) => s + a[k]!, 0);
-    expect(Math.round((total / (keys.length * 4)) * 100)).toBe(100);
-  });
-
-  it("WOMAC: 100 when all items = 0", () => {
-    const keys = ["dor_caminhar","dor_escadas","dor_noite","dor_repouso","dor_carga",
-      "rig_manha","rig_tarde","fis_descer","fis_subir","fis_levantar","fis_ficar_pe",
-      "fis_caminhar","fis_carro","fis_compras","fis_meias","fis_cama","fis_banho",
-      "fis_sentado","fis_vaso","fis_tarefas","fis_tarefas_leves"];
-    const a: Record<string, number> = Object.fromEntries(keys.map(k => [k, 0]));
-    const total = keys.reduce((s, k) => s + a[k]!, 0);
-    expect(Math.round(100 - (total / (keys.length * 4)) * 100)).toBe(100);
-  });
-
-  it("Marx: sum of 4 activities (max = 16)", () => {
-    const a = { correr: 4, desacelerar: 4, corte_lateral: 4, pivotar: 4 };
-    const score = a.correr + a.desacelerar + a.corte_lateral + a.pivotar;
-    expect(score).toBe(16);
-  });
-
   it("unknown scale rejects NaN client score", () => {
     let threw = false;
     try {
@@ -673,14 +604,6 @@ describe("score calculators (mirrored from patient.ts)", () => {
 describe("clampScore per-scale ranges", () => {
   const SCALE_SCORE_RANGES: Record<string, [number, number]> = {
     "VAS Dor":  [0, 10],
-    "Tegner":   [0, 10],
-    "Lysholm":  [0, 100],
-    "IKDC":     [0, 100],
-    "Kujala":   [0, 100],
-    "ACL-RSI":  [0, 100],
-    "Marx":     [0, 16],
-    "WOMAC":    [0, 100],
-    "KOOS-12":  [0, 100],
   };
 
   function clamp(escala: string, score: number): number {
@@ -691,10 +614,10 @@ describe("clampScore per-scale ranges", () => {
 
   it("VAS Dor: clamps 11 → 10", () => expect(clamp("VAS Dor", 11)).toBe(10));
   it("VAS Dor: clamps -1 → 0", () => expect(clamp("VAS Dor", -1)).toBe(0));
-  it("Marx: allows 16", () => expect(clamp("Marx", 16)).toBe(16));
-  it("Marx: clamps 17 → 16", () => expect(clamp("Marx", 17)).toBe(16));
-  it("Lysholm: allows 100", () => expect(clamp("Lysholm", 100)).toBe(100));
-  it("WOMAC: allows 0", () => expect(clamp("WOMAC", 0)).toBe(0));
+  it("VAS Dor: allows 0 and 10", () => {
+    expect(clamp("VAS Dor", 0)).toBe(0);
+    expect(clamp("VAS Dor", 10)).toBe(10);
+  });
   it("unknown scale: passes through without clamping", () => {
     expect(clamp("Escala Desconhecida", 55)).toBe(55);
   });
@@ -705,7 +628,7 @@ describe("clampScore per-scale ranges", () => {
 describe("GET public response minimality", () => {
   it("classic GET must not include internal IDs, name, or clinical dates", () => {
     const banned = ["followupId", "patientNome", "surgeryDate", "dataAvaliacao", "patientId", "surgeryId"];
-    const publicResponse = { tempo: "3m", escalasEnviadas: ["VAS Dor", "Lysholm"] };
+    const publicResponse = { tempo: "3m", escalasEnviadas: ["VAS Dor"] };
     for (const field of banned) expect(field in publicResponse).toBe(false);
   });
 
