@@ -155,7 +155,7 @@ export default function Home() {
             textTransform: "uppercase",
             color: "rgba(255,255,255,0.45)",
           }}>
-            {h("Disponível agora — Cirurgia do Joelho · Reabilitação · Ortobiológicos")}
+            {h("Disponível agora — Cirurgia de Ombro e Cotovelo · Reabilitação · Ortobiológicos")}
           </span>
         </div>
 
@@ -214,7 +214,7 @@ export default function Home() {
           }}
           className="text-[14px] lg:text-[15px]"
           >
-            {h("Prontuário eletrônico, análise radiográfica por IA, agendamento e protocolos KRIRS/PICS 2.0 — integrados ao seu fluxo clínico e cirúrgico.")}
+            {h("Prontuário eletrônico, registro cirúrgico estruturado, relatório automático, agendamento e seguimento pelo WhatsApp — integrados ao seu fluxo clínico e cirúrgico.")}
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -277,8 +277,8 @@ export default function Home() {
       {/* ── STATS STRIP ── */}
       <div style={{ borderBottom: "1px solid #D8E6EE" }} className="grid grid-cols-2 lg:grid-cols-4">
         {[
-          { num: "HKA", sup: "+MAD", desc: h("Cálculo automático por foto panorâmica de MMII") },
-          { num: "KRIRS", sup: "+PICS", desc: h("Algoritmos de risco LCA e instabilidade patelar") },
+          { num: h("Ombro"), sup: h("+Cotovelo"), desc: h("Formulários estruturados por tipo de caso") },
+          { num: "GS1", sup: h("lote"), desc: h("Rastreabilidade de implantes pelo código de barras") },
           { num: "PDF", sup: "auto", desc: h("Documentação cirúrgica estruturada em segundos") },
           { num: "LGPD", sup: "✓", desc: h("Conformidade com proteção de dados em saúde") },
         ].map((s, i) => (
@@ -434,13 +434,13 @@ export default function Home() {
                 },
                 {
                   icon: "🔬",
-                  title: h("Protocolos KRIRS e PICS 2.0"),
-                  sub: h("Estratificação de risco para LCA e instabilidade patelar baseada em consensos SBQ e ISAKOS."),
+                  title: h("Registro estruturado por tipo de caso"),
+                  sub: h("Manguito rotador, instabilidade, bíceps e SLAP, artroplastia, fraturas e cotovelo — com validação e inventário artroscópico."),
                 },
                 {
                   icon: "📊",
                   title: h("Relatórios para publicação científica"),
-                  sub: h("IKDC, Lysholm, Tegner, VAS e KOOS-12 exportados em CSV pronto para análise estatística."),
+                  sub: h("Dor (VAS), retorno ao esporte, falhas e complicações exportados em CSV para análise estatística."),
                 },
               ].map((f, i) => (
                 <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -522,12 +522,12 @@ export default function Home() {
             {/* Numbered steps */}
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
               {[
-                 { n: "01", title: h("Análise Radiográfica por IA"), sub: h("HKA, MAD e deformidade varo/valgo por foto panorâmica de MMII") },
-                 { n: "02", title: h("Planejamento de Osteotomia"), sub: h("Cunha de correção, simulação do eixo mecânico pós-cirurgia") },
-                 { n: "03", title: h("Laudo e Registro Cirúrgico"), sub: h("Documentação SOAP com exportação automática para PDF") },
-                 { n: "04", title: h("Algoritmos KRIRS e PICS 2.0"), sub: h("Risco de lesão LCA e instabilidade patelar integrados ao prontuário") },
-                 { n: "05", title: h("Follow-up Pós-operatório"), sub: h("Escalas funcionais, retorno ao esporte e histórico evolutivo") },
-                 { n: "06", title: h("Dados para Pesquisa Científica"), sub: h("IKDC, Lysholm, Tegner, VAS exportados em CSV para publicação") },
+                 { n: "01", title: h("Registro Cirúrgico Estruturado"), sub: h("Formulários por tipo de caso de ombro e cotovelo, com validação") },
+                 { n: "02", title: h("Inventário Artroscópico"), sub: h("Cada estrutura registrada como normal, lesão ou tratada") },
+                 { n: "03", title: h("Relatório Cirúrgico"), sub: h("Descrição gerada a partir do registro, com exportação para PDF") },
+                 { n: "04", title: h("Rastreabilidade de Implantes"), sub: h("Lote, série e validade lidos do código GS1") },
+                 { n: "05", title: h("Follow-up Pós-operatório"), sub: h("Dor, retorno ao esporte e histórico evolutivo") },
+                 { n: "06", title: h("Dados para Pesquisa Científica"), sub: h("Dor, retorno e falhas exportados em CSV para publicação") },
               ].map((s, i, arr) => (
                 <div key={i} style={{
                   display: "flex",
@@ -574,84 +574,39 @@ export default function Home() {
               width: "100%",
             }}>
 
-              {/* 01 — Análise Radiográfica (CSS/SVG illustration) */}
-              <div style={{ background: "#071628", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(31,182,225,0.2)", position: "relative" }}>
-                {/* Anatomical angle illustration */}
-                <div style={{ height: 100, background: "#030C18", position: "relative", overflow: "hidden" }}>
-                  <svg width="100%" height="100%" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0 }}>
-                    {/* Femur bone shaft (left leg) */}
-                    <rect x="72" y="2" width="20" height="92" rx="10" fill="rgba(200,210,220,0.07)" />
-                    {/* Tibia continuation */}
-                    <rect x="74" y="56" width="16" height="44" rx="8" fill="rgba(200,210,220,0.05)" />
-                    {/* Mechanical axis — dashed vertical */}
-                    <line x1="82" y1="4" x2="82" y2="96" stroke="#1FB6E1" strokeWidth="1" strokeDasharray="4,3" opacity="0.65" />
-                    {/* mLDFA line — angled at distal femur */}
-                    <line x1="50" y1="45" x2="125" y2="55" stroke="#60AADD" strokeWidth="1.2" opacity="0.85" />
-                    {/* mLDFA arc */}
-                    <path d="M 82,50 A 14,14 0 0,1 96,50" fill="none" stroke="#60AADD" strokeWidth="1" opacity="0.7" />
-                    {/* aMPTA line — angled at proximal tibia */}
-                    <line x1="52" y1="66" x2="120" y2="58" stroke="#38B88A" strokeWidth="1.2" opacity="0.8" />
-                    {/* aMPTA arc */}
-                    <path d="M 82,62 A 10,10 0 0,0 92,58" fill="none" stroke="#38B88A" strokeWidth="1" opacity="0.7" />
-                    {/* HKA varo arc (knee joint) */}
-                    <path d="M 74,51 A 8,8 0 0,0 90,51" fill="none" stroke="#E67832" strokeWidth="1.2" opacity="0.9" />
-                    {/* Labels */}
-                    <text x="130" y="53" fill="#60AADD" fontSize="7.5" fontFamily="monospace" opacity="0.9">mLDFA</text>
-                    <text x="125" y="62" fill="#38B88A" fontSize="7.5" fontFamily="monospace" opacity="0.9">aMPTA</text>
-                    <text x="37" y="55" fill="#E67832" fontSize="7.5" fontFamily="monospace" opacity="0.9">HKA</text>
-                    {/* HKA value */}
-                    <text x="90" y="49" fill="#E67832" fontSize="6.5" fontFamily="monospace" fontWeight="bold">8.3°</text>
-                  </svg>
-                  {/* Step badge */}
-                  <div style={{ position: "absolute", top: 6, right: 8, fontSize: 8, color: "#1FB6E1", background: "rgba(31,182,225,0.13)", border: "1px solid rgba(31,182,225,0.35)", borderRadius: 4, padding: "2px 7px", fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{h("Etapa 9/11")}</div>
-                  {/* Angle readout strip */}
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", gap: 6, padding: "4px 8px", background: "rgba(3,12,24,0.75)", backdropFilter: "blur(2px)" }}>
-                    {[{ l: "HKA", v: "8.3° var", c: "#E67832" }, { l: "mLDFA", v: "92.7°", c: "#60AADD" }, { l: "aMPTA", v: "87.1°", c: "#38B88A" }].map((m, i) => (
-                      <div key={i} style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono', monospace" }}>{m.l}</div>
-                        <div style={{ fontSize: 8, fontWeight: 700, color: m.c, fontFamily: "'DM Mono', monospace" }}>{m.v}</div>
-                      </div>
-                    ))}
-                  </div>
+              {/* 01 — Registro estruturado (tipos de caso) */}
+              <div style={{ background: "#071628", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(31,182,225,0.2)" }}>
+                <div style={{ height: 100, background: "#030C18", padding: "10px 11px", display: "flex", flexWrap: "wrap", alignContent: "flex-start", gap: 5 }}>
+                  {[h("Manguito rotador"), h("Instabilidade"), h("Bíceps e SLAP"), h("Artroplastia"), h("Fratura"), h("Cotovelo")].map((c, i) => (
+                    <span key={c} style={{ fontSize: 8, padding: "3px 7px", borderRadius: 99, border: `1px solid ${i < 2 ? "#1FB6E1" : "rgba(96,170,221,0.25)"}`, color: i < 2 ? "#1FB6E1" : "rgba(255,255,255,0.45)", background: i < 2 ? "rgba(31,182,225,0.12)" : "transparent" }}>{c}</span>
+                  ))}
                 </div>
                 <div style={{ padding: "10px 12px 12px" }}>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#1FB6E1", letterSpacing: "0.08em", marginBottom: 3 }}>01 · ANÁLISE RX</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>HKA · mLDFA · aMPTA</div>
-                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Foto panorâmica de MMII")}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#1FB6E1", letterSpacing: "0.08em", marginBottom: 3 }}>01 · {h("REGISTRO")}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>{h("Ombro · Cotovelo")}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Formulário por tipo de caso")}</div>
                 </div>
               </div>
 
-              {/* 02 — Planejamento de Osteotomia (CSS illustration) */}
-              <div style={{ background: "#091825", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(96,170,221,0.18)", position: "relative" }}>
-                {/* Surgical planning table mock */}
-                <div style={{ height: 100, background: "#050E1C", padding: "8px 11px 4px", overflow: "hidden" }}>
-                  {/* Header row */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontSize: 8, fontWeight: 700, color: "#60AADD", fontFamily: "'DM Mono', monospace" }}>Dupla: DFO + HTO</div>
-                     <div style={{ fontSize: 7, color: "#38B88A", background: "rgba(56,184,138,0.13)", border: "1px solid rgba(56,184,138,0.3)", borderRadius: 3, padding: "1px 6px", fontWeight: 700 }}>{h("✓ Selecionado")}</div>
-                  </div>
-                  {/* Data rows */}
+              {/* 02 — Inventário artroscópico */}
+              <div style={{ background: "#091825", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(96,170,221,0.18)" }}>
+                <div style={{ height: 100, background: "#050E1C", padding: "8px 11px" }}>
                   {[
-                     { label: h("Correção femoral"), val: "10.2° valgo", c: "#60AADD" },
-                     { label: h("Correção tibial"),  val: "8.4° varo",  c: "#1FB6E1" },
-                     { label: h("Total"),             val: "18.6°",     c: "#FFF", bold: true },
+                    { label: h("Supraespinal"), status: h("Tratada"), c: "#38B88A" },
+                    { label: h("Labrum anterior"), status: h("Normal"), c: "#60AADD" },
+                    { label: h("Cabo longo do bíceps"), status: h("Lesão"), c: "#E67832" },
+                    { label: h("Subescapular"), status: h("Normal"), c: "#60AADD" },
                   ].map((r, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, paddingBottom: 4, borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.38)" }}>{r.label}</span>
-                      <span style={{ fontSize: 8, fontWeight: r.bold ? 800 : 500, color: r.c, fontFamily: "'DM Mono', monospace" }}>{r.val}</span>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, paddingBottom: 4, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{r.label}</span>
+                      <span style={{ fontSize: 8, fontWeight: 700, color: r.c, fontFamily: "'DM Mono', monospace" }}>{r.status}</span>
                     </div>
                   ))}
-                  {/* Technique tags */}
-                  <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
-                    {["Fechamento lat.", "HTO var", "DFO valg"].map((t, i) => (
-                      <div key={i} style={{ fontSize: 7, color: "#60AADD", background: "rgba(96,170,221,0.09)", border: "1px solid rgba(96,170,221,0.22)", borderRadius: 3, padding: "1px 5px" }}>{t}</div>
-                    ))}
-                  </div>
                 </div>
                 <div style={{ padding: "10px 12px 12px" }}>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#60AADD", letterSpacing: "0.08em", marginBottom: 3 }}>02 · PLANEJAMENTO</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>DFO · HTO · Cunha</div>
-                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Simulador de eixo mecânico")}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#60AADD", letterSpacing: "0.08em", marginBottom: 3 }}>02 · {h("INVENTÁRIO")}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>{h("Mapa artroscópico")}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Normal · lesão · tratada")}</div>
                 </div>
               </div>
 
@@ -680,71 +635,36 @@ export default function Home() {
                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Exportação automática PDF")}</div>
               </div>
 
-              {/* 04 — Algoritmos KRIRS e PICS 2.0 (CSS illustration) */}
+              {/* 04 — Rastreabilidade de implantes */}
               <div style={{ background: "#1A0F0A", borderRadius: 12, border: "1px solid rgba(230,120,50,0.2)", padding: "14px 14px 14px" }}>
-                {/* Risk score mock */}
-                <div style={{ marginBottom: 10 }}>
-                   <div style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", marginBottom: 6 }}>{h("Risco estimado LCA")}</div>
-                  {[
-                     { label: h("Lesão prévia"), val: 85, color: "#E67832" },
-                     { label: h("Frouxidão"), val: 62, color: "#E6A832" },
-                     { label: h("Instabilidade"), val: 40, color: "#38B88A" },
-                  ].map((r, i) => (
-                    <div key={i} style={{ marginBottom: 5 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{r.label}</span>
-                        <span style={{ fontSize: 8, color: r.color, fontWeight: 700 }}>{r.val}%</span>
-                      </div>
-                      <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2 }}>
-                        <div style={{ height: "100%", width: `${r.val}%`, background: r.color, borderRadius: 2, opacity: 0.8 }} />
-                      </div>
+                <div style={{ marginBottom: 10, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", marginBottom: 5, fontFamily: "'DM Mono', monospace" }}>(01)…(17)…(10)…</div>
+                  {[[h("Lote"), "A77"], [h("Validade"), "12/2028"], [h("Série"), "SN0001"]].map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{k}</span>
+                      <span style={{ fontSize: 8, color: "#E6A832", fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{v}</span>
                     </div>
                   ))}
                 </div>
-                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#E67832", letterSpacing: "0.08em", marginBottom: 3 }}>04 · ALGORITMOS</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>KRIRS · PICS 2.0</div>
-                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Risco LCA e instabilidade patelar")}</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#E67832", letterSpacing: "0.08em", marginBottom: 3 }}>04 · {h("IMPLANTES")}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>{h("Código GS1")}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Lote e validade automáticos")}</div>
               </div>
 
-              {/* 05 — Follow-up (CSS/SVG line chart) */}
-              <div style={{ background: "#071610", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(56,184,138,0.2)", position: "relative" }}>
-                <div style={{ height: 100, background: "#030E09", padding: "7px 10px 4px", overflow: "hidden" }}>
-                  {/* Header row */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 3 }}>
-                    <div style={{ fontSize: 7.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.3 }}>{h("Evolução funcional")}<br /><span style={{ color: "rgba(255,255,255,0.22)" }}>{h("(IKDC médio)")}</span></div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#38B88A", lineHeight: 1, fontFamily: "'DM Mono', monospace" }}>79</div>
-                      <div style={{ fontSize: 7, color: "rgba(56,184,138,0.6)" }}>{h("Score")}</div>
+              {/* 05 — Follow-up */}
+              <div style={{ background: "#071610", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(56,184,138,0.2)" }}>
+                <div style={{ height: 100, background: "#030E09", padding: "8px 10px" }}>
+                  {[[h("Pré-operatório"), "✓"], [h("6 semanas"), "✓"], [h("3 meses"), "…"], [h("6 meses"), ""], [h("1 ano"), ""]].map(([p, st], i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{p}</span>
+                      <span style={{ fontSize: 8, fontWeight: 700, color: st === "✓" ? "#38B88A" : "#E6A832" }}>{st}</span>
                     </div>
-                  </div>
-                  {/* Line chart SVG */}
-                  <svg width="100%" height="52" viewBox="0 0 160 52" preserveAspectRatio="none">
-                    {/* Horizontal grid */}
-                    <line x1="0" y1="42" x2="160" y2="42" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                    <line x1="0" y1="28" x2="160" y2="28" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                    <line x1="0" y1="14" x2="160" y2="14" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                    {/* Lysholm (lighter, dashed) */}
-                    <polyline points="0,44 32,40 64,33 96,25 128,18 160,13" fill="none" stroke="rgba(56,184,138,0.35)" strokeWidth="1" strokeDasharray="3,2" />
-                    {/* IKDC main line */}
-                    <polyline points="0,46 32,42 64,35 96,26 128,18 160,10" fill="none" stroke="#38B88A" strokeWidth="1.8" strokeLinejoin="round" />
-                    {/* Area fill */}
-                    <polygon points="0,46 32,42 64,35 96,26 128,18 160,10 160,52 0,52" fill="rgba(56,184,138,0.07)" />
-                    {/* Data point dots */}
-                    {[[0,46],[32,42],[64,35],[96,26],[128,18],[160,10]].map(([x,y],i) => (
-                      <circle key={i} cx={x} cy={y} r={i === 5 ? 3.5 : 2} fill={i === 5 ? "#38B88A" : "rgba(56,184,138,0.6)"} />
-                    ))}
-                  </svg>
-                  {/* X-axis labels */}
-                  <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 2 }}>
-                    {["Pré-op", "1m", "3m", "6m", "9m", "1a"].map((t, i) => (
-                      <div key={i} style={{ fontSize: 6.5, color: "rgba(255,255,255,0.2)", fontFamily: "'DM Mono', monospace" }}>{t}</div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
                 <div style={{ padding: "10px 12px 12px" }}>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#38B88A", letterSpacing: "0.08em", marginBottom: 3 }}>05 · FOLLOW-UP</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>IKDC · Lysholm · Tegner</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Retorno ao esporte evolutivo")}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>{h("WhatsApp · Dor · Retorno")}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Linha do tempo automática")}</div>
                 </div>
               </div>
 
@@ -785,7 +705,7 @@ export default function Home() {
                 <div style={{ padding: "10px 12px 12px" }}>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#D08818", letterSpacing: "0.08em", marginBottom: 3 }}>06 · PESQUISA</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", lineHeight: 1.3 }}>{h("Dashboard · CSV · Relatórios")}</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("IKDC, VAS exportados p/ publicação")}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{h("Dados exportados p/ publicação")}</div>
                 </div>
               </div>
 
@@ -794,7 +714,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── DOCknee REGENERATIVA ── */}
+      {/* ── DOCSHOLDER REGENERATIVA ── */}
       <section id="regenerativa" style={{ background: "#F5F9FC", borderTop: "1px solid #E2EEF5", borderBottom: "1px solid #E2EEF5" }}>
         <div className="max-w-6xl mx-auto px-5 py-16 lg:px-10 lg:py-24">
           <div className="grid grid-cols-1 lg:grid-cols-[0.92fr_1.08fr] gap-10 lg:gap-16 items-center">
@@ -805,7 +725,7 @@ export default function Home() {
                 color: "#08799C", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em",
               }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1FB6E1", boxShadow: "0 0 0 4px rgba(31,182,225,0.12)" }} />
-                DOCknee REGENERATIVA
+                DOCSHOLDER REGENERATIVA
               </div>
               <h2 style={{ margin: "19px 0 14px", color: "#102A3E", fontSize: "clamp(30px, 4vw, 46px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.08 }}>
                 {h("Registro clínico estruturado para a prática regenerativa.")}
@@ -1046,8 +966,8 @@ export default function Home() {
                   {[
                     h("Prontuário eletrônico completo"),
                     h("Documentação cirúrgica e laudos em PDF"),
-                    h("Análise radiográfica por IA (HKA, MAD, osteotomia)"),
-                    h("Algoritmos KRIRS e PICS 2.0"),
+                    h("Registro estruturado de ombro e cotovelo"),
+                    h("Assistente de IA para consultas e relatórios"),
                     h("Agendamento online com função secretaria"),
                     h("Lembretes de consulta pelo WhatsApp"),
                     h("Follow-up pós-operatório com escalas"),
@@ -1157,7 +1077,7 @@ export default function Home() {
       <footer style={{ padding: "20px", borderTop: "1px solid #D8E6EE" }} className="lg:px-10 lg:flex lg:items-center lg:justify-between">
         <div style={{ display: "block", marginBottom: 12 }} className="lg:mb-0">
           <span style={{ fontSize: 12, color: "#4A6070", display: "block" }}>
-             {h("DocSholder — Plataforma de documentação e planejamento cirúrgico do joelho")}
+             {h("DocSholder — Plataforma de documentação cirúrgica de ombro e cotovelo")}
           </span>
           <a
              href={SUPPORT_WHATSAPP_URL}
