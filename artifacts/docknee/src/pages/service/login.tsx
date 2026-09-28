@@ -57,7 +57,7 @@ export default function ServiceLogin() {
           <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 border border-primary/30">
             <Building2 className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-white">DocKnee</h1>
+          <h1 className="text-2xl font-bold text-white">DocSholder</h1>
           <p className="text-sm text-slate-400 mt-1">{t("serviceAccess")}</p>
         </div>
 

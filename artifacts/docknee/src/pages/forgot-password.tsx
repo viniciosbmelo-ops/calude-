@@ -51,8 +51,8 @@ export default function ForgotPassword() {
       >
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
           <img
-            src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docknee-new.png`}
-            alt="DocKnee"
+            src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docsholder-white.png`}
+            alt="DocSholder"
             style={{ width: "80%", height: "auto", objectFit: "contain" }}
           />
         </div>
@@ -65,7 +65,7 @@ export default function ForgotPassword() {
           </p>
         </div>
         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#2A5070", letterSpacing: "0.04em" }}>
-          DocKnee v2.0
+          DocSholder v2.0
         </div>
       </div>
 
@@ -78,8 +78,8 @@ export default function ForgotPassword() {
           <div className="flex justify-end mb-4"><PublicLanguageSelector /></div>
           <div style={{ marginBottom: 32 }}>
             <img
-              src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docknee.jpg`}
-              alt="DocKnee"
+              src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docsholder.png`}
+              alt="DocSholder"
               style={{ height: 52, width: "auto", objectFit: "contain" }}
             />
           </div>

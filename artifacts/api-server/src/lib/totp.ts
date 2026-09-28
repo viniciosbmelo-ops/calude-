@@ -168,7 +168,7 @@ export function verifyTotpCode(secretBase32: string, code: string): boolean {
  * Builds a otpauth:// URI for QR-code display.
  * Issuer and account name must not contain `:` or `%`.
  */
-export function buildTotpUri(secret: string, email: string, issuer = "DocKnee"): string {
+export function buildTotpUri(secret: string, email: string, issuer = "DocSholder"): string {
   const safeEmail = encodeURIComponent(email);
   const safeIssuer = encodeURIComponent(issuer);
   return `otpauth://totp/${safeIssuer}:${safeEmail}?secret=${secret}&issuer=${safeIssuer}&algorithm=SHA1&digits=6&period=30`;

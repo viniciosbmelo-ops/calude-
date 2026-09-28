@@ -1,6 +1,6 @@
 /**
  * Registro de procedimento — ombro e cotovelo (DocSholder).
- * Mesmo layout do DocKnee: cabeçalho, barra de progresso, etapas, card, Anterior / Salvar rascunho / Próximo.
+ * Mesmo layout do DocSholder: cabeçalho, barra de progresso, etapas, card, Anterior / Salvar rascunho / Próximo.
  * Formulários clínicos dirigidos pelos schemas do núcleo (@workspace/clinical).
  */
 import { useEffect, useMemo, useState } from "react";

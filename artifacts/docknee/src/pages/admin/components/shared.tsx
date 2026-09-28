@@ -67,7 +67,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
     if (!created) return;
     const text = isPhysio
       ? t("institutions.createPhysio.clipboard", { name: created.nome, email: created.email, password: created.senha, state: created.crmEstado, crefito: created.crm })
-      : `DocKnee — Credenciais de acesso\nNome: ${created.nome}\nEmail: ${created.email}\nSenha: ${created.senha}\nCRM: ${created.crmEstado} ${created.crm}\n\nAcesse: dockneeapp.com`;
+      : `DocSholder — Credenciais de acesso\nNome: ${created.nome}\nEmail: ${created.email}\nSenha: ${created.senha}\nCRM: ${created.crmEstado} ${created.crm}\n\nAcesse: dockneeapp.com`;
     navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
 
@@ -228,7 +228,7 @@ export function AdminResetPasswordDialog({ doctorId, doctorNome, userId, role, o
   };
 
   const copyCredentials = () => {
-    navigator.clipboard.writeText(isService ? t("institutions.resetService.clipboard", { password: senha }) : `DocKnee — Acesso\nSenha temporária: ${senha}\n\nAcesse: dockneeapp.com e faça login com seu e-mail.`).then(() => {
+    navigator.clipboard.writeText(isService ? t("institutions.resetService.clipboard", { password: senha }) : `DocSholder — Acesso\nSenha temporária: ${senha}\n\nAcesse: dockneeapp.com e faça login com seu e-mail.`).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
     });
   };

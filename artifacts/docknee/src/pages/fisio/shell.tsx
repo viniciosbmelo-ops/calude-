@@ -48,8 +48,8 @@ export default function FisioShell({ children }: { children: ReactNode }) {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src={`${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docknee-white-transparent.png" : "logo-docknee-final.png"}`}
-              alt="DocKnee"
+              src={`${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docsholder-white.png" : "logo-docsholder.png"}`}
+              alt="DocSholder"
               className="h-7 w-auto object-contain cursor-pointer"
               onClick={() => navigate("/fisio/dashboard")}
             />

@@ -54,10 +54,10 @@ export function PdfViewerOverlay() {
           type="button"
           onClick={() => setUrl(null)}
           className="flex min-h-10 items-center gap-2 rounded-lg bg-white/10 px-3 text-sm font-semibold transition-colors hover:bg-white/20"
-          aria-label="Voltar ao DocKnee"
+          aria-label="Voltar ao DocSholder"
         >
           <ArrowLeft className="h-4 w-4" />
-          Voltar ao DocKnee
+          Voltar ao DocSholder
         </button>
         <div className="flex min-w-0 items-center gap-2 text-sm text-white/80">
           <FileText className="h-4 w-4 shrink-0 text-cyan-300" />

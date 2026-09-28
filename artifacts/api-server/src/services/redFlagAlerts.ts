@@ -31,10 +31,10 @@ export function buildRedFlagMessage(params: {
   const initials = patientInitials(params.patientName);
   const lines = params.redFlags.map((flag) => `• ${flagLabel(flag)}`).join("\n");
   return (
-    `🚨 DocKnee — Alerta de reabilitação\n\n` +
+    `🚨 DocSholder — Alerta de reabilitação\n\n` +
     `Paciente ${initials} (encaminhado) apresentou sinais de atenção na avaliação ` +
     `do fisioterapeuta ${params.physioName}:\n\n${lines}\n\n` +
-    `Acesse o DocKnee para ver os detalhes das avaliações.`
+    `Acesse o DocSholder para ver os detalhes das avaliações.`
   );
 }
 

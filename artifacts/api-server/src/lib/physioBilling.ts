@@ -52,7 +52,7 @@ export async function getPhysio(physioId: number): Promise<Physio | null> {
 }
 
 /**
- * Lists the active prices of the "DocKnee Fisio" product (plan_target=physio)
+ * Lists the active prices of the "DocSholder Fisio" product (plan_target=physio)
  * from the locally synced stripe schema. Returns [] if Stripe is not ready.
  */
 export async function listFisioPlans(): Promise<

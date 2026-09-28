@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — Dashboard / Lista de casos
+ * DocSholder Regenerativa — Dashboard / Lista de casos
  * Tema claro, igual ao Dashboard principal
  */
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -209,11 +209,10 @@ export default function RegenDashboard() {
       <div className="md:hidden" style={{ background: "linear-gradient(135deg, #0A1628 0%, #0D2040 100%)" }}>
         <div className="px-4 pt-5 pb-5 flex items-center justify-between">
           <div>
-            <img
-              src={`${import.meta.env.BASE_URL}docknee-regen-logo.png`}
-              alt="DocKnee Regen"
-              style={{ display: "block", width: "min(52vw, 205px)", height: "auto" }}
-            />
+            <p aria-label="DocSholder Regen" style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+              <span style={{ color: "#fff" }}>Doc</span><span style={{ color: "#609DBC" }}>Sholder</span>
+              <span style={{ color: "#2DD4BF", fontStyle: "italic", fontWeight: 500, marginLeft: 6 }}>Regen</span>
+            </p>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: "3px 0 0" }}>
                {loading ? t("loading") : t("caseCount", { count: cases.length, suffix: cases.length !== 1 ? "s" : "" })}
             </p>

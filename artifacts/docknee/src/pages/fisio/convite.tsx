@@ -109,13 +109,13 @@ export default function FisioConvite() {
   }
   if (!physio) return null;
 
-  const logo = `${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docknee-white-transparent.png" : "logo-docknee-final.png"}`;
+  const logo = `${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docsholder-white.png" : "logo-docsholder.png"}`;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-3">
-          <img src={logo} alt="DocKnee" className="h-10 w-auto object-contain" />
+          <img src={logo} alt="DocSholder" className="h-10 w-auto object-contain" />
           <h1 className="text-xl font-bold text-foreground text-center">{t("inviteTitle")}</h1>
         </div>
 

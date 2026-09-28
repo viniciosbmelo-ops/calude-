@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — Motor de Compliance
+ * DocSholder Regenerativa — Motor de Compliance
  * Implementa regras HS01–HS06, LB01–LB02, WN01–WN03 baseadas na especificação v2.0
  *
  * Modo "registro"  → can_save SEMPRE true (registro histórico);

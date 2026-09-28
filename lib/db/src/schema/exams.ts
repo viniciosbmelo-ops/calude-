@@ -542,7 +542,7 @@ export const exameOsteocondralTable = pgTable("exame_osteocondral", {
   sobrecargaPatelofemoral: boolean("sobrecarga_patelofemoral"),
   // Ligamentos acometidos pela lesão OCD (array JSON de strings)
   ligamentosOCD: jsonb("ligamentos_ocd"),
-  // Resultado do DocKnee Cartilage Algorithm v1.0 (JSON completo)
+  // Resultado do DocSholder Cartilage Algorithm v1.0 (JSON completo)
   ocdResult: jsonb("ocd_result"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

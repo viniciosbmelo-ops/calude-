@@ -46,8 +46,8 @@ export default function Home() {
         }}>
           <a href="/" className="min-w-0" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", flex: "1 1 160px" }}>
             <img
-              src={`${import.meta.env.BASE_URL}logo-docknee-transparent.png`}
-              alt="DocKnee"
+              src={`${import.meta.env.BASE_URL}logo-docsholder-white.png`}
+              alt="DocSholder"
               style={{
                 height: 72,
                 width: "auto",
@@ -135,9 +135,9 @@ export default function Home() {
           }}
         >
           <img
-            src="/hero-knee-3d.png"
+            src="/hero-symbol.png"
             alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center left" }}
+            style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
           />
         </div>
 
@@ -315,9 +315,9 @@ export default function Home() {
           className="w-full lg:w-[45%] min-h-[320px] lg:min-h-0"
           >
             <img
-              src="/hero-knee-3d.png"
-              alt={h("Análise radiográfica")}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }}
+              src="/hero-symbol.png"
+              alt=""
+              style={{ position: "absolute", inset: "12%", width: "76%", height: "76%", objectFit: "contain", opacity: 0.5 }}
             />
 
             {/* Floating stat card */}
@@ -368,7 +368,7 @@ export default function Home() {
               gap: 6,
             }}>
               <div style={{ width: 14, height: 1, background: "rgba(255,255,255,0.3)" }} />
-              {h("Por que DocKnee")}
+              {h("Por que DocSholder")}
             </div>
           </div>
 
@@ -416,7 +416,7 @@ export default function Home() {
             </h2>
 
             <p style={{ fontSize: 14, color: "#6B8090", lineHeight: 1.7, marginBottom: 32, maxWidth: 420 }}>
-              {h("A maioria das plataformas registra dados. O DocKnee organiza seu consultório inteiro — prontuário, agenda, protocolos e pesquisa — em um fluxo único.")}
+              {h("A maioria das plataformas registra dados. O DocSholder organiza seu consultório inteiro — prontuário, agenda, protocolos e pesquisa — em um fluxo único.")}
             </p>
 
             {/* Feature rows */}
@@ -959,7 +959,7 @@ export default function Home() {
                 {/* Label */}
                 <div style={{ marginBottom: 8 }}>
                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#1FB6E1", marginBottom: 4 }}>{h("Para médicos ortopedistas")}</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.4px" }}>DocKnee Médico</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.4px" }}>DocSholder Médico</div>
                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{h("Plataforma cirúrgica completa")}</div>
                 </div>
 
@@ -1092,7 +1092,7 @@ export default function Home() {
                 {/* Label */}
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#38B88A", marginBottom: 4 }}>Para fisioterapeutas</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.4px" }}>DocKnee Fisio</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.4px" }}>DocSholder Fisio</div>
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Reabilitação pós-operatória</div>
                 </div>
 
@@ -1157,7 +1157,7 @@ export default function Home() {
       <footer style={{ padding: "20px", borderTop: "1px solid #D8E6EE" }} className="lg:px-10 lg:flex lg:items-center lg:justify-between">
         <div style={{ display: "block", marginBottom: 12 }} className="lg:mb-0">
           <span style={{ fontSize: 12, color: "#4A6070", display: "block" }}>
-             {h("DocKnee — Plataforma de documentação e planejamento cirúrgico do joelho")}
+             {h("DocSholder — Plataforma de documentação e planejamento cirúrgico do joelho")}
           </span>
           <a
              href={SUPPORT_WHATSAPP_URL}

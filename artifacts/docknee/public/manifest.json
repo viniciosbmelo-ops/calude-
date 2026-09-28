@@ -1,7 +1,7 @@
 {
-  "name": "DocKnee",
-  "short_name": "DocKnee",
-  "description": "Documentação e planejamento cirúrgico do joelho",
+  "name": "DocSholder",
+  "short_name": "DocSholder",
+  "description": "Documentação cirúrgica de ombro e cotovelo",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

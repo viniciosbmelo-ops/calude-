@@ -196,7 +196,7 @@ export default function PreConsultPatientFlow() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#1A365D] to-[#0A1628] p-4">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold text-white tracking-tight">DocKnee</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">DocSholder</h1>
             <p className="text-[#1FB6E1] text-sm">{t("preConsultation")}</p>
           </div>
           

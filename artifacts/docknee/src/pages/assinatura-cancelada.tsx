@@ -16,8 +16,8 @@ export default function AssinaturaCancelada() {
         <CardHeader className="space-y-3 pb-4">
           <div className="flex justify-center mb-2">
             <img
-              src={`${import.meta.env.BASE_URL}logo-docknee-final.png?v=2`}
-              alt="DocKnee"
+              src={`${import.meta.env.BASE_URL}logo-docsholder.png?v=2`}
+              alt="DocSholder"
               className="h-12 w-auto object-contain"
             />
           </div>

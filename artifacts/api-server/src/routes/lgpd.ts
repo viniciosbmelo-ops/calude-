@@ -26,7 +26,7 @@ function hashText(text: string): string {
 }
 
 function buildTermoText(tipo: string, doctorId: number): string {
-  return `DocKnee LGPD Consent | tipo=${tipo} | doctorId=${doctorId} | versao=${TERMO_VERSAO}`;
+  return `DocSholder LGPD Consent | tipo=${tipo} | doctorId=${doctorId} | versao=${TERMO_VERSAO}`;
 }
 
 /**

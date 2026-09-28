@@ -304,8 +304,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     <div className="flex flex-col h-full w-64" style={{ background: "#0A1828" }}>
       <div className="px-4 pt-6 pb-4 flex items-center justify-center">
         <img
-          src={`${import.meta.env.BASE_URL}logo-docknee-new.png?v=2`}
-          alt="DocKnee"
+          src={`${import.meta.env.BASE_URL}logo-docsholder-white.png?v=2`}
+          alt="DocSholder"
           style={{ height: 144, width: "100%", objectFit: "contain" }}
         />
       </div>

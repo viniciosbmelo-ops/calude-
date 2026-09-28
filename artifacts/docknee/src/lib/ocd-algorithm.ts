@@ -1,5 +1,5 @@
 /**
- * DocKnee Cartilage Algorithm v1.0 — TypeScript port
+ * DocSholder Cartilage Algorithm v1.0 — TypeScript port
  * Ferramenta de apoio à decisão clínica. NÃO é modelo preditivo validado.
  * A decisão final é sempre do cirurgião.
  */

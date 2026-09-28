@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — Detalhe do Caso
+ * DocSholder Regenerativa — Detalhe do Caso
  * Tabs: Visão Geral | Procedimentos | PROMs
  * Tema claro — igual ao Dashboard principal
  */
@@ -1014,7 +1014,7 @@ type PreparedRegenFollowup = { link: string; message: string };
 
 function showPopupStatus(popup: Window, message: string) {
   try {
-    popup.document.title = "DocKnee";
+    popup.document.title = "DocSholder";
     popup.document.body.style.cssText = "margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f8fafc;color:#1e3a5f;font:600 16px system-ui;text-align:center";
     popup.document.body.textContent = message;
   } catch {

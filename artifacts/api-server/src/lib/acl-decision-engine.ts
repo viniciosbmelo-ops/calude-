@@ -1,5 +1,5 @@
-// DocKnee AI Decision — Módulo LCA (LEAP Rules Engine v0.3)
-// Fonte: attached_assets/DocKnee_AI_Decision_Modulo_LCA_RulesEngine_v0.1_1783537202180.md
+// DocSholder AI Decision — Módulo LCA (LEAP Rules Engine v0.3)
+// Fonte: attached_assets/DocSholder_AI_Decision_Modulo_LCA_RulesEngine_v0.1_1783537202180.md
 // Camada de suporte à decisão QUALITATIVA — não calcula probabilidade calibrada de falha.
 
 export type Forca =

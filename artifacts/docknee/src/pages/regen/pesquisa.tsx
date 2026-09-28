@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — Módulo 12: Pesquisa Clínica
+ * DocSholder Regenerativa — Módulo 12: Pesquisa Clínica
  * Banco de dados anonimizado com filtros e exportação CSV
  */
 import { useState, useCallback } from "react";

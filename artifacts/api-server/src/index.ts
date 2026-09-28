@@ -44,7 +44,7 @@ async function ensureAdminExists(): Promise<void> {
   if (!existing) {
     const senhaHash = await hashPassword(password);
     await db.insert(doctorsTable).values({
-      nome: process.env["ADMIN_BOOTSTRAP_NAME"]?.trim() || "Administrador DocKnee",
+      nome: process.env["ADMIN_BOOTSTRAP_NAME"]?.trim() || "Administrador DocSholder",
       email,
       senhaHash,
       isAdmin: true,

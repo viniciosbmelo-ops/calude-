@@ -55,10 +55,10 @@ async function sendAlert(eventType: string, count: number, details: string): Pro
   const transporter = createTransporter();
   if (!transporter) return;
 
-  const subject = `[DocKnee] Alerta de segurança: ${eventType}`;
+  const subject = `[DocSholder] Alerta de segurança: ${eventType}`;
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;">
-      <h2 style="color:#856404;margin:0 0 12px;">⚠️ Alerta de Segurança — DocKnee</h2>
+      <h2 style="color:#856404;margin:0 0 12px;">⚠️ Alerta de Segurança — DocSholder</h2>
       <p><strong>Evento:</strong> ${eventType}</p>
       <p><strong>Ocorrências:</strong> ${count} nos últimos 5 minutos</p>
       <p><strong>Detalhes:</strong> ${details}</p>
@@ -71,7 +71,7 @@ async function sendAlert(eventType: string, count: number, details: string): Pro
 
   try {
     await transporter.sendMail({
-      from: `"DocKnee Security" <${process.env["GMAIL_USER"]}>`,
+      from: `"DocSholder Security" <${process.env["GMAIL_USER"]}>`,
       to,
       subject,
       html,

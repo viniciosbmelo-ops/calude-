@@ -41,8 +41,8 @@ export default function PendingApproval() {
         <CardHeader className="pb-2">
           <div className="flex justify-center mb-4">
             <img
-              src={`${import.meta.env.BASE_URL}logo-docknee-final.png?v=2`}
-              alt="DocKnee"
+              src={`${import.meta.env.BASE_URL}logo-docsholder.png?v=2`}
+              alt="DocSholder"
               className="h-12 w-auto object-contain"
             />
           </div>

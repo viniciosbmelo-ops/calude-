@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "DocKnee - Documentação Cirúrgica"
+title = "DocSholder - Documentação Cirúrgica"
 version = "1.0.0"
 id = "artifacts/docknee"
 router = "path"

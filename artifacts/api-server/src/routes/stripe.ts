@@ -82,7 +82,7 @@ router.post("/stripe/checkout", requireAuth, async (req, res): Promise<void> => 
   }
 
   // Billing integrity: only allow checking out an active price that belongs to
-  // an active DocKnee product. Rejects arbitrary/foreign price IDs.
+  // an active DocSholder product. Rejects arbitrary/foreign price IDs.
   try {
     const allowed = await db.execute(sql`
       SELECT pr.id

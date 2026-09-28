@@ -15,7 +15,7 @@ import {
 import { sql } from "drizzle-orm";
 
 /**
- * DocKnee Regenerativa — regen_* schema.
+ * DocSholder Regenerativa — regen_* schema.
  *
  * These tables were historically created ad-hoc via raw SQL in
  * artifacts/api-server/src/routes/regen.ts (initRegenDb). They are now modelled

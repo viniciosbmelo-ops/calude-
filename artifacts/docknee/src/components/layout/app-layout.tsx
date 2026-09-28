@@ -191,7 +191,7 @@ function MobileHeader() {
   const backPath = getBackPath(location);
   const isNewSurgery = location.startsWith("/surgeries/new");
   const titleKey = Object.keys(PAGE_TITLE_KEYS).find(key => location.startsWith(key)) as keyof typeof PAGE_TITLE_KEYS | undefined;
-  const title = titleKey ? t(PAGE_TITLE_KEYS[titleKey]) : "DocKnee";
+  const title = titleKey ? t(PAGE_TITLE_KEYS[titleKey]) : "DocSholder";
 
   return (
     <header
@@ -219,19 +219,19 @@ function MobileHeader() {
             </button>
           ) : (
             <img
-              src={`${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docknee-new.png" : "logo-docknee-clean.png"}?v=3`}
-              alt="DocKnee"
+              src={`${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docsholder-white.png" : "logo-docsholder.png"}?v=3`}
+              alt="DocSholder"
               width={132}
               height={39}
               className="h-9 w-[132px] max-w-none object-contain object-left shrink-0"
             />
           )}
-          {backPath && !isNewSurgery && title !== t("nav.home") && title !== "DocKnee" && (
+          {backPath && !isNewSurgery && title !== t("nav.home") && title !== "DocSholder" && (
             <span className="text-sm font-semibold truncate" style={{ color: theme === "dark" ? "#e2e8f0" : "#0A1628" }}>
               {title}
             </span>
           )}
-          {!backPath && !isNewSurgery && title !== t("nav.home") && title !== "DocKnee" && (
+          {!backPath && !isNewSurgery && title !== t("nav.home") && title !== "DocSholder" && (
             <span className="flex-1 min-w-0 truncate text-sm font-semibold" style={{ color: theme === "dark" ? "#e2e8f0" : "#0A1628" }}>
               {title}
             </span>

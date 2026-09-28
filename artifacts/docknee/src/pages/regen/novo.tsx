@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — Novo Caso
+ * DocSholder Regenerativa — Novo Caso
  * Chrome idêntico ao wizard cirúrgico (surgery/new.tsx):
  *   header, barra de progresso, step-tabs, Card, rodapé Anterior | Rascunho | Próximo
  *

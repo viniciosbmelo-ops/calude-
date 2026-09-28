@@ -1,7 +1,7 @@
 /**
- * DOCKNEE — API Server (Express 5 + TypeScript)
+ * DOCSHOLDER — API Server (Express 5 + TypeScript)
  *
- * Plataforma de documentação cirúrgica do joelho — LGPD-compliant
+ * Plataforma de documentação cirúrgica de ombro e cotovelo — LGPD-compliant
  *
  * Conformidade:
  *   - LGPD (Lei nº 13.709/2018): Arts. 7, 9, 11, 16, 17–22, 37, 41, 46, 48
@@ -105,7 +105,7 @@ app.use(helmet({
         "https://api.crossref.org",
       ],
       // The mobile PDF viewer embeds only same-origin temporary PDFs. Keep
-      // external frames blocked while allowing DocKnee's own /api/pdf/temp URL.
+      // external frames blocked while allowing DocSholder's own /api/pdf/temp URL.
       frameSrc: ["'self'"],
       workerSrc: ["'self'", "blob:"],
       manifestSrc: ["'self'"],
@@ -201,7 +201,7 @@ app.use(cors({
   credentials: true,
 }));
 
-// Cookie-authenticated state changes must originate from the DocKnee frontend.
+// Cookie-authenticated state changes must originate from the DocSholder frontend.
 // SameSite=Lax is the primary CSRF barrier; this origin check is defense-in-depth.
 app.use("/api", (req: Request, res: Response, next: NextFunction) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method) || !hasAnySessionCookie(req)) {

@@ -206,7 +206,7 @@ function CpfGate({ token, onVerified }: { token: string; onVerified: (info: Pati
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-2">
             <ClipboardList className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">DocKnee</h1>
+          <h1 className="text-2xl font-bold text-foreground">DocSholder</h1>
           <p className="text-muted-foreground text-sm">{t("orthobiologicQuestionnaires")}</p>
         </div>
 
@@ -543,7 +543,7 @@ export default function RegenPatientPage() {
       <div className="max-w-2xl mx-auto p-4 space-y-4 pb-16">
         {/* Header */}
         <div className="pt-6 text-center space-y-1">
-          <h1 className="text-xl font-bold text-foreground">DocKnee</h1>
+          <h1 className="text-xl font-bold text-foreground">DocSholder</h1>
           <p className="text-xs text-muted-foreground">
              {t("assessment", { period: info.periodoLabel ?? info.periodo })}
             {info.scheduledDate && ` · ${formatDate(info.scheduledDate, { dateStyle: "short" })}`}

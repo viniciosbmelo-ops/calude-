@@ -135,7 +135,7 @@ function buildWaMsg(c: CirurgiaAgendada, locale: Locale) {
     });
   }
   if (c.observacoes) msg += `\n📝 *${agendaText(locale, "agendaObservationShort")}:* ${c.observacoes}\n`;
-  msg += `\nDocKnee 🦵`;
+  msg += `\nDocSholder 🦵`;
   return msg;
 }
 

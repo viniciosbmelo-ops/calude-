@@ -234,8 +234,8 @@ export default function Register() {
         <CardHeader className="space-y-2 text-center pb-6">
           <div className="flex justify-center mb-4">
             <img
-              src={`${import.meta.env.BASE_URL}logo-docknee-final.png?v=2`}
-              alt="DocKnee"
+              src={`${import.meta.env.BASE_URL}logo-docsholder.png?v=2`}
+              alt="DocSholder"
               className="h-14 w-auto object-contain"
             />
           </div>

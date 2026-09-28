@@ -15,7 +15,7 @@ import { z } from "zod/v4";
 
 const router: IRouter = Router();
 
-/** GET /physio/billing/plans — prices do produto DocKnee Fisio (público, sem auth). */
+/** GET /physio/billing/plans — prices do produto DocSholder Fisio (público, sem auth). */
 router.get("/physio/billing/plans", async (_req, res): Promise<void> => {
   res.json({ plans: await listFisioPlans(), freeLimit: FREE_PATIENT_LIMIT });
 });

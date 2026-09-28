@@ -98,7 +98,7 @@ export default function ResetPasswordToken() {
     <div className="grid lg:grid-cols-2 grid-cols-1" style={{ minHeight: "100vh", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ background: "#0A1828", padding: "48px 52px", flexDirection: "column", justifyContent: "space-between" }} className="hidden lg:flex">
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <img src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docknee-new.png`} alt="DocKnee" style={{ width: "80%", height: "auto", objectFit: "contain" }} />
+          <img src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docsholder-white.png`} alt="DocSholder" style={{ width: "80%", height: "auto", objectFit: "contain" }} />
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 0" }}>
           <h1 style={{ fontSize: 26, fontWeight: 400, color: "#D0E8F5", lineHeight: 1.3, letterSpacing: "-0.3px", marginBottom: 12 }}>{copy.resetHeading}</h1>
@@ -106,14 +106,14 @@ export default function ResetPasswordToken() {
             {copy.createSecurePassword}
           </p>
         </div>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#2A5070", letterSpacing: "0.04em" }}>DocKnee v2.0</div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#2A5070", letterSpacing: "0.04em" }}>DocSholder v2.0</div>
       </div>
 
       <div className="flex items-start lg:items-center justify-center px-5 py-10 lg:px-12 lg:py-12" style={{ background: "#FFFFFF", borderLeft: "1px solid #D8E6EE" }}>
         <div style={{ width: "100%", maxWidth: 420 }}>
           <div className="flex justify-end mb-4"><PublicLanguageSelector /></div>
           <div style={{ marginBottom: 32 }}>
-            <img src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docknee.jpg`} alt="DocKnee" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+            <img src={`${(import.meta as any).env?.BASE_URL ?? "/"}logo-docsholder.png`} alt="DocSholder" style={{ height: 52, width: "auto", objectFit: "contain" }} />
           </div>
 
           {done ? (

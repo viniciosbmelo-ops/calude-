@@ -78,7 +78,7 @@ router.post("/patients/:patientId/rehab-invite", requireAuth, async (req, res): 
   const whatsappText =
     `Olá! Sou Dr(a). ${doctor?.nome ?? ""} e encaminho o paciente ${initials} ` +
     `(${procedureLabel}${surgery.dataCirurgia ? `, cirurgia ${surgery.dataCirurgia.split("-").reverse().join("/")}` : ""}) ` +
-    `para reabilitação pós-operatória. Acompanhe as avaliações pelo DocKnee: ${link}`;
+    `para reabilitação pós-operatória. Acompanhe as avaliações pelo DocSholder: ${link}`;
 
   res.status(201).json({
     inviteId: invite.id,

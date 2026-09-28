@@ -68,7 +68,7 @@ router.post("/agent/transcribe", requireAuth, voiceUpload.single("audio"), async
 });
 
 const APP_GUIDE = `
-## Guia da Plataforma DocKnee
+## Guia da Plataforma DocSholder
 
 ### Navegação principal
 - **Dashboard**: visão geral com estatísticas de pacientes, procedimentos e score IKDC médio
@@ -121,7 +121,7 @@ function buildSystemPrompt(isAdmin: boolean): string {
 - Nunca tente consultar dados de outros profissionais.
 `;
 
-  return `Você é JoIA (Joelho Inteligência Artificial), assistente da plataforma DocKnee.
+  return `Você é JoIA (Joelho Inteligência Artificial), assistente da plataforma DocSholder.
 
 Ajude com:
 1. Dúvidas de uso da plataforma.

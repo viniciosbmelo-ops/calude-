@@ -149,7 +149,7 @@ export default function OrientacoesPaciente() {
             <p className="text-white font-bold text-sm leading-tight">{t("procedureGuidance")}</p>
             <p className="text-teal-200 text-xs">{label}</p>
           </div>
-          <span className="ml-auto text-xs text-teal-200 font-medium">DocKnee</span>
+          <span className="ml-auto text-xs text-teal-200 font-medium">DocSholder</span>
         </div>
 
         {/* Tab bar */}
@@ -306,7 +306,7 @@ export default function OrientacoesPaciente() {
 
         {/* Footer */}
         <div className="text-center text-[11px] text-gray-400 pb-4">
-          <p>DocKnee — {t("documentationBrand")}</p>
+          <p>DocSholder — {t("documentationBrand")}</p>
           <p className="mt-0.5">{t("questionsContactDoctor")}</p>
         </div>
       </div>

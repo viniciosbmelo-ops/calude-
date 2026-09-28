@@ -54,7 +54,7 @@ export function buildPreText(d: ProcData, patientUrl: string, sections: { key: C
     }
     lines.push("");
   }
-  lines.push(`_DocKnee — ${t("documentationBrand")}_`);
+  lines.push(`_DocSholder — ${t("documentationBrand")}_`);
   return lines.join("\n");
 }
 
@@ -92,7 +92,7 @@ export function buildPosText(d: ProcData, patientUrl: string, t: (key: keyof typ
     lines.push(`• ${s.title}: ${s.desc}`);
   }
   lines.push("");
-  lines.push(`_DocKnee — ${t("documentationBrand")}_`);
+  lines.push(`_DocSholder — ${t("documentationBrand")}_`);
   return lines.join("\n");
 }
 

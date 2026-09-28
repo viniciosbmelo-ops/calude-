@@ -45,7 +45,7 @@ export function resolveManagedWebhookUrl(
 /**
  * Initializes the Stripe schema and syncs data on startup.
  *
- * IMPORTANT: This must NEVER crash the server. The DocKnee medical platform must
+ * IMPORTANT: This must NEVER crash the server. The DocSholder medical platform must
  * keep working even if Stripe is not connected yet. All failures are logged and
  * swallowed.
  *

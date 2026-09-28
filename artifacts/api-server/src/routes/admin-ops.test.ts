@@ -130,7 +130,7 @@ describe("buildTotpUri", () => {
     const uri = buildTotpUri(secret, "test@example.com");
     expect(uri).toMatch(/^otpauth:\/\/totp\//);
     expect(uri).toContain(`secret=${secret}`);
-    expect(uri).toContain("DocKnee");
+    expect(uri).toContain("DocSholder");
     expect(uri).toContain("SHA1");
     expect(uri).toContain("digits=6");
     expect(uri).toContain("period=30");

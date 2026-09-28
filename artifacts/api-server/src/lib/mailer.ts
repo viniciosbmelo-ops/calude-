@@ -31,19 +31,19 @@ export async function sendPasswordResetEmail(
   const copy = locale === "es"
     ? {
       subtitle: "Documentación Quirúrgica Inteligente", greeting: "Hola",
-      request: "Recibimos una solicitud para restablecer su contraseña de DocKnee.<br/>Haga clic en el botón para crear una nueva contraseña.",
+      request: "Recibimos una solicitud para restablecer su contraseña de DocSholder.<br/>Haga clic en el botón para crear una nueva contraseña.",
       button: "Restablecer mi contraseña",
       expiry: "Este enlace caduca en <strong>1 hora</strong>. Si no solicitó el restablecimiento, ignore este correo; su contraseña no cambiará.",
       copy: "O copie y pegue esta dirección en el navegador:", contact: "¿Preguntas? Contáctenos:",
-      subject: "Restablecimiento de contraseña — DocKnee",
+      subject: "Restablecimiento de contraseña — DocSholder",
     }
     : {
       subtitle: "Documentação Cirúrgica Inteligente", greeting: "Olá",
-      request: "Recebemos uma solicitação para redefinir a sua senha no DocKnee.<br/>Clique no botão abaixo para criar uma nova senha.",
+      request: "Recebemos uma solicitação para redefinir a sua senha no DocSholder.<br/>Clique no botão abaixo para criar uma nova senha.",
       button: "Redefinir minha senha",
       expiry: "Este link expira em <strong>1 hora</strong>. Se você não solicitou a redefinição, ignore este email — sua senha permanece inalterada.",
       copy: "Ou copie e cole este endereço no navegador:", contact: "Dúvidas? Entre em contato:",
-      subject: "Redefinição de senha — DocKnee",
+      subject: "Redefinição de senha — DocSholder",
     };
 
   const html = `
@@ -52,7 +52,7 @@ export async function sendPasswordResetEmail(
 <body style="margin:0;padding:24px;background:#F0F6FA;font-family:'DM Sans',Arial,sans-serif;">
   <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #D8E6EE;">
     <div style="background:#0A1828;padding:32px 40px;text-align:center;">
-      <h1 style="color:#D0E8F5;font-size:22px;font-weight:400;margin:0;letter-spacing:-0.3px;">DocKnee</h1>
+      <h1 style="color:#D0E8F5;font-size:22px;font-weight:400;margin:0;letter-spacing:-0.3px;">DocSholder</h1>
        <p style="color:#5A8AA8;font-size:12px;margin:6px 0 0;">${copy.subtitle}</p>
     </div>
     <div style="padding:40px;">
@@ -87,7 +87,7 @@ export async function sendPasswordResetEmail(
 
   const transporter = createTransporter();
   await transporter.sendMail({
-    from: `"DocKnee" <${process.env["GMAIL_USER"]}>`,
+    from: `"DocSholder" <${process.env["GMAIL_USER"]}>`,
     to,
      subject: copy.subject,
     html,

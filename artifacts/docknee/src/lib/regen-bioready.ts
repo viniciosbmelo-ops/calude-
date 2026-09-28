@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — BioReady Score® (Score de Prontidão Biológica)
+ * DocSholder Regenerativa — BioReady Score® (Score de Prontidão Biológica)
  *
  * Algoritmo puro (sem IA) que integra dados clínicos, laboratoriais e funcionais
  * em um score único 0–100 com 10 fatores de peso igual (cada um vale até 10 pts).

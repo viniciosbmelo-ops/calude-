@@ -61,8 +61,8 @@ export default function SecretaryLogin() {
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
           <img
-            src={`${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docknee-white-transparent.png" : "logo-docknee-final.png"}`}
-            alt="DocKnee"
+            src={`${import.meta.env.BASE_URL}${theme === "dark" ? "logo-docsholder-white.png" : "logo-docsholder.png"}`}
+            alt="DocSholder"
             className="h-10 w-auto object-contain"
           />
           <div className="text-center">

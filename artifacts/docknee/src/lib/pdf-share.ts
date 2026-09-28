@@ -27,7 +27,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 /**
  * Uses a real HTTPS URL on mobile instead of navigating to a blob URL.
  * Safari can then open the PDF in its own viewer without replacing the
- * application's history, and the user can return to DocKnee normally.
+ * application's history, and the user can return to DocSholder normally.
  */
 export async function sharePdfBlobOrDownload(
   blob: Blob,
@@ -73,7 +73,7 @@ export async function sharePdfBlobOrDownload(
  * After generating a PDF on mobile:
  *   1. POST the raw bytes to /api/pdf/temp (real HTTPS URL, auth required).
  *   2. Call onDefer(httpsUrl) so the caller shows an "Abrir PDF" button.
- *   3. On button tap, handlePdfOpenClick opens the URL in DocKnee's
+ *   3. On button tap, handlePdfOpenClick opens the URL in DocSholder's
  *      in-app viewer, which keeps a visible back button on iOS.
  *
  * Why the server URL is needed:
@@ -94,7 +94,7 @@ export async function sharePdfOrDownload(
 }
 
 /**
- * Open the server-hosted PDF in DocKnee's in-app viewer.
+ * Open the server-hosted PDF in DocSholder's in-app viewer.
  * This avoids handing navigation to the iOS full-screen PDF viewer, which
  * can hide the browser back controls in an installed PWA or embedded Safari.
  *

@@ -134,7 +134,7 @@ function NotifCard({
   }) : "";
   const waLink = hasPhone ? buildWaLink(patient.telefone!, waMsg) : null;
 
-  const handleSendDocKnee = async () => {
+  const handleSendDocSholder = async () => {
     setSending(true);
     try {
       const res = await fetch(`/api/notifications/${notif.id}/dispatch`, {
@@ -190,11 +190,11 @@ function NotifCard({
         )}
         {!isSent && localStatus !== "failed" && (
           <>
-            {/* Primary: server-side send via DocKnee number */}
+            {/* Primary: server-side send via DocSholder number */}
             <Button
               size="sm"
               disabled={sending || !hasPhone}
-              onClick={handleSendDocKnee}
+              onClick={handleSendDocSholder}
               className="h-8 text-xs gap-1.5 text-white font-semibold"
               style={{ background: "#25D366" }}
               title={!hasPhone ? t("followupPatientNoPhone") : t("followupSendDockneeTooltip")}
@@ -247,8 +247,8 @@ function RegenNotifCard({
   const isOverdue = row.scheduled_date && row.scheduled_date <= today && row.status === "pending";
   const isToday   = row.scheduled_date === today;
 
-  // Send via DocKnee number (Evolution API) — primary
-  const handleSendDocKnee = async () => {
+  // Send via DocSholder number (Evolution API) — primary
+  const handleSendDocSholder = async () => {
     const popup = window.open("", "_blank");
     if (popup) popup.opener = null;
     setLoading(true);
@@ -384,11 +384,11 @@ function RegenNotifCard({
         )}
         {row.status === "pending" && (
           <>
-            {/* Primary: server-side via DocKnee */}
+            {/* Primary: server-side via DocSholder */}
             <Button
               size="sm"
               disabled={loading || !row.patient_phone}
-              onClick={handleSendDocKnee}
+              onClick={handleSendDocSholder}
               className="h-8 text-xs gap-1.5 text-white font-semibold"
               style={{ background: "#7C3AED" }}
               title={t("followupSendDockneeRegenTooltip")}

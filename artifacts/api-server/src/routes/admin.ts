@@ -718,7 +718,7 @@ router.get("/admin/lgpd/compliance-report", requireAdmin, async (req, res): Prom
     versao: "1.0",
     lei: "Lei nº 13.709/2018 — LGPD",
     plataforma: {
-      nome: "DocKnee",
+      nome: "DocSholder",
       finalidade: "Documentação e análise de cirurgias ortopédicas do joelho",
       classificacaoDados: "Dados pessoais sensíveis — Art. 5º, II (dados de saúde)",
     },

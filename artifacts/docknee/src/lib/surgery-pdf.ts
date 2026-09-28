@@ -500,7 +500,7 @@ export async function generateSurgeryPDF(surgery: any, bioReadyResult?: BioReady
     const decision = normalizeAclLeapDecision(rawDecision);
     if (!decision) return false;
 
-    sectionHeader("DocKnee AI Decision — LEAP");
+    sectionHeader("DocSholder AI Decision — LEAP");
     if (sideHeading) {
       checkPage(8);
       txt(sideHeading, margin, 8, { bold: true, color: C.cyan });
@@ -842,7 +842,7 @@ export async function generateSurgeryPDF(surgery: any, bioReadyResult?: BioReady
     const safeName = patientName.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").replace(/\s+/g, "_");
     const dateSafe = surgery.dataCirurgia
       ? format(new Date(surgery.dataCirurgia), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
-    return { doc, filename: `DocKnee_Resumo_${safeName}_${dateSafe}.pdf` };
+    return { doc, filename: `DocSholder_Resumo_${safeName}_${dateSafe}.pdf` };
   }
 
   // ── 3. EXAME FÍSICO LIGAMENTAR ────────────────────────────────────────
@@ -1962,6 +1962,6 @@ export async function generateSurgeryPDF(surgery: any, bioReadyResult?: BioReady
   const safeName = patientName.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").replace(/\s+/g, "_");
   const dateSafe = surgery.dataCirurgia
     ? format(new Date(surgery.dataCirurgia), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
-  const filename = `DocKnee_Resumo_${safeName}_${dateSafe}.pdf`;
+  const filename = `DocSholder_Resumo_${safeName}_${dateSafe}.pdf`;
   return { doc, filename };
 }

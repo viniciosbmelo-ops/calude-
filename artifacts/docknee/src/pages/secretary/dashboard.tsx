@@ -319,8 +319,8 @@ export default function SecretaryDashboard() {
       <header style={{ background: "linear-gradient(135deg, #0A1628 0%, #0D2040 100%)" }} className="px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <img
-            src={`${import.meta.env.BASE_URL}logo-docknee-white-transparent.png`}
-            alt="DocKnee" className="h-7 w-auto object-contain"
+            src={`${import.meta.env.BASE_URL}logo-docsholder-white.png`}
+            alt="DocSholder" className="h-7 w-auto object-contain"
           />
           <div>
             <p className="text-white text-sm font-semibold leading-tight">{secretary.nome}</p>

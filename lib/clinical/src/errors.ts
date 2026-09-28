@@ -1,5 +1,5 @@
 /**
- * Erro de guarda clínica — mesma semântica do DocKnee.
+ * Erro de guarda clínica — mesma semântica do DocSholder.
  * Lançado quando um input clínico é implausível; a UI mostra a mensagem e NÃO calcula.
  */
 export class ClinicalGuardError extends Error {

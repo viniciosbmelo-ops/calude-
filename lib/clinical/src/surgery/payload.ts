@@ -1,7 +1,7 @@
 /**
  * Dados clínicos de uma cirurgia de ombro/cotovelo (coluna surgeries.dados_clinicos).
  *
- * Data, lado e hospital NÃO ficam aqui: são colunas da cirurgia (DocKnee) e entram
+ * Data, lado e hospital NÃO ficam aqui: são colunas da cirurgia (DocSholder) e entram
  * no núcleo cirúrgico (CORE_SURGERY) por `coreFromSurgery`, sem duplicar a informação.
  *
  * Rascunho: `parseClinicalPayload` só garante a FORMA (tipos e limites).

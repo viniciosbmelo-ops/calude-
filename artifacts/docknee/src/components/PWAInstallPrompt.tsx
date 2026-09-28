@@ -1,6 +1,6 @@
 /**
  * PWAInstallPrompt.tsx
- * DocKnee — Componente de instalação PWA
+ * DocSholder — Componente de instalação PWA
  *
  * COMPORTAMENTO:
  *   - iOS Safari: mostra modal com instruções passo a passo
@@ -308,7 +308,7 @@ function AppLogo() {
     <div style={styles.appIcon}>
       <img
         src={`${import.meta.env.BASE_URL}icons/icon-192.png`}
-        alt="DocKnee"
+        alt="DocSholder"
         style={styles.appIconImg}
       />
     </div>
@@ -326,7 +326,7 @@ function IOSModal({ onDismiss, onNever }: { onDismiss: () => void; onNever: () =
         <div style={styles.header}>
           <AppLogo />
           <div style={styles.headerText}>
-            <p style={styles.title}>Instalar DocKnee</p>
+            <p style={styles.title}>Instalar DocSholder</p>
             <p style={styles.subtitle}>Adicione à tela de início</p>
           </div>
           <button style={styles.closeBtn} onClick={onDismiss} aria-label="Fechar">
@@ -427,7 +427,7 @@ function AndroidPrompt({
         <div style={styles.header}>
           <AppLogo />
           <div style={styles.headerText}>
-            <p style={styles.title}>Instalar DocKnee</p>
+            <p style={styles.title}>Instalar DocSholder</p>
             <p style={styles.subtitle}>Acesso rápido pela tela inicial</p>
           </div>
           <button style={styles.closeBtn} onClick={onDismiss} aria-label="Fechar">

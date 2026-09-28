@@ -40,7 +40,7 @@ export function AdminLayout({ children, activeSection, onSectionChange }: AdminL
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight flex items-center gap-2">
             <span className="bg-sidebar-primary text-sidebar-primary-foreground p-1 rounded">DK</span>
-            DocKnee Admin
+            DocSholder Admin
           </h1>
           <p className="text-xs text-sidebar-accent-foreground mt-1 opacity-70">{t("console.operational")}</p>
         </div>

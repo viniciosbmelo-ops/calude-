@@ -130,10 +130,10 @@ describe("surgery PDF localization", () => {
     expect(output).not.toContain("Flexao:");
     expect(output).not.toContain("Calcos Femorais");
     expect(output).not.toContain("Resumo Cirurgico");
-    expect(filename).toBe("DocKnee_Resumo_María_García_2026-08-27.pdf");
+    expect(filename).toBe("DocSholder_Resumo_María_García_2026-08-27.pdf");
   });
 
-  it("renders the saved DocKnee AI Decision with false, zero and saved reasoning", async () => {
+  it("renders the saved DocSholder AI Decision with false, zero and saved reasoning", async () => {
     const { doc } = await generateSurgeryPDF({
       tipoCaso: "Lesão Ligamentar",
       tiposProcedimento: ["Lesão Ligamentar"],
@@ -177,7 +177,7 @@ describe("surgery PDF localization", () => {
     }, undefined, "es");
 
     const output = doc.output();
-    expect(output).toContain("DOCKNEE AI DECISION");
+    expect(output).toContain("DOCSHOLDER AI DECISION");
     expect(output).toContain("Entradas cl");
     expect(output).toContain("No");
     expect(output).not.toMatch(/\bfalse\b/);

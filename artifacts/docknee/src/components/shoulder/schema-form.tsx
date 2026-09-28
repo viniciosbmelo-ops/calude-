@@ -1,5 +1,5 @@
 /**
- * Formulário dirigido por JSON Schema (draft 2020-12) do núcleo clínico, no visual do DocKnee.
+ * Formulário dirigido por JSON Schema (draft 2020-12) do núcleo clínico, no visual do DocSholder.
  * - Rótulos SEMPRE de labels.pt.json (_fields para campos, [campo][valor] para opções).
  * - Validação com os validadores PRÉ-COMPILADOS do núcleo (a CSP de produção proíbe eval).
  * - Campo que passa a ser obrigatório (if/then) é destacado imediatamente.

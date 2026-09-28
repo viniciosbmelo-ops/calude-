@@ -179,8 +179,8 @@ export default function Login() {
       >
         <div className="self-end mb-2"><PublicLanguageSelector dark /></div>
         <img
-          src={`${import.meta.env.BASE_URL}logo-docknee-new.png?v=2`}
-          alt="DocKnee"
+          src={`${import.meta.env.BASE_URL}logo-docsholder-white.png?v=2`}
+          alt="DocSholder"
           style={{ width: "55%", maxWidth: 200, height: "auto", objectFit: "contain" }}
         />
         <p style={{ color: "#5A8AA8", fontSize: 13, marginTop: 10, textAlign: "center", lineHeight: 1.5 }}>
@@ -200,8 +200,8 @@ export default function Login() {
       >
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
           <img
-            src={`${import.meta.env.BASE_URL}logo-docknee-new.png?v=2`}
-            alt="DocKnee"
+            src={`${import.meta.env.BASE_URL}logo-docsholder-white.png?v=2`}
+            alt="DocSholder"
             style={{ width: "80%", height: "auto", objectFit: "contain" }}
           />
         </div>
@@ -284,7 +284,7 @@ export default function Login() {
           color: "#2A5070",
           letterSpacing: "0.04em",
         }}>
-          DocKnee v2.0
+          DocSholder v2.0
         </div>
       </div>
 
@@ -522,7 +522,7 @@ export default function Login() {
 
             {/* Mobile version label */}
             <p className="lg:hidden mt-4 text-center" style={{ fontSize: 10, color: "#C0D4DE", fontFamily: "'DM Mono', monospace", letterSpacing: "0.04em" }}>
-              DocKnee v2.0
+              DocSholder v2.0
             </p>
         </div>
       </div>

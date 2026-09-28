@@ -523,7 +523,7 @@ const DraftSurgeryBody = z.object({
   aclLeapDecision: z.record(z.string(), z.any()).nullish(),
   // OCD / cartilage exam fields
   exameOsteocondral: z.record(z.string(), z.any()).nullish(),
-  // Algorithm output from DocKnee Cartilage Algorithm v1.0
+  // Algorithm output from DocSholder Cartilage Algorithm v1.0
   ocdAnalysis: z.any().nullish(),
   // Standard adult tibial tunnel (separate from pediatric)
   tunelTibial: z.string().nullish(),

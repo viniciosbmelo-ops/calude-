@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — API routes
+ * DocSholder Regenerativa — API routes
  * Schema: regen_* tables (PostgreSQL). Table/column DDL lives in the Drizzle
  * schema (lib/db/src/schema/regen.ts); this module only seeds reference data.
  */
@@ -1189,7 +1189,7 @@ router.get("/regen/consent/:product", requireAuth, async (req: any, res) => {
         .replace(/[^a-zA-Z0-9 _-]/g, "")
         .trim()
         .replace(/\s+/g, "_");
-      const filename = `DocKnee_Consentimento_${product}_${safeName}.pdf`;
+      const filename = `DocSholder_Consentimento_${product}_${safeName}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       res.end(pdf);
@@ -1614,7 +1614,7 @@ router.get("/regen/cases/:id/report", requireAuth, async (req: any, res) => {
       const safeName = patientName
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
-      const filename = `DocKnee_FichaTecnica_${safeName}_${Date.now()}.pdf`;
+      const filename = `DocSholder_FichaTecnica_${safeName}_${Date.now()}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       res.end(pdf);
@@ -2656,7 +2656,7 @@ router.get("/regen/cases/:id/clinical-report", requireAuth, async (req: any, res
       const safeName = patientName
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
-      const filename = `DocKnee_LaudoClinico_${safeName}_${Date.now()}.pdf`;
+      const filename = `DocSholder_LaudoClinico_${safeName}_${Date.now()}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       res.end(pdf);

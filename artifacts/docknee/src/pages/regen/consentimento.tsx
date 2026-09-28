@@ -1,5 +1,5 @@
 /**
- * DocKnee Regenerativa — Consentimento Inteligente
+ * DocSholder Regenerativa — Consentimento Inteligente
  * Gera PDFs de consentimento pré-preenchidos por produto
  */
 import { useState, useEffect, useCallback } from "react";
