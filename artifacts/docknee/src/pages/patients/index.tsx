@@ -195,7 +195,7 @@ export default function PatientsList() {
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         {patient.dataNascimento && (
-                          <span className="text-xs text-muted-foreground">{patient.dataNascimento}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(patient.dataNascimento, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
                         )}
                         <span className="text-xs text-muted-foreground/70">
                           {t("registration")}: {formatDate(patient.createdAt)}

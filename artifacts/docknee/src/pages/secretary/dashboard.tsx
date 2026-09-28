@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays, Users, Bell, LogOut, Plus, Pencil, Trash2, Phone, Sun, Moon, CheckCircle2, Clock, AlertTriangle, Send, Scissors, ClipboardList } from "lucide-react";
-import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
+import { cn, formatLocalDate, sortByPtBrName, toDisplayDate } from "@/lib/utils";
 import AgendaCirurgica from "@/pages/agenda-cirurgica";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
@@ -42,7 +42,7 @@ function statusColor(status: string) {
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
+  const d = toDisplayDate(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((d.getTime() - today.getTime()) / 86400000);

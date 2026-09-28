@@ -16,6 +16,7 @@ import { SurgeryClinicalView } from "@/components/shoulder/surgery-clinical-view
 import { CASE_TYPE_BY_KEY, type ClinicalPayload } from "@workspace/clinical/web";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
+import { toDisplayDate } from "@/lib/utils";
 import { adminConsoleMessages } from "@/locales/admin-console";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ type DoctorInfo = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(d: string | null | undefined, locale: string) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString(locale);
+  return toDisplayDate(d).toLocaleDateString(locale);
 }
 
 function caseTypeLabels(surgery: Surgery): string[] {
@@ -228,7 +229,7 @@ function SurgeryRow({ surgery, onSelect }: { surgery: Surgery; onSelect: (id: nu
     >
       <TableCell className="font-medium text-sm whitespace-nowrap">
         {surgery.dataCirurgia
-          ? new Date(surgery.dataCirurgia).toLocaleDateString(locale)
+          ? toDisplayDate(surgery.dataCirurgia).toLocaleDateString(locale)
           : <span className="text-muted-foreground">–</span>}
       </TableCell>
       <TableCell className="text-sm">

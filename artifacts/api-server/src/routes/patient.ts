@@ -224,6 +224,19 @@ function computeScore(
   return cs;
 }
 
+/**
+ * Escalas do paciente já respondidas: interseção entre as escalas enviadas
+ * (já filtradas às suportadas) e as linhas de scale_responses do follow-up.
+ * Exclui escalas do médico gravadas no mesmo follow-up.
+ */
+export function completedPatientScales(
+  escalasEnviadas: readonly string[],
+  responseScaleNames: readonly string[],
+): string[] {
+  const answered = new Set(responseScaleNames);
+  return escalasEnviadas.filter((e) => answered.has(e));
+}
+
 // ─── Classic followup routes ──────────────────────────────────────────────────
 
 /**
@@ -370,11 +383,14 @@ router.post("/patient/:token/verify", async (req: Request, res: Response): Promi
       .select({ nomeEscala: scaleResponsesTable.nomeEscala })
       .from(scaleResponsesTable)
       .where(eq(scaleResponsesTable.followupId, row.followup.id));
+    const escalasEnviadas = filterSupportedFollowupScales(row.followup.escalasEnviadas);
     return {
       kind: "verified" as const,
       tempo: row.followup.tempo,
-      escalasEnviadas: filterSupportedFollowupScales(row.followup.escalasEnviadas),
-      completedScales: responses.map((response) => response.nomeEscala),
+      escalasEnviadas,
+      // Só escalas do paciente: respostas do médico no mesmo follow-up
+      // (Constant, Rowe…) não são "concluídas" pelo paciente.
+      completedScales: completedPatientScales(escalasEnviadas, responses.map((r) => r.nomeEscala)),
       regiao: resolveFollowupRegion(
         row.surgery.regiao,
         row.surgery.tiposProcedimento as string[] | null,
@@ -525,8 +541,11 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
       [locked.id, escala, JSON.stringify(respostas), score],
     );
     if (scoreField) {
+      // A resposta do paciente fica em scale_responses; o campo do follow-up só
+      // é preenchido quando o médico ainda não registrou valor (nunca sobrescreve).
       await client.query(
-        `UPDATE followup SET ${scoreField[0]} = $1, updated_at = now() WHERE id = $2`,
+        `UPDATE followup SET ${scoreField[0]} = $1, updated_at = now()
+         WHERE id = $2 AND ${scoreField[0]} IS NULL`,
         [scoreField[1], locked.id],
       );
     }
@@ -552,7 +571,7 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
     .select({ nomeEscala: scaleResponsesTable.nomeEscala })
     .from(scaleResponsesTable)
     .where(eq(scaleResponsesTable.followupId, persistedFollowupId));
-  const completedScales = allResponses.map(r => r.nomeEscala);
+  const completedScales = completedPatientScales(requestedScales, allResponses.map(r => r.nomeEscala));
   const allCompleted = requestedScales.every(e => completedScales.includes(e));
 
   res.json({ ok: true, allCompleted });

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ClinicianScaleSummary } from './clinicianScaleSummary';
+import type { PatientScaleSummary } from './patientScaleSummary';
 
 export interface Followup {
   id: number;
@@ -28,4 +29,9 @@ export interface Followup {
   createdAt: string;
   /** Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail). */
   escalasClinicas?: ClinicianScaleSummary[];
+  /**
+     * Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the
+     * clinician's values such as vasDor (returned by create, list and surgery detail).
+     */
+  escalasPaciente?: PatientScaleSummary[];
 }

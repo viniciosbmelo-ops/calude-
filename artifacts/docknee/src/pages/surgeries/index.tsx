@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Search, Plus, FileEdit, ChevronRight, Building2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
@@ -160,13 +161,13 @@ export default function SurgeriesList() {
                   {/* Date badge */}
                   <div className="shrink-0 text-center">
                     <div className="text-xs text-muted-foreground font-mono">
-                       {surgery.dataCirurgia ? new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(surgery.dataCirurgia)).toUpperCase().replace(".", "") : '—'}
+                       {surgery.dataCirurgia ? new Intl.DateTimeFormat(locale, { month: "short" }).format(toDisplayDate(surgery.dataCirurgia)).toUpperCase().replace(".", "") : '—'}
                     </div>
                     <div className="text-lg font-bold text-foreground leading-none">
-                      {surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), 'dd') : '—'}
+                      {surgery.dataCirurgia ? format(toDisplayDate(surgery.dataCirurgia), 'dd') : '—'}
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">
-                      {surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), 'yyyy') : ''}
+                      {surgery.dataCirurgia ? format(toDisplayDate(surgery.dataCirurgia), 'yyyy') : ''}
                     </div>
                   </div>
                   {/* Info */}

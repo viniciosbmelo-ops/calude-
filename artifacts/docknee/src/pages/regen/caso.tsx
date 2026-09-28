@@ -24,7 +24,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { cn, sortByPtBrName } from "@/lib/utils";
+import { cn, sortByPtBrName, toDisplayDate } from "@/lib/utils";
 import OrientacoesInline from "@/components/OrientacoesInline";
 import {
   evaluateCompliance,
@@ -441,7 +441,7 @@ function LabValueBadge({ value, flag, unit, date, small }: {
       <Icon className={small ? "h-2.5 w-2.5" : "h-3 w-3"} style={{ color }} />
       <span className="font-bold" style={{ color }}>{value}</span>
       {unit && <span style={{ color, opacity: 0.7 }}>{unit}</span>}
-      {date && <span className="text-gray-400 ml-1">{new Date(date).toLocaleDateString(locale)}</span>}
+      {date && <span className="text-gray-400 ml-1">{toDisplayDate(date).toLocaleDateString(locale)}</span>}
     </div>
   );
 }
@@ -1267,7 +1267,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
                     <div className="min-w-0">
                       {n.scheduled_date && (
                         <p className="text-[10px] font-mono text-gray-400 mb-0.5">
-                           {new Date(n.scheduled_date).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" })}
+                           {toDisplayDate(n.scheduled_date).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" })}
                         </p>
                       )}
                       <p className={`break-words text-sm font-semibold ${isCritical ? "text-amber-700" : "text-gray-900"}`}>

@@ -24,6 +24,56 @@ export function formatLocalDate(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Parses a calendar-only "YYYY-MM-DD" string as a LOCAL date (midnight in the
+ * browser timezone). `new Date("2026-09-28")` is UTC midnight per the ECMAScript
+ * spec, which renders as 27/09/2026 in America/Sao_Paulo; this avoids that.
+ * Returns null for anything that is not a valid date-only string.
+ */
+export function parseDateOnly(value: string | null | undefined): Date | null {
+  if (typeof value !== "string") return null;
+  const match = DATE_ONLY_RE.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+/**
+ * Converts a display value to a Date, treating date-only strings as local
+ * calendar dates and everything else (timestamps, numbers, Dates) as before.
+ */
+export function toDisplayDate(value: Date | string | number): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const dateOnly = parseDateOnly(value);
+    if (dateOnly) return dateOnly;
+  }
+  return new Date(value);
+}
+
+/**
+ * Formats a date-only value ("YYYY-MM-DD") for display without timezone
+ * shifting. Defaults to dd/mm/yyyy in pt-BR and es. Returns `fallback` for
+ * empty or unparseable input.
+ */
+export function formatDateOnly(
+  value: Date | string | number | null | undefined,
+  locale = "pt-BR",
+  options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", year: "numeric" },
+  fallback = "",
+): string {
+  if (value === null || value === undefined || value === "") return fallback;
+  const date = toDisplayDate(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat(locale, options).format(date);
+}
+
 const ptBrNameCollator = new Intl.Collator("pt-BR", {
   numeric: true,
   sensitivity: "base",

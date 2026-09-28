@@ -8,7 +8,7 @@ import { reportingDashboardMessages } from "@/locales/reporting-dashboard";
 import { reportCatalogLabel, reportCatalogOptions } from "@/locales/reporting-catalogs";
 import { CASE_TYPE_BY_KEY, CASE_TYPES } from "@workspace/clinical/web";
 import { documentText } from "@/locales/document-locales";
-import { sortByPtBrName } from "@/lib/utils";
+import { formatDateOnly, sortByPtBrName } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1306,7 +1306,7 @@ export default function Reports() {
                       <TableCell
                         className="text-xs text-muted-foreground whitespace-nowrap"
                         onClick={!user?.isAdmin ? () => window.open(`/surgeries/${row.surgeryId}`, "_blank") : undefined}
-                      >{row.dataCirurgia ?? "—"}</TableCell>
+                      >{formatDateOnly(row.dataCirurgia, locale, undefined, row.dataCirurgia ?? "—")}</TableCell>
                       <TableCell onClick={!user?.isAdmin ? () => window.open(`/surgeries/${row.surgeryId}`, "_blank") : undefined}>
                         {row.tempo
                           ? <Badge variant="secondary" className="text-xs">{reportCatalogLabel(locale, row.tempo)}</Badge>
@@ -1386,7 +1386,7 @@ export default function Reports() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">{tx("surgeryDate")} </span>
-                  <span className="font-medium">{editRow.dataCirurgia ?? "—"}</span>
+                  <span className="font-medium">{formatDateOnly(editRow.dataCirurgia, locale, undefined, editRow.dataCirurgia ?? "—")}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">{tx("hospital")} </span>

@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { CheckCircle2, ChevronRight, Loader2, Lock, ClipboardList } from "lucide-react";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
+import { patientQuestionnaireProgress, patientScaleList } from "@/lib/patient-questionnaire";
 import { normalizeDoctorLocale, publicPatientFlowMessages, surgicalJointPhrase, surgicalOptionSpanish, surgicalScaleSpanish } from "@/locales/public-patient-flows";
 
 // ─── Scale definitions ────────────────────────────────────────────────────────
@@ -317,17 +318,14 @@ export default function PatientScalesPage() {
   }, [currentScaleIdx, completed, info]);
 
   const handleVerified = (data: PatientInfo) => {
-    const scales = data.escalasEnviadas || [];
-    const completedScales = data.completedScales || [];
-    setInfo(data);
-    setCompleted(completedScales);
-    const firstPending = scales.findIndex(
-      (e: string) => !completedScales.includes(e)
-    );
-    setCurrentScaleIdx(Math.max(0, firstPending));
-    if (scales.length > 0 && scales.every((e: string) => completedScales.includes(e))) {
-      setAllDone(true);
-    }
+    // Só as escalas enviadas ao paciente e exibíveis aqui; respostas de outras
+    // escalas do follow-up (ex.: Constant do médico) não entram no progresso.
+    const scales = patientScaleList(data.escalasEnviadas, (name) => Boolean(SCALES[name]));
+    const progress = patientQuestionnaireProgress(scales, data.completedScales);
+    setInfo({ ...data, escalasEnviadas: scales, completedScales: progress.completed });
+    setCompleted(progress.completed);
+    setCurrentScaleIdx(Math.max(0, progress.firstPendingIdx));
+    if (progress.allDone) setAllDone(true);
     setVerified(true);
   };
 
@@ -425,16 +423,16 @@ export default function PatientScalesPage() {
         return;
       }
       if (data.ok === true) {
-        const newCompleted = [...completed, currentScaleName];
-        setCompleted(newCompleted);
+        const progress = patientQuestionnaireProgress(
+          info.escalasEnviadas,
+          [...completed, currentScaleName],
+        );
+        setCompleted(progress.completed);
         setAnswers({});
-        if (data.allCompleted || newCompleted.length === info.escalasEnviadas.length) {
+        if (data.allCompleted === true || progress.allDone) {
           setAllDone(true);
-        } else {
-          const nextPending = info.escalasEnviadas.findIndex(
-            e => !newCompleted.includes(e)
-          );
-          if (nextPending !== -1) setCurrentScaleIdx(nextPending);
+        } else if (progress.firstPendingIdx !== -1) {
+          setCurrentScaleIdx(progress.firstPendingIdx);
         }
       }
     } catch {
@@ -444,8 +442,9 @@ export default function PatientScalesPage() {
     }
   };
 
-  const completedCount = completed.length;
-  const totalCount = info.escalasEnviadas.length;
+  const progressSummary = patientQuestionnaireProgress(info.escalasEnviadas, completed);
+  const completedCount = progressSummary.completed.length;
+  const totalCount = progressSummary.scales.length;
   const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   if (allDone) {

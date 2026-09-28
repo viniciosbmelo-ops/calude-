@@ -144,6 +144,14 @@ describe('Outros templates', () => {
     expect(t).not.toContain('Sem alterações');
     expect(t).toContain('Via de acesso: anterior em incisão única.');
   });
+  test('via de acesso: "portal" no singular com um portal, "portais" com mais de um', () => {
+    const single = engine.generate({ ...multiProcedure, core: { ...multiProcedure.core, portals: ['posterior'] } }).text;
+    expect(single).toContain('Via de acesso: artroscópica; portal posterior.');
+    expect(single).not.toContain('portais');
+    const two = engine.generate({ ...multiProcedure, core: { ...multiProcedure.core, portals: ['posterior', 'anterior'] } }).text;
+    expect(two).toContain('Via de acesso: artroscópica; portais posterior e anterior.');
+    expect(engine.generate(multiProcedure).text).toContain('Via de acesso: artroscópica; portais posterior, anterior e lateral.');
+  });
   test('cirurgia artroscópica mantém o inventário; sem estruturas registradas, nada é impresso', () => {
     expect(engine.generate(multiProcedure).text).toContain('INVENTÁRIO ARTROSCÓPICO');
     expect(engine.generate({ ...multiProcedure, arthroscopic_map: [] }).text).not.toContain('INVENTÁRIO ARTROSCÓPICO');

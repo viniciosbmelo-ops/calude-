@@ -9,7 +9,7 @@ import {
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { capitalizeFirst, cn } from "@/lib/utils";
+import { capitalizeFirst, cn, formatDateOnly } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
@@ -228,7 +228,7 @@ function FollowupRowCard({ row, color, doctorNome, showWa }: {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{toTitleCase(row.patientNome)}</p>
         <p className={cn("text-xs font-medium truncate", colorMap.text)}>
-          {reportFollowupPeriodLabel(locale, row.periodo)}{row.scheduledDate ? ` · ${row.scheduledDate}` : ""}
+          {reportFollowupPeriodLabel(locale, row.periodo)}{row.scheduledDate ? ` · ${formatDateOnly(row.scheduledDate, locale, undefined, row.scheduledDate)}` : ""}
         </p>
         {showWa && !hasPhone && (
           <p className="text-[10px] text-red-500 flex items-center gap-0.5 mt-0.5">
@@ -441,9 +441,15 @@ export default function Dashboard() {
       accent: "#2563EB",
     },
     {
+      // Percentual e subtítulo vêm do mesmo cálculo da API (hasRecordedAssessment):
+      // cirurgias realizadas com ao menos um follow-up respondido.
       label: t("dashboardFollowupsCompleted"),
       value: `${data.followupCompliance.toFixed(0)}%`,
-      sub: `${fuData?.counts.respondidos ?? "—"} ${tx("answered").toLowerCase()}`,
+      sub: t("dashboardFollowupsAnsweredOfSurgeries", {
+        count: data.surgeriesWithAnsweredFollowup,
+        total: data.totalSurgeries,
+        answered: data.answeredFollowups,
+      }),
       href: "/followup",
       accent: "#059669",
     },
@@ -743,7 +749,7 @@ export default function Dashboard() {
                         <div className="shrink-0 text-right">
                           {row.scheduledDate && (
                             <p className={cn("text-xs font-medium mb-1", isOverdue ? "text-red-500" : "text-slate-400")}>
-                              {row.scheduledDate}
+                              {formatDateOnly(row.scheduledDate, locale, undefined, row.scheduledDate)}
                             </p>
                           )}
                           <Link href={`/surgeries/${row.surgeryId}`}>
@@ -954,7 +960,7 @@ export default function Dashboard() {
                         <p className={cn("text-xs font-medium mb-1",
                           row.scheduled_date <= new Date().toISOString().slice(0, 10) && row.status === "pending"
                             ? "text-red-500" : "text-slate-400")}>
-                          {row.scheduled_date}
+                          {formatDateOnly(row.scheduled_date, locale, undefined, row.scheduled_date)}
                         </p>
                       )}
                       <Link href={`/regen/caso/${row.case_id}`}>

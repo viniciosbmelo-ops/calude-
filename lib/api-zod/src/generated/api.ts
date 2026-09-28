@@ -486,7 +486,12 @@ export const GetSurgeryResponse = zod.object({
   "versao": zod.string().nullable(),
   "flags": zod.array(zod.string()),
   "completadoEm": zod.string().nullable()
-})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).'),
+  "escalasPaciente": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the\nclinician\'s values such as vasDor (returned by create, list and surgery detail).\n')
 }))
 })
 
@@ -575,7 +580,12 @@ export const CreateFollowupResponse = zod.object({
   "versao": zod.string().nullable(),
   "flags": zod.array(zod.string()),
   "completadoEm": zod.string().nullable()
-})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).'),
+  "escalasPaciente": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the\nclinician\'s values such as vasDor (returned by create, list and surgery detail).\n')
 })
 
 
@@ -605,7 +615,12 @@ export const ListFollowupResponseItem = zod.object({
   "versao": zod.string().nullable(),
   "flags": zod.array(zod.string()),
   "completadoEm": zod.string().nullable()
-})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).'),
+  "escalasPaciente": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the\nclinician\'s values such as vasDor (returned by create, list and surgery detail).\n')
 })
 export const ListFollowupResponse = zod.array(ListFollowupResponseItem)
 
@@ -645,7 +660,12 @@ export const UpdateFollowupResponse = zod.object({
   "versao": zod.string().nullable(),
   "flags": zod.array(zod.string()),
   "completadoEm": zod.string().nullable()
-})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).')
+})).optional().describe('Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).'),
+  "escalasPaciente": zod.array(zod.object({
+  "escala": zod.string(),
+  "score": zod.number().nullable(),
+  "completadoEm": zod.string().nullable()
+})).optional().describe('Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the\nclinician\'s values such as vasDor (returned by create, list and surgery detail).\n')
 })
 
 
@@ -703,7 +723,9 @@ export const GetDoctorDashboardResponse = zod.object({
   "patientSexo": zod.string().nullish(),
   "patientLado": zod.string().nullish()
 })),
-  "followupCompliance": zod.number(),
+  "followupCompliance": zod.number().describe('Percentage (0–100) of completed surgeries with at least one answered follow-up\n(outcome recorded or any scale response). Numerator is surgeriesWithAnsweredFollowup.\n'),
+  "surgeriesWithAnsweredFollowup": zod.number().describe('Completed surgeries with at least one answered follow-up (numerator of followupCompliance).'),
+  "answeredFollowups": zod.number().describe('Answered follow-up assessments across completed surgeries.'),
   "avgPain": zod.number().nullish().describe('Dor média (VAS 0–10) nos seguimentos respondidos'),
   "avgSane": zod.number().nullish().describe('SANE médio (0–100, % do normal) nos seguimentos respondidos pelo paciente'),
   "returnToSportRate": zod.number().nullish()

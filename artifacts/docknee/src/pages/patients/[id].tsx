@@ -21,6 +21,7 @@ import { surgeryCaseTypeChips } from "@/lib/surgery-case-chips";
 import { useAuth } from "@/lib/auth";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInYears } from "date-fns";
+import { toDisplayDate } from "@/lib/utils";
 import { es, ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Save, Pencil, ClipboardList, Phone, FileDown, Building2, Paperclip, Upload, FileText, FileImage, Film, File, X, Download, AlertCircle, Activity, ExternalLink } from "lucide-react";
@@ -121,7 +122,7 @@ function SurgeryFollowupsSection({ surgery }: { surgery: SurgeryItem }) {
               <span className="text-xs font-semibold text-foreground">{fu.tempo}</span>
               {fu.dataAvaliacao && (
                 <span className="text-xs text-muted-foreground">
-                  {format(new Date(fu.dataAvaliacao), "dd/MM/yyyy")}
+                  {format(toDisplayDate(fu.dataAvaliacao), "dd/MM/yyyy")}
                 </span>
               )}
               {fu.falha && (
@@ -460,7 +461,7 @@ export default function PatientDetail() {
     const lastSurgery = surgeries?.[surgeries.length - 1];
     const procs = lastSurgery?.tiposProcedimento?.map((key) => caseTypeLabel(locale, key)).join(", ") ?? "";
     const dataCirc = lastSurgery?.dataCirurgia
-      ? format(new Date(lastSurgery.dataCirurgia), "dd/MM/yyyy")
+      ? format(toDisplayDate(lastSurgery.dataCirurgia), "dd/MM/yyyy")
       : "";
     const procText = procs
       ? tr("reconstructionTemplate", { procedures: procs, date: dataCirc ? tr("performedOn", { date: dataCirc }) : "" })
@@ -578,7 +579,7 @@ export default function PatientDetail() {
   }
 
   const idade = patient.dataNascimento
-    ? differenceInYears(new Date(), new Date(patient.dataNascimento))
+    ? differenceInYears(new Date(), toDisplayDate(patient.dataNascimento))
     : null;
 
   const docsDaAba = ABA_DOC_TIPO[abaAtiva]
@@ -623,7 +624,7 @@ export default function PatientDetail() {
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-bold text-white truncate" style={{ margin: 0 }}>{patient.nome}</h1>
               <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.55)", margin: 0 }}>
-                {patient.dataNascimento ? format(new Date(patient.dataNascimento), 'dd/MM/yyyy') : ''}
+                {patient.dataNascimento ? format(toDisplayDate(patient.dataNascimento), 'dd/MM/yyyy') : ''}
                 {idade !== null ? ` · ${idade} ${tr("years")}` : ''}
                 {patient.sexo === 'M' ? ` · ${tr("male")}` : patient.sexo === 'F' ? ` · ${tr("female")}` : ''}
               </p>
@@ -711,7 +712,7 @@ export default function PatientDetail() {
                   <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 dark:bg-green-950/30 dark:text-green-400 text-xs">{tr("active")}</Badge>
                 </div>
                 <p className="text-muted-foreground text-sm mt-0.5">
-                  {patient.dataNascimento ? format(new Date(patient.dataNascimento), 'dd/MM/yyyy') : ''}
+                  {patient.dataNascimento ? format(toDisplayDate(patient.dataNascimento), 'dd/MM/yyyy') : ''}
                   {idade !== null ? ` · ${idade} ${tr("years")}` : ''}
                   {patient.sexo === 'M' ? ` · ${tr("male")}` : patient.sexo === 'F' ? ` · ${tr("female")}` : ''}
                 </p>
@@ -811,7 +812,7 @@ export default function PatientDetail() {
                         <div key={surgery.id} className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-muted/20">
                           <div className="flex flex-col gap-1 min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-foreground">{surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), 'dd/MM/yyyy') : '-'}</span>
+                              <span className="text-sm font-semibold text-foreground">{surgery.dataCirurgia ? format(toDisplayDate(surgery.dataCirurgia), 'dd/MM/yyyy') : '-'}</span>
                               {caseTypeChip && <Badge variant="secondary" className="text-xs">{caseTypeChip}</Badge>}
                             </div>
                             <span className="text-xs text-muted-foreground">{surgery.hospital || tr("hospitalUnknown")}</span>
@@ -1063,7 +1064,7 @@ export default function PatientDetail() {
                       <Activity className="h-4 w-4 text-primary shrink-0" />
                       <div className="min-w-0">
                         <span className="text-sm font-semibold text-foreground">
-                          {surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), "dd/MM/yyyy") : tr("unknownDate")}
+                          {surgery.dataCirurgia ? format(toDisplayDate(surgery.dataCirurgia), "dd/MM/yyyy") : tr("unknownDate")}
                         </span>
                         {surgery.tiposProcedimento.length > 0 && (
                           <span className="text-xs text-muted-foreground ml-2">{surgery.tiposProcedimento.map((key) => caseTypeLabel(locale, key)).join(", ")}</span>

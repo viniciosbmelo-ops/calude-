@@ -1250,7 +1250,25 @@ components:
           description: Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail).
           items:
             $ref: "#/components/schemas/ClinicianScaleSummary"
+        escalasPaciente:
+          type: array
+          description: |
+            Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the
+            clinician's values such as vasDor (returned by create, list and surgery detail).
+          items:
+            $ref: "#/components/schemas/PatientScaleSummary"
       required: [id, surgeryId, tempo, createdAt]
+
+    PatientScaleSummary:
+      type: object
+      properties:
+        escala:
+          type: string
+        score:
+          type: ["number", "null"]
+        completadoEm:
+          type: ["string", "null"]
+      required: [escala, score, completadoEm]
 
     ClinicianScalesInput:
       type: object
@@ -1321,6 +1339,15 @@ components:
             $ref: "#/components/schemas/SurgeryWithPatient"
         followupCompliance:
           type: number
+          description: |
+            Percentage (0–100) of completed surgeries with at least one answered follow-up
+            (outcome recorded or any scale response). Numerator is surgeriesWithAnsweredFollowup.
+        surgeriesWithAnsweredFollowup:
+          type: integer
+          description: Completed surgeries with at least one answered follow-up (numerator of followupCompliance).
+        answeredFollowups:
+          type: integer
+          description: Answered follow-up assessments across completed surgeries.
         avgPain:
           type: ["number", "null"]
           description: Dor média (VAS 0–10) nos seguimentos respondidos
@@ -1329,7 +1356,7 @@ components:
           description: SANE médio (0–100, % do normal) nos seguimentos respondidos pelo paciente
         returnToSportRate:
           type: ["number", "null"]
-      required: [totalPatients, totalSurgeries, surgeriesByType, recentSurgeries, followupCompliance]
+      required: [totalPatients, totalSurgeries, surgeriesByType, recentSurgeries, followupCompliance, surgeriesWithAnsweredFollowup, answeredFollowups]
 
     AdminDashboard:
       type: object

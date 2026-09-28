@@ -17,6 +17,7 @@ import { message } from "../lib/locale-catalog";
 import type { SupportedLocale } from "../lib/locale";
 import {
   loadClinicianScales,
+  loadPatientScales,
   parseClinicianScales,
   upsertClinicianScales,
   type ClinicianScalesParse,
@@ -80,7 +81,8 @@ router.post("/followup", requireAuth, async (req, res): Promise<void> => {
 
   const { followup } = result;
   const escalasClinicas = (await loadClinicianScales([followup.id])).get(followup.id) ?? [];
-  res.status(201).json({ ...followup, createdAt: followup.createdAt.toISOString(), escalasClinicas });
+  const escalasPaciente = (await loadPatientScales([followup.id])).get(followup.id) ?? [];
+  res.status(201).json({ ...followup, createdAt: followup.createdAt.toISOString(), escalasClinicas, escalasPaciente });
 });
 
 function sendClinicianScaleError(
@@ -186,11 +188,13 @@ router.get("/followup/:surgeryId", requireAuth, async (req, res): Promise<void> 
     ? followups.filter((followup) => !isPreoperativePeriod(followup.tempo))
     : followups;
 
-  const clinicianScales = await loadClinicianScales(visibleFollowups.map((f) => f.id));
+  const ids = visibleFollowups.map((f) => f.id);
+  const [clinicianScales, patientScales] = await Promise.all([loadClinicianScales(ids), loadPatientScales(ids)]);
   res.json(visibleFollowups.map(f => ({
     ...f,
     createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : String(f.createdAt),
     escalasClinicas: clinicianScales.get(f.id) ?? [],
+    escalasPaciente: patientScales.get(f.id) ?? [],
   })));
 });
 

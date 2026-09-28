@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Bell, BellOff, CheckCheck, Clock, Copy, Loader2, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetSurgeryQueryKey, useCreateFollowup, type ClinicianScaleSummary, type CreateFollowupBody } from "@workspace/api-client-react";
+import { getGetSurgeryQueryKey, useCreateFollowup, type ClinicianScaleSummary, type CreateFollowupBody, type PatientScaleSummary } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,6 +25,7 @@ import {
   scaleNameKey,
   type ScaleDraft,
 } from "./clinician-scales";
+import { followupPainDisplay, followupPatientSane } from "./followup-patient-scales";
 
 type ScheduledNotif = { id: number; periodo: string; scheduledDate: string | null; sentAt: string | null; scales: string[]; status: string; daysAfterSurgery: number | null; notes: string | null };
 export type SurgeryFollowup = {
@@ -39,6 +40,8 @@ export type SurgeryFollowup = {
   complicacoes?: string[] | null;
   observacoes?: string | null;
   escalasClinicas?: ClinicianScaleSummary[] | null;
+  /** Respostas do paciente pelo link (VAS Dor, SANE); não substituem vasDor. */
+  escalasPaciente?: PatientScaleSummary[] | null;
   createdAt: string;
 };
 
@@ -313,14 +316,26 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
         <p className="text-sm text-muted-foreground">{t("noEvaluations")}</p>
       ) : (
         <ul className="space-y-2">
-          {followups.map((f) => (
+          {followups.map((f) => {
+            const pain = followupPainDisplay(f.vasDor, f.escalasPaciente);
+            const patientSane = followupPatientSane(f.escalasPaciente);
+            return (
             <li key={f.id} className="rounded-xl border p-3 text-sm space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-semibold">{periodLabel(f.tempo)}</span>
                 <span className="text-xs text-muted-foreground">{formatDate(f.dataAvaliacao ? `${f.dataAvaliacao}T12:00:00` : f.createdAt)}</span>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">{t("vasPain")}: {f.vasDor ?? "—"}</Badge>
+                {pain.kind === "both" ? (
+                  <Badge variant="outline" data-vas="clinician-patient">{t("fu_vasClinicianPatient", { clinician: pain.clinician, patient: pain.patient })}</Badge>
+                ) : pain.kind === "patientOnly" ? (
+                  <Badge variant="outline" data-vas="patient">{t("fu_vasPatientOnly", { patient: pain.patient })}</Badge>
+                ) : (
+                  <Badge variant="outline">{t("vasPain")}: {pain.value ?? "—"}</Badge>
+                )}
+                {patientSane != null && (
+                  <Badge variant="outline" data-patient-scale="SANE">{t("fu_patientSane", { score: patientSane })}</Badge>
+                )}
                 <Badge variant="outline">{t("returnToSport")}: {yesNo(f.retornoEsporte)}{f.nivelRetorno ? ` (${f.nivelRetorno})` : ""}</Badge>
                 <Badge variant="outline" className={f.falha ? "border-red-300 text-red-700" : undefined}>{t("failure")}: {yesNo(f.falha)}{f.falha && f.falhaType ? ` — ${f.falhaType}` : ""}</Badge>
                 {(f.escalasClinicas ?? []).map((s) => (
@@ -334,7 +349,8 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
               {f.complicacoes && f.complicacoes.length > 0 && <p className="text-xs"><span className="text-muted-foreground">{t("complications")}:</span> {f.complicacoes.join(", ")}</p>}
               {f.observacoes && <p className="text-xs whitespace-pre-wrap text-muted-foreground">{f.observacoes}</p>}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

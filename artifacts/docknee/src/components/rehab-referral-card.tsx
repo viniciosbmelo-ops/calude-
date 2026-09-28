@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { toDisplayDate } from "@/lib/utils";
 import { Activity, AlertTriangle, Copy, Link2Off, MessageCircle, Send } from "lucide-react";
 import { useScopedTranslations } from "@/lib/i18n";
 import { rehabReferralMessages } from "@/locales/rehab-referral";
@@ -268,7 +269,7 @@ export function RehabReferralCard({ patientId, surgeries }: { patientId: number;
                   <SelectContent>
                     {surgeries.map((s) => (
                       <SelectItem key={s.id} value={String(s.id)}>
-                        {s.dataCirurgia ? format(new Date(s.dataCirurgia), "dd/MM/yyyy") : rr("surgeryNumber", { id: s.id })}
+                        {s.dataCirurgia ? format(toDisplayDate(s.dataCirurgia), "dd/MM/yyyy") : rr("surgeryNumber", { id: s.id })}
                         {s.tiposProcedimento && s.tiposProcedimento.length > 0 ? ` — ${s.tiposProcedimento.join(", ")}` : ""}
                       </SelectItem>
                     ))}

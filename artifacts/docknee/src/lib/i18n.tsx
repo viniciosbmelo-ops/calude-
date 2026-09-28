@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "./auth";
+import { toDisplayDate } from "./utils";
 
 export const SUPPORTED_LOCALES = ["pt-BR", "es"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
@@ -313,7 +314,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     t: (key, params) => interpolate(messages[locale][key] ?? messages[DEFAULT_LOCALE][key] ?? key, params),
     setLanguage,
     beginTemporaryDisplayLanguage,
-    formatDate: (value, options) => new Intl.DateTimeFormat(locale, options).format(new Date(value)),
+    formatDate: (value, options) => new Intl.DateTimeFormat(locale, options).format(toDisplayDate(value)),
     formatNumber: (value, options) => new Intl.NumberFormat(locale, options).format(value),
     formatCurrency: (value, currency = "BRL") => new Intl.NumberFormat(locale, { style: "currency", currency }).format(value),
   }), [beginTemporaryDisplayLanguage, locale, setLanguage]);

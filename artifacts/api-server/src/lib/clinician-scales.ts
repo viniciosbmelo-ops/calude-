@@ -5,6 +5,7 @@
  */
 import { and, inArray } from "drizzle-orm";
 import { db, scaleResponsesTable } from "@workspace/db";
+import { SUPPORTED_FOLLOWUP_SCALES } from "./followup-schedule";
 import {
   ClinicalGuardError,
   INSTRUMENTS,
@@ -114,6 +115,41 @@ export async function loadClinicianScales(followupIds: number[]): Promise<Map<nu
       max,
       versao,
       flags,
+      completadoEm: r.completadoEm ? r.completadoEm.toISOString() : null,
+    });
+    out.set(r.followupId, list);
+  }
+  for (const list of out.values()) list.sort((a, b) => codes.indexOf(a.escala) - codes.indexOf(b.escala));
+  return out;
+}
+
+/** Resposta do paciente pelo link (VAS Dor, SANE) — nunca mistura com o valor do médico. */
+export interface PatientScaleSummary {
+  escala: string;
+  score: number | null;
+  completadoEm: string | null;
+}
+
+/**
+ * Escalas respondidas pelo paciente por follow-up (scale_responses com nome em
+ * SUPPORTED_FOLLOWUP_SCALES). Exibidas ao lado do valor do médico (ex.: vasDor).
+ */
+export async function loadPatientScales(followupIds: number[]): Promise<Map<number, PatientScaleSummary[]>> {
+  const out = new Map<number, PatientScaleSummary[]>();
+  const codes = [...SUPPORTED_FOLLOWUP_SCALES];
+  if (followupIds.length === 0 || codes.length === 0) return out;
+  const rows = await db
+    .select()
+    .from(scaleResponsesTable)
+    .where(and(
+      inArray(scaleResponsesTable.followupId, followupIds),
+      inArray(scaleResponsesTable.nomeEscala, codes),
+    ));
+  for (const r of rows) {
+    const list = out.get(r.followupId) ?? [];
+    list.push({
+      escala: r.nomeEscala,
+      score: r.score,
       completadoEm: r.completadoEm ? r.completadoEm.toISOString() : null,
     });
     out.set(r.followupId, list);

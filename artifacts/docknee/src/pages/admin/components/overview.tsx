@@ -8,6 +8,7 @@ import { useGetAdminDashboard } from "@workspace/api-client-react";
 import { GeographicAccessItem } from "@workspace/api-client-react";
 import { useState } from "react";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
+import { toDisplayDate } from "@/lib/utils";
 import { adminConsoleMessages } from "@/locales/admin-console";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import {
@@ -298,7 +299,7 @@ export function Overview() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth()+1}` }} />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => { const d = toDisplayDate(v); return `${d.getDate()}/${d.getMonth()+1}` }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "hsl(var(--background))", borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}

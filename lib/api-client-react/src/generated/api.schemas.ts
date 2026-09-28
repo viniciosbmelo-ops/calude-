@@ -393,6 +393,14 @@ export interface ClinicianScaleSummary {
   completadoEm: string | null;
 }
 
+export interface PatientScaleSummary {
+  escala: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  completadoEm: string | null;
+}
+
 export interface Followup {
   id: number;
   surgeryId: number;
@@ -414,6 +422,11 @@ export interface Followup {
   createdAt: string;
   /** Clinician-completed scales recorded on this follow-up (returned by create, list and surgery detail). */
   escalasClinicas?: ClinicianScaleSummary[];
+  /**
+     * Patient-answered scales from the public link (e.g. VAS Dor, SANE), kept separate from the
+     * clinician's values such as vasDor (returned by create, list and surgery detail).
+     */
+  escalasPaciente?: PatientScaleSummary[];
 }
 
 export interface SurgeryDetail {
@@ -577,7 +590,15 @@ export interface DoctorDashboard {
   totalSurgeries: number;
   surgeriesByType: DoctorDashboardSurgeriesByTypeItem[];
   recentSurgeries: SurgeryWithPatient[];
+  /**
+     * Percentage (0–100) of completed surgeries with at least one answered follow-up
+     * (outcome recorded or any scale response). Numerator is surgeriesWithAnsweredFollowup.
+     */
   followupCompliance: number;
+  /** Completed surgeries with at least one answered follow-up (numerator of followupCompliance). */
+  surgeriesWithAnsweredFollowup: number;
+  /** Answered follow-up assessments across completed surgeries. */
+  answeredFollowups: number;
   /**
      * Dor média (VAS 0–10) nos seguimentos respondidos
      * @nullable

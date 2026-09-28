@@ -13,7 +13,15 @@ export interface DoctorDashboard {
   totalSurgeries: number;
   surgeriesByType: DoctorDashboardSurgeriesByTypeItem[];
   recentSurgeries: SurgeryWithPatient[];
+  /**
+     * Percentage (0–100) of completed surgeries with at least one answered follow-up
+     * (outcome recorded or any scale response). Numerator is surgeriesWithAnsweredFollowup.
+     */
   followupCompliance: number;
+  /** Completed surgeries with at least one answered follow-up (numerator of followupCompliance). */
+  surgeriesWithAnsweredFollowup: number;
+  /** Answered follow-up assessments across completed surgeries. */
+  answeredFollowups: number;
   /**
      * Dor média (VAS 0–10) nos seguimentos respondidos
      * @nullable

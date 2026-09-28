@@ -58,6 +58,25 @@ export function summarizeDashboardSurgeries(
 export { hasRecordedAssessment };
 
 /**
+ * KPI de follow-up do painel. Numerador e denominador usam a MESMA definição
+ * de "respondido" dos relatórios (hasRecordedAssessment: desfecho ou qualquer
+ * resposta de escala). O percentual é "cirurgias realizadas com ao menos um
+ * follow-up respondido"; `surgeriesWithAnsweredFollowup` é o numerador exibido
+ * ao lado, e `answeredFollowups` o total de avaliações respondidas.
+ */
+export function summarizeFollowupCompliance(
+  totalSurgeries: number,
+  followups: readonly (Parameters<typeof hasRecordedAssessment>[0] & { surgeryId: number })[],
+): { followupCompliance: number; surgeriesWithAnsweredFollowup: number; answeredFollowups: number } {
+  const answered = followups.filter((f) => hasRecordedAssessment(f));
+  const surgeriesWithAnsweredFollowup = new Set(answered.map((f) => f.surgeryId)).size;
+  const followupCompliance = totalSurgeries > 0
+    ? Math.min((surgeriesWithAnsweredFollowup / totalSurgeries) * 100, 100)
+    : 0;
+  return { followupCompliance, surgeriesWithAnsweredFollowup, answeredFollowups: answered.length };
+}
+
+/**
  * Escore SANE (0–100) respondido pelo paciente neste follow-up, lido da tabela
  * genérica scale_responses (sem coluna própria em followup).
  */
@@ -124,9 +143,18 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
   // Follow-up stats
   const allFollowups = (await db
     .select({
+      id: followupTable.id,
+      surgeryId: followupTable.surgeryId,
       vasDor: followupTable.vasDor,
       sane: followupSaneScore,
       retornoEsporte: followupTable.retornoEsporte,
+      admFlexao: followupTable.admFlexao,
+      admExtensao: followupTable.admExtensao,
+      complicacoes: followupTable.complicacoes,
+      nivelRetorno: followupTable.nivelRetorno,
+      falha: followupTable.falha,
+      falhaType: followupTable.falhaType,
+      hasScaleResponses: followupHasScaleResponses,
       tempo: followupTable.tempo,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
       surgeryStatus: surgeriesTable.status,
@@ -151,16 +179,19 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
     ? withRetornoData.filter(f => f.retornoEsporte === true).length / withRetornoData.length * 100
     : null;
 
-  const followupCompliance = totalSurgeries > 0
-    ? (allFollowups.length / (totalSurgeries * 1)) * 100
-    : 0;
+  // Antes: todos os registros de follow-up (criados já no envio do link,
+  // mesmo sem resposta) / cirurgias — contradizia o "respondidos" do painel.
+  const { followupCompliance, surgeriesWithAnsweredFollowup, answeredFollowups } =
+    summarizeFollowupCompliance(totalSurgeries, allFollowups);
 
   res.json({
     totalPatients: Number(totalPatients),
     totalSurgeries,
     surgeriesByType,
     recentSurgeries,
-    followupCompliance: Math.min(followupCompliance, 100),
+    followupCompliance,
+    surgeriesWithAnsweredFollowup,
+    answeredFollowups,
     avgPain,
     avgSane,
     returnToSportRate,

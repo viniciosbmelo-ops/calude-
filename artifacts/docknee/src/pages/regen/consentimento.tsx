@@ -8,7 +8,7 @@ import {
   ChevronLeft, FileText, Download, CheckCircle2,
   Loader2, AlertCircle, User,
 } from "lucide-react";
-import { sortByPtBrName } from "@/lib/utils";
+import { sortByPtBrName, toDisplayDate } from "@/lib/utils";
 import { sharePdfBlobOrDownload, handlePdfOpenClick } from "@/lib/pdf-share";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
@@ -150,7 +150,7 @@ export default function RegenConsentimento() {
                 <p className="text-sm font-semibold text-blue-800">{selectedCaseData!.patient_name}</p>
                 {selectedCaseData!.patient_dob && (
                   <p className="text-xs text-blue-500">
-                     {t("birthDate", { date: new Date(selectedCaseData!.patient_dob).toLocaleDateString(locale) })}
+                     {t("birthDate", { date: toDisplayDate(selectedCaseData!.patient_dob).toLocaleDateString(locale) })}
                   </p>
                 )}
               </div>

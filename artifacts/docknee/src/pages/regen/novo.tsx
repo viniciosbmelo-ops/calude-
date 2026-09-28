@@ -38,7 +38,7 @@ import {
   getRegenPlanningPayload,
   removeProductFromPlanning,
 } from "@/lib/regen-case-payload";
-import { cn, sortByPtBrName } from "@/lib/utils";
+import { cn, formatDateOnly, sortByPtBrName } from "@/lib/utils";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import OrientacoesInline from "@/components/OrientacoesInline";
@@ -601,6 +601,7 @@ function PatientSelector({
 }: { patients: any[]; selectedId: number | null; onSelect: (p: any | null) => void }) {
   const [query, setQuery] = useState("");
   const t = useScopedTranslations(regenCoreMessages);
+  const { locale } = useLanguage();
   const [open, setOpen]   = useState(false);
   const wrapRef           = useRef<HTMLDivElement>(null);
   const selected          = patients.find(p => p.id === selectedId) ?? null;
@@ -664,7 +665,7 @@ function PatientSelector({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
-                <p className="text-xs text-gray-500">{p.data_nascimento ?? ""}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
+                <p className="text-xs text-gray-500">{formatDateOnly(p.data_nascimento, locale, undefined, p.data_nascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
               </div>
             </button>
           ))}
