@@ -43,6 +43,9 @@ function body(dadosClinicos: unknown, extra: Record<string, unknown> = {}) {
   };
 }
 
+// Respostas da API em testes: JSON sem tipo estático
+const json = (r: Response): Promise<any> => r.json();
+
 async function api(path: string, method: string, payload?: unknown, auth = authA): Promise<Response> {
   return fetch(`${baseUrl}${path}`, {
     method,
@@ -89,7 +92,7 @@ describe("cirurgia de ombro e cotovelo", () => {
   it("rascunho aceita registro incompleto e grava região e dados clínicos", async () => {
     const r = await api("/api/surgeries/draft", "POST", body({ regiao: "shoulder", geral: { positioning: "beach_chair" }, procedimentos: [{ tipoCaso: "SH_BICEPS_SLAP", codigo: "SH_BICEPS", dados: {} }] }));
     expect(r.status).toBe(200);
-    draftId = (await r.json()).id;
+    draftId = (await json(r)).id;
     createdSurgeries.push(draftId);
     const [row] = await db.select().from(surgeriesTable).where(eq(surgeriesTable.id, draftId));
     expect(row.status).toBe("rascunho");
@@ -100,13 +103,13 @@ describe("cirurgia de ombro e cotovelo", () => {
   it("rascunho com forma inválida é recusado com mensagem clara", async () => {
     const r = await api("/api/surgeries/draft", "POST", body({ regiao: "shoulder", procedimentos: [{ tipoCaso: "SH_CUFF", codigo: "EL_DBR", dados: {} }] }, { id: draftId }));
     expect(r.status).toBe(400);
-    expect(await r.json()).toMatchObject({ code: "CLINICAL_DATA_INVALID", error: expect.stringMatching(/fora do tipo/) });
+    expect(await json(r)).toMatchObject({ code: "CLINICAL_DATA_INVALID", error: expect.stringMatching(/fora do tipo/) });
   });
 
   it("finalizar incompleto devolve as pendências por seção", async () => {
     const r = await api(`/api/surgeries/${draftId}/finalize`, "POST", body({ regiao: "shoulder", geral: { positioning: "beach_chair" }, procedimentos: [{ tipoCaso: "SH_BICEPS_SLAP", codigo: "SH_BICEPS", dados: {} }] }));
     expect(r.status).toBe(422);
-    const j = await r.json();
+    const j = await json(r);
     expect(j.code).toBe("CLINICAL_VALIDATION_FAILED");
     expect(j.details.map((d: any) => d.scope)).toEqual(["geral", "procedimento 1: Lesão do cabo longo do bíceps"]);
     const [row] = await db.select().from(surgeriesTable).where(eq(surgeriesTable.id, draftId));
@@ -123,7 +126,7 @@ describe("cirurgia de ombro e cotovelo", () => {
   it("relatório em texto com paciente, prontuário, cirurgião e procedimento", async () => {
     const r = await api(`/api/surgeries/${draftId}/relatorio`, "GET");
     expect(r.status).toBe(200);
-    const { texto, versoesTemplate } = await r.json();
+    const { texto, versoesTemplate } = await json(r);
     expect(texto).toMatch(/^DESCRIÇÃO CIRÚRGICA/);
     expect(texto).toMatch(/Paciente: Paciente Ombro — Prontuário PR-/);
     expect(texto).toContain("Cirurgião: Dr. Ombro A (CRM 13416-ES)");
@@ -141,15 +144,15 @@ describe("cirurgia de ombro e cotovelo", () => {
   it("criar cirurgia completa sem dados clínicos é recusado", async () => {
     const r = await api("/api/surgeries", "POST", body(undefined));
     expect(r.status).toBe(422);
-    expect((await r.json()).code).toBe("CLINICAL_DATA_REQUIRED");
+    expect((await json(r)).code).toBe("CLINICAL_DATA_REQUIRED");
   });
 
   it("criar cirurgia completa com procedimento de descrição livre", async () => {
     const r = await api("/api/surgeries", "POST", body({ regiao: "shoulder", geral: { ...geral, preop_dx: ["SH_FX_PROX_HUM"], postop_dx: ["SH_FX_PROX_HUM"] }, procedimentos: [{ tipoCaso: "SH_FRACTURE", codigo: "SH_FX_PROX_HUM", dados: { descricao: "Osteossíntese com placa bloqueada." } }] }, { tipoCaso: "Fraturas", tiposProcedimento: ["SH_FRACTURE"] }));
     expect(r.status).toBe(201);
-    const id = (await r.json()).id;
+    const id = (await json(r)).id;
     createdSurgeries.push(id);
-    const rel = await (await api(`/api/surgeries/${id}/relatorio`, "GET")).json();
+    const rel = await json(await api(`/api/surgeries/${id}/relatorio`, "GET"));
     expect(rel.texto).toContain("1. Fratura do úmero proximal\nOsteossíntese com placa bloqueada.");
   });
 
