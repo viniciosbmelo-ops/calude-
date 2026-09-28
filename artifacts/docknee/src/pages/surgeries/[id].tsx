@@ -4,21 +4,15 @@ import { useGetSurgery, useDeleteSurgery, useCreateFollowup } from "@workspace/a
 import { useParams, Link, useLocation } from "wouter";
 import { ScaleQuestionnaireDialog } from "@/components/scale-questionnaire";
 import { FollowupReport, FollowupFullReport, type FollowupReportFollowup } from "@/components/followup-report";
-import { SurgeryFullSummary } from "@/components/surgery-full-summary";
-import { SurgeryTextExportDialog } from "@/components/surgery-text-export-dialog";
+import { SurgeryClinicalView, useSurgeryReport } from "@/components/shoulder/surgery-clinical-view";
+import { CASE_TYPE_BY_KEY, type ClinicalPayload } from "@workspace/clinical/web";
 import { SurgeryMedia } from "@/components/surgery-media";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Trash2, Calendar, Activity, Plus, Save, Send, Copy, CheckCircle2, Clock, ChevronDown, ChevronRight, Eye, LayoutList, Download, Loader2, AlertTriangle, Bell, BellOff, CheckCheck, Pencil, X, ClipboardList, FileText, Scan, ExternalLink, UserCheck, UserX } from "lucide-react";
-import { generateSurgeryPDF } from "@/lib/surgery-pdf";
+import { ArrowLeft, Trash2, Calendar, Activity, Plus, Save, Send, Copy, CheckCircle2, Clock, ChevronDown, ChevronRight, Eye, Download, Loader2, AlertTriangle, Bell, BellOff, CheckCheck, Pencil, X, ClipboardList, FileText, ExternalLink, UserCheck, UserX } from "lucide-react";
+import { generateShoulderReportPDF, reportFilename } from "@/lib/shoulder-report-pdf";
 import { sharePdfOrDownload, handlePdfOpenClick } from "@/lib/pdf-share";
-import {
-  generateXRayPDF,
-  isOsteotomySelectionRequired,
-  isValidOsteotomySelection,
-  resolveSelectedOsteotomyOption,
-} from "@/lib/xray-pdf";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -45,9 +39,6 @@ import { surgeryDetailProtocolMessages } from "@/locales/surgery-detail-protocol
 import { surgeryDetailSchedulingMessages } from "@/locales/surgery-detail-scheduling";
 import { surgeryDetailActionsMessages } from "@/locales/surgery-detail-actions";
 import { surgeryDetailClinicalMessages } from "@/locales/surgery-detail-clinical";
-import { getKrirsDisplayJustification, getKrirsRiskLabel, getKrirsRiskLevel } from "@/lib/krirs-risk";
-import { limbHeading, readBilateralDocumentation } from "@/lib/bilateral-surgery";
-import { classifyPTS, getPTSClassificationLabel, getPTSClassificationRange } from "@/lib/pts-classification";
 
 export default function SurgeryDetail() {
   const { formatDate, locale } = useLanguage();
@@ -71,6 +62,10 @@ export default function SurgeryDetail() {
     query: { queryKey: getGetSurgeryQueryKey(id), enabled: !!id }
   });
   
+  const clinicalPayload = (surgery?.regiao && surgery.dadosClinicos ? surgery.dadosClinicos : null) as ClinicalPayload | null;
+  // Data e lado editáveis aqui entram no relatório: recarrega quando mudam.
+  const report = useSurgeryReport(surgery?.id ?? null, !!clinicalPayload, `${surgery?.dataCirurgia}|${(surgery as any)?.lado}|${surgery?.hospital}`);
+
   const deleteMutation = useDeleteSurgery();
   const createFollowupMutation = useCreateFollowup();
 
@@ -101,36 +96,24 @@ export default function SurgeryDetail() {
   const [scaleDialogOpen, setScaleDialogOpen] = useState<string | null>(null);
   const [reportFollowupId, setReportFollowupId] = useState<number | null>(null);
   const [fullReportOpen, setFullReportOpen] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  const [textPreviewOpen, setTextPreviewOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfShareUrl, setPdfShareUrl] = useState<string | null>(null);
-  const [rxPdfLoading, setRxPdfLoading] = useState(false);
-  const [rxPdfShareUrl, setRxPdfShareUrl] = useState<string | null>(null);
   const pdfGenerationRef = useRef(0);
-  const rxPdfGenerationRef = useRef(0);
   const [editingLado, setEditingLado] = useState(false);
   const [ladoValue, setLadoValue] = useState<string>("");
   const [savingLado, setSavingLado] = useState(false);
   const [editingData, setEditingData] = useState(false);
   const [dataValue, setDataValue] = useState<string>("");
   const [savingData, setSavingData] = useState(false);
-  const [savingOsteotomia, setSavingOsteotomia] = useState(false);
 
   type ScheduledNotif = { id: number; periodo: string; scheduledDate: string | null; sentAt: string | null; scales: string[]; status: string; daysAfterSurgery: number | null; notes: string | null };
   const [schedule, setSchedule] = useState<ScheduledNotif[]>([]);
 
   // Deferred links are bound to the exact source used to create each PDF.
-  // Keep the general surgery document and RX planning document independent.
   useEffect(() => {
     pdfGenerationRef.current += 1;
     setPdfShareUrl(null);
   }, [surgery, locale]);
-
-  useEffect(() => {
-    rxPdfGenerationRef.current += 1;
-    setRxPdfShareUrl(null);
-  }, [surgery?.rxAnaliseJson, (surgery as any)?.rxImageUrl, locale]);
 
   useEffect(() => {
     if (!id) return;
@@ -298,7 +281,8 @@ export default function SurgeryDetail() {
     setPdfShareUrl(null);
     setPdfLoading(true);
     try {
-      const { doc, filename } = await generateSurgeryPDF(surgery, undefined, locale);
+      if (report.status !== "ready") return;
+      const { doc, filename } = generateShoulderReportPDF(report.texto, { patientName: surgery.patient.nome, date: surgery.dataCirurgia });
       if (pdfGenerationRef.current !== pdfGeneration) return;
       const result = await sharePdfOrDownload(
         doc,
@@ -320,102 +304,19 @@ export default function SurgeryDetail() {
     }
   };
 
+  const handleDownloadTxt = () => {
+    if (!surgery || report.status !== "ready") return;
+    const url = URL.createObjectURL(new Blob([report.texto], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = reportFilename(surgery.patient.nome, surgery.dataCirurgia, "txt");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const handleOpenPDF = () => {
     if (!pdfShareUrl) return;
     handlePdfOpenClick(pdfShareUrl, () => setPdfShareUrl(null));
-  };
-
-  const handleOpenRxPDF = () => {
-    if (!rxPdfShareUrl) return;
-    handlePdfOpenClick(rxPdfShareUrl, () => setRxPdfShareUrl(null));
-  };
-
-  const handleDownloadRxPDF = async () => {
-    if (!surgery?.rxAnaliseJson) return;
-    const rxPdfGeneration = ++rxPdfGenerationRef.current;
-    setRxPdfShareUrl(null);
-    setRxPdfLoading(true);
-    try {
-      const analysis = JSON.parse(surgery.rxAnaliseJson);
-      const selectedIdx: number | null = resolveSelectedOsteotomyOption(
-        analysis,
-        analysis._selectedOsteotomiaIdx,
-        typeof analysis._selectedOsteotomiaId === "string" ? analysis._selectedOsteotomiaId : undefined,
-      )
-        ? analysis._selectedOsteotomiaIdx
-        : null;
-      const rxOptionsAvailable = Array.isArray(analysis.opcoesOsteotomia)
-        && analysis.opcoesOsteotomia.length > 0;
-      if (isOsteotomySelectionRequired(analysis) && !isValidOsteotomySelection(analysis, selectedIdx)) {
-        toast({
-          title: rxOptionsAvailable
-            ? t("rxOsteotomySelectionRequired")
-            : t("rxOsteotomyOptionsUnavailable"),
-          description: rxOptionsAvailable
-            ? t("rxOsteotomySelectionDescription")
-            : t("rxOsteotomyOptionsUnavailableDescription"),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Load RX image
-      let xrayImageDataUrl: string | undefined;
-      const imageUrlRaw = (surgery as any).rxImageUrl as string | null | undefined;
-      const imageUrl = imageUrlRaw?.startsWith("/objects/")
-        ? "/api/storage" + imageUrlRaw
-        : imageUrlRaw;
-      if (!imageUrl) {
-        throw new Error("XRAY_IMAGE_UNAVAILABLE");
-      }
-      if (imageUrl) {
-        let resp: Response;
-        try {
-          resp = await fetch(imageUrl);
-        } catch {
-          throw new Error("XRAY_IMAGE_UNAVAILABLE");
-        }
-        if (!resp.ok) throw new Error("XRAY_IMAGE_UNAVAILABLE");
-        const blob = await resp.blob();
-        xrayImageDataUrl = await new Promise<string>((res, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => res(fr.result as string);
-          fr.onerror = () => reject(new Error("XRAY_IMAGE_UNAVAILABLE"));
-          fr.readAsDataURL(blob);
-        });
-      }
-      const { doc, filename } = generateXRayPDF(
-        analysis,
-        surgery.patient?.nome ?? undefined,
-        xrayImageDataUrl,
-        selectedIdx,
-        locale,
-      );
-      if (rxPdfGenerationRef.current !== rxPdfGeneration) return;
-      const result = await sharePdfOrDownload(
-        doc,
-        filename,
-        (url) => {
-          if (rxPdfGenerationRef.current === rxPdfGeneration) setRxPdfShareUrl(url);
-        },
-      );
-      if (rxPdfGenerationRef.current !== rxPdfGeneration) return;
-      if (result.deferred) {
-        toast({ title: t("pdfReady"), description: t("pdfShareHint") });
-      }
-    } catch (err) {
-      if (rxPdfGenerationRef.current !== rxPdfGeneration) return;
-      console.error("Erro ao gerar PDF do planejamento RX:", err);
-      toast({
-        title: err instanceof Error && err.message === "XRAY_IMAGE_UNAVAILABLE"
-          ? t("rxImageUnavailable")
-          : t("rxPdfError"),
-        description: t("tryAgain"),
-        variant: "destructive",
-      });
-    } finally {
-      setRxPdfLoading(false);
-    }
   };
 
   const ALL_SCALES = ["VAS Dor", "Lysholm", "IKDC", "Tegner", "ACL-RSI", "Marx", "Kujala", "KOOS-12", "WOMAC"];
@@ -1064,13 +965,6 @@ export default function SurgeryDetail() {
             {t("medicalRecord")}
           </button>
         </Link>
-        <button
-          onClick={() => setSummaryOpen(true)}
-          style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, padding: "8px 12px", borderRadius: 10, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "none", cursor: "pointer" }}
-        >
-          <LayoutList className="h-4 w-4" />
-          {t("summary")}
-        </button>
         <Link href={`/surgeries/new?draft=${id}`}>
           <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, padding: "8px 12px", borderRadius: 10, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "none", cursor: "pointer" }}>
             <Pencil className="h-4 w-4" />
@@ -1087,7 +981,8 @@ export default function SurgeryDetail() {
           </button>
         )}
         <button
-          onClick={() => setTextPreviewOpen(true)}
+          onClick={handleDownloadTxt}
+          disabled={report.status !== "ready"}
           style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, padding: "8px 12px", borderRadius: 10, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "none", cursor: "pointer" }}
         >
           <FileText className="h-4 w-4" />
@@ -1095,7 +990,7 @@ export default function SurgeryDetail() {
         </button>
         <button
           onClick={handleDownloadPDF}
-          disabled={pdfLoading}
+          disabled={pdfLoading || report.status !== "ready"}
           style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600, padding: "8px 0", borderRadius: 10, background: "#1FB6E1", color: "#fff", border: "none", cursor: pdfLoading ? "default" : "pointer" }}
         >
           {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -1126,11 +1021,6 @@ export default function SurgeryDetail() {
               {td("detail001")}
             </Button>
           </Link>
-          {/* Resumo Completo */}
-          <Button variant="outline" className="gap-2" onClick={() => setSummaryOpen(true)}>
-            <LayoutList className="h-4 w-4" />
-            {td("detail002")}
-          </Button>
           {/* Editar Cirurgia */}
           <Link href={`/surgeries/new?draft=${id}`}>
             <Button variant="outline" className="gap-2">
@@ -1151,7 +1041,8 @@ export default function SurgeryDetail() {
           <Button
             variant="outline"
             className="gap-2"
-            onClick={() => setTextPreviewOpen(true)}
+            onClick={handleDownloadTxt}
+          disabled={report.status !== "ready"}
           >
             <FileText className="h-4 w-4" />
             {t("downloadTxt")}
@@ -1159,7 +1050,7 @@ export default function SurgeryDetail() {
           <Button
             className="gap-2 bg-[#1A365D] hover:bg-[#1A365D]/90 text-white"
             onClick={handleDownloadPDF}
-            disabled={pdfLoading}
+            disabled={pdfLoading || report.status !== "ready"}
           >
             {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {pdfLoading ? t("generating") : t("downloadPdf")}
@@ -1255,8 +1146,8 @@ export default function SurgeryDetail() {
                 </div>
               )}
               <div className="flex justify-between items-center gap-2">
-                <span className="text-sm text-muted-foreground shrink-0">{td("detail006")}</span>
-                <span className="font-medium text-right">{surgery.alinhamento || '-'}</span>
+                <span className="text-sm text-muted-foreground shrink-0">Região</span>
+                <span className="font-medium text-right">{surgery.regiao === "shoulder" ? "Ombro" : surgery.regiao === "elbow" ? "Cotovelo" : '-'}</span>
               </div>
               <div className="flex justify-between items-center gap-2">
                 <span className="text-sm text-muted-foreground">{t("surgerySide")}</span>
@@ -1296,59 +1187,11 @@ export default function SurgeryDetail() {
               <p className="text-sm font-medium text-muted-foreground mb-2">{td("detail007")}</p>
               <div className="flex flex-wrap gap-1">
                 {surgery.tiposProcedimento.map(proc => (
-                  <Badge key={proc} variant="outline" className="bg-primary/5 text-primary border-primary/20">{proc}</Badge>
+                  <Badge key={proc} variant="outline" className="bg-primary/5 text-primary border-primary/20">{CASE_TYPE_BY_KEY.get(proc)?.label ?? proc}</Badge>
                 ))}
               </div>
             </div>
             
-            <div className="pt-4 border-t border-border space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">{td("detail008")}</p>
-              {surgery.ligamentosAcometidos.map(lig => {
-                const det = (() => {
-                  try {
-                    const d = JSON.parse((surgery as any).procedimentosDetalhados ?? "{}");
-                    if (lig === "LCM" && d.lcm) return d.lcm as { tecnica?: string; enxerto?: string; fixacaoProximal?: string; fixacaoDistal?: string };
-                    return null;
-                  } catch { return null; }
-                })();
-                const isLca = lig === "LCA";
-                return (
-                  <div key={lig} className="rounded-lg border border-border p-2.5">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Badge variant="default" className="text-xs">{lig === "PLC" ? "CPL" : lig}</Badge>
-                      <span className="text-xs text-muted-foreground font-medium">{td("detail009")}</span>
-                    </div>
-                    {isLca && (surgery as any).tipoLca === "Reparo" && (
-                      <div className="space-y-0.5">
-                        <p className="text-xs"><span className="text-muted-foreground">{td("detail010")} </span><span className="font-medium">{td("detail011")}</span></p>
-                        {(surgery as any).localizacaoLesaoLca && <p className="text-xs"><span className="text-muted-foreground">{td("detail012")} </span><span className="font-medium">{(surgery as any).localizacaoLesaoLca}</span></p>}
-                        {(surgery as any).fixacaoReparoLca && <p className="text-xs"><span className="text-muted-foreground">{td("detail013")} </span><span className="font-medium">{(surgery as any).fixacaoReparoLca}</span></p>}
-                        {surgery.internalBrace && <p className="text-xs"><span className="text-muted-foreground">{td("detail014")} </span><span className="font-medium">{surgery.internalBrace}</span></p>}
-                      </div>
-                    )}
-                    {isLca && (surgery as any).tipoLca !== "Reparo" && (surgery.enxerto || surgery.diametroEnxerto || (surgery as any).flipCutter || surgery.fixacaoFemoral || surgery.fixacaoTibial || surgery.internalBrace || (surgery as any).preservacaoRemanescente) && (
-                      <div className="space-y-0.5">
-                        {surgery.enxerto && <p className="text-xs"><span className="text-muted-foreground">{td("detail015")} </span><span className="font-medium">{surgery.enxerto}{surgery.diametroEnxerto ? ` (${surgery.diametroEnxerto})` : ""}</span></p>}
-                        {(surgery as any).flipCutter && <p className="text-xs"><span className="text-muted-foreground">{t("flipCutter")}: </span><span className="font-medium">{(surgery as any).flipCutter}</span></p>}
-                        {surgery.fixacaoFemoral && <p className="text-xs"><span className="text-muted-foreground">{td("detail016")} </span><span className="font-medium">{surgery.fixacaoFemoral}</span></p>}
-                        {surgery.fixacaoTibial && <p className="text-xs"><span className="text-muted-foreground">{td("detail017")} </span><span className="font-medium">{surgery.fixacaoTibial}</span></p>}
-                        {surgery.internalBrace && <p className="text-xs"><span className="text-muted-foreground">{td("detail014")} </span><span className="font-medium">{surgery.internalBrace}</span></p>}
-                        {(surgery as any).preservacaoRemanescente && <p className="text-xs"><span className="text-muted-foreground">{td("detail018")} </span><span className="font-medium">{(surgery as any).preservacaoRemanescente}</span></p>}
-                      </div>
-                    )}
-                    {det && (det.tecnica || det.enxerto || det.fixacaoProximal || det.fixacaoDistal) && (
-                      <div className="space-y-0.5">
-                        {det.tecnica && <p className="text-xs"><span className="text-muted-foreground">{td("detail019")} </span><span className="font-medium">{det.tecnica}</span></p>}
-                        {det.enxerto && <p className="text-xs"><span className="text-muted-foreground">{td("detail015")} </span><span className="font-medium">{det.enxerto}</span></p>}
-                        {det.fixacaoProximal && <p className="text-xs"><span className="text-muted-foreground">{td("detail020")} </span><span className="font-medium">{det.fixacaoProximal}</span></p>}
-                        {det.fixacaoDistal && <p className="text-xs"><span className="text-muted-foreground">{td("detail021")} </span><span className="font-medium">{det.fixacaoDistal}</span></p>}
-                      </div>
-                    )}
-                    {!isLca && !det && <p className="text-xs text-muted-foreground italic">{td("detail022")}</p>}
-                  </div>
-                );
-              })}
-            </div>
           </CardContent>
         </Card>
 
@@ -1359,729 +1202,7 @@ export default function SurgeryDetail() {
             </TabsList>
             
             <TabsContent value="detalhes" className="min-w-0 space-y-4 mt-4">
-              {/* ── Planejamento RX ─────────────────────────────────────────── */}
-              {surgery.rxAnaliseJson && (() => {
-                type RxAnalysis = {
-                  eixoMecanico?: { desvio: string; graus: number };
-                  mLDFA?: { valor: number; referencia: string; status: string };
-                  aMPTA?: { valor: number; referencia: string; status: string };
-                  JLCA?: { valor: number; referencia: string; status: string };
-                  MAD?: { valor: number; unidade: string; lado: string; status: string };
-                  percentualWBL?: { preCorrecao?: number; posCorrecao?: number; alvo?: string; interpretacao?: string };
-                  origemDesvio?: string;
-                  grauVaro?: string;
-                  indicacaoOsteotomia?: boolean;
-                  opcoesOsteotomia?: unknown[];
-                  alertas?: string[];
-                  qualidadeImagem?: string;
-                  justificativa?: string;
-                  tipoAnalise?: string;
-                  ladoAvaliado?: string;
-                  _selectedOsteotomiaIdx?: number | null;
-                  _selectedOsteotomiaId?: string | null;
-                  deformidadeExtraArticular?: { presente: boolean; recomendacao: string; osso: string };
-                };
-                let rx: RxAnalysis;
-                try { rx = JSON.parse(surgery.rxAnaliseJson); } catch { return null; }
-                if (!rx.eixoMecanico && !rx.mLDFA && !rx.aMPTA && !Array.isArray(rx.opcoesOsteotomia)) return null;
-                const selectedIdx = resolveSelectedOsteotomyOption(
-                  rx,
-                  rx._selectedOsteotomiaIdx,
-                  typeof rx._selectedOsteotomiaId === "string" ? rx._selectedOsteotomiaId : undefined,
-                )
-                  ? rx._selectedOsteotomiaIdx!
-                  : null;
-                const rxPdfOptionsAvailable = Array.isArray(rx.opcoesOsteotomia)
-                  && rx.opcoesOsteotomia.length > 0;
-                const rxPdfSelectionRequired = isOsteotomySelectionRequired(rx);
-                const rxPdfSelectionValid = isValidOsteotomySelection(rx, selectedIdx);
-                const selectedOpcao = (selectedIdx !== null && Array.isArray(rx.opcoesOsteotomia))
-                  ? (rx.opcoesOsteotomia[selectedIdx] as Record<string, unknown> | undefined)
-                  : null;
-                const rxImageUrlRaw = (surgery as any).rxImageUrl as string | null | undefined;
-                // objectPath stored as "/objects/..." → serve via "/api/storage/objects/..."
-                const rxImageUrl = rxImageUrlRaw
-                  ? rxImageUrlRaw.startsWith("/objects/")
-                    ? "/api/storage" + rxImageUrlRaw
-                    : rxImageUrlRaw
-                  : undefined;
-                const hkaDesvio = rx.eixoMecanico?.desvio ?? "—";
-                const hkaGraus = rx.eixoMecanico?.graus ?? null;
-                const desvioColor = hkaDesvio === "Varo"
-                  ? "bg-orange-100 text-orange-800 border-orange-300"
-                  : hkaDesvio === "Valgo"
-                  ? "bg-blue-100 text-blue-800 border-blue-300"
-                  : "bg-muted text-muted-foreground";
-                const statusColor = (s?: string) => {
-                  if (!s) return "text-muted-foreground";
-                  if (s === "Normal") return "text-emerald-600";
-                  if (s === "Aumentado" || s === "Diminuído" || s === "Alterado") return "text-amber-600";
-                  return "text-muted-foreground";
-                };
-                const isDupla = (id: unknown) => String(id ?? "").startsWith("dupla");
-                const isHTO = (id: unknown) => String(id ?? "").startsWith("hto");
-                const opcaoColor = selectedOpcao
-                  ? isDupla(selectedOpcao.id)
-                    ? "border-purple-200 bg-purple-50/60"
-                    : isHTO(selectedOpcao.id)
-                    ? "border-blue-200 bg-blue-50/60"
-                    : "border-orange-200 bg-orange-50/60"
-                  : "";
-                const opcaoLabelColor = selectedOpcao
-                  ? isDupla(selectedOpcao.id) ? "text-purple-700"
-                    : isHTO(selectedOpcao.id) ? "text-blue-700"
-                    : "text-orange-700"
-                  : "";
-                return (
-                  <Card className="border-teal-200 bg-teal-50/30 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <CardTitle className="text-base text-teal-800 flex items-center gap-2">
-                          <Scan className="h-4 w-4 text-teal-600" />
-                          {td("detail024")}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {rxImageUrl && (
-                            <a href={rxImageUrl} target="_blank" rel="noopener noreferrer">
-                              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-100">
-                                <ExternalLink className="h-3 w-3" />
-                                {td("detail025")}
-                              </Button>
-                            </a>
-                          )}
-                          {rxPdfShareUrl && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs gap-1.5 border-green-300 text-green-700 hover:bg-green-50"
-                              onClick={handleOpenRxPDF}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              {td("detail004")}
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-100"
-                            onClick={handleDownloadRxPDF}
-                            disabled={rxPdfLoading || (rxPdfSelectionRequired && !rxPdfSelectionValid)}
-                          >
-                            {rxPdfLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                            {td("detail026")}
-                          </Button>
-                          {rxPdfSelectionRequired && !rxPdfSelectionValid && (
-                            <p className="max-w-xs text-[10px] leading-snug text-amber-700">
-                              {rxPdfOptionsAvailable
-                                ? t("rxOsteotomySelectionRequired")
-                                : t("rxOsteotomyOptionsUnavailable")}{" "}
-                              {rxPdfOptionsAvailable
-                                ? t("rxOsteotomySelectionDescription")
-                                : t("rxOsteotomyOptionsUnavailableDescription")}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {rx.tipoAnalise && (
-                        <p className="text-xs text-teal-600 mt-0.5">{rx.tipoAnalise}{rx.ladoAvaliado ? ` · ${rx.ladoAvaliado}` : ""}</p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* ── Eixo Mecânico / HKA ── */}
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold uppercase tracking-widest text-teal-600">{td("detail027")}</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold ${desvioColor}`}>
-                            {td("detail028")} {hkaGraus !== null ? `${hkaGraus}°` : "—"} {hkaDesvio !== "Neutro" && hkaDesvio !== "—" ? hkaDesvio : ""}
-                          </span>
-                          {rx.origemDesvio && (
-                            <span className="text-sm text-muted-foreground">
-                              {td("detail029")} <span className="font-medium text-foreground">{rx.origemDesvio}</span>
-                            </span>
-                          )}
-                          {rx.grauVaro && (
-                            <span className="text-sm text-muted-foreground">
-                              {td("detail030")} <span className="font-medium text-foreground">{rx.grauVaro}</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* ── Ângulos Articulares ── */}
-                      <div className="space-y-2 border-t border-teal-100 pt-3">
-                        <p className="text-xs font-bold uppercase tracking-widest text-teal-600">{td("detail031")}</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {rx.mLDFA && (
-                            <div className="bg-white/70 border border-teal-100 rounded-lg p-2.5 text-center">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600 mb-1">{td("detail032")}</p>
-                              <p className="text-lg font-bold text-foreground">{rx.mLDFA.valor}{td("detail033")}</p>
-                              <p className={`text-xs mt-0.5 ${statusColor(rx.mLDFA.status)}`}>{rx.mLDFA.status}</p>
-                              <p className="text-[10px] text-muted-foreground">{rx.mLDFA.referencia}</p>
-                            </div>
-                          )}
-                          {rx.aMPTA && (
-                            <div className="bg-white/70 border border-teal-100 rounded-lg p-2.5 text-center">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600 mb-1">{td("detail034")}</p>
-                              <p className="text-lg font-bold text-foreground">{rx.aMPTA.valor}{td("detail033")}</p>
-                              <p className={`text-xs mt-0.5 ${statusColor(rx.aMPTA.status)}`}>{rx.aMPTA.status}</p>
-                              <p className="text-[10px] text-muted-foreground">{rx.aMPTA.referencia}</p>
-                            </div>
-                          )}
-                          {rx.JLCA && (
-                            <div className="bg-white/70 border border-teal-100 rounded-lg p-2.5 text-center">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600 mb-1">{td("detail035")}</p>
-                              <p className="text-lg font-bold text-foreground">{rx.JLCA.valor}{td("detail033")}</p>
-                              <p className={`text-xs mt-0.5 ${statusColor(rx.JLCA.status)}`}>{rx.JLCA.status}</p>
-                              <p className="text-[10px] text-muted-foreground">{rx.JLCA.referencia}</p>
-                            </div>
-                          )}
-                          {rx.MAD && (
-                            <div className="bg-white/70 border border-teal-100 rounded-lg p-2.5 text-center">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600 mb-1">{td("detail036")}</p>
-                              <p className="text-lg font-bold text-foreground">{rx.MAD.valor}<span className="text-xs font-normal ml-0.5">{rx.MAD.unidade}</span></p>
-                              <p className={`text-xs mt-0.5 ${statusColor(rx.MAD.status)}`}>{rx.MAD.lado}</p>
-                              <p className="text-[10px] text-muted-foreground">{rx.MAD.status}</p>
-                            </div>
-                          )}
-                          {rx.percentualWBL?.preCorrecao !== undefined && (
-                            <div className="bg-white/70 border border-teal-100 rounded-lg p-2.5 text-center">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600 mb-1">{td("detail037")}</p>
-                              <p className="text-lg font-bold text-foreground">{rx.percentualWBL.preCorrecao}{td("detail038")}</p>
-                              <p className="text-xs mt-0.5 text-muted-foreground">{td("detail039")}</p>
-                              {rx.percentualWBL.alvo && <p className="text-[10px] text-teal-600">{td("detail040")} {rx.percentualWBL.alvo}</p>}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* ── Deformidade Extra-Articular ── */}
-                      {rx.deformidadeExtraArticular?.presente && (
-                        <div className="flex items-start gap-2.5 p-3 rounded-lg border-2 border-amber-300 bg-amber-50 text-amber-800">
-                          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-wide">{td("detail041")} {rx.deformidadeExtraArticular.osso}</p>
-                            <p className="text-sm mt-0.5">{rx.deformidadeExtraArticular.recomendacao}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* ── Osteotomia — Seleção Inline ── */}
-                      {Array.isArray(rx.opcoesOsteotomia) && rx.opcoesOsteotomia.length > 0 && (() => {
-                        const opcoes = rx.opcoesOsteotomia as Array<Record<string, unknown>>;
-                        const handleSelectOsteotomia = async (newIdx: number) => {
-                          if (newIdx === selectedIdx || savingOsteotomia) return;
-                          rxPdfGenerationRef.current += 1;
-                          setRxPdfShareUrl(null);
-                          setSavingOsteotomia(true);
-                          try {
-                            const updatedRx = {
-                              ...rx,
-                              _selectedOsteotomiaIdx: newIdx,
-                              _selectedOsteotomiaId: String(opcoes[newIdx]?.id ?? ""),
-                            };
-                            const r = await fetch(`/api/surgeries/${id}`, {
-                              method: "PATCH",
-                              credentials: "same-origin",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ rxAnaliseJson: JSON.stringify(updatedRx) }),
-                            });
-                            if (r.ok) {
-                              await queryClient.invalidateQueries({ queryKey: getGetSurgeryQueryKey(id) });
-                              toast({ title: t("osteotomyUpdated") });
-                            } else {
-                              toast({ title: t("osteotomySaveError"), variant: "destructive" });
-                            }
-                          } catch {
-                            toast({ title: t("osteotomySaveError"), variant: "destructive" });
-                          } finally {
-                            setSavingOsteotomia(false);
-                          }
-                        };
-                        return (
-                          <div className="border-t border-teal-100 pt-3 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold uppercase tracking-widest text-teal-600">
-                                {selectedOpcao ? tp("osteotomySelected") : tp("osteotomyOptions")}
-                              </p>
-                              {opcoes.length > 1 && (
-                                <span className="text-[10px] text-muted-foreground">{td("detail042")}</span>
-                              )}
-                            </div>
-                            {/* Selected option — full card */}
-                            {selectedOpcao && (
-                              <div className={`rounded-xl border-2 ${opcaoColor} p-4 space-y-3`}>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className={`font-bold text-base ${opcaoLabelColor}`}>{String(selectedOpcao.nome ?? "")}</p>
-                                    {!!selectedOpcao.nivel && (
-                                      <p className="text-sm text-muted-foreground mt-0.5">
-                                        {String(selectedOpcao.nivel).replace(/\s*\(meta[^)]*\)/gi, "").trim()}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <p className={`text-2xl font-bold ${opcaoLabelColor}`}>{Number(selectedOpcao.correcao ?? 0)}{td("detail033")}</p>
-                                    <p className="text-xs text-muted-foreground">{td("detail043")}</p>
-                                  </div>
-                                </div>
-                                {(() => {
-                                  const isDuplaOp = isDupla(selectedOpcao.id);
-                                  const isHTOOp = isHTO(selectedOpcao.id);
-                                  if (isDuplaOp) {
-                                    const wF = Number(selectedOpcao.wedgeFemoral_mm ?? 0);
-                                    const wT = Number(selectedOpcao.wedgeTibial_mm ?? 0);
-                                    if (!wF && !wT) return null;
-                                    return (
-                                      <div className="flex gap-4 text-sm">
-                                        {wF > 0 && <div><span className="text-muted-foreground">{td("detail044")} </span><span className="font-semibold">{wF} {td("detail045")}</span></div>}
-                                        {wT > 0 && <div><span className="text-muted-foreground">{td("detail046")} </span><span className="font-semibold">{wT} {td("detail045")}</span></div>}
-                                      </div>
-                                    );
-                                  }
-                                  const wMm = Number(selectedOpcao.wedge_mm ?? 0);
-                                  if (!wMm) return null;
-                                  return (
-                                    <div className="text-sm">
-                                       <span className="text-muted-foreground">{isHTOOp ? tp("tibialWedge") : tp("femoralWedge")}{td("detail047")} </span>
-                                      <span className="font-semibold">{wMm} {td("detail045")}</span>
-                                    </div>
-                                  );
-                                })()}
-                                {!!(selectedOpcao.angulosPre && selectedOpcao.angulosPos) && (() => {
-                                  const pre = selectedOpcao.angulosPre as { HKA: number; desvio?: string; mLDFA: number; aMPTA: number };
-                                  const pos = selectedOpcao.angulosPos as { HKA: number; mLDFA: number; aMPTA: number };
-                                  return (
-                                    <div className="overflow-x-auto">
-                                      <table className="w-full text-sm border-collapse">
-                                        <thead>
-                                          <tr className="border-b border-teal-100">
-                                            <th className="text-left py-1 pr-4 text-xs text-muted-foreground font-medium">{td("detail048")}</th>
-                                            <th className="text-right py-1 pr-4 text-xs text-muted-foreground font-medium">{td("detail039")}</th>
-                                            <th className="text-right py-1 text-xs text-muted-foreground font-medium">{td("detail049")}</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {[
-                                            { label: `HKA${pre.desvio ? ` (${pre.desvio})` : ""}`, preVal: `${pre.HKA}°`, posVal: `${pos.HKA}°` },
-                                            { label: "AmLDF", preVal: `${pre.mLDFA}°`, posVal: `${pos.mLDFA}°` },
-                                            { label: "AmMPT", preVal: `${pre.aMPTA}°`, posVal: `${pos.aMPTA}°` },
-                                          ].map(row => (
-                                            <tr key={row.label} className="border-b border-teal-50/60">
-                                              <td className="py-1 pr-4 text-muted-foreground">{row.label}</td>
-                                              <td className="py-1 pr-4 text-right font-medium">{row.preVal}</td>
-                                              <td className={`py-1 text-right font-bold ${opcaoLabelColor}`}>{row.posVal}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  );
-                                })()}
-                                {Array.isArray(selectedOpcao.alertas) && (selectedOpcao.alertas as string[]).length > 0 && (
-                                  <div className="space-y-1 pt-1">
-                                    {(selectedOpcao.alertas as string[]).map((a, i) => (
-                                      <div key={i} className="flex items-start gap-1.5 text-xs text-amber-700">
-                                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                                        <span>{a}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {/* Other options — compact clickable rows */}
-                            {opcoes.length > 1 && (
-                              <div className="space-y-1.5 pt-1">
-                                {opcoes.map((opcao, idx) => {
-                                  if (idx === selectedIdx) return null;
-                                  const isD = isDupla(opcao.id);
-                                  const isH = isHTO(opcao.id);
-                                  const bc = isD ? "border-purple-200 hover:border-purple-400 hover:bg-purple-50" : isH ? "border-blue-200 hover:border-blue-400 hover:bg-blue-50" : "border-orange-200 hover:border-orange-400 hover:bg-orange-50";
-                                  const lc = isD ? "text-purple-700" : isH ? "text-blue-700" : "text-orange-700";
-                                  return (
-                                    <button
-                                      key={idx}
-                                      type="button"
-                                      disabled={savingOsteotomia}
-                                      onClick={() => handleSelectOsteotomia(idx)}
-                                      className={`w-full rounded-xl border ${bc} bg-white/50 dark:bg-slate-800/30 px-3 py-2 flex items-center justify-between gap-2 opacity-60 hover:opacity-100 transition-all cursor-pointer text-left disabled:cursor-not-allowed`}
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isD ? "bg-purple-400" : isH ? "bg-blue-400" : "bg-orange-400"} shrink-0`} />
-                                        <span className={`text-xs font-semibold ${lc} truncate`}>{String(opcao.nome)}</span>
-                                        <span className="text-[10px] text-muted-foreground">{String(opcao.nivel ?? "").replace(/\s*\(meta[^)]*\)/gi, "").trim()}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${bc} ${lc}`}>
-                                          {Number(opcao.correcao)}{td("detail050")}
-                                        </span>
-                                        {savingOsteotomia
-                                          ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                          : <span className={`text-[10px] underline ${lc}`}>{td("detail051")}</span>
-                                        }
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* ── Alertas Técnicos ── */}
-                      {Array.isArray(rx.alertas) && rx.alertas.length > 0 && (
-                        <div className="space-y-1.5 border-t border-teal-100 pt-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-teal-600">{td("detail052")}</p>
-                          <div className="space-y-1">
-                            {rx.alertas.map((a, i) => (
-                              <div key={i} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
-                                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                                <span>{a}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-
-                      {/* ── RX Image Thumbnail ── */}
-                      {rxImageUrl && (
-                        <div className="border-t border-teal-100 pt-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-2">{td("detail053")}</p>
-                          <a href={rxImageUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
-                            <img
-                              src={rxImageUrl}
-                              alt={tp("panoramicXrayAlt")}
-                              className="max-h-48 rounded-lg border border-teal-200 shadow-sm object-contain hover:opacity-90 transition-opacity cursor-zoom-in"
-                            />
-                          </a>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              {isArtroplastiaSurgery && (() => {
-                const atj = (() => { try { return JSON.parse((surgery as any).procedimentosDetalhados ?? "{}").artroplastia ?? {}; } catch { return {}; } })();
-                const hasData = atj.tipo || atj.alinhamentoMembro || atj.gonartroseMedial || atj.gonartroseLateral || atj.femoropatelar || atj.flexaoGraus || atj.fixacao || atj.garrote;
-                if (!hasData) return null;
-                return (
-                  <Card className="border-indigo-200 bg-indigo-50/40 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base text-indigo-800 flex items-center gap-2">
-                        <span className="h-4 w-1 rounded-full bg-indigo-500 inline-block" />
-                        {td("detail054")}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Avaliação Clínica */}
-                      {(atj.alinhamentoMembro || atj.gonartroseMedial || atj.gonartroseLateral || atj.femoropatelar || atj.flexaoGraus || atj.instabilidade) && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">{td("detail055")}</p>
-                          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-                            {atj.alinhamentoMembro && <div><span className="text-muted-foreground">{td("detail056")} </span><span className="font-medium">{atj.alinhamentoMembro}</span></div>}
-                            {atj.gonartroseMedial && <div><span className="text-muted-foreground">{td("detail057")} </span><span className="font-medium">{atj.gonartroseMedial}{atj.gonartroseMedialAhlback ? ` — Ahlbäck ${atj.gonartroseMedialAhlback}` : ""}</span></div>}
-                            {atj.gonartroseLateral && <div><span className="text-muted-foreground">{td("detail058")} </span><span className="font-medium">{atj.gonartroseLateral}</span></div>}
-                            {atj.femoropatelar && <div><span className="text-muted-foreground">{td("detail059")} </span><span className="font-medium">{atj.femoropatelar}</span></div>}
-                            {(atj.flexaoGraus || atj.extensaoGraus) && <div><span className="text-muted-foreground">{td("detail060")} </span><span className="font-medium">{td("detail061")} {atj.flexaoGraus || "—"}{td("detail062")} {atj.extensaoGraus || "—"}{td("detail033")}</span></div>}
-                            {atj.instabilidade && <div><span className="text-muted-foreground">{td("detail063")} </span><span className="font-medium">{atj.instabilidade}{atj.instabilidadeGrau ? ` — ${atj.instabilidadeGrau}` : ""}</span></div>}
-                          </div>
-                        </div>
-                      )}
-                      {/* Técnica */}
-                      {(atj.tipo || atj.compartimento || atj.tecnologia || atj.fixacao) && (
-                        <div className="space-y-2 border-t border-indigo-100 pt-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">{td("detail064")}</p>
-                          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-                            {atj.tipo && <div><span className="text-muted-foreground">{td("detail065")} </span><span className="font-medium">{atj.tipo}</span></div>}
-                            {atj.compartimento && <div><span className="text-muted-foreground">{td("detail066")} </span><span className="font-medium">{atj.compartimento}</span></div>}
-                            {atj.tecnologia && <div><span className="text-muted-foreground">{td("detail067")} </span><span className="font-medium">{atj.tecnologia}</span></div>}
-                            {atj.fixacao && <div><span className="text-muted-foreground">{td("detail013")} </span><span className="font-medium">{atj.fixacao}</span></div>}
-                            {atj.revisaoComponentes && <div><span className="text-muted-foreground">{td("detail068")} </span><span className="font-medium">{atj.revisaoComponentes}</span></div>}
-                            {atj.defeitoOsseo && (atj.aoriGrauFemoral || atj.aoriGrauTibial) && (() => {
-                              const aoriDesc: Record<string, string> = {
-                                "1": tp("aoriSmallBoneLoss"),
-                                "2A": tp("aoriOneSideMetaphysealLoss"),
-                                "2B": tp("aoriBilateralMetaphysealLoss"),
-                                "3": tp("aoriMassiveMetaphysealLoss"),
-                              };
-                              return (
-                                <div className="col-span-2 rounded-lg border border-indigo-100 dark:border-indigo-800/40 bg-white/60 dark:bg-slate-800/40 p-3 space-y-1.5">
-                                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">{td("detail069")}</p>
-                                  <div className="flex flex-wrap gap-4 text-sm">
-                                    {atj.aoriGrauFemoral && (
-                                      <div><span className="text-muted-foreground">{td("detail070")} </span><span className="font-semibold text-indigo-700">{td("detail071")} {atj.aoriGrauFemoral}</span><span className="text-xs text-muted-foreground ml-1">{td("detail072")} {aoriDesc[atj.aoriGrauFemoral] ?? ""}</span></div>
-                                    )}
-                                    {atj.aoriGrauTibial && (
-                                      <div><span className="text-muted-foreground">{td("detail073")} </span><span className="font-semibold text-indigo-700">{td("detail071")} {atj.aoriGrauTibial}</span><span className="text-xs text-muted-foreground ml-1">{td("detail072")} {aoriDesc[atj.aoriGrauTibial] ?? ""}</span></div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            {atj.garrote && <div><span className="text-muted-foreground">{td("detail074")} </span><span className="font-medium">{atj.garrote}</span></div>}
-                            {atj.txa && <div><span className="text-muted-foreground">{td("detail075")} </span><span className="font-medium">{atj.txa}</span></div>}
-                            {atj.calcosFemoral?.length > 0 && <div><span className="text-muted-foreground">{td("detail076")} </span><span className="font-medium">{atj.calcosFemoral.join(", ")}</span></div>}
-                            {atj.calcosTibial?.length > 0 && <div><span className="text-muted-foreground">{td("detail077")} </span><span className="font-medium">{atj.calcosTibial.join(", ")}</span></div>}
-                            {atj.coneMetafisario && <div><span className="text-muted-foreground">{td("detail078")} </span><span className="font-medium">{atj.coneMetafisario === "Sim" ? tp("yes") : atj.coneMetafisario === "Não" ? tp("no") : atj.coneMetafisario}{atj.coneMetafisario === "Sim" && atj.coneMetafisarioLocal ? ` — ${atj.coneMetafisarioLocal}` : ""}</span></div>}
-                          </div>
-                          {atj.observacoes && <p className="text-sm text-muted-foreground italic mt-1">{td("detail079")}{atj.observacoes}{td("detail079")}</p>}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              {surgery.lcaAlgorithm && (surgery.lcaAlgorithm.krirsInterpretacao != null || surgery.lcaAlgorithm.krirsScore != null) && (() => {
-                const aderPositivo = surgery.exameLigamentar?.aderTest === true;
-                const gavetaRotInterna = surgery.exameLigamentar?.gavetaRotInterna === true;
-                const instabAL = gavetaRotInterna || (surgery.lcaAlgorithm.pivotShift ?? 0) >= 2;
-                const instabAM = aderPositivo;
-                const riskLevel = getKrirsRiskLevel(
-                  surgery.lcaAlgorithm.krirsScore,
-                  surgery.lcaAlgorithm.flagAltoRisco,
-                  surgery.lcaAlgorithm.krirsInterpretacao,
-                );
-                return (
-                  <Card className="min-w-0 border-primary/20 bg-primary/5 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{td("detail080")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="min-w-0">
-                          <p className="text-sm text-muted-foreground">{td("detail081")}</p>
-                          <p className="text-lg font-bold text-primary">{getKrirsRiskLabel(riskLevel, locale)}</p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm text-muted-foreground">{td("detail084")}</p>
-                          <p className="font-semibold">{surgery.lcaAlgorithm.tecnicaRecomendada}</p>
-                        </div>
-                        <div className="min-w-0 sm:col-span-2">
-                          <p className="text-sm text-muted-foreground">{td("detail085")}</p>
-                          <p className="text-sm bg-card p-3 rounded-md border mt-1">
-                            {getKrirsDisplayJustification(surgery.lcaAlgorithm.justificativa, riskLevel, locale)}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Extra-articular instability alerts */}
-                      {(instabAM || instabAL) && (
-                        <div className="space-y-2">
-                          {instabAM && instabAL && (
-                            <div className="flex items-start gap-2.5 p-3 rounded-lg border-2 border-red-300 bg-red-50 text-red-800">
-                              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <div>
-                                <p className="text-xs font-bold uppercase tracking-wide">{td("detail086")}</p>
-                                <p className="text-sm font-medium mt-0.5">{td("detail087")}</p>
-                              </div>
-                            </div>
-                          )}
-                          {instabAM && !instabAL && (
-                            <div className="flex items-start gap-2.5 p-3 rounded-lg border-2 border-amber-300 bg-amber-50 text-amber-800">
-                              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <div>
-                                <p className="text-xs font-bold uppercase tracking-wide">{td("detail088")}</p>
-                                <p className="text-sm font-medium mt-0.5">{td("detail089")}</p>
-                              </div>
-                            </div>
-                          )}
-                          {!instabAM && instabAL && (
-                            <div className="flex items-start gap-2.5 p-3 rounded-lg border-2 border-blue-300 bg-blue-50 text-blue-800">
-                              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <div>
-                                <p className="text-xs font-bold uppercase tracking-wide">{td("detail090")}</p>
-                                <p className="text-sm font-medium mt-0.5">{td("detail091")}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              {surgery.picsScore && surgery.picsScore.ptsTotal != null && (
-                  <Card className="min-w-0 border-primary/20 bg-primary/5 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{td("detail092")}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div className="min-w-0">
-                      <p className="text-sm text-muted-foreground">{td("detail093")}</p>
-                      <p className="text-2xl font-bold text-primary">{surgery.picsScore.ptsTotal}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm text-muted-foreground">{td("detail094")}</p>
-                      <p className="font-semibold">{surgery.picsScore.ptsRisco}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm text-muted-foreground">{td("detail095")}</p>
-                      <p className="font-semibold">{surgery.picsScore.ptsConduta}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {surgery.exameLigamentar && Object.keys(surgery.exameLigamentar).length > 2 && (
-                <Card className="min-w-0 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{td("detail096")}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm space-y-3">
-                    {/* Hiperextensão — destaque especial */}
-                    {surgery.exameLigamentar.hiperextensao && (() => {
-                      const hx = surgery.exameLigamentar.hiperextensao;
-                      const isHigh = hx === ">6.5" || hx === ">7.5";
-                      const isMid  = hx === "5-6.5" || hx === "5-7.5";
-                      return (
-                        <div className={`flex items-center justify-between p-3 rounded-lg border-2 ${
-                          isHigh ? "bg-red-50 border-red-300 text-red-800"
-                          : isMid  ? "bg-amber-50 border-amber-300 text-amber-800"
-                          : "bg-green-50 border-green-200 text-green-800"
-                        }`}>
-                          <div>
-                            <p className="font-semibold">{td("detail097")}</p>
-                            <p className="text-xs mt-0.5">
-                              {hx === "<5" && `< 5° — ${tp("normal")}`}
-                              {isMid  && `5 – 6,5° — ${tp("borderline")}`}
-                              {isHigh && `≥ 6,5° — ${tp("hyperlaxity")}`}
-                            </p>
-                            {isHigh && (
-                              <p className="text-xs font-medium mt-1">
-                                {td("detail098")}
-                              </p>
-                            )}
-                          </div>
-                          <Badge variant="outline" className={
-                            isHigh ? "border-red-400 text-red-700" :
-                            isMid  ? "border-amber-400 text-amber-700" :
-                            "border-green-400 text-green-700"
-                          }>
-                            {hx === "<5" ? "< 5°" : isMid ? "5–6,5°" : "≥ 6,5°"}
-                          </Badge>
-                        </div>
-                      );
-                    })()}
-                    {surgery.exameLigamentar.slopeTibialPts != null && (() => {
-                      const ptsValue = surgery.exameLigamentar.slopeTibialPts;
-                      const classification = classifyPTS(ptsValue);
-                      return (
-                        <div className={`flex items-center justify-between p-3 rounded-lg border-2 ${
-                          classification === "pathological"
-                            ? "bg-red-50 border-red-300 text-red-800"
-                            : classification === "borderline"
-                              ? "bg-amber-50 border-amber-300 text-amber-800"
-                              : classification === "normal"
-                                ? "bg-green-50 border-green-200 text-green-800"
-                                : "bg-muted border-border text-muted-foreground"
-                        }`}>
-                          <div>
-                            <p className="font-semibold">
-                              {locale === "es" ? "Pendiente tibial posterior (PTS)" : "Slope Tibial Posterior (PTS)"}
-                            </p>
-                            <p className="text-xs mt-0.5">
-                              {classification
-                                ? getPTSClassificationRange(classification, locale)
-                                : (locale === "es" ? "No clasificado" : "Não classificado")}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold">{ptsValue}°</p>
-                            <Badge variant="outline" className={
-                              classification === "pathological" ? "border-red-400 text-red-700" :
-                              classification === "borderline" ? "border-amber-400 text-amber-700" :
-                              classification === "normal" ? "border-green-400 text-green-700" :
-                              "border-border text-muted-foreground"
-                            }>
-                              {classification
-                                ? getPTSClassificationLabel(classification, locale)
-                                : (locale === "es" ? "No clasificado" : "Não classificado")}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    <div className="grid min-w-0 grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-                      {Object.entries(surgery.exameLigamentar).map(([k, v]) => {
-                        if (v === null || k === 'id' || k === 'surgeryId' || k === 'hiperextensao' || k === 'slopeTibialPts' || k === 'createdAt' || k === 'laerTest') return null;
-                        const labelMap: Record<string, string> = {
-                          lachman: tp("lachman"), gavetaNeutra: tp("neutralDrawer"),
-                          pivotShift: tp("pivotShift"), aderTest: tp("aderTest"),
-                          gavetaRotInterna: tp("internalRotationDrawer"), estresseValgo0: tp("valgusStress0"),
-                          estresseValgo30: tp("valgusStress30"), estresseVaro0: tp("varusStress0"),
-                          estresseVaro30: tp("varusStress30"), gavetaPosterior: tp("posteriorDrawer"),
-                          sagSign: tp("sagSign"), quadricepsAtivo: tp("activeQuadriceps"),
-                          dialTest: tp("dialTest"), dialTest30: tp("dialTest30"), dialTest90: tp("dialTest90"),
-                          recurvato: tp("recurvatum"), gavetaRotatoria: tp("posterolateralRotatoryDrawer"),
-                        };
-                        return (
-                          <div key={k} className="flex justify-between border-b pb-1 border-border/50">
-                            <span className="text-muted-foreground">{labelMap[k] ?? k}</span>
-                            <span className="font-medium">{typeof v === 'boolean' ? (v ? tp("yes") : tp("no")) : String(v)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {(() => {
-                const patellarExam = surgery.examePatelar as Record<string, any> | null | undefined;
-                const surgeryRecord = surgery as typeof surgery & Record<string, any>;
-                const bilateral = surgeryRecord.lado === "Bilateral"
-                  ? readBilateralDocumentation(surgeryRecord.procedimentosDetalhados)
-                  : null;
-                const exams = bilateral
-                  ? (["direito", "esquerdo"] as const).map((limb) => ({
-                      limb,
-                      exam: (bilateral.byLimb[limb]?.examePatelar as Record<string, any> | undefined),
-                    }))
-                  : [{ limb: null, exam: patellarExam }];
-                if (!exams.some(({ exam }) => exam && Object.entries(exam).some(([key, value]) => (
-                  !["id", "surgeryId", "createdAt"].includes(key) && value != null
-                )))) return null;
-                return (
-                  <Card className="min-w-0 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{t("patellarExam")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-3">
-                      {exams.map(({ limb, exam }) => exam && (
-                        <div key={limb ?? "flat"} className="space-y-2">
-                          {limb && <p className="font-semibold text-primary">{limbHeading(limb, locale)}</p>}
-                          <div className="grid min-w-0 grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-                            {Object.entries(exam).map(([key, value]) => {
-                              if (["id", "surgeryId", "createdAt", "jSignGrau"].includes(key) || value == null) return null;
-                              const label = key === "jSign"
-                                ? t("jSign")
-                                : key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim();
-                              return (
-                                <div key={key} className="flex justify-between border-b pb-1 border-border/50">
-                                  <span className="text-muted-foreground">{label}</span>
-                                  <span className="font-medium">
-                                    {typeof value === "boolean" ? (value ? tp("yes") : tp("no")) : String(value)}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            {exam.jSign === true && exam.jSignGrau != null && (
-                              <div className="flex justify-between border-b pb-1 border-border/50">
-                                <span className="text-muted-foreground">{t("jSignGrade")}</span>
-                                <span className="font-medium">{Number(exam.jSignGrau)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
+              {clinicalPayload && <SurgeryClinicalView payload={clinicalPayload} report={report} />}
 
               {surgery.observacoes && (
                 <Card className="shadow-sm">
@@ -4309,17 +3430,6 @@ export default function SurgeryDetail() {
       </DialogContent>
     </Dialog>
 
-    {/* Surgery Full Summary */}
-    <SurgeryFullSummary
-      open={summaryOpen}
-      onClose={() => setSummaryOpen(false)}
-      surgery={surgery}
-    />
-    <SurgeryTextExportDialog
-      open={textPreviewOpen}
-      onClose={() => setTextPreviewOpen(false)}
-      surgery={surgery}
-    />
 
     {/* WhatsApp Message Editor Dialog */}
     <Dialog open={waDialogOpen} onOpenChange={setWaDialogOpen}>

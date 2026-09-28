@@ -20,7 +20,8 @@ export function ArthroscopicMap({ region, value, onChange, readOnly }: {
 }) {
   const names = ARTHRO_STRUCTURES[region];
   const byCode = new Map(value.map((e) => [e.structure_code, e]));
-  const order = Object.keys(names);
+  // Na leitura, só o que foi registrado; na edição, todas as estruturas da região.
+  const order = Object.keys(names).filter((c) => !readOnly || byCode.has(c));
   const set = (code: string, patch: Partial<ClinicalMapEntry> | null) => {
     const next = new Map(byCode);
     if (patch === null) next.delete(code);
@@ -32,7 +33,7 @@ export function ArthroscopicMap({ region, value, onChange, readOnly }: {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span>{pending > 0 ? `${pending} estrutura(s) sem registro — não aparecem no relatório.` : "Todas as estruturas registradas."}</span>
+        {!readOnly && <span>{pending > 0 ? `${pending} estrutura(s) sem registro — não aparecem no relatório.` : "Todas as estruturas registradas."}</span>}
         {!readOnly && pending > 0 && (
           <button type="button" className="font-medium text-primary hover:underline"
             onClick={() => onChange(order.map((c) => byCode.get(c) ?? { structure_code: c, status: "normal" }))}>
