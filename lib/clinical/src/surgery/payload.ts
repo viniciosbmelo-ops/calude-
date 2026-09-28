@@ -11,6 +11,7 @@ import type { ArthroMapEntry, ReportInput, ReportImplant } from '../report/repor
 import { ARTHRO_STRUCTURES, PATHOLOGY_BY_CODE, Region } from '../catalog/pathologies';
 import { CASE_TYPE_BY_KEY, intraopSchemaId } from '../catalog/caseTypes';
 import type { SchemaRegistry, ValidationIssue } from '../schemaRegistry';
+import { coreRegionIssues, isOpenOnly } from './coreOptions';
 
 export const CLINICAL_PAYLOAD_VERSION = 1;
 export const MAX_FREE_TEXT = 4000;
@@ -72,7 +73,8 @@ export class ClinicalPayloadError extends Error {
   }
 }
 
-const IMPLANT_CATEGORIES = ['anchor', 'screw', 'plate', 'button', 'prosthesis_component', 'graft', 'suture_tape', 'other'] as const;
+/** Categorias de implante aceitas (valor gravado em implantes[].categoria). */
+export const IMPLANT_CATEGORIES = ['anchor', 'screw', 'plate', 'button', 'prosthesis_component', 'graft', 'suture_tape', 'other'] as const;
 const MAP_STATUSES = ['normal', 'lesion', 'treated', 'not_evaluated'] as const;
 
 function isObj(v: unknown): v is Record<string, any> {
@@ -172,11 +174,25 @@ export function coreFromSurgery(p: ClinicalPayload, cols: SurgeryColumns): Recor
   return core;
 }
 
+export interface ValidateClinicalOptions {
+  /**
+   * Regras por região / tipo de acesso (coreRegionIssues e inventário artroscópico em cirurgia aberta).
+   * Padrão: true (gravação). O relatório de registros já gravados usa false, para que cirurgias
+   * antigas continuem gerando relatório.
+   */
+  regionRules?: boolean;
+}
+
 /** Validação completa para finalizar: núcleo, cada procedimento e implantes. */
-export function validateClinicalPayload(registry: SchemaRegistry, p: ClinicalPayload, cols: SurgeryColumns): IssueGroup[] {
+export function validateClinicalPayload(registry: SchemaRegistry, p: ClinicalPayload, cols: SurgeryColumns, opts: ValidateClinicalOptions = {}): IssueGroup[] {
   const groups: IssueGroup[] = [];
-  const core = registry.validate('CORE_SURGERY.v1', coreFromSurgery(p, cols));
-  if (!core.valid) groups.push({ scope: 'geral', issues: core.issues });
+  const coreData = coreFromSurgery(p, cols);
+  const core = registry.validate('CORE_SURGERY.v1', coreData);
+  const coreIssues = [...(core.valid ? [] : core.issues), ...(opts.regionRules === false ? [] : coreRegionIssues(p.regiao, coreData))];
+  if (coreIssues.length) groups.push({ scope: 'geral', issues: coreIssues });
+  if (opts.regionRules !== false && p.mapaArtroscopico.length > 0 && isOpenOnly(coreData)) {
+    groups.push({ scope: 'inventário artroscópico', issues: [{ field: 'mapaArtroscopico', keyword: 'dependencies', message_pt: 'Inventário artroscópico registrado em cirurgia sem acesso artroscópico.' }] });
+  }
   if (p.procedimentos.length === 0) {
     groups.push({ scope: 'procedimentos', issues: [{ field: 'procedimentos', keyword: 'minItems', message_pt: 'Registre ao menos um procedimento.' }] });
   }

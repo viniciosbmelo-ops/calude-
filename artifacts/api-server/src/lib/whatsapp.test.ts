@@ -48,6 +48,16 @@ describe("buildFollowupMessage", () => {
     expect(text).toContain("Escala livre");
   });
 
+  it("omits the scales line when no scales remain", () => {
+    for (const locale of ["pt-BR", "es"] as const) {
+      const text = buildFollowupMessage({ ...params, scales: [], locale });
+      expect(text).not.toContain("Escalas");
+      expect(text).not.toContain("\n\n\n");
+      expect(text).toContain(params.link);
+    }
+    expect(buildFollowupMessage({ ...params, scales: [] })).toContain("solicita o preenchimento das avaliações de *3 meses* após a sua cirurgia.\n\nAcesse pelo link");
+  });
+
   it("uses Portuguese when no locale is supplied", () => {
     expect(buildFollowupMessage(params)).toBe(
       buildFollowupMessage({ ...params, locale: "pt-BR" }),

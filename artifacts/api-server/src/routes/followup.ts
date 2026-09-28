@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import { sendWhatsAppText, buildFollowupMessage } from "../lib/whatsapp";
 import { getBaseUrl } from "../lib/base-url";
 import {
+  filterSupportedFollowupScales,
   hasFractureProcedure,
   isPreoperativePeriod,
 } from "../lib/followup-schedule";
@@ -168,9 +169,13 @@ router.post("/followup/:id/send-scales", requireAuth, async (req, res): Promise<
   const locale = await localeForDoctorId(req.doctorId);
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
-  const { escalasEnviadas } = req.body as { escalasEnviadas: string[] };
+  const requested = (req.body as { escalasEnviadas?: unknown } | undefined)?.escalasEnviadas;
+  // Escalas retiradas (ex.: do joelho) são descartadas; se nada suportado sobrar, é como não escolher nenhuma.
+  const escalasEnviadas = Array.isArray(requested)
+    ? filterSupportedFollowupScales(requested.filter((s): s is string => typeof s === "string"))
+    : [];
 
-  if (!Array.isArray(escalasEnviadas) || escalasEnviadas.length === 0) {
+  if (escalasEnviadas.length === 0) {
     res.status(400).json({ error: message(locale, "selectAtLeastOneScale") });
     return;
   }
@@ -267,7 +272,7 @@ router.post("/followup/:id/prepare-whatsapp", requireAuth, async (req, res): Pro
       await tx.update(followupTable).set({ token }).where(eq(followupTable.id, id));
     }
     const link = `${getBaseUrl(req)}/patient/${token}`;
-    const scales = row.followup.escalasEnviadas ?? [];
+    const scales = filterSupportedFollowupScales(row.followup.escalasEnviadas);
     const message = buildFollowupMessage({
       patientName: row.patient.nome,
       periodo: row.followup.tempo,
@@ -333,7 +338,7 @@ router.post("/followup/:id/send-whatsapp", requireAuth, async (req, res): Promis
       await tx.update(followupTable).set({ token }).where(eq(followupTable.id, id));
     }
     const link = `${getBaseUrl(req)}/patient/${token}`;
-    const scales = row.followup.escalasEnviadas ?? [];
+    const scales = filterSupportedFollowupScales(row.followup.escalasEnviadas);
     const text = customMessage ?? buildFollowupMessage({
       patientName: row.patient.nome,
       periodo: row.followup.tempo,

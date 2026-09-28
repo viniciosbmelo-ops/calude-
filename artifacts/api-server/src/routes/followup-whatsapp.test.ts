@@ -104,7 +104,9 @@ async function createFollowupWithoutPeriodOrScales(): Promise<number> {
 
 function expectSpanishDefaults(text: string): void {
   expect(text).toContain("Posoperatorio");
-  expect(text).toContain("evaluaciones clínicas");
+  // Sem escalas, a linha "Escalas para completar" é omitida; o texto pede as avaliações.
+  expect(text).toContain("solicita que complete las evaluaciones de *Posoperatorio*");
+  expect(text).not.toContain("Escalas para completar");
   expect(text).not.toContain("pós-operatório");
   expect(text).not.toContain("avaliação clínica");
 }
@@ -170,5 +172,40 @@ describe.sequential("follow-up WhatsApp Spanish defaults", () => {
     expect(await response.json()).toEqual({ ok: true, messageId: "mock-message-id" });
     expect(mockSendWhatsAppText).toHaveBeenCalledTimes(1);
     expectSpanishDefaults(mockSendWhatsAppText.mock.calls[0]![1] as string);
+  });
+
+  it("send-scales drops retired knee scales and rejects a body with only unsupported scales", async () => {
+    const [followup] = await db.insert(followupTable).values({ surgeryId, tempo: "3 meses" }).returning();
+    const post = (body: unknown) => fetch(`${baseUrl}/api/followup/${followup.id}/send-scales`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const onlyKnee = await post({ escalasEnviadas: ["IKDC", "Lysholm"] });
+    expect(onlyKnee.status).toBe(400);
+    expect(await onlyKnee.json()).toEqual({ error: "Seleccione al menos una escala" });
+
+    const mixed = await post({ escalasEnviadas: ["IKDC", "VAS Dor"] });
+    expect(mixed.status).toBe(200);
+    expect((await mixed.json() as { escalasEnviadas: string[] }).escalasEnviadas).toEqual(["VAS Dor"]);
+    const [stored] = await db.select().from(followupTable).where(eq(followupTable.id, followup.id));
+    expect(stored!.escalasEnviadas).toEqual(["VAS Dor"]);
+  });
+
+  it("prepare-whatsapp omits retired knee scales stored on a legacy follow-up", async () => {
+    const [followup] = await db.insert(followupTable).values({
+      surgeryId, tempo: "3 meses", escalasEnviadas: ["IKDC", "VAS Dor"],
+    }).returning();
+
+    const response = await request(`/api/followup/${followup.id}/prepare-whatsapp`);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as { message: string };
+    expect(body.message).toContain("Escalas para completar:* EVA Dolor");
+    expect(body.message).not.toContain("IKDC");
+    // The stored row is not rewritten.
+    const [stored] = await db.select().from(followupTable).where(eq(followupTable.id, followup.id));
+    expect(stored!.escalasEnviadas).toEqual(["IKDC", "VAS Dor"]);
   });
 });

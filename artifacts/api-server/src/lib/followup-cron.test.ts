@@ -243,6 +243,35 @@ describe("claimNextNotification — atomic claim", () => {
     expect(mockDbInsert).toHaveBeenCalledTimes(1);
   });
 
+  it("drops retired knee scales when copying scheduled scales into the follow-up", async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 1, surgeryId: 10 }] });
+    const row = makeNotifPatientRow({ scales: ["IKDC", "VAS Dor", "Lysholm"] });
+    mockDbSelect.mockReturnValueOnce(makeSelectChain([row]));
+    mockDbUpdate.mockReturnValue(makeUpdateChain());
+    const insertChain = makeInsertChain([{ id: 99, token: "fixed-uuid-1234" }]);
+    mockDbInsert.mockReturnValue(insertChain);
+
+    const claimed = await claimNextNotification();
+
+    expect(insertChain.values).toHaveBeenCalledWith(expect.objectContaining({ escalasEnviadas: ["VAS Dor"] }));
+    expect(claimed!.scales).toEqual(["VAS Dor"]);
+    // The stored scheduled_notifications row is left untouched.
+    expect(row.notif.scales).toEqual(["IKDC", "VAS Dor", "Lysholm"]);
+  });
+
+  it("copies an empty scale list when only retired knee scales were scheduled", async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 1, surgeryId: 10 }] });
+    mockDbSelect.mockReturnValueOnce(makeSelectChain([makeNotifPatientRow({ scales: ["ikdc"] })]));
+    mockDbUpdate.mockReturnValue(makeUpdateChain());
+    const insertChain = makeInsertChain([{ id: 99, token: "fixed-uuid-1234" }]);
+    mockDbInsert.mockReturnValue(insertChain);
+
+    const claimed = await claimNextNotification();
+
+    expect(insertChain.values).toHaveBeenCalledWith(expect.objectContaining({ escalasEnviadas: [] }));
+    expect(claimed!.scales).toEqual([]);
+  });
+
   it("marks notification no_phone and returns null when patient has no phone", async () => {
     mockPoolQuery
       .mockResolvedValueOnce({ rows: [{ id: 1, surgeryId: 10 }] })

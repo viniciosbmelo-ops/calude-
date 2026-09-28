@@ -156,6 +156,50 @@ describe("cirurgia de ombro e cotovelo", () => {
     expect(rel.texto).toContain("1. Fratura do úmero proximal\nOsteossíntese com placa bloqueada.");
   });
 
+  const elbowGeral = {
+    positioning: "supine_arm_table",
+    anesthesia: { type: "general_plus_block", block: "supraclavicular" },
+    approach: ["anterior_elbow_single_incision"],
+    preop_dx: ["EL_DBR"],
+    postop_dx: ["EL_DBR"],
+  };
+  const dbr = { tear: "complete", days_since_injury: 5, procedure: "single_incision_repair", fixation: ["cortical_button"] };
+  const elbowBody = (dc: Record<string, unknown>) =>
+    body({ regiao: "elbow", procedimentos: [{ tipoCaso: "EL_DISTAL_BICEPS", codigo: "EL_DBR", dados: dbr }], ...dc }, { tipoCaso: "Bíceps Distal", tiposProcedimento: ["EL_DISTAL_BICEPS"], diagnostico: "Rotura do bíceps distal" });
+
+  it("cotovelo: via, portal e ângulo de ombro são recusados na gravação", async () => {
+    const r = await api("/api/surgeries", "POST", elbowBody({ geral: { ...elbowGeral, approach: ["deltopectoral"], portals: ["neviaser", "posterolateral"], beach_chair_angle_deg: 60 } }));
+    expect(r.status).toBe(422);
+    const j = await json(r);
+    expect(j.details[0].scope).toBe("geral");
+    expect(j.details[0].issues.map((i: any) => i.field)).toEqual(["approach", "portals", "beach_chair_angle_deg", "portals"]);
+  });
+
+  it("cotovelo aberto: inventário artroscópico é recusado na gravação", async () => {
+    const r = await api("/api/surgeries", "POST", elbowBody({ geral: elbowGeral, mapaArtroscopico: [{ structure_code: "EL_RH", status: "normal" }] }));
+    expect(r.status).toBe(422);
+    expect((await json(r)).details.map((d: any) => d.scope)).toEqual(["inventário artroscópico"]);
+  });
+
+  it("cotovelo aberto com botão cortical: categoria preservada e relatório sem inventário artroscópico", async () => {
+    const implantes = [{ categoria: "button", fabricante: "Fabricante C", modelo: "Botão cortical", quantidade: 1 }];
+    const r = await api("/api/surgeries", "POST", elbowBody({ geral: elbowGeral, implantes }));
+    expect(r.status).toBe(201);
+    const id = (await json(r)).id;
+    createdSurgeries.push(id);
+    const got = await json(await api(`/api/surgeries/${id}`, "GET"));
+    expect(got.dadosClinicos.implantes).toEqual(implantes);
+    // Registro antigo gravado com estruturas "normais" em cirurgia aberta (botão "Marcar restantes como normais")
+    const [row] = await db.select().from(surgeriesTable).where(eq(surgeriesTable.id, id));
+    await db.update(surgeriesTable).set({ dadosClinicos: { ...(row.dadosClinicos as any), mapaArtroscopico: [{ structure_code: "EL_RH", status: "normal" }] } }).where(eq(surgeriesTable.id, id));
+    const rel = await api(`/api/surgeries/${id}/relatorio`, "GET");
+    expect(rel.status).toBe(200);
+    const { texto } = await json(rel);
+    expect(texto).not.toContain("INVENTÁRIO ARTROSCÓPICO");
+    expect(texto).not.toContain("Sem alterações");
+    expect(texto).toContain("Via de acesso: anterior em incisão única.");
+  });
+
   it("relatório de cirurgia sem dados de ombro responde 409", async () => {
     const [s] = await db.insert(surgeriesTable).values({ doctorId: doctorAId, patientId: patientAId }).returning();
     createdSurgeries.push(s.id);

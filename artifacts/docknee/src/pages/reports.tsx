@@ -145,6 +145,9 @@ export default function Reports() {
   const { formatDate, locale } = useLanguage();
   const t = useScopedTranslations(operationalCoreMessages);
   const tx = useScopedTranslations(reportingDashboardMessages);
+  type ReportingKey = keyof (typeof reportingDashboardMessages)["pt-BR"];
+  // The i18n helper has no plural rules: pick the singular or plural key explicitly.
+  const countLabel = (count: number, one: ReportingKey, other: ReportingKey) => tx(count === 1 ? one : other, { count });
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -311,6 +314,7 @@ export default function Reports() {
     return [...counts.entries()].map(([key, value]) => ({ name: caseTypeLabel(key), value }));
   }, [filtered]);
 
+  const caseTypeTotal = caseTypeData.reduce((sum, d) => sum + d.value, 0);
   const PIE_COLORS = ["#1A365D", "#1FB6E1", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
   const generatePDF = async () => {
@@ -1065,7 +1069,11 @@ export default function Reports() {
               <div>
                 <h2 className="text-lg font-bold text-[#1A365D]">{tx("graphicalAnalysis")}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {tx("chartSummary", { followups: filtered.length, surgeries: new Set(filtered.map(r => r.surgeryId)).size, periods: chartData.length })}
+                  {tx("chartSummary", {
+                    followups: countLabel(filtered.length, "followupCount", "followupsCount"),
+                    surgeries: countLabel(new Set(filtered.map(r => r.surgeryId)).size, "surgeryCount", "surgeriesCount"),
+                    periods: countLabel(chartData.length, "periodEvaluated", "periodsEvaluated"),
+                  })}
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={generatePDF} className="print:hidden">
@@ -1101,20 +1109,24 @@ export default function Reports() {
                   <>
                     <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
-                        <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                        <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius="45%" outerRadius="85%" paddingAngle={caseTypeData.length > 1 ? 1 : 0} dataKey="value" nameKey="name" isAnimationActive={false}>
                           {caseTypeData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip formatter={(v: any) => [v, tx("surgeries")]} contentStyle={{ fontSize: 11 }} />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="flex flex-wrap gap-2 justify-center mt-2">
+                    <ul className="mt-3 space-y-1.5">
                       {caseTypeData.map((d, i) => (
-                        <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                          <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                          <span>{d.name}: <strong>{d.value}</strong></span>
-                        </div>
+                        <li key={d.name} className="flex items-start gap-2 text-xs">
+                          <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} aria-hidden="true" />
+                          <span className="min-w-0 flex-1 break-words">{d.name}</span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">
+                            <strong className="text-foreground">{d.value}</strong>
+                            {caseTypeTotal > 0 && <> · {Math.round((d.value / caseTypeTotal) * 100)}%</>}
+                          </span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </>
                 ) : (
                   <div className="h-[200px] flex items-center justify-center text-xs text-muted-foreground">{tx("noData")}</div>
@@ -1164,7 +1176,10 @@ export default function Reports() {
       <Card className="border-border shadow-sm max-w-7xl mx-auto">
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-sm font-semibold text-muted-foreground">
-             {tx("clickToOpenRecord", { surgeries: new Set(filtered.map(r => r.surgeryId)).size, assessments: filtered.filter(r => r.id != null).length })}
+             {tx("clickToOpenRecord", {
+               surgeries: countLabel(new Set(filtered.map(r => r.surgeryId)).size, "surgeryCount", "surgeriesCount"),
+               assessments: countLabel(filtered.filter(r => r.id != null).length, "assessmentCount", "assessmentsCount"),
+             })}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -1205,7 +1220,7 @@ export default function Reports() {
                         className="text-xs whitespace-nowrap"
                         onClick={!user?.isAdmin ? () => window.open(`/surgeries/${row.surgeryId}`, "_blank") : undefined}
                       >
-                        <span className="text-muted-foreground">{row.patientSexo?.charAt(0) ?? "?"}</span>
+                        <span className="text-muted-foreground">{row.patientSexo?.trim() ? row.patientSexo.trim().charAt(0) : "—"}</span>
                         {row.idade != null && <span className="ml-1">{row.idade}a</span>}
                       </TableCell>
                       <TableCell onClick={!user?.isAdmin ? () => window.open(`/surgeries/${row.surgeryId}`, "_blank") : undefined}>

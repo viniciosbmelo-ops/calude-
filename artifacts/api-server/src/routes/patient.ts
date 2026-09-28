@@ -27,7 +27,9 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, doctorsTable, followupTable, surgeriesTable, scaleResponsesTable, patientsTable } from "@workspace/db";
 import { pool } from "@workspace/db";
 import {
+  filterSupportedFollowupScales,
   hasFractureProcedure,
+  isSupportedFollowupScale,
   isPreoperativePeriod,
 } from "../lib/followup-schedule";
 import { eq, sql } from "drizzle-orm";
@@ -251,10 +253,13 @@ router.get("/patient/:token", async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  // Linhas antigas podem listar escalas do joelho já retiradas: só expõe as
+  // escalas que o cronograma atual aplica (sem alterar o banco).
+  const escalasEnviadas = filterSupportedFollowupScales(followup.escalasEnviadas);
   res.json({
     tempo: followup.tempo,
-    escalasEnviadas: followup.escalasEnviadas ?? [],
-    noScales: !(followup.escalasEnviadas?.length),
+    escalasEnviadas,
+    noScales: escalasEnviadas.length === 0,
     doctorLocale: resolveDoctorLocale(followup.doctorLocale),
   });
 });
@@ -351,7 +356,7 @@ router.post("/patient/:token/verify", async (req: Request, res: Response): Promi
     return {
       kind: "verified" as const,
       tempo: row.followup.tempo,
-      escalasEnviadas: row.followup.escalasEnviadas ?? [],
+      escalasEnviadas: filterSupportedFollowupScales(row.followup.escalasEnviadas),
       completedScales: responses.map((response) => response.nomeEscala),
     };
   });
@@ -474,7 +479,7 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
       res.status(404).json({ error: message(locale, "invalidLink") });
       return;
     }
-    if (!locked.escalas?.includes(escala)) {
+    if (!isSupportedFollowupScale(escala) || !locked.escalas?.includes(escala)) {
       await client.query("ROLLBACK");
       res.status(400).json({ error: message(locale, "requestedScaleNotFound") });
       return;
@@ -505,7 +510,7 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
     }
 
     persistedFollowupId = locked.id;
-    requestedScales = locked.escalas;
+    requestedScales = filterSupportedFollowupScales(locked.escalas);
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK");

@@ -133,6 +133,26 @@ describe('Outros templates', () => {
     expect(t).toContain('fixação com botão cortical e parafuso de interferência');
     expect(t).toContain('Garrote pneumático a 250 mmHg por 55 min.');
   });
+  test('cirurgia aberta não imprime inventário artroscópico, mesmo com estruturas marcadas como normais', () => {
+    const t = engine.generate({
+      region: 'elbow', patient: { name: 'P' }, surgeon: { name: 'S' },
+      core: { ...coreRight, positioning: 'supine_arm_table', beach_chair_angle_deg: undefined, approach: ['anterior_elbow_single_incision'], portals: undefined, preop_dx: ['EL_DBR'], postop_dx: ['EL_DBR'] },
+      arthroscopic_map: [{ structure_code: 'EL_RH', status: 'normal' }, { structure_code: 'EL_CAPIT', status: 'normal' }],
+      procedures: [{ pathology_code: 'EL_DBR', sequence: 1, schema_version: 1, data: { tear: 'complete', days_since_injury: 3, procedure: 'single_incision_repair', fixation: ['cortical_button'] } }]
+    }).text;
+    expect(t).not.toContain('INVENTÁRIO ARTROSCÓPICO');
+    expect(t).not.toContain('Sem alterações');
+    expect(t).toContain('Via de acesso: anterior em incisão única.');
+  });
+  test('cirurgia artroscópica mantém o inventário; sem estruturas registradas, nada é impresso', () => {
+    expect(engine.generate(multiProcedure).text).toContain('INVENTÁRIO ARTROSCÓPICO');
+    expect(engine.generate({ ...multiProcedure, arthroscopic_map: [] }).text).not.toContain('INVENTÁRIO ARTROSCÓPICO');
+  });
+  test('ângulo da cadeira de praia só com posicionamento em cadeira de praia', () => {
+    const t = one('EL_DBR', { tear: 'complete', days_since_injury: 1, procedure: 'single_incision_repair', fixation: ['cortical_button'] }, { positioning: 'supine_arm_table', approach: ['anterior_elbow_single_incision'], portals: [] });
+    expect(t).toContain('Paciente posicionado em decúbito dorsal com mesa de mão.');
+    expect(t).not.toContain('70°');
+  });
   test('manguito: desbridamento parcial', () => {
     const t = one('SH_RCT_PARTIAL', { tendons: ['SSP'], tear_type: 'partial_articular', ellman_grade: 1, procedure: 'debridement_only' });
     expect(t).toContain('Identificada lesão parcial da face articular do supraespinal, grau 1 de Ellman. Realizado desbridamento, sem reparo.');

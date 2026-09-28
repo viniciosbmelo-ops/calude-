@@ -44,6 +44,24 @@ export const FOLLOWUP_SCHEDULE: ScheduleEntry[] = [
   { periodo: "1 ano",             daysAfterSurgery: 365, scales: ["VAS Dor"], notes: "Resultado de longo prazo" },
 ];
 
+/**
+ * Escalas que o sistema ainda aplica, derivadas do próprio cronograma.
+ * Linhas antigas de scheduled_notifications / followup podem listar escalas do
+ * joelho (Lysholm, IKDC…) que foram retiradas; elas não devem ser exibidas nem
+ * solicitadas ao paciente. Os dados do banco não são alterados.
+ */
+export const SUPPORTED_FOLLOWUP_SCALES: ReadonlySet<string> = new Set(
+  FOLLOWUP_SCHEDULE.flatMap((entry) => entry.scales),
+);
+
+export function isSupportedFollowupScale(scale: string): boolean {
+  return SUPPORTED_FOLLOWUP_SCALES.has(scale);
+}
+
+export function filterSupportedFollowupScales(scales: readonly string[] | null | undefined): string[] {
+  return [...new Set((scales ?? []).filter(isSupportedFollowupScale))];
+}
+
 export function computeScheduledDate(dataCirurgia: string | null | undefined, daysAfterSurgery: number): string | null {
   if (!dataCirurgia) return null;
   const base = new Date(dataCirurgia);

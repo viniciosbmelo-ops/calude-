@@ -14,6 +14,7 @@ import {
   IssueGroup,
   ReportEngine,
   SchemaRegistry,
+  ValidateClinicalOptions,
   buildReportInput,
   parseClinicalPayload,
   validateClinicalPayload,
@@ -36,8 +37,11 @@ interface SurgeryColumnsInput {
 /**
  * Normaliza e, se `complete`, valida os dados clínicos.
  * `complete` = a cirurgia será gravada como "completo" (finalizar / criar direto).
+ * Na gravação valem também as regras por região / tipo de acesso (ex.: via deltopeitoral ou
+ * ângulo da cadeira de praia em cotovelo). O relatório de registros já gravados passa
+ * `{ regionRules: false }` para não bloquear cirurgias antigas.
  */
-export function checkClinicalPayload(raw: unknown, cols: SurgeryColumnsInput, complete: boolean): ClinicalCheck {
+export function checkClinicalPayload(raw: unknown, cols: SurgeryColumnsInput, complete: boolean, opts: ValidateClinicalOptions = {}): ClinicalCheck {
   if (raw === undefined || raw === null) {
     if (!complete) return { ok: true, payload: null };
     return { ok: false, status: 422, body: { error: "Registre os dados do procedimento antes de finalizar.", code: "CLINICAL_DATA_REQUIRED" } };
@@ -50,7 +54,7 @@ export function checkClinicalPayload(raw: unknown, cols: SurgeryColumnsInput, co
     throw err;
   }
   if (complete) {
-    const groups = validateClinicalPayload(registry, payload, cols);
+    const groups = validateClinicalPayload(registry, payload, cols, opts);
     if (groups.length > 0) {
       return { ok: false, status: 422, body: { error: "Há campos pendentes no registro do procedimento.", code: "CLINICAL_VALIDATION_FAILED", details: groups } };
     }
@@ -81,7 +85,7 @@ router.get("/surgeries/:id/relatorio", requireAuth, async (req, res): Promise<vo
     res.status(409).json({ error: "Cirurgia sem dados de ombro/cotovelo.", code: "NO_CLINICAL_DATA" });
     return;
   }
-  const check = checkClinicalPayload(s.dadosClinicos, s, true);
+  const check = checkClinicalPayload(s.dadosClinicos, s, true, { regionRules: false });
   if (!check.ok) {
     res.status(check.status).json(check.body);
     return;

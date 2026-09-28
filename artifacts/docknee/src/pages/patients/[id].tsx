@@ -16,6 +16,7 @@ import { useLanguage } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { operationalPatientRecordMessages } from "@/locales/operational-patient-record";
+import { caseTypeLabel } from "@/locales/case-types";
 import { useAuth } from "@/lib/auth";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInYears } from "date-fns";
@@ -456,7 +457,7 @@ export default function PatientDetail() {
   const openLaudoInssModal = () => {
     const surgeries = (patient as any)?.surgeries as SurgeryItem[] | undefined;
     const lastSurgery = surgeries?.[surgeries.length - 1];
-    const procs = lastSurgery?.tiposProcedimento?.join(", ") ?? "";
+    const procs = lastSurgery?.tiposProcedimento?.map((key) => caseTypeLabel(locale, key)).join(", ") ?? "";
     const dataCirc = lastSurgery?.dataCirurgia
       ? format(new Date(lastSurgery.dataCirurgia), "dd/MM/yyyy")
       : "";
@@ -808,12 +809,12 @@ export default function PatientDetail() {
                         <div className="flex flex-col gap-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-semibold text-foreground">{surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), 'dd/MM/yyyy') : '-'}</span>
-                            {surgery.tipoCaso && <Badge variant="secondary" className="text-xs">{surgery.tipoCaso}</Badge>}
+                            {surgery.tipoCaso && <Badge variant="secondary" className="text-xs">{caseTypeLabel(locale, surgery.tipoCaso)}</Badge>}
                           </div>
                           <span className="text-xs text-muted-foreground">{surgery.hospital || tr("hospitalUnknown")}</span>
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {surgery.tiposProcedimento.map((proc: string) => (
-                              <Badge key={proc} variant="outline" className="text-xs text-blue-700 border-blue-200 bg-blue-50/60 dark:text-blue-300 dark:border-blue-800 dark:bg-blue-950/30">{proc}</Badge>
+                              <Badge key={proc} variant="outline" className="text-xs text-blue-700 border-blue-200 bg-blue-50/60 dark:text-blue-300 dark:border-blue-800 dark:bg-blue-950/30">{caseTypeLabel(locale, proc)}</Badge>
                             ))}
                           </div>
                         </div>
@@ -1061,7 +1062,7 @@ export default function PatientDetail() {
                           {surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), "dd/MM/yyyy") : tr("unknownDate")}
                         </span>
                         {surgery.tiposProcedimento.length > 0 && (
-                          <span className="text-xs text-muted-foreground ml-2">{surgery.tiposProcedimento.join(", ")}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{surgery.tiposProcedimento.map((key) => caseTypeLabel(locale, key)).join(", ")}</span>
                         )}
                       </div>
                     </div>

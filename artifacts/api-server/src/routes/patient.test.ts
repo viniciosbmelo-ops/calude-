@@ -147,6 +147,62 @@ describe.sequential("classic public link locale integration", () => {
     });
   });
 
+  it("never exposes or accepts knee scales left in legacy classic follow-up rows", async () => {
+    const [patient] = await db.insert(patientsTable).values({
+      doctorId,
+      nome: "Paciente legado",
+      cpf: "987.654.321-00",
+    }).returning();
+    const [surgery] = await db.insert(surgeriesTable).values({
+      doctorId,
+      patientId: patient.id,
+    }).returning();
+    const token = randomUUID();
+    await db.insert(followupTable).values({
+      surgeryId: surgery.id,
+      tempo: "3m",
+      token,
+      escalasEnviadas: ["VAS Dor", "Lysholm", "IKDC"],
+    });
+
+    const publicResponse = await fetch(`${baseUrl}/api/patient/${token}`);
+    expect(publicResponse.status).toBe(200);
+    await expect(publicResponse.json()).resolves.toMatchObject({
+      escalasEnviadas: ["VAS Dor"],
+      noScales: false,
+    });
+
+    const verify = await fetch(`${baseUrl}/api/patient/${token}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cpf: "98765432100" }),
+    });
+    expect(verify.status).toBe(200);
+    await expect(verify.json()).resolves.toMatchObject({ escalasEnviadas: ["VAS Dor"] });
+    const cookie = (verify.headers.get("set-cookie") ?? "").split(";")[0];
+    expect(cookie).toContain("=");
+
+    const postScale = (escala: string, body: unknown) => fetch(
+      `${baseUrl}/api/patient/${token}/scale/${encodeURIComponent(escala)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie, Origin: baseUrl },
+        body: JSON.stringify(body),
+      },
+    );
+
+    const removed = await postScale("Lysholm", { respostas: { q1: 5 }, score: 80 });
+    expect(removed.status).toBe(400);
+
+    const vas = await postScale("VAS Dor", { respostas: { vas: 3 } });
+    expect(vas.status).toBe(200);
+    await expect(vas.json()).resolves.toEqual({ ok: true, allCompleted: true });
+
+    // DB rows are left untouched.
+    const [stored] = await db.select().from(followupTable).where(eq(followupTable.token, token));
+    expect(stored.escalasEnviadas).toEqual(["VAS Dor", "Lysholm", "IKDC"]);
+  });
+
   it("locks out repeated verification attempts for a nonexistent classic token", async () => {
     const token = `missing-${randomUUID()}`;
     const request = () => fetch(`${baseUrl}/api/patient/${token}/verify`, {

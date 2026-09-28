@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildNotificationsForSurgery,
+  FOLLOWUP_SCHEDULE,
+  filterSupportedFollowupScales,
+  isSupportedFollowupScale,
+  SUPPORTED_FOLLOWUP_SCALES,
   hasFractureProcedure,
   isHiddenFracturePreoperative,
   isPreoperativePeriod,
@@ -36,5 +40,21 @@ describe("follow-up pré-operatório", () => {
     expect(notifications.filter((row) => isPreoperativePeriod(row.periodo))).toHaveLength(1);
     expect(new Set(notifications.flatMap((row) => row.scales))).toEqual(new Set(["VAS Dor"]));
     expect(notifications.find((row) => row.periodo === "6 semanas")?.scheduledDate).toBe("2026-10-13");
+  });
+});
+
+describe("escalas suportadas no seguimento", () => {
+  it("derivam do cronograma atual", () => {
+    expect(SUPPORTED_FOLLOWUP_SCALES).toEqual(new Set(FOLLOWUP_SCHEDULE.flatMap((entry) => entry.scales)));
+    expect(isSupportedFollowupScale("VAS Dor")).toBe(true);
+    expect(isSupportedFollowupScale("Lysholm")).toBe(false);
+  });
+
+  it("remove escalas do joelho de linhas antigas sem alterar a entrada", () => {
+    const legacy = ["VAS Dor", "Lysholm", "IKDC", "VAS Dor"];
+    expect(filterSupportedFollowupScales(legacy)).toEqual(["VAS Dor"]);
+    expect(legacy).toEqual(["VAS Dor", "Lysholm", "IKDC", "VAS Dor"]);
+    expect(filterSupportedFollowupScales(["KOOS"])).toEqual([]);
+    expect(filterSupportedFollowupScales(null)).toEqual([]);
   });
 });

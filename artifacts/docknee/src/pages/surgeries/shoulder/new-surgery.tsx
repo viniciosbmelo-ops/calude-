@@ -9,7 +9,8 @@ import { ArrowLeft, ArrowRight, BookmarkCheck, CheckCircle2, Loader2, Save } fro
 import { useListPatients } from "@workspace/api-client-react";
 import {
   ALL_SCHEMAS, CASE_TYPE_BY_KEY, caseTypesFor, diagnosesFor, diagnosisText, intraopSchemaId, procedureName,
-  CLINICAL_PAYLOAD_VERSION, type ClinicalImplant, type ClinicalMapEntry, type IssueGroup, type Region, type ValidationIssue,
+  CLINICAL_PAYLOAD_VERSION, coreRegionIssues, coreSchemaForRegion, inapplicableCoreFields, isArthroscopic,
+  withoutInapplicableCore, withoutOtherRegionOptions, type ClinicalImplant, type ClinicalMapEntry, type IssueGroup, type Region, type ValidationIssue,
 } from "@workspace/clinical/web";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +40,18 @@ const CORE_SCHEMA_ID = "CORE_SURGERY.v1";
 /** Campos do núcleo preenchidos por outras etapas (colunas da cirurgia ou diagnóstico) */
 const CORE_HIDDEN = ["surgery_date", "side", "hospital", "preop_dx"];
 const STEPS = 4;
+
+type DiagnosisOption = ReturnType<typeof diagnosesFor>[number];
+/** Agrupa cada diagnóstico-pai com seus filhos (mantendo a ordem do catálogo) para o layout em grade. */
+function groupDiagnoses(list: DiagnosisOption[]): { parent: DiagnosisOption; children: DiagnosisOption[] }[] {
+  const groups = new Map<string, { parent: DiagnosisOption; children: DiagnosisOption[] }>();
+  for (const p of list) {
+    const owner = p.parent ? groups.get(p.parent) : undefined;
+    if (owner) owner.children.push(p);
+    else groups.set(p.code, { parent: p, children: [] });
+  }
+  return [...groups.values()];
+}
 
 async function postJson(url: string, body: unknown): Promise<any> {
   const res = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -161,7 +174,19 @@ export default function NewShoulderSurgery() {
     setTipos([]);
     setProcs({});
     setMapa([]);
+    // Vias de acesso e portais da outra região não se aplicam
+    setGeral((g) => withoutOtherRegionOptions(r, g));
   }
+
+  // Campos que não se aplicam às escolhas atuais (ângulo sem cadeira de praia; portais sem artroscopia)
+  // ficam ocultos e fora do payload; o inventário artroscópico só vale com acesso artroscópico.
+  const hiddenCore = useMemo(() => [...CORE_HIDDEN, ...inapplicableCoreFields(geral)], [geral]);
+  const effectiveGeral = useMemo(() => withoutInapplicableCore(geral), [geral]);
+  const arthroscopic = isArthroscopic(geral);
+  const coreSchema = useMemo(() => {
+    const base = SCHEMA_BY_ID.get(CORE_SCHEMA_ID)!;
+    return region ? coreSchemaForRegion(base, region, geral) : base;
+  }, [region, geral]);
 
   const buildPayload = () => {
     const procedimentos = tipos.map((key) => ({ tipoCaso: key, codigo: procs[key]?.codigo ?? null, dados: procs[key]?.dados ?? {} }));
@@ -178,7 +203,7 @@ export default function NewShoulderSurgery() {
       procedimentoRealizado: procedimentos.map((p) => procedureName(p)).join(", "),
       observacoes,
       dadosClinicos: region
-        ? { versao: CLINICAL_PAYLOAD_VERSION, regiao: region, geral: { ...geral, preop_dx: diagnoses }, procedimentos, mapaArtroscopico: mapa, implantes }
+        ? { versao: CLINICAL_PAYLOAD_VERSION, regiao: region, geral: { ...effectiveGeral, preop_dx: diagnoses }, procedimentos, mapaArtroscopico: arthroscopic ? mapa : [], implantes }
         : undefined,
     };
   };
@@ -248,8 +273,8 @@ export default function NewShoulderSurgery() {
   };
 
   // Pendências do núcleo (dados gerais) calculadas no navegador com o mesmo validador do servidor
-  const coreValue = useMemo(() => ({ ...geral, preop_dx: diagnoses, surgery_date: dataCirurgia || undefined, ...(lado ? { side: sideCode } : {}), ...(hospital ? { hospital } : {}) }), [geral, diagnoses, dataCirurgia, lado, sideCode, hospital]);
-  const coreIssues = useMemo(() => validateWith(CORE_SCHEMA_ID, coreValue), [coreValue]);
+  const coreValue = useMemo(() => ({ ...effectiveGeral, preop_dx: diagnoses, surgery_date: dataCirurgia || undefined, ...(lado ? { side: sideCode } : {}), ...(hospital ? { hospital } : {}) }), [effectiveGeral, diagnoses, dataCirurgia, lado, sideCode, hospital]);
+  const coreIssues = useMemo(() => [...validateWith(CORE_SCHEMA_ID, coreValue), ...(region ? coreRegionIssues(region, coreValue) : [])], [coreValue, region]);
 
   const stepTitles = [t("stepBasic"), t("stepCaseType"), t("stepTechnique"), t("stepObservations")];
 
@@ -352,15 +377,26 @@ export default function NewShoulderSurgery() {
                     <p className="text-xs text-muted-foreground">{t("diagnosisHelp")}</p>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-2">
-                    {diagnosesFor(region).map((p) => {
-                      const sel = diagnoses.includes(p.code);
+                    {groupDiagnoses(diagnosesFor(region)).map(({ parent, children }) => {
+                      const renderOption = (p: DiagnosisOption) => {
+                        const sel = diagnoses.includes(p.code);
+                        return (
+                          <button key={p.code} type="button" aria-pressed={sel}
+                            onClick={() => setDiagnoses((cur) => (sel ? cur.filter((c) => c !== p.code) : [...cur, p.code]))}
+                            className={cn("w-full text-sm text-left px-3 py-2 rounded-lg border-2 transition-all",
+                              sel ? "border-primary bg-primary/5 font-medium text-primary" : "border-border hover:border-primary/40")}>
+                            {sel && <CheckCircle2 className="inline h-3 w-3 mr-1" />}{p.name_pt}
+                          </button>
+                        );
+                      };
+                      if (children.length === 0) return renderOption(parent);
                       return (
-                        <button key={p.code} type="button" aria-pressed={sel}
-                          onClick={() => setDiagnoses((cur) => (sel ? cur.filter((c) => c !== p.code) : [...cur, p.code]))}
-                          className={cn("text-sm text-left px-3 py-2 rounded-lg border-2 transition-all",
-                            sel ? "border-primary bg-primary/5 font-medium text-primary" : "border-border hover:border-primary/40", p.parent && "sm:ml-4")}>
-                          {sel && <CheckCircle2 className="inline h-3 w-3 mr-1" />}{p.name_pt}
-                        </button>
+                        <div key={parent.code} role="group" aria-label={parent.name_pt} className="sm:col-span-2 space-y-2">
+                          {renderOption(parent)}
+                          <div className="ml-3 pl-3 border-l-2 border-border grid sm:grid-cols-2 gap-2">
+                            {children.map(renderOption)}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -421,10 +457,10 @@ export default function NewShoulderSurgery() {
 
               <SurgeryPreopFollowupCard draftId={draftId ?? null} patientPhone={selectedPatient?.telefone ?? undefined} ensureCurrentDraft={ensureDraft} ready={draftLoaded} showFollowup={!tipos.some((k) => k.endsWith("_FRACTURE"))} />
 
-              <Section title={t("generalData")} pending={coreIssues.filter((i) => !CORE_HIDDEN.includes(i.field.split(".")[0])).length} t={t}>
-                <SchemaForm schema={SCHEMA_BY_ID.get(CORE_SCHEMA_ID)!} value={geral} issues={coreIssues}
+              <Section title={t("generalData")} pending={coreIssues.filter((i) => !hiddenCore.includes(i.field.split(".")[0])).length} t={t}>
+                <SchemaForm schema={coreSchema} value={geral} issues={coreIssues}
                   onChange={(v) => { const { preop_dx: _p, ...rest } = v; setGeral(rest); }}
-                  side={sideCode} region={region} hide={CORE_HIDDEN} />
+                  side={sideCode} region={region} hide={hiddenCore} />
               </Section>
 
               <div className="space-y-4">
@@ -436,9 +472,11 @@ export default function NewShoulderSurgery() {
                 ))}
               </div>
 
-              <Section title={t("arthroscopicMap")} t={t}>
-                <ArthroscopicMap region={region} value={mapa} onChange={setMapa} />
-              </Section>
+              {arthroscopic && (
+                <Section title={t("arthroscopicMap")} t={t}>
+                  <ArthroscopicMap region={region} value={mapa} onChange={setMapa} />
+                </Section>
+              )}
 
               <Section title={t("implants")} t={t}>
                 <ImplantsEditor value={implantes} onChange={setImplantes} />

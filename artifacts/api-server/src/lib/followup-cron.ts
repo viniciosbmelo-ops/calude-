@@ -15,6 +15,7 @@ import { logger } from "./logger";
 import { randomUUID } from "crypto";
 import { getBaseUrl } from "./base-url";
 import {
+  filterSupportedFollowupScales,
   hasFractureProcedure,
   isPreoperativePeriod,
 } from "./followup-schedule";
@@ -184,7 +185,7 @@ export async function claimNextNotification(): Promise<ClaimedNotification | nul
             tempo: notif.periodo,
             dataAvaliacao: new Date().toISOString().slice(0, 10),
             token,
-            escalasEnviadas: notif.scales ?? [],
+            escalasEnviadas: filterSupportedFollowupScales(notif.scales),
           })
           .returning({ id: followupTable.id, token: followupTable.token });
 
@@ -202,7 +203,7 @@ export async function claimNextNotification(): Promise<ClaimedNotification | nul
         surgeryId: notif.surgeryId,
         patientId: notif.patientId,
         periodo: notif.periodo,
-        scales: notif.scales ?? [],
+        scales: filterSupportedFollowupScales(notif.scales),
         attempts: notif.attempts,
         followupId,
         followupToken,

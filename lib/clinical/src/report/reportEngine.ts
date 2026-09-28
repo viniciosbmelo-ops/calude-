@@ -9,6 +9,7 @@ import labels from '../labels.pt.json';
 import { ARTHRO_STRUCTURES, PATHOLOGY_BY_CODE, Region, pathologyName } from '../catalog/pathologies';
 import { round } from '../errors';
 import { TEMPLATES } from './templates';
+import { isOpenOnly } from '../surgery/coreOptions';
 
 type Labels = Record<string, Record<string, string>>;
 const L = labels as Labels;
@@ -154,7 +155,8 @@ export class ReportEngine {
   generate(input: ReportInput): GeneratedReport {
     const side = input.core.side;
     const header = this.tpl('CORE_HEADER')({ ...input, duration: this.durationMin(input.core) }, { data: { side } });
-    const arthro = this.arthroSection(input.region, input.arthroscopic_map ?? []);
+    // Cirurgia puramente aberta (approach sem "arthroscopic"): não há inventário artroscópico a relatar
+    const arthro = isOpenOnly(input.core) ? '' : this.arthroSection(input.region, input.arthroscopic_map ?? []);
 
     const procs = [...input.procedures].sort((a, b) => a.sequence - b.sequence);
     const template_versions: Record<string, number> = {};

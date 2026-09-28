@@ -6,13 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { parseGs1, type ClinicalImplant } from "@workspace/clinical/web";
-
-export const IMPLANT_CATEGORIES: [string, string][] = [
-  ["anchor", "Âncora"], ["screw", "Parafuso"], ["plate", "Placa"], ["button", "Botão"],
-  ["prosthesis_component", "Componente protético"], ["graft", "Enxerto"], ["suture_tape", "Fio/fita"], ["other", "Outro"],
-];
-const categoryLabel = (c: string) => IMPLANT_CATEGORIES.find(([k]) => k === c)?.[1] ?? c;
-const EMPTY: ClinicalImplant = { categoria: "anchor", fabricante: "", modelo: "", quantidade: 1 };
+import { IMPLANT_CATEGORIES, canAddImplant, emptyImplantDraft, implantSummary } from "./implant-draft";
 
 export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalImplant[]; onChange(v: ClinicalImplant[]): void; readOnly?: boolean }) {
   const [draft, setDraft] = useState<ClinicalImplant | null>(null);
@@ -20,7 +14,7 @@ export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalI
 
   function readCode(raw: string) {
     if (!draft) return;
-    setDraft({ ...draft, codigoBarras: raw || undefined });
+    setDraft((d) => d && ({ ...d, codigoBarras: raw || undefined }));
     if (!raw.trim()) { setScanMsg(null); return; }
     try {
       const r = parseGs1(raw);
@@ -32,7 +26,7 @@ export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalI
   }
 
   const upd = (patch: Partial<ClinicalImplant>) => setDraft((d) => d && ({ ...d, ...patch }));
-  const canAdd = draft && draft.fabricante.trim() && draft.modelo.trim();
+  const canAdd = canAddImplant(draft);
 
   return (
     <div className="space-y-3">
@@ -45,7 +39,7 @@ export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalI
               <div>
                 <p className="font-medium">{m.quantidade}× {m.fabricante} {m.modelo}{m.tamanho ? ` (${m.tamanho})` : ""}</p>
                 <p className="text-xs text-muted-foreground">
-                  {categoryLabel(m.categoria)}{m.lote ? ` · lote ${m.lote}` : " · sem lote"}{m.serie ? ` · série ${m.serie}` : ""}{m.validade ? ` · validade ${m.validade}` : ""}{m.localizacao ? ` · ${m.localizacao}` : ""}
+                  {implantSummary(m)}
                 </p>
               </div>
               {!readOnly && (
@@ -59,7 +53,7 @@ export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalI
       )}
 
       {!readOnly && !draft && (
-        <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => { setDraft({ ...EMPTY }); setScanMsg(null); }}>
+        <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => { setDraft(emptyImplantDraft()); setScanMsg(null); }}>
           <Plus className="h-4 w-4" /> Adicionar implante
         </Button>
       )}
@@ -73,9 +67,9 @@ export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalI
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="imp-cat">Categoria</Label>
+              <Label htmlFor="imp-cat">Categoria *</Label>
               <Select value={draft.categoria} onValueChange={(v) => upd({ categoria: v })}>
-                <SelectTrigger id="imp-cat"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="imp-cat"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
                 <SelectContent>{IMPLANT_CATEGORIES.map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
               </Select>
             </div>

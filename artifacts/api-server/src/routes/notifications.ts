@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { buildFollowupMessage } from "../lib/whatsapp";
 import { getBaseUrl } from "../lib/base-url";
 import { randomUUID } from "crypto";
-import { hasFractureProcedure, isPreoperativePeriod } from "../lib/followup-schedule";
+import { filterSupportedFollowupScales, hasFractureProcedure, isPreoperativePeriod } from "../lib/followup-schedule";
 import { resolveDoctorLocale } from "../lib/locale";
 import { localeForDoctorId } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
@@ -111,7 +111,7 @@ async function dispatchNotification(
           tempo: row.notif.periodo,
           dataAvaliacao: new Date().toISOString().slice(0, 10),
           token,
-          escalasEnviadas: row.notif.scales ?? [],
+          escalasEnviadas: filterSupportedFollowupScales(row.notif.scales),
         })
         .returning();
     } else if (!followup.token) {
@@ -127,7 +127,7 @@ async function dispatchNotification(
     const text = buildFollowupMessage({
       patientName: row.patient.nome,
       periodo: row.notif.periodo,
-      scales: row.notif.scales ?? [],
+      scales: filterSupportedFollowupScales(row.notif.scales),
       link: `${getBaseUrl()}/patient/${token}`,
       doctorName,
       locale: resolveDoctorLocale(doctorIdioma),
@@ -189,13 +189,15 @@ router.get("/notifications/pending", requireAuth, async (req, res): Promise<void
     const sent:      typeof rows = [];
     const failed:    typeof rows = [];
 
-    for (const row of rows) {
+    for (const stored of rows) {
       if (
-        hasFractureProcedure(row.surgery.tiposProcedimento as string[] | null)
-        && isPreoperativePeriod(row.notif.periodo)
+        hasFractureProcedure(stored.surgery.tiposProcedimento as string[] | null)
+        && isPreoperativePeriod(stored.notif.periodo)
       ) {
         continue;
       }
+      // Linhas antigas podem listar escalas do joelho já retiradas (apenas na resposta; o banco não muda).
+      const row = { ...stored, notif: { ...stored.notif, scales: filterSupportedFollowupScales(stored.notif.scales) } };
       const { status, scheduledDate } = row.notif;
       if (status === "sent") {
         sent.push(row);
@@ -541,7 +543,9 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
       ) {
         continue;
       }
-      const { tiposProcedimento: _tiposProcedimento, ...publicRow } = row;
+      const { tiposProcedimento: _tiposProcedimento, ...rest } = row;
+      // Linhas antigas podem listar escalas do joelho já retiradas.
+      const publicRow: PublicRow = { ...rest, scales: filterSupportedFollowupScales(rest.scales) };
       if (publicRow.followupId !== null) {
         respondidos.push(publicRow);
       } else if (publicRow.status === "sent") {

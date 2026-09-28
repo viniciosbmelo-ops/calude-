@@ -1,5 +1,4 @@
 import { useGetDoctorDashboard } from "@workspace/api-client-react";
-import { CASE_TYPE_BY_KEY } from "@workspace/clinical/web";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -16,6 +15,7 @@ import type { Locale } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { reportingDashboardMessages } from "@/locales/reporting-dashboard";
+import { caseTypeLabel } from "@/locales/case-types";
 import {
   reportCatalogLabels,
   reportFollowupPeriodLabel,
@@ -340,7 +340,8 @@ export default function Dashboard() {
         .sort((x, y) => y.count - x.count)
         .slice(0, 6)
         .map((item, i) => ({
-          name: CASE_TYPE_BY_KEY.get(item.tipo)?.label ?? item.tipo,
+          key: item.tipo,
+          name: caseTypeLabel(locale, item.tipo),
           value: item.count,
           color: CHART_COLORS[i % CHART_COLORS.length],
         }))
@@ -433,7 +434,8 @@ export default function Dashboard() {
     {
       label: t("dashboardSurgeriesCompleted"),
       value: String(data.totalSurgeries),
-      sub: tx("cases", { count: data.totalPatients }),
+      // totalSurgeries exclui rascunhos (API); o subtítulo é a contagem de pacientes.
+      sub: t("dashboardSurgeriesCompletedPatients", { count: data.totalPatients }),
       href: "/surgeries",
       accent: "#2563EB",
     },
@@ -578,17 +580,18 @@ export default function Dashboard() {
                         />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="flex-1 space-y-2.5">
+                    <div className="flex-1 min-w-0 space-y-2.5">
                       {pieData.map((entry) => {
                         const pct = data.totalSurgeries > 0 ? ((entry.value / data.totalSurgeries) * 100).toFixed(0) : 0;
                         return (
-                          <div key={entry.name} className="flex items-center gap-2">
+                          <div key={entry.key} className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: entry.color }} />
-                            <span className="text-xs text-slate-600">{entry.name}</span>
-                            <span className="ml-auto text-xs font-bold" style={{ color: entry.color }}>{pct}%</span>
+                            <span className="text-xs text-slate-600 min-w-0 break-words">{entry.name}</span>
+                            <span className="ml-auto text-xs font-bold whitespace-nowrap" style={{ color: entry.color }}>{entry.value} · {pct}%</span>
                           </div>
                         );
                       })}
+                      <p className="text-[10px] leading-snug text-slate-400 pt-1">{t("dashboardSurgeriesByTypeShareNote")}</p>
                     </div>
                   </div>
                 ) : (
@@ -728,7 +731,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 truncate">{toTitleCase(row.patientNome)}</p>
-                          <p className="text-xs text-slate-400 truncate">
+                          <p className="text-xs text-slate-400 break-words line-clamp-2">
                             {row.scales?.length
                               ? reportScaleLabels(locale, row.scales).join(", ")
                               : reportFollowupPeriodLabel(locale, row.periodo)}
@@ -772,7 +775,7 @@ export default function Dashboard() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 truncate">{toTitleCase(s.patientNome)}</p>
                           <p className="text-xs text-slate-400 truncate">
-                            {s.tiposProcedimento.map((k) => CASE_TYPE_BY_KEY.get(k)?.label ?? k).join(", ") || tx("procedureFallback")}
+                            {s.tiposProcedimento.map((k) => caseTypeLabel(locale, k)).join(", ") || tx("procedureFallback")}
                             {s.dataCirurgia ? ` · ${formatDate(s.dataCirurgia)}` : ""}
                           </p>
                         </div>

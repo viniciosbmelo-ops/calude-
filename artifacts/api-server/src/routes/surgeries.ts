@@ -11,6 +11,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { checkClinicalPayload } from "./shoulder-surgeries";
 import {
+  filterSupportedFollowupScales,
   hasFractureProcedure,
   isPreoperativePeriod,
 } from "../lib/followup-schedule";
@@ -128,7 +129,7 @@ async function ensureFollowupForNotification(
           .update(followupTable)
           .set({
             token: randomUUID(),
-            escalasEnviadas: notification.scales ?? [],
+            escalasEnviadas: filterSupportedFollowupScales(notification.scales),
           })
           .where(eq(followupTable.id, existing.id))
           .returning();
@@ -143,7 +144,7 @@ async function ensureFollowupForNotification(
         tempo: notification.periodo,
         dataAvaliacao: new Date().toISOString().slice(0, 10),
         token: randomUUID(),
-        escalasEnviadas: notification.scales ?? [],
+        escalasEnviadas: filterSupportedFollowupScales(notification.scales),
       })
       .returning();
 
@@ -498,7 +499,7 @@ router.post("/surgeries/:id/schedule/:notifId/prepare-whatsapp", requireAuth, as
   const message = buildFollowupMessage({
     patientName: row.patient.nome,
     periodo: row.notif.periodo,
-    scales: row.notif.scales ?? [],
+    scales: filterSupportedFollowupScales(row.notif.scales),
     link,
     doctorName: row.doctor.nome,
     locale: resolveDoctorLocale(row.doctor.idioma),
@@ -596,7 +597,7 @@ router.post("/surgeries/:id/schedule/:notifId/whatsapp", requireAuth, async (req
     const text = customMessage ?? buildFollowupMessage({
       patientName: locked.patient.nome,
       periodo: locked.notif.periodo,
-      scales: locked.notif.scales ?? [],
+      scales: filterSupportedFollowupScales(locked.notif.scales),
       link,
       doctorName: locked.doctor.nome,
       locale: resolveDoctorLocale(locked.doctor.idioma),

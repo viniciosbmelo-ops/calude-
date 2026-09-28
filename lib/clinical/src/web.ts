@@ -12,5 +12,10 @@ export type { ValidationIssue } from './ajvMessages';
 export { parseGs1, Gs1ParseError } from './gs1/parser';
 export type { Gs1Result } from './gs1/parser';
 export { procedureName, diagnosisText, CLINICAL_PAYLOAD_VERSION } from './surgery/payload';
+export { IMPLANT_CATEGORIES } from './surgery/payload';
+export {
+  CORE_OPTIONS_BY_REGION, coreSchemaForRegion, coreRegionIssues, inapplicableCoreFields, withoutInapplicableCore,
+  withoutOtherRegionOptions, hasAccessType, isArthroscopic, isOpenOnly
+} from './surgery/coreOptions';
 export type { ClinicalPayload, ClinicalProcedure, ClinicalImplant, ClinicalMapEntry, IssueGroup } from './surgery/payload';
 export { default as LABELS } from './labels.pt.json';

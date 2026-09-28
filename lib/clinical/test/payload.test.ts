@@ -87,6 +87,27 @@ describe('validateClinicalPayload (finalização)', () => {
     f.procedimentos = [];
     expect(validateClinicalPayload(reg, parseClinicalPayload(f), cols).map((x) => x.scope)).toContain('procedimentos');
   });
+  test('cotovelo: rejeita via, portal e ângulo exclusivos do ombro', () => {
+    const f = {
+      regiao: 'elbow',
+      geral: { ...structuredClone(geral), positioning: 'supine_arm_table', beach_chair_angle_deg: 60, approach: ['deltopectoral', 'anterior_elbow_single_incision'], portals: ['neviaser'], preop_dx: ['EL_DBR'], postop_dx: ['EL_DBR'] },
+      procedimentos: [{ tipoCaso: 'EL_DISTAL_BICEPS', codigo: 'EL_DBR', dados: { tear: 'complete', days_since_injury: 3, procedure: 'single_incision_repair', fixation: ['cortical_button'] } }],
+      mapaArtroscopico: [{ structure_code: 'EL_RH', status: 'normal' }]
+    };
+    const g = validateClinicalPayload(reg, parseClinicalPayload(f), cols);
+    expect(g.map((x) => x.scope)).toEqual(['geral', 'inventário artroscópico']);
+    expect(g[0].issues.map((i) => i.field)).toEqual(['approach', 'portals', 'beach_chair_angle_deg', 'portals']);
+    // Relatório de registro já gravado: regras de região desligadas (compatibilidade)
+    expect(validateClinicalPayload(reg, parseClinicalPayload(f), cols, { regionRules: false })).toEqual([]);
+    // Registro coerente de bíceps distal aberto é válido
+    const ok = { ...f, geral: { ...f.geral, approach: ['anterior_elbow_single_incision'], portals: undefined, beach_chair_angle_deg: undefined }, mapaArtroscopico: [] };
+    expect(validateClinicalPayload(reg, parseClinicalPayload(ok), cols)).toEqual([]);
+  });
+  test('categoria do implante (ex.: botão cortical) é preservada', () => {
+    const p = parseClinicalPayload({ regiao: 'elbow', implantes: [{ categoria: 'button', fabricante: 'Fab', modelo: 'Botão cortical', quantidade: 1 }] });
+    expect(p.implantes[0].categoria).toBe('button');
+    expect(parseClinicalPayload(JSON.parse(JSON.stringify(p))).implantes[0]).toEqual(p.implantes[0]);
+  });
   test('núcleo usa data, lado e hospital das colunas da cirurgia', () => {
     expect(coreFromSurgery(parseClinicalPayload(full()), cols)).toMatchObject({ surgery_date: '2026-09-23', side: 'R', hospital: 'Hospital Exemplo' });
   });

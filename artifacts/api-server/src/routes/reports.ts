@@ -26,6 +26,34 @@ function buildGeographyRanking(rows: GeographyAggregateRow[], accessType: Access
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"));
 }
 
+export const DRAFT_SURGERY_STATUS = "rascunho";
+
+/** Rascunhos não são cirurgias realizadas. */
+export function isCompletedSurgery(surgery: { status?: string | null }): boolean {
+  return surgery.status !== DRAFT_SURGERY_STATUS;
+}
+
+/**
+ * Totais do painel: só cirurgias não-rascunho contam como "realizadas" e entram
+ * na distribuição por tipo de caso. Uma cirurgia pode ter vários tipos, então a
+ * soma de `surgeriesByType` pode exceder `totalSurgeries`.
+ */
+export function summarizeDashboardSurgeries(
+  surgeries: readonly { status?: string | null; tiposProcedimento: readonly string[] | null }[],
+): { totalSurgeries: number; surgeriesByType: { tipo: string; count: number }[] } {
+  const completed = surgeries.filter(isCompletedSurgery);
+  const typeCount = new Map<string, number>();
+  for (const s of completed) {
+    for (const t of new Set(s.tiposProcedimento ?? [])) {
+      typeCount.set(t, (typeCount.get(t) ?? 0) + 1);
+    }
+  }
+  return {
+    totalSurgeries: completed.length,
+    surgeriesByType: [...typeCount].map(([tipo, count]) => ({ tipo, count })),
+  };
+}
+
 router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> => {
   const doctorId = req.doctorId!;
 
@@ -34,23 +62,12 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
     .from(patientsTable)
     .where(eq(patientsTable.doctorId, doctorId));
 
-  const [{ totalSurgeries }] = await db
-    .select({ totalSurgeries: count() })
-    .from(surgeriesTable)
-    .where(eq(surgeriesTable.doctorId, doctorId));
-
   const surgeries = await db
-    .select()
+    .select({ status: surgeriesTable.status, tiposProcedimento: surgeriesTable.tiposProcedimento })
     .from(surgeriesTable)
     .where(eq(surgeriesTable.doctorId, doctorId));
 
-  // Count by procedure type
-  const typeCount: Record<string, number> = {};
-  for (const s of surgeries) {
-    for (const t of s.tiposProcedimento) {
-      typeCount[t] = (typeCount[t] ?? 0) + 1;
-    }
-  }
+  const { totalSurgeries, surgeriesByType } = summarizeDashboardSurgeries(surgeries);
 
   // Recent surgeries
   const recentSurgeriesRaw = await db
@@ -81,10 +98,12 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
       retornoEsporte: followupTable.retornoEsporte,
       tempo: followupTable.tempo,
       tiposProcedimento: surgeriesTable.tiposProcedimento,
+      surgeryStatus: surgeriesTable.status,
     })
     .from(followupTable)
     .innerJoin(surgeriesTable, eq(followupTable.surgeryId, surgeriesTable.id))
     .where(eq(surgeriesTable.doctorId, doctorId)))
+    .filter((followup) => isCompletedSurgery({ status: followup.surgeryStatus }))
     .filter((followup) => !isHiddenFracturePreoperative(
       followup.tiposProcedimento as string[] | null,
       followup.tempo,
@@ -106,8 +125,8 @@ router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> =>
 
   res.json({
     totalPatients: Number(totalPatients),
-    totalSurgeries: Number(totalSurgeries),
-    surgeriesByType: Object.entries(typeCount).map(([tipo, count]) => ({ tipo, count })),
+    totalSurgeries,
+    surgeriesByType,
     recentSurgeries,
     followupCompliance: Math.min(followupCompliance, 100),
     avgPain,

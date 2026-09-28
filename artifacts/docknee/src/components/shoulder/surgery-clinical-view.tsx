@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArthroscopicMap } from "@/components/shoulder/arthroscopic-map";
 import { ImplantsEditor } from "@/components/shoulder/implants-editor";
-import type { ClinicalPayload, Region } from "@workspace/clinical/web";
+import { isOpenOnly, type ClinicalPayload, type Region } from "@workspace/clinical/web";
 
 export type SurgeryReportState =
   | { status: "loading" }
@@ -70,7 +70,8 @@ export function SurgeryClinicalView({ payload, report }: { payload: ClinicalPayl
         </CardContent>
       </Card>}
 
-      {payload.mapaArtroscopico.length > 0 && (
+      {/* Cirurgia puramente aberta: nenhuma estrutura foi avaliada por artroscopia */}
+      {payload.mapaArtroscopico.length > 0 && !isOpenOnly(payload.geral) && (
         <Card className="min-w-0 shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-lg">Inventário artroscópico</CardTitle></CardHeader>
           <CardContent>

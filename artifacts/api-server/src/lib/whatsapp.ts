@@ -226,9 +226,12 @@ export function buildFollowupMessage(params: {
     ? periodo
     : "pós-operatório";
   const presentedPeriod = regenPeriodForLocale(effectivePeriod, locale);
-  const scaleList = scales.length > 0
-    ? scales.map(scale => regenScaleForLocale(scale, locale)).join(", ")
-    : spanish ? "evaluaciones clínicas" : "avaliações clínicas";
+  // Sem escalas (ex.: todas eram escalas retiradas do joelho), a linha de escalas é omitida:
+  // o texto já pede o preenchimento das avaliações.
+  const scaleList = scales.map(scale => regenScaleForLocale(scale, locale)).join(", ");
+  const scaleLine = scaleList
+    ? spanish ? `📋 *Escalas para completar:* ${scaleList}\n\n` : `📋 *Escalas a preencher:* ${scaleList}\n\n`
+    : "";
   const doctor = doctorName
     ? spanish ? `Dr(a). ${doctorName}` : `Dr(a). ${doctorName}`
     : spanish ? "su médico" : "seu médico";
@@ -247,7 +250,7 @@ export function buildFollowupMessage(params: {
     return (
       `¡Hola, *${patientName}*! 👋\n\n` +
       `${doctor} solicita que complete las evaluaciones ${contexto}.\n\n` +
-      `📋 *Escalas para completar:* ${scaleList}\n\n` +
+      scaleLine +
       `Acceda mediante el siguiente enlace — tarda menos de 5 minutos:\n${link}\n\n` +
       `🔐 *Contraseña de acceso:* su CPF (solo números)\n\n` +
       `_¿Tiene dudas? Comuníquese con el consultorio._`
@@ -256,7 +259,7 @@ export function buildFollowupMessage(params: {
   return (
     `Olá, *${patientName}*! 👋\n\n` +
     `${doctor} solicita o preenchimento das avaliações ${contexto}.\n\n` +
-    `📋 *Escalas a preencher:* ${scaleList}\n\n` +
+    scaleLine +
     `Acesse pelo link abaixo — leva menos de 5 minutos:\n${link}\n\n` +
     `🔐 *Senha de acesso:* seu CPF (somente números)\n\n` +
     `_Dúvidas? Entre em contato com o consultório._`
