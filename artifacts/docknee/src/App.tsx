@@ -36,7 +36,6 @@ import ForgotPassword from "@/pages/forgot-password";
 import ResetPasswordToken from "@/pages/reset-password-token";
 import Sucesso from "@/pages/sucesso";
 import AssinaturaCancelada from "@/pages/assinatura-cancelada";
-import XRayPlanning from "@/pages/xray-planning";
 import RegenDashboard from "@/pages/regen/index";
 import RegenNovo from "@/pages/regen/novo";
 import RegenCaso from "@/pages/regen/caso";
@@ -134,7 +133,6 @@ function Router() {
 
       <Route path="/agenda" component={() => <ProtectedRoute component={AgendaPage} />} />
       <Route path="/agenda-cirurgica" component={() => <ErrorBoundary><ProtectedRoute component={AgendaCirurgica} /></ErrorBoundary>} />
-      <Route path="/xray-planning" component={() => <ProtectedRoute component={XRayPlanning} />} />
       <Route path="/patient/regen/:token" component={RegenPatientPage} />
       <Route path="/orientacoes-paciente" component={OrientacoesPaciente} />
       <Route path="/regen" component={() => <ProtectedRoute component={RegenDashboard} />} />

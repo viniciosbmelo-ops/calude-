@@ -127,106 +127,6 @@ function GeographyRanking({ title, items, accent, icon: Icon }: { title: string;
   );
 }
 
-function StandaloneXrayUsage({ usage }: { usage: NonNullable<AdminAnalyticsData["standaloneXrayUsage"]> | undefined }) {
-  const { locale, formatDate } = useLanguage();
-  const t = useScopedTranslations(adminConsoleMessages);
-
-  if (!usage) return null;
-
-  return (
-    <Card className="shadow-sm border-border/50">
-      <CardHeader>
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
-            <ScanLine className="h-5 w-5" />
-          </div>
-          <div>
-            <CardTitle className="text-base font-bold">{t("overview.xrayUsageTitle")}</CardTitle>
-            <CardDescription>{t("overview.xrayUsageSubtitle")}</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {usage.source === "unavailable" ? (
-          <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
-            {usage.unavailableReason ?? t("noData")}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {[
-                { label: t("overview.xrayDoctors"), value: usage.totalDoctors },
-                { label: t("overview.xrayAccesses"), value: usage.totalAccesses },
-                { label: t("overview.xrayAnalyses"), value: usage.totalAnalyses },
-              ].map((metric) => (
-                <div key={metric.label} className="rounded-lg bg-muted/30 px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
-                  <p className="mt-1 text-2xl font-bold font-mono">{formatNumber(metric.value, locale)}</p>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-[11px] text-muted-foreground">{t("overview.xrayPatientInvariant")}</p>
-
-            {usage.doctors.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-xs text-muted-foreground">
-                {t("overview.xrayNoDoctors")}
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-border/60">
-                <table className="w-full min-w-[680px] text-sm">
-                  <thead className="border-b bg-muted/20 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 text-left">{t("overview.xrayDoctor")}</th>
-                      <th className="px-4 py-3 text-right">{t("overview.xrayAccesses")}</th>
-                      <th className="px-4 py-3 text-right">{t("overview.xrayAnalyses")}</th>
-                      <th className="px-4 py-3 text-left">{t("overview.xrayUsageDays")}</th>
-                      <th className="px-4 py-3 text-left">{t("overview.xrayLastUse")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {usage.doctors.map((doctor) => (
-                      <tr key={doctor.doctorId} className="hover:bg-muted/10">
-                        <td className="px-4 py-3">
-                          <div className="font-semibold text-foreground">{doctor.doctorName}</div>
-                          <div className="text-[11px] text-muted-foreground">{doctor.doctorEmail}</div>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono">{formatNumber(doctor.accessCount, locale)}</td>
-                        <td className="px-4 py-3 text-right font-mono">{formatNumber(doctor.analysisCount, locale)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex max-w-[260px] flex-wrap gap-1">
-                            {doctor.usageDates.slice(-8).map((date) => (
-                              <span key={date} className="rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-medium text-cyan-800">
-                                {formatDate(`${date}T12:00:00`)}
-                              </span>
-                            ))}
-                            {doctor.usageDates.length > 8 && (
-                              <span className="px-1 py-0.5 text-[10px] text-muted-foreground">
-                                +{doctor.usageDates.length - 8}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                          {formatDate(doctor.lastUsedAt, { dateStyle: "short", timeStyle: "short" })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {usage.totalAnalyses === 0 && (
-              <p className="text-[11px] text-amber-700">{t("overview.xrayNoAnalyses")}</p>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 export function Overview() {
   const [period, setPeriod] = useState("30d");
   const { data: analytics, isLoading: analyticsLoading } = useAdminAnalytics(period);
@@ -371,7 +271,6 @@ export function Overview() {
         />
       </div>
 
-      <StandaloneXrayUsage usage={analytics?.standaloneXrayUsage} />
 
       <UtilizationFunnel funnel={analytics?.usageFunnel} />
 

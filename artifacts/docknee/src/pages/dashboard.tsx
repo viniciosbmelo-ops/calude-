@@ -2,7 +2,7 @@ import { useGetDoctorDashboard } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Users, FileText, Activity, Trophy, Plus, ChevronRight, Scan,
+  Users, FileText, Activity, Trophy, Plus, ChevronRight,
   UserPlus, Bell, CheckCircle2, Clock, AlertCircle, Send, Phone, CalendarDays,
   FlaskConical,
 } from "lucide-react";
@@ -530,11 +530,10 @@ export default function Dashboard() {
         {/* ── Quick actions (mobile only) ── */}
         <div className="md:hidden">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2.5 px-0.5">{tx("quickActions")}</p>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             {[
               { href: "/patients/new",  label: tx("patient"),  Icon: UserPlus },
               { href: "/surgeries/new", label: tx("surgery"),  Icon: Plus },
-              { href: "/xray-planning", label: "RX",        Icon: Scan },
             ].map(({ href, label, Icon }) => (
               <Link key={href} href={href}>
                 <div className="rounded-2xl p-3.5 flex flex-col items-center gap-2 transition-transform active:scale-95 cursor-pointer bg-card border border-border shadow-sm">

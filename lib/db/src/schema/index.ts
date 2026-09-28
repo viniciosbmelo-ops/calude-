@@ -4,7 +4,6 @@ export * from "./pre-consult";
 export * from "./surgeries";
 export * from "./exams";
 export * from "./followup";
-export * from "./xray-cache";
 export * from "./media";
 export * from "./admin-messages";
 export * from "./patient-attachments";

@@ -27,7 +27,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -266,23 +266,11 @@ const registerLimiter = rateLimit({
   skip: () => process.env["NODE_ENV"] === "test",
 });
 
-// 5) AI analysis limiter — 20 analyses / day per authenticated user (protect AI costs)
-const aiAnalysisLimiter = rateLimit({
-  windowMs: 24 * 60 * 60 * 1000,
-  limit: 20,
-  standardHeaders: "draft-6",
-  legacyHeaders: false,
-  message: { error: "Limite diário de análises de imagem atingido. Tente novamente amanhã.", code: "AI_RATE_LIMIT" },
-  keyGenerator: (req: Request) => req.doctorId ? String(req.doctorId) : ipKeyGenerator(req.ip ?? ""),
-  skip: () => process.env["NODE_ENV"] === "test",
-});
-
 app.use("/api", globalLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/forgot-password", passwordResetLimiter);
 app.use("/api/auth/reset-password-token", passwordResetLimiter);
 app.use("/api/auth/register", registerLimiter);
-app.use("/api/xray/analyze", aiAnalysisLimiter);
 
 app.use("/api", auditLog);
 app.use("/api", router);

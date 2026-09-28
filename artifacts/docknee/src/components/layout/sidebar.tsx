@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, BarChart, LogOut, Menu, User, LineChart, Scan, ShieldCheck, MessageSquare, HelpCircle, Send, X, MessageCircle, CalendarDays, Scissors, FlaskConical } from "lucide-react";
+import { LayoutDashboard, Users, FileText, BarChart, LogOut, Menu, User, LineChart, ShieldCheck, MessageSquare, HelpCircle, Send, X, MessageCircle, CalendarDays, Scissors, FlaskConical } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -17,7 +17,6 @@ const DOCTOR_LINKS = [
   { href: "/agenda", key: "nav.appointments" as const, icon: CalendarDays },
   { href: "/agenda-cirurgica", key: "nav.surgicalSchedule" as const, icon: Scissors },
   { href: "/surgeries", key: "nav.procedures" as const, icon: FileText },
-  { href: "/xray-planning", key: "nav.xray" as const, icon: Scan },
   { href: "/regen", key: "nav.regenerative" as const, icon: FlaskConical, badge: "NEW" },
   // { href: "/whatsapp-broadcast", label: "WhatsApp em Massa", icon: MessageCircle },
   { href: "/reports", key: "nav.reports" as const, icon: LineChart },

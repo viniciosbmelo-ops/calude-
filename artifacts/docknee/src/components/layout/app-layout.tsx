@@ -1,7 +1,7 @@
 import { Sidebar } from "./sidebar";
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, Plus, Scan, Sun, Moon, BellRing, Scissors, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Plus, Sun, Moon, BellRing, Scissors, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { href: "/dashboard", key: "nav.home", Icon: LayoutDashboard },
   { href: "/patients", key: "nav.patients", Icon: Users },
   { href: "/surgeries", key: "nav.surgeries", Icon: FileText },
-  { href: "/xray-planning", key: "nav.xray", Icon: Scan },
 ] as const;
 
 const PAGE_TITLE_KEYS = {
@@ -21,7 +20,6 @@ const PAGE_TITLE_KEYS = {
   "/agenda": "nav.appointments",
   "/agenda-cirurgica": "nav.surgicalSchedule",
   "/surgeries": "nav.surgeries",
-  "/xray-planning": "nav.xray",
   "/followup-central": "nav.followups",
   "/reports": "nav.reports",
   "/profile": "nav.profile",
@@ -48,7 +46,6 @@ function BottomNav() {
   const isActive = (href: string) => {
     if (href === "/surgeries") return location.startsWith("/surgeries") && !location.startsWith("/surgeries/new");
     if (href === "/patients") return location.startsWith("/patients");
-    if (href === "/xray-planning") return location.startsWith("/xray-planning");
     return location === href;
   };
 

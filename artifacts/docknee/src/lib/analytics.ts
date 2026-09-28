@@ -65,7 +65,7 @@ const SAFE_STATIC_PATHS = new Set([
   "/regen", "/regen/caso/novo", "/regen/consentimento", "/regen/orientacoes",
   "/regen/pesquisa", "/register", "/reports", "/secretary/dashboard",
   "/secretary/login", "/service/dashboard", "/service/login", "/sucesso",
-  "/surgeries", "/surgeries/new", "/whatsapp-broadcast", "/xray-planning",
+  "/surgeries", "/surgeries/new", "/whatsapp-broadcast",
 ]);
 
 const SAFE_DYNAMIC_PATHS: ReadonlyArray<readonly [RegExp, string]> = [
@@ -248,8 +248,7 @@ export type NavigationFeatureName =
   | "surgeries"
   | "profile"
   | "settings"
-  | "subscription"
-  | "xray";
+  | "subscription";
 
 const NAVIGATION_FEATURE_BY_PATH: Readonly<Record<string, NavigationFeatureName>> = {
   "/agenda": "agenda",
@@ -272,7 +271,6 @@ const NAVIGATION_FEATURE_BY_PATH: Readonly<Record<string, NavigationFeatureName>
   "/surgeries/new": "surgery",
   "/surgeries/:id": "surgery",
   "/whatsapp-broadcast": "support",
-  "/xray-planning": "xray",
 };
 
 /** Derives the backend-allowlisted feature from an already sanitized route. */
