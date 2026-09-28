@@ -18,22 +18,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { sortByPtBrName } from "@/lib/utils";
 import { useWhatsappBroadcastTranslations } from "@/locales/whatsapp-broadcast";
+import { CASE_TYPE_BY_KEY, CASE_TYPES } from "@workspace/clinical/web";
 
 const WA_GREEN = "#25D366";
 
 const ALL_PROCEDURES = "__ALL__";
 
-const PROCEDURE_TYPES = [
-  { value: ALL_PROCEDURES, labelKey: "procedureAll" },
-  { value: "Lesão Ligamentar", labelKey: "procedureLigamentInjury" },
-  { value: "LCA", labelKey: "procedureAcl" },
-  { value: "LCP", labelKey: "procedurePcl" },
-  { value: "Osteotomia", labelKey: "procedureOsteotomy" },
-  { value: "Lesões Osteocondrais", labelKey: "procedureOsteochondral" },
-  { value: "Ácido Hialurônico", labelKey: "procedureHyaluronicAcid" },
-  { value: "Meniscal", labelKey: "procedureMeniscal" },
-  { value: "Patela", labelKey: "procedurePatella" },
-] as const;
+// Tipos de caso de ombro/cotovelo do catálogo clínico (valor = chave gravada na cirurgia)
+const PROCEDURE_TYPES = CASE_TYPES.filter((c) => !c.freeOnly).map((c) => ({
+  value: c.key,
+  label: `${c.label} (${c.region === "shoulder" ? "Ombro" : "Cotovelo"})`,
+}));
 
 const AVATAR_COLORS = [
   "#0A1628", "#1FB6E1", "#2D6A4F", "#8338EC", "#E63946", "#F77F00",
@@ -212,10 +207,7 @@ export default function WhatsappBroadcast() {
       .replace(/\{medico\}/gi, doctorName)
       .replace(/\{link\}/gi, campaignFile?.shareUrl ?? "");
 
-  const procedureLabel = (value: string) => {
-    const procedure = PROCEDURE_TYPES.find(option => option.value === value);
-    return procedure ? t(procedure.labelKey) : value;
-  };
+  const procedureLabel = (value: string) => CASE_TYPE_BY_KEY.get(value)?.label ?? value;
 
   // Platform send (bulk dispatch via API)
   interface SendResult { id: number; nome: string; ok: boolean; error?: string; }
@@ -324,10 +316,9 @@ export default function WhatsappBroadcast() {
                   <SelectValue placeholder={t("procedureAll")} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={ALL_PROCEDURES}>{t("procedureAll")}</SelectItem>
                   {PROCEDURE_TYPES.map(pt => (
-                    <SelectItem key={pt.value || "__all"} value={pt.value || "__all_placeholder"}>
-                      {t(pt.labelKey)}
-                    </SelectItem>
+                    <SelectItem key={pt.value} value={pt.value}>{pt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

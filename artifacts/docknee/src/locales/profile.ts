@@ -36,7 +36,7 @@ export const profileMessages = {
     canceling: "Cancelando...", yesCancel: "Sim, cancelar", keepPlan: "Manter plano", saveError: "Erro ao salvar", profileSaved: "Perfil atualizado com sucesso!",
     fullNameLabel: "Nome completo *", doctorNamePlaceholder: "Dr. João da Silva", birthDate: "Data de nascimento", phone: "Telefone / Celular", crmNumber: "Número do CRM *",
     crmState: "Estado do CRM *", countryOfOrigin: "País de origem", countryChangeHelp: "Para alterar, entre em contato com o administrador.",
-    specialty: "Especialidade", specialtyPlaceholder: "Cirurgia do Joelho", fullAddress: "Endereço completo", street: "Logradouro (Rua, Av., nº)", streetPlaceholder: "Rua das Palmeiras, 123",
+    specialty: "Especialidade", specialtyPlaceholder: "Cirurgia de Ombro e Cotovelo", fullAddress: "Endereço completo", street: "Logradouro (Rua, Av., nº)", streetPlaceholder: "Rua das Palmeiras, 123",
     city: "Cidade", state: "Estado (UF)",
   },
   es: {
@@ -74,7 +74,7 @@ export const profileMessages = {
     canceling: "Cancelando...", yesCancel: "Sí, cancelar", keepPlan: "Mantener plan", saveError: "Error al guardar", profileSaved: "¡Perfil actualizado correctamente!",
     fullNameLabel: "Nombre completo *", doctorNamePlaceholder: "Dr. Juan García", birthDate: "Fecha de nacimiento", phone: "Teléfono / Celular", crmNumber: "Número de CRM *",
     crmState: "Estado del CRM *", countryOfOrigin: "País de origen", countryChangeHelp: "Para cambiarlo, contacte al administrador.",
-    specialty: "Especialidad", specialtyPlaceholder: "Cirugía de rodilla", fullAddress: "Dirección completa", street: "Dirección (calle, avenida, n.º)", streetPlaceholder: "Calle de las Palmeras, 123",
+    specialty: "Especialidad", specialtyPlaceholder: "Cirugía de hombro y codo", fullAddress: "Dirección completa", street: "Dirección (calle, avenida, n.º)", streetPlaceholder: "Calle de las Palmeras, 123",
     city: "Ciudad", state: "Estado (UF)",
   },
 } satisfies ScopedMessages<Record<string, string>>;

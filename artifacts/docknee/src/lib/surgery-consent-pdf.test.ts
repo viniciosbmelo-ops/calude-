@@ -7,29 +7,30 @@ describe("surgical consent document", () => {
       {
         dataCirurgia: "2026-08-24",
         lado: "Direito",
-        diagnostico: "Gonartrose medial e lesão osteocondral",
-        tiposProcedimento: ["Artroplastias", "Lesões Osteocondrais", "Osteotomia"],
-        procedimentosDetalhados: JSON.stringify({
-          artroplastia: { tipo: "TKA" },
-          osteotomia: { tibial: true },
-          osteocondral: { procedimentos: ["Mosaicoplastia"] },
-        }),
+        diagnostico: "Rotura completa do manguito rotador e fratura do úmero proximal",
+        tiposProcedimento: ["SH_CUFF", "SH_BICEPS_SLAP", "SH_FRACTURE"],
+        procedimentoRealizado: "Reparo do manguito rotador, Tenodese do cabo longo do bíceps",
         patient: { nome: "Maria José da Silva", cpf: "123.456.789-00", dataNascimento: "1980-01-10" },
       },
       { nome: "Dr. João da Silva", crm: "12345", crmEstado: "SP" },
     );
 
-    expect(document.procedureLabel).toContain("Artroplastia Total do Joelho");
-    expect(document.procedureLabel).toContain("Mosaicoplastia");
-    expect(document.families).toEqual(["artroplastia", "osteotomia", "osteocondral"]);
+    expect(document.procedureLabel).toBe("Reparo do manguito rotador; Tenodese do cabo longo do bíceps");
+    expect(document.families).toEqual(["fratura", "tendao"]);
     expect(document.sections.map((section) => section.title)).toEqual([
-      "Artroplastia do joelho",
-      "Osteotomia do joelho",
-      "Tratamento de lesão osteocondral",
+      "Tratamento cirúrgico de fratura",
+      "Reparo ou reconstrução tendínea",
     ]);
     expect(document.laterality).toBe("Direito");
     expect(document.procedureDate).toBe("24/08/2026");
     expect(document.doctorCrm).toBe("CRM SP/12345");
+  });
+
+  it("never mentions the knee in any section", () => {
+    const document = buildSurgicalConsentDocument({
+      tiposProcedimento: ["SH_CUFF", "SH_FRACTURE", "SH_ORTHOBIO", "SH_INSTABILITY", "EL_STIFF_OA"],
+    });
+    expect(JSON.stringify(document)).not.toMatch(/joelho|rodilla|patel|menisc|ligamentar/i);
   });
 
   it("uses patient laterality as fallback and supplies a generic section for incomplete drafts", () => {
@@ -41,23 +42,20 @@ describe("surgical consent document", () => {
     expect(document.laterality).toBe("Esquerdo");
     expect(document.families).toEqual(["outros"]);
     expect(document.sections).toHaveLength(1);
-    expect(document.sections[0].title).toBe("Outros procedimentos do joelho");
+    expect(document.sections[0].title).toBe("Outros procedimentos de ombro e cotovelo");
+    expect(document.procedureLabel).toBe("Procedimento cirúrgico");
   });
 
-  it("localizes generated procedure labels without changing stored procedure values", () => {
+  it("falls back to case-type names and localizes generic copy", () => {
     const document = buildSurgicalConsentDocument(
-      {
-        tiposProcedimento: ["Artroplastias", "Lesão Ligamentar", "Lesões Osteocondrais"],
-        ligamentosAcometidos: ["LCA"],
-        procedimentosDetalhados: JSON.stringify({ artroplastia: { tipo: "TKA" }, osteocondral: { procedimentos: ["Mosaicoplastia"] } }),
-      },
+      { tiposProcedimento: ["EL_DISTAL_BICEPS", "EL_INSTABILITY"] },
       undefined,
       "es",
     );
 
-    expect(document.procedureLabel).toContain("Artroplastia total de rodilla");
-    expect(document.procedureLabel).toContain("Reconstrucción/reparación de LCA");
-    expect(document.procedureLabel).toContain("Mosaicoplastia");
+    expect(document.procedureLabel).toContain("; ");
+    expect(document.families).toEqual(["tendao", "outros"]);
+    expect(document.sections[1].title).toBe("Otros procedimientos de hombro y codo");
   });
 
   it("renders a combined consent term on one A4 page", async () => {
@@ -66,30 +64,9 @@ describe("surgical consent document", () => {
         dataCirurgia: "2026-08-24",
         hospital: "Hospital Central",
         lado: "Direito",
-        diagnostico: "Caso cirúrgico combinado do joelho",
-        tiposProcedimento: [
-          "Artroplastias",
-          "Lesão Ligamentar",
-          "Lesão Meniscal",
-          "Instabilidade Patelar",
-          "Osteotomia",
-          "Lesões Osteocondrais",
-          "Fraturas",
-          "Rupturas Tendíneas",
-          "Ortobiológicos",
-          "Outros Procedimentos",
-        ],
-        ligamentosAcometidos: ["LCA", "LCP"],
-        procedimentosDetalhados: JSON.stringify({
-          artroplastia: { tipo: "TKA" },
-          osteotomia: { tibial: true },
-          osteocondral: { procedimentos: ["Mosaicoplastia"] },
-          patelar: { tecnicas: ["Reconstrução do MPFL"] },
-          fraturas: ["Fratura de Patela"],
-          tendoes: ["Ruptura do Tendão Patelar"],
-          outrosProcedimentos: ["Procedimento complementar"],
-          ortobiologico: { prp: true },
-        }),
+        diagnostico: "Caso cirúrgico combinado do ombro",
+        tiposProcedimento: ["SH_CUFF", "SH_FRACTURE", "SH_ORTHOBIO", "SH_INSTABILITY"],
+        procedimentoRealizado: "Reparo do manguito rotador, Osteossíntese do úmero proximal, Bankart artroscópico",
         patient: { nome: "Maria José da Silva", cpf: "123.456.789-00", dataNascimento: "1980-01-10" },
       },
       { nome: "Dr. João da Silva", crm: "12345", crmEstado: "SP" },

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type JoiaVoiceStatus =
+export type AssistantVoiceStatus =
   | "idle"
   | "requesting"
   | "listening"
@@ -68,10 +68,10 @@ export type MediaRecorderConstructor = {
   isTypeSupported?: (mimeType: string) => boolean;
 };
 
-export interface JoiaVoiceControllerOptions {
+export interface AssistantVoiceControllerOptions {
   locale: string;
   getMessage: (key: VoiceMessageKey) => string;
-  onStatusChange?: (status: JoiaVoiceStatus) => void;
+  onStatusChange?: (status: AssistantVoiceStatus) => void;
   onInterimText?: (text: string) => void;
   onText?: (text: string) => void;
   onError?: (key: VoiceMessageKey) => void;
@@ -112,7 +112,7 @@ function browserMediaRecorder(): MediaRecorderConstructor | null {
   }).MediaRecorder) ?? null;
 }
 
-function browserGetUserMedia(): JoiaVoiceControllerOptions["getUserMedia"] {
+function browserGetUserMedia(): AssistantVoiceControllerOptions["getUserMedia"] {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return null;
   return navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 }
@@ -158,7 +158,7 @@ export function audioFilenameForMimeType(mimeType: string): string {
         : baseMimeType === "audio/ogg"
           ? "ogg"
           : "webm";
-  return `joia-audio.${extension}`;
+  return `assistente-audio.${extension}`;
 }
 
 type VoiceSession = {
@@ -202,22 +202,22 @@ function errorName(error: unknown): string {
       : "";
 }
 
-export class JoiaVoiceController {
-  private options: JoiaVoiceControllerOptions;
+export class AssistantVoiceController {
+  private options: AssistantVoiceControllerOptions;
   private session: VoiceSession | null = null;
   private nextSessionId = 0;
-  private status: JoiaVoiceStatus = "idle";
+  private status: AssistantVoiceStatus = "idle";
   private disposed = false;
 
-  constructor(options: JoiaVoiceControllerOptions) {
+  constructor(options: AssistantVoiceControllerOptions) {
     this.options = options;
   }
 
-  update(options: Partial<JoiaVoiceControllerOptions>): void {
+  update(options: Partial<AssistantVoiceControllerOptions>): void {
     this.options = { ...this.options, ...options };
   }
 
-  getStatus(): JoiaVoiceStatus {
+  getStatus(): AssistantVoiceStatus {
     return this.status;
   }
 
@@ -352,7 +352,7 @@ export class JoiaVoiceController {
       : browserMediaRecorder();
   }
 
-  private getGetUserMedia(): JoiaVoiceControllerOptions["getUserMedia"] {
+  private getGetUserMedia(): AssistantVoiceControllerOptions["getUserMedia"] {
     return this.options.getUserMedia !== undefined
       ? this.options.getUserMedia
       : browserGetUserMedia();
@@ -691,7 +691,7 @@ export class JoiaVoiceController {
     return !this.disposed && this.session === session && !session.cancelled;
   }
 
-  private setStatus(status: JoiaVoiceStatus): void {
+  private setStatus(status: AssistantVoiceStatus): void {
     this.status = status;
     if (!this.disposed) this.options.onStatusChange?.(status);
   }
@@ -732,20 +732,20 @@ export class JoiaVoiceController {
   }
 }
 
-export interface UseJoiaVoiceOptions {
+export interface UseAssistantVoiceOptions {
   locale: string;
   getMessage: (key: VoiceMessageKey) => string;
   onText: (text: string) => void;
 }
 
-export function useJoiaVoice(options: UseJoiaVoiceOptions) {
-  const [status, setStatus] = useState<JoiaVoiceStatus>("idle");
+export function useAssistantVoice(options: UseAssistantVoiceOptions) {
+  const [status, setStatus] = useState<AssistantVoiceStatus>("idle");
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const controllerRef = useRef<JoiaVoiceController | null>(null);
+  const controllerRef = useRef<AssistantVoiceController | null>(null);
 
   if (!controllerRef.current) {
-    controllerRef.current = new JoiaVoiceController({
+    controllerRef.current = new AssistantVoiceController({
       locale: options.locale,
       getMessage: options.getMessage,
       onStatusChange: setStatus,

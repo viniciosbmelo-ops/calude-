@@ -51,7 +51,6 @@ const DOC_FIELDS: Record<string, FieldDef[]> = {
     { key: "tipo", label: "Cirurgia — tipo", type: "text", nested: "cirurgia" },
     { key: "data", label: "Cirurgia — data", type: "date", nested: "cirurgia" },
     { key: "cirurgiao", label: "Cirurgia — cirurgião", type: "text", nested: "cirurgia" },
-    { key: "enxerto", label: "Cirurgia — enxerto", type: "text", nested: "cirurgia" },
     { key: "medicamentos", label: "Medicamentos", type: "textarea" },
     { key: "nivel_atividade_pre", label: "Nível de atividade prévio", type: "text" },
     { key: "objetivo_paciente", label: "Objetivo do paciente", type: "textarea" },

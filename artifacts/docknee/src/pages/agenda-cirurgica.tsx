@@ -862,109 +862,6 @@ function SurgeryCard({
   );
 }
 
-const CBHPM_LOOKUP: Record<string, string> = {
-  // Artroscopia do joelho (3.07.33)
-  "30733017": "Artroscopia do joelho - diagnóstica",
-  "30733025": "Artroscopia do joelho - sinovectomia parcial",
-  "30733033": "Artroscopia do joelho - sinovectomia total",
-  "30733041": "Artroscopia do joelho - meniscectomia parcial",
-  "30733050": "Artroscopia do joelho - meniscectomia total",
-  "30733057": "Artroscopia do joelho - meniscectomia subtotal",
-  "30733065": "Artroscopia do joelho - reparo ou sutura do menisco",
-  "30733068": "Artroscopia do joelho - reconstrução dos ligamentos cruzados",
-  "30733073": "Artroscopia do joelho - reconstrução do LCP",
-  "30733076": "Artroscopia do joelho - condroplastia por abrasão / perfuração",
-  "30733081": "Artroscopia do joelho - reconstrução ligamentar múltipla",
-  "30733084": "Artroscopia do joelho - retirada de corpo livre",
-  "30733092": "Artroscopia do joelho - tratamento de lesão osteocondral",
-  "30733099": "Artroscopia do joelho - transplante meniscal",
-  "30733102": "Artroscopia do joelho - transplante de condrócitos (MACI)",
-  "30733106": "Artroscopia do joelho - plástica ligamentar",
-  "30733114": "Artroscopia do joelho - liberação lateral",
-  "30733122": "Artroscopia do joelho - tratamento de fraturas",
-  "30733130": "Artroscopia do joelho - microfraturas",
-  "30733149": "Artroscopia do joelho - mosaicoplastia",
-  "30733157": "Artroscopia do joelho - remoção de plica sinovial",
-  "30733165": "Artroscopia do joelho - realinhamento patelar",
-  "30733173": "Artroscopia do joelho - tenodese",
-  "30733181": "Artroscopia do joelho - reconstrução do LCA (enxerto tendão patelar)",
-  "30733190": "Artroscopia do joelho - reconstrução do LCA (enxerto isquiotibiais)",
-  "30733203": "Artroscopia do joelho - reconstrução do LCA (enxerto quadríceps)",
-  // Reconstrução ligamentar aberta / combinada
-  "30715018": "Reconstrução do LCA - técnica aberta",
-  "30715026": "Reconstrução do LCP - técnica aberta",
-  "30715034": "Reconstrução do LCM / PMC",
-  "30715042": "Reconstrução do LCL / PLC",
-  "30715050": "Transferência do tubérculo tibial (TTT)",
-  "30715069": "Reconstrução do MPFL",
-  "30715077": "Trocleoplastia",
-  "30715085": "Reconstrução do tendão patelar",
-  "30715093": "Reconstrução do tendão quadricipital",
-  "30715107": "Tenodese anterolateral (LAL)",
-  // Osteotomias (4.08.03)
-  "40803010": "Osteotomia tibial alta valguizante (HTO abertura medial)",
-  "40803029": "Osteotomia tibial alta varizante (HTO fechamento lateral)",
-  "40803037": "Osteotomia femoral distal varizante",
-  "40803045": "Osteotomia femoral distal valguizante",
-  // Artroplastias (4.06.01)
-  "40601015": "Artroplastia total do joelho (ATJ)",
-  "40601023": "Artroplastia unicompartimental do joelho (AUJ)",
-  "40601031": "Revisão de artroplastia total do joelho",
-  // Fraturas (4.08.07)
-  "40807014": "Fixação de fratura - platô tibial",
-  "40807022": "Fixação de fratura - côndilo femoral",
-  "40807030": "Fixação de fratura - patela",
-};
-
-const CBHPM_LOOKUP_ES: Record<string, string> = {
-  "30733017": "Artroscopia de rodilla - diagnóstica",
-  "30733025": "Artroscopia de rodilla - sinovectomía parcial",
-  "30733033": "Artroscopia de rodilla - sinovectomía total",
-  "30733041": "Artroscopia de rodilla - meniscectomía parcial",
-  "30733050": "Artroscopia de rodilla - meniscectomía total",
-  "30733057": "Artroscopia de rodilla - meniscectomía subtotal",
-  "30733065": "Artroscopia de rodilla - reparación o sutura del menisco",
-  "30733068": "Artroscopia de rodilla - reconstrucción de los ligamentos cruzados",
-  "30733073": "Artroscopia de rodilla - reconstrucción del LCP",
-  "30733076": "Artroscopia de rodilla - condroplastia por abrasión / perforación",
-  "30733081": "Artroscopia de rodilla - reconstrucción ligamentaria múltiple",
-  "30733084": "Artroscopia de rodilla - extracción de cuerpo libre",
-  "30733092": "Artroscopia de rodilla - tratamiento de lesión osteocondral",
-  "30733099": "Artroscopia de rodilla - trasplante meniscal",
-  "30733102": "Artroscopia de rodilla - trasplante de condrocitos (MACI)",
-  "30733106": "Artroscopia de rodilla - plastia ligamentaria",
-  "30733114": "Artroscopia de rodilla - liberación lateral",
-  "30733122": "Artroscopia de rodilla - tratamiento de fracturas",
-  "30733130": "Artroscopia de rodilla - microfracturas",
-  "30733149": "Artroscopia de rodilla - mosaicoplastia",
-  "30733157": "Artroscopia de rodilla - resección de plica sinovial",
-  "30733165": "Artroscopia de rodilla - realineación patelar",
-  "30733173": "Artroscopia de rodilla - tenodesis",
-  "30733181": "Artroscopia de rodilla - reconstrucción del LCA (injerto de tendón patelar)",
-  "30733190": "Artroscopia de rodilla - reconstrucción del LCA (injerto de isquiotibiales)",
-  "30733203": "Artroscopia de rodilla - reconstrucción del LCA (injerto de cuádriceps)",
-  "30715018": "Reconstrucción del LCA - técnica abierta",
-  "30715026": "Reconstrucción del LCP - técnica abierta",
-  "30715034": "Reconstrucción del LCM / PMC",
-  "30715042": "Reconstrucción del LCL / PLC",
-  "30715050": "Transferencia de la tuberosidad tibial (TTT)",
-  "30715069": "Reconstrucción del MPFL",
-  "30715077": "Trocleoplastia",
-  "30715085": "Reconstrucción del tendón patelar",
-  "30715093": "Reconstrucción del tendón cuadricipital",
-  "30715107": "Tenodesis anterolateral (LAL)",
-  "40803010": "Osteotomía tibial alta valguizante (HTO apertura medial)",
-  "40803029": "Osteotomía tibial alta varizante (HTO cierre lateral)",
-  "40803037": "Osteotomía femoral distal varizante",
-  "40803045": "Osteotomía femoral distal valguizante",
-  "40601015": "Artroplastia total de rodilla (ATR)",
-  "40601023": "Artroplastia unicompartimental de rodilla (AUR)",
-  "40601031": "Revisión de artroplastia total de rodilla",
-  "40807014": "Fijación de fractura - meseta tibial",
-  "40807022": "Fijación de fractura - cóndilo femoral",
-  "40807030": "Fijación de fractura - patela",
-};
-
 function lookupCbhpm(codigo: string, planos: PlanoConfig[] | undefined, locale: Locale): string {
   const clean = codigo.replace(/\D/g, "");
   if (!clean) return "";
@@ -974,7 +871,8 @@ function lookupCbhpm(codigo: string, planos: PlanoConfig[] | undefined, locale: 
       if (found?.descricao) return found.descricao;
     }
   }
-  return (locale === "es" ? CBHPM_LOOKUP_ES[clean] : CBHPM_LOOKUP[clean]) ?? "";
+  // Sem tabela embutida: a descrição vem dos códigos cadastrados nos planos do médico.
+  return "";
 }
 
 function CodigosSection({

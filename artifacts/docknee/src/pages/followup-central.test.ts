@@ -3,9 +3,9 @@ import { formatCentralFollowupValues } from "./followup-central";
 
 describe("follow-up central presentation values", () => {
   it("localizes controlled Spanish values without changing unknown values", () => {
-    expect(formatCentralFollowupValues("es", "1 mês", ["VAS Dor", "IKDC", "Texto livre"])).toEqual({
+    expect(formatCentralFollowupValues("es", "1 mês", ["VAS Dor", "Escala livre", "Texto livre"])).toEqual({
       periodo: "1 mes",
-      scales: ["VAS Dolor", "IKDC", "Texto livre"],
+      scales: ["VAS Dolor", "Escala livre", "Texto livre"],
     });
   });
 

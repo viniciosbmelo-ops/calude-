@@ -1,14 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, ChevronDown, RotateCcw, FileDown, Mic, MicOff } from "lucide-react";
+import { Send, ChevronDown, RotateCcw, FileDown, Mic, MicOff, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
-import { joiaMessages } from "@/locales/joia";
-import { isAppleMobileBrowser, useJoiaVoice } from "./voice-controller";
+import { aiAssistantMessages } from "@/locales/ai-assistant";
+import { isAppleMobileBrowser, useAssistantVoice } from "./voice-controller";
 import jsPDF from "jspdf";
 import { handlePdfOpenClick, sharePdfOrDownload } from "@/lib/pdf-share";
 
-const JOIA_LOGO = `${import.meta.env.BASE_URL}joia-logo.png`;
+/**
+ * Marca visual do assistente: brilho sobre o degradê da marca, sempre acompanhado
+ * do rótulo "IA" no cabeçalho — deixa explícito que as respostas vêm de uma IA.
+ */
+export function AssistantMark({ label }: { label?: string }) {
+  return (
+    <span
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      className="flex h-full w-full items-center justify-center"
+      style={{ background: "linear-gradient(135deg, #1A365D 0%, #609DBC 100%)" }}
+    >
+      <Sparkles className="h-1/2 w-1/2 text-white" strokeWidth={2.2} />
+    </span>
+  );
+}
 
 interface ReportData {
   titulo: string;
@@ -20,25 +36,13 @@ interface ReportData {
     data_cirurgia: string;
     lado: string;
     hospital: string;
-    enxerto: string;
+    tipo_caso: string | null;
     diagnostico: string;
     doctor_nome?: string;
   }>;
   followupStats: {
     total_followups: number;
-    avg_ikdc: number | null;
-    avg_lysholm: number | null;
-    avg_tegner: number | null;
-    avg_kujala: number | null;
-    avg_marx: number | null;
-    avg_koos_dor: number | null;
-    avg_koos_esporte: number | null;
-    avg_koos_qualidade: number | null;
-    avg_koos_sintomas: number | null;
-    avg_koos_funcao: number | null;
-    avg_koos12: number | null;
     avg_vas: number | null;
-    avg_acl_rsi: number | null;
     retornou_esporte: number;
     falhas: number;
   } | null;
@@ -73,7 +77,7 @@ function addHeader(doc: jsPDF, pageW: number, assistantName: string) {
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(10, 22, 40);
-  doc.text(`JoIA — ${assistantName}`, 20, 15);
+  doc.text(`DocSholder — ${assistantName}`, 20, 15);
   doc.setDrawColor(220, 220, 230);
   doc.setLineWidth(0.2);
   doc.line(20, 20, pageW - 20, 20);
@@ -105,48 +109,6 @@ function scoreColor(label: string, value: number): [number, number, number] {
   if (key.includes("vas")) {
     if (value <= 3) return GREEN;
     if (value <= 6) return YELLOW;
-    return RED;
-  }
-  // IKDC (0-100)
-  if (key.includes("ikdc")) {
-    if (value >= 65) return GREEN;
-    if (value >= 40) return YELLOW;
-    return RED;
-  }
-  // Lysholm (0-100)
-  if (key.includes("lysholm")) {
-    if (value >= 84) return GREEN;
-    if (value >= 65) return YELLOW;
-    return RED;
-  }
-  // KOOS subescalas (0-100)
-  if (key.includes("koos")) {
-    if (value >= 75) return GREEN;
-    if (value >= 50) return YELLOW;
-    return RED;
-  }
-  // ACL-RSI (0-100)
-  if (key.includes("acl")) {
-    if (value >= 77) return GREEN;
-    if (value >= 56) return YELLOW;
-    return RED;
-  }
-  // Tegner (0-10) — nível de atividade, referência pré-lesão ~6
-  if (key.includes("tegner")) {
-    if (value >= 6) return GREEN;
-    if (value >= 4) return YELLOW;
-    return RED;
-  }
-  // Kujala (0-100) — patelar
-  if (key.includes("kujala")) {
-    if (value >= 80) return GREEN;
-    if (value >= 65) return YELLOW;
-    return RED;
-  }
-  // Marx (0-16) — atividade esportiva
-  if (key.includes("marx")) {
-    if (value >= 12) return GREEN;
-    if (value >= 6) return YELLOW;
     return RED;
   }
   // Fallback genérico por percentual
@@ -209,7 +171,7 @@ function generateReportPDF(
   reportData: ReportData | null | undefined,
   question: string,
   content: string,
-  copy: (key: keyof typeof joiaMessages["pt-BR"], params?: Record<string, string | number>) => string,
+  copy: (key: keyof typeof aiAssistantMessages["pt-BR"], params?: Record<string, string | number>) => string,
   locale: string,
 ) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -239,7 +201,7 @@ function generateReportPDF(
     addFooter(doc, pageW, pageH, 1, 1, copy("pdfGeneratedAt", { date: new Intl.DateTimeFormat(locale).format(new Date()) }));
     return {
       doc,
-      filename: `joia-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `assistente-ia-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`,
     };
   }
 
@@ -325,7 +287,7 @@ function generateReportPDF(
     doc.text("Sx",         COL.sx.x   + 1, y + 5);
     doc.text(copy("pdfSurgery"),   COL.data.x + 1, y + 5);
     doc.text(copy("pdfSide"),       COL.lado.x + 1, y + 5);
-    doc.text(copy("pdfGraft"),    COL.enx.x  + 1, y + 5);
+    doc.text(copy("pdfCaseType"), COL.enx.x  + 1, y + 5);
     if (isAdmin) {
       doc.text(copy("pdfDoctor"),   COL.med.x  + 1, y + 5);
     } else {
@@ -380,7 +342,7 @@ function generateReportPDF(
     doc.text(p.sexo || "-",                        COL.sx.x   + 1, rowY);
     doc.text(data,                                  COL.data.x + 1, rowY);
     doc.text((p.lado || "-").substring(0, 5),      COL.lado.x + 1, rowY);
-    doc.text((p.enxerto || "-").substring(0, 18),  COL.enx.x  + 1, rowY);
+    doc.text((p.tipo_caso || "-").substring(0, 22), COL.enx.x  + 1, rowY);
     if (isAdmin) {
       const med = (p.doctor_nome || "-").replace(/^Dr[aA]?\.?\s*/i, "");
       doc.text(med.substring(0, 22),               COL.med.x  + 1, rowY);
@@ -434,18 +396,6 @@ function generateReportPDF(
     } else {
       // All available scores
       const scores: Array<[string, string, number | null, number]> = [
-        ["IKDC",            copy("scoreIkdc"),         followupStats.avg_ikdc,            100],
-        ["Lysholm",         copy("scoreLysholm"),      followupStats.avg_lysholm,         100],
-        ["Tegner",          copy("scoreTegner"),       followupStats.avg_tegner,           10],
-        ["Kujala",          copy("scoreKujala"),       followupStats.avg_kujala,          100],
-        ["ACL-RSI",         copy("scoreAclRsi"),       followupStats.avg_acl_rsi,         100],
-        ["KOOS Dor",        copy("scoreKoosPain"),     followupStats.avg_koos_dor,        100],
-        ["KOOS Sintomas",   copy("scoreKoosSymptoms"), followupStats.avg_koos_sintomas,   100],
-        ["KOOS Função",     copy("scoreKoosFunction"), followupStats.avg_koos_funcao,     100],
-        ["KOOS Esporte",    copy("scoreKoosSport"),    followupStats.avg_koos_esporte,    100],
-        ["KOOS Qualidade",  copy("scoreKoosQuality"),  followupStats.avg_koos_qualidade,  100],
-        ["KOOS-12",         copy("scoreKoos12"),       followupStats.avg_koos12,          100],
-        ["Marx",            copy("scoreMarx"),         followupStats.avg_marx,             16],
         ["VAS Dor",         copy("scoreVas"),          followupStats.avg_vas,              10],
       ];
 
@@ -500,14 +450,14 @@ function generateReportPDF(
 
   return {
     doc,
-    filename: `joia-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `assistente-ia-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`,
   };
 }
 
-export function JoIA() {
+export function AIAssistant() {
   const { user } = useAuth();
   const { locale } = useLanguage();
-  const t = useScopedTranslations(joiaMessages);
+  const t = useScopedTranslations(aiAssistantMessages);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -523,7 +473,7 @@ export function JoIA() {
     start: startVoice,
     stop: stopVoice,
     cancel: cancelVoice,
-  } = useJoiaVoice({
+  } = useAssistantVoice({
     locale,
     getMessage: key => t(key),
     onText: text => {
@@ -552,8 +502,8 @@ export function JoIA() {
 
   useEffect(() => {
     const handler = () => setOpen(true);
-    window.addEventListener("joia-open", handler);
-    return () => window.removeEventListener("joia-open", handler);
+    window.addEventListener("assistant-open", handler);
+    return () => window.removeEventListener("assistant-open", handler);
   }, []);
 
   useEffect(() => {
@@ -631,7 +581,7 @@ export function JoIA() {
         }}
         aria-label={t("open")}
       >
-        <img src={JOIA_LOGO} alt="JoIA" className="w-full h-full object-cover" />
+        <AssistantMark />
       </button>
 
       {open && (
@@ -646,10 +596,11 @@ export function JoIA() {
             <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden"
               style={{ border: "1.5px solid rgba(31,182,225,0.4)" }}
             >
-              <img src={JOIA_LOGO} alt="JoIA" className="w-full h-full object-cover" />
+              <AssistantMark />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-white">{t("title")}</span>
                 <span
                   className="text-xs font-medium px-1.5 py-0.5 rounded"
                   style={{ background: "rgba(31,182,225,0.2)", color: "#1FB6E1", fontSize: 10 }}
@@ -693,7 +644,7 @@ export function JoIA() {
                   <div className="w-14 h-14 rounded-2xl mx-auto overflow-hidden"
                     style={{ border: "1px solid rgba(31,182,225,0.2)" }}
                   >
-                    <img src={JOIA_LOGO} alt="JoIA" className="w-full h-full object-cover" />
+                    <AssistantMark />
                   </div>
                   <div>
                     <p className="font-bold text-foreground text-sm">{t("greeting", { name: firstName })}</p>
@@ -725,7 +676,7 @@ export function JoIA() {
                     <div className="w-7 h-7 rounded-full shrink-0 mt-0.5 overflow-hidden"
                       style={{ border: "1px solid rgba(31,182,225,0.3)" }}
                     >
-                      <img src={JOIA_LOGO} alt="JoIA" className="w-full h-full object-cover" />
+                      <AssistantMark />
                     </div>
                   )}
                   <div className="flex flex-col gap-1 max-w-[82%]">
@@ -787,7 +738,7 @@ export function JoIA() {
                 <div className="w-7 h-7 rounded-full shrink-0 overflow-hidden"
                   style={{ border: "1px solid rgba(31,182,225,0.3)" }}
                 >
-                  <img src={JOIA_LOGO} alt="JoIA" className="w-full h-full object-cover" />
+                  <AssistantMark />
                 </div>
                 <div
                   className="bg-card border border-border px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1.5"

@@ -1,5 +1,4 @@
 import type { Locale } from "@/lib/i18n";
-import { surgeryNewTraumaDisplayLabels } from "@/locales/surgery-new-trauma";
 
 /**
  * Labels for values whose Portuguese form is the persisted/API canonical value.
@@ -7,22 +6,6 @@ import { surgeryNewTraumaDisplayLabels } from "@/locales/surgery-new-trauma";
  * data and must never be translated by the client.
  */
 const SPANISH_REPORT_CATALOG_LABELS: Record<string, string> = {
-  "Lesão Ligamentar": "Lesión ligamentaria",
-  "Lesão Meniscal": "Lesión meniscal",
-  "Instabilidade Patelar": "Inestabilidad patelar",
-  Osteotomia: "Osteotomía",
-  "Lesões Osteocondrais": "Lesiones osteocondrales",
-  Artroplastias: "Artroplastias",
-  Ortobiológicos: "Ortobiológicos",
-  "Outros Procedimentos": "Otros procedimientos",
-  Fraturas: "Fracturas",
-  "Rupturas Tendíneas": "Roturas tendinosas",
-  "Reconstrução do LCA": "Reconstrucción del LCA",
-  "Reconstrução do LCP": "Reconstrucción del LCP",
-  "Reconstrução do LCM": "Reconstrucción del LCM",
-  "Reconstrução do CPL": "Reconstrucción del CPL",
-  "Reparo do LCA": "Reparación del LCA",
-  "Reparo / Sutura Meniscal": "Reparación / sutura meniscal",
   "Pré-operatório": "Preoperatorio",
   "Pré-op (Baseline)": "Preoperatorio (basal)",
   "2 semanas": "2 semanas",
@@ -61,35 +44,7 @@ const SPANISH_REPORT_CATALOG_LABELS: Record<string, string> = {
   "6 semanas (HA)": "6 semanas (HA)",
   "6 meses ★": "6 meses ★",
   "VAS Dor": "VAS Dolor",
-  "Tendão Patelar (BTB)": "Tendón patelar (BTB)",
-  "Isquiotibiais (Grácil + Semitendíneo)": "Isquiotibiales (Grácil + Semitendinoso)",
-  "Tendão Quadricipital": "Tendón cuadricipital",
-  "Tendão do Reto Femoral": "Tendón del recto femoral",
-  Grácil: "Grácil",
-  Semitendíneo: "Semitendinoso",
-  "Fibular Longo": "Peroneo largo",
-  Hemifibular: "Hemiperoneo",
-  Aloenxerto: "Aloinjerto",
-  "Ligamento Sintético (LARS)": "Ligamento sintético (LARS)",
   Outro: "Otro",
-  "Parafuso bioabsorvível": "Tornillo bioabsorbible",
-  "Parafuso metálico": "Tornillo metálico",
-  "Âncora de sutura": "Anclaje de sutura",
-  "Endoboton Ajustável": "Endobutton ajustable",
-  Poste: "Poste",
-  "Cortical fixation": "Fijación cortical",
-  Neutro: "Neutro",
-  Varo: "Varo",
-  Valgo: "Valgo",
-  Recurvatum: "Recurvatum",
-  "LET (Ligamento Extra-articular Tecidual)": "LET (Ligamento extraarticular tisular)",
-  "ALL (Ligamento Anterolateral)": "ALL (Ligamento anterolateral)",
-  "Ligamento Oblíquo Anterior (LOA)": "Ligamento oblicuo anterior (LOA)",
-  "Tenodese de MacIntosh": "Tenodesis de MacIntosh",
-  "Meniscectomia parcial": "Meniscectomía parcial",
-  "Sutura meniscal": "Sutura meniscal",
-  "Implante de raiz meniscal": "Implante de raíz meniscal",
-  "Aloenxerto meniscal": "Aloinjerto meniscal",
   Sedentário: "Sedentario",
   Recreacional: "Recreativo",
   Amador: "Aficionado",
@@ -103,12 +58,10 @@ const SPANISH_REPORT_CATALOG_LABELS: Record<string, string> = {
   "nível inferior": "nivel inferior",
   "esporte recreacional": "deporte recreativo",
   "sem esporte": "sin deporte",
-  "Ruptura do enxerto": "Ruptura del injerto",
   "Instabilidade residual": "Inestabilidad residual",
   "Rigidez articular": "Rigidez articular",
   Infecção: "Infección",
   Outra: "Otra",
-  Lind: "Lind",
 };
 
 const SPANISH_FOLLOWUP_PERIOD_LABELS: Record<string, string> = {
@@ -123,9 +76,7 @@ const SPANISH_FOLLOWUP_PERIOD_LABELS: Record<string, string> = {
 
 export function reportCatalogLabel(locale: Locale, canonicalValue: string): string {
   if (locale !== "es") return canonicalValue;
-  return SPANISH_REPORT_CATALOG_LABELS[canonicalValue]
-    ?? surgeryNewTraumaDisplayLabels.es[canonicalValue]
-    ?? canonicalValue;
+  return SPANISH_REPORT_CATALOG_LABELS[canonicalValue] ?? canonicalValue;
 }
 
 export function reportCatalogLabels(locale: Locale, canonicalValues: readonly string[]): string[] {
@@ -146,11 +97,6 @@ export function reportScaleLabel(locale: Locale, canonicalValue: string): string
 
 export function reportScaleLabels(locale: Locale, canonicalValues: readonly string[]): string[] {
   return canonicalValues.map((value) => reportScaleLabel(locale, value));
-}
-
-/** Presentation-only labels for controlled trauma lesion arrays. */
-export function reportLesionLabels(locale: Locale, canonicalValues: readonly string[]): string[] {
-  return reportCatalogLabels(locale, canonicalValues);
 }
 
 export function reportCatalogOptions(locale: Locale, canonicalValues: readonly string[]) {

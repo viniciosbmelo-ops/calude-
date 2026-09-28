@@ -23,35 +23,29 @@ describe("physiotherapy locale catalog", () => {
     expect(persisted).toEqual({ assessmentType: "retorno_esporte", option: "nao_apto", unit: "kgf" });
   });
 
-  it("localizes assessment names, fields, options, indicators and red flags", () => {
-    expect(physioClinicalLabel("es", ASSESSMENT_META.adm.label)).toBe("ADM (amplitud de movimiento)");
-    expect(physioClinicalLabel("es", ASSESSMENT_META.hop.label)).toBe("Pruebas de salto");
-    expect(physioClinicalLabel("es", ASSESSMENT_META.tug.label)).toBe("TUG (levantarse y caminar cronometrado)");
-    expect(physioClinicalLabel("es", ASSESSMENT_META.sts_30s.label)).toBe("Sentarse y levantarse en 30 s");
-    expect(physioClinicalLabel("es", ASSESSMENT_META.dor_carga.fields[0].label)).toBe("EVA en sentadilla declinada unipodal (0–10)");
+  it("localizes assessment names, fields and options", () => {
+    expect(Object.keys(ASSESSMENT_META)).toEqual(["retorno_esporte"]);
+    expect(physioClinicalLabel("es", ASSESSMENT_META.retorno_esporte.label)).toBe("Retorno al deporte");
     expect(physioClinicalLabel("es", ASSESSMENT_META.retorno_esporte.fields[0].label)).toBe("Decisión");
     expect(physioClinicalLabel("es", ASSESSMENT_META.retorno_esporte.fields[0].options![2].label)).toBe("No apto");
     expect(physioClinicalLabel("es", COMMON_FIELDS[0].label)).toBe("Observaciones");
-    expect(physioClinicalLabel("es", RED_FLAG_LABELS.quadriceps_lsi_below_90)).toBe("LSI de cuádriceps < 90 %");
-    expect(physioClinicalLabel("es", RED_FLAG_LABELS.hop_lsi_below_90)).toBe("LSI de salto < 90 %");
-    expect(physioClinicalLabel("es", computedLabel("lsi_hop_medio"))).toBe("LSI medio de las pruebas de salto");
-    expect(physioClinicalLabel("es", computedValueLabel("classificacao", "bom"))).toBe("Bueno");
+    expect(RED_FLAG_LABELS).toEqual({});
     expect(physioClinicalLabel("es", computedValueLabel("dentro_da_meta", true))).toBe("Sí");
   });
 
   it("keeps computed measurements and unknown professional text unchanged", () => {
-    expect(computedValueLabel("lsi_quadriceps", 87.4)).toBe("87.4");
+    expect(computedValueLabel("escore", 87.4)).toBe("87.4");
     expect(computedValueLabel("campo_livre", "Texto do profissional")).toBe("Texto do profissional");
     expect(computedValueLabel("campo_livre", "Bom")).toBe("Bom");
     expect(computedValueLabel("campo_livre", "Não")).toBe("Não");
     expect(isControlledComputedValue("campo_livre", "Bom")).toBe(false);
     expect(isControlledComputedValue("campo_livre", "Não")).toBe(false);
     expect(isControlledComputedValue("classificacao", "bom")).toBe(true);
-    expect(computedLabel("codigo_lca")).toBe("codigo_lca");
+    expect(computedLabel("campo_desconhecido")).toBe("campo_desconhecido");
   });
 
   it("preserves user text and clinical codes without a catalog entry", () => {
-    expect(physioClinicalLabel("es", "LCA")).toBe("LCA");
+    expect(physioClinicalLabel("es", "SH_CUFF")).toBe("SH_CUFF");
     expect(physioClinicalLabel("es", "Texto escrito pelo paciente")).toBe("Texto escrito pelo paciente");
   });
 });

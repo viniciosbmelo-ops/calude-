@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CASE_TYPE_BY_KEY } from "@workspace/clinical/web";
 import { useLocation } from "wouter";
 import { useGetAdminDashboard, type AdminDoctorWithStats } from "@workspace/api-client-react";
 import { useDoctorAction, useAllSurgeries } from "../queries";
@@ -422,12 +423,10 @@ export function ClinicalStaff() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {surgery.tiposProcedimento?.map((p, i) => (
-                              <Badge key={i} variant="outline" className="text-[10px] truncate max-w-[120px]" title={p}>{p}</Badge>
-                            ))}
-                            {surgery.ligamentosAcometidos?.map((l, i) => (
-                              <Badge key={`l-${i}`} className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] hover:bg-blue-100">{l}</Badge>
-                            ))}
+                            {surgery.tiposProcedimento?.map((p, i) => {
+                              const label = CASE_TYPE_BY_KEY.get(p)?.label ?? p;
+                              return <Badge key={i} variant="outline" className="text-[10px] truncate max-w-[120px]" title={label}>{label}</Badge>;
+                            })}
                           </div>
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">

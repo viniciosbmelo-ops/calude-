@@ -299,13 +299,17 @@ export default function FisioPacienteNovo() {
                   <SelectValue placeholder={t("selectDiagnosis")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>{t("knee")}</SelectLabel>
-                    {protocols?.map((p) => (
-                      <SelectItem key={p.code} value={p.code}>{clinicalLabel(p.name)}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectSeparator />
+                  {(protocols?.length ?? 0) > 0 && (
+                    <>
+                      <SelectGroup>
+                        <SelectLabel>{t("protocolsGroup")}</SelectLabel>
+                        {protocols?.map((p) => (
+                          <SelectItem key={p.code} value={p.code}>{clinicalLabel(p.name)}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                    </>
+                  )}
                   <SelectItem value="outro">{t("otherDescribe")}</SelectItem>
                 </SelectContent>
               </Select>

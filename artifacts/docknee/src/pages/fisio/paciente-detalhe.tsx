@@ -273,7 +273,7 @@ export default function FisioPacienteDetalhe() {
             </DialogContent>
           </Dialog>
 
-          {/* Nova avaliação (somente pacientes com protocolo de joelho) */}
+          {/* Nova avaliação (somente pacientes com protocolo publicado) */}
           {!isOutro && (
             <Dialog open={avOpen} onOpenChange={setAvOpen}>
               <DialogTrigger asChild>

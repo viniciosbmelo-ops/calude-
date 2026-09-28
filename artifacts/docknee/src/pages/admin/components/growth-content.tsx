@@ -369,7 +369,7 @@ export function GrowthContent() {
             <div><label className="text-xs font-semibold">{t("explicit.064")}</label><input type="number" step="0.01" name="budget" defaultValue={editingCampaign.budgetCents ? editingCampaign.budgetCents / 100 : ""} className="w-full border rounded p-2 text-sm mt-1" /></div>
             <div>
               <label className="text-xs font-semibold">{t("explicit.065")}</label>
-              <input name="utmCampaign" defaultValue={editingCampaign.utmCampaign ?? ""} placeholder="ex.: congresso_joelho_2026" className="w-full border rounded p-2 text-sm mt-1" />
+              <input name="utmCampaign" defaultValue={editingCampaign.utmCampaign ?? ""} placeholder="ex.: congresso_ombro_2026" className="w-full border rounded p-2 text-sm mt-1" />
               <p className="text-[11px] text-muted-foreground mt-1">{t("explicit.066")}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">

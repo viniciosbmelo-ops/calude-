@@ -6,6 +6,7 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { reportingDashboardMessages } from "@/locales/reporting-dashboard";
 import { reportCatalogLabel, reportCatalogOptions } from "@/locales/reporting-catalogs";
+import { CASE_TYPE_BY_KEY, CASE_TYPES } from "@workspace/clinical/web";
 import { documentText } from "@/locales/document-locales";
 import { sortByPtBrName } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,67 +27,34 @@ import {
 } from "recharts";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const TIPOS_PROCEDIMENTO = ["Lesão Ligamentar", "Lesão Meniscal", "Instabilidade Patelar", "Osteotomia", "Lesões Osteocondrais", "Artroplastias", "Ortobiológicos"];
-const LIGAMENTOS = ["LCA", "LCP", "CPL", "CPM", "LOA"];
-const TEMPOS = ["3 meses", "6 meses", "12 meses", "24 meses", "36 meses", "48 meses", "60 meses"];
-const ENXERTOS = [
-  "Tendão Patelar (BTB)",
-  "Isquiotibiais (Grácil + Semitendíneo)",
-  "Tendão Quadricipital",
-  "Tendão do Reto Femoral",
-  "Grácil",
-  "Semitendíneo",
-  "Fibular Longo",
-  "Hemifibular",
-  "Aloenxerto",
-  "Ligamento Sintético (LARS)",
-  "Outro",
-];
-const DIAMETROS = ["7mm", "7,5mm", "8mm", "8,5mm", "9mm", "9,5mm", "10mm", "10,5mm", "11mm", "Outro"];
-const FIXACOES_FEMORAIS = ["Endobutton", "Parafuso bioabsorvível", "Parafuso metálico", "Âncora de sutura", "Endoboton Ajustável", "Poste", "Outro"];
-const FIXACOES_TIBIAIS = ["Parafuso bioabsorvível", "Parafuso metálico", "Poste", "Cortical fixation", "Endoboton Ajustável", "Âncora de sutura", "Outro"];
-const ALINHAMENTOS = ["Neutro", "Varo", "Valgo", "Recurvatum"];
-const REFORCOS = ["LET (Ligamento Extra-articular Tecidual)", "ALL (Ligamento Anterolateral)", "Ligamento Oblíquo Anterior (LOA)", "Tenodese de MacIntosh"];
-const PROCEDIMENTOS_MENISCAIS = ["Meniscectomia parcial", "Sutura meniscal", "Implante de raiz meniscal", "Aloenxerto meniscal"];
+const CASE_TYPE_OPTIONS = CASE_TYPES.filter((c) => !c.freeOnly);
+const TEMPOS = ["Pré-operatório", "6 semanas", "3 meses", "6 meses", "1 ano"];
 const NIVEIS_ATIVIDADE = ["Sedentário", "Recreacional", "Amador", "Semi-profissional", "Profissional"];
 const LADOS = ["Direito", "Esquerdo"];
 
 const ESCALAS = [
-  { key: "ikdc", label: "IKDC", full: "IKDC Subjetivo", max: 100 },
-  { key: "lysholm", label: "Lysholm", full: "Lysholm", max: 100 },
-  { key: "tegner", label: "Tegner", full: "Tegner", max: 10 },
-  { key: "kujala", label: "Kujala", full: "Kujala", max: 100 },
   { key: "vasDor", label: "VAS", full: "VAS Dor", max: 10, invert: true },
-  { key: "aclRsi", label: "ACL-RSI", full: "ACL-RSI Retorno Esporte", max: 100 },
-  { key: "marx", label: "Marx", full: "Marx Atividade", max: 16 },
-  { key: "koos12", label: "KOOS-12", full: "KOOS-12 (versão abreviada)", max: 100 },
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FollowupRecord {
   id: number | null; surgeryId: number; tempo: string | null; dataAvaliacao: string | null;
-  ikdc: number | null; lysholm: number | null; tegner: number | null; kujala: number | null;
-  vasDor: number | null; aclRsi: number | null; marx: number | null;
-  koos12: number | null;
+  vasDor: number | null;
   retornoEsporte: boolean | null; nivelRetorno: string | null;
   falha: boolean | null; falhaType: string | null; observacoes: string | null;
   dataCirurgia: string | null; hospital: string | null;
-  tiposProcedimento: string[]; ligamentosAcometidos: string[];
-  enxerto: string | null; diametroEnxerto: string | null;
-  fixacaoFemoral: string | null; fixacaoTibial: string | null;
-  alinhamento: string | null; reforco: string | null; procedimentoRealizado: string | null;
+  regiao: string | null; tipoCaso: string | null; diagnostico: string | null;
+  tiposProcedimento: string[]; procedimentoRealizado: string | null;
   surgeryDoctorId: number;
   patientNome: string | null; patientSexo: string | null; patientLado: string | null;
-  patientNivelAtividade: string | null; patientEsportePivot: boolean;
+  patientNivelAtividade: string | null;
   patientBeighton: number | null; idade: number | null;
   doctorNome: string | null;
 }
 
 interface ScoreForm {
   tempo: string;
-  ikdc: string; lysholm: string; tegner: string; kujala: string; vasDor: string;
-  aclRsi: string; marx: string;
-  koos12: string;
+  vasDor: string;
   retornoEsporte: string; nivelRetorno: string; falha: string; falhaType: string;
   observacoes: string; dataAvaliacao: string;
 }
@@ -97,23 +65,14 @@ type FilterState = {
   retornoEsporte: string;
   falha: string;
   // Surgery
+  regiao: string;
   tipoCaso: string;
-  ligamentos: string[];
   dataInicio: string;
   dataFim: string;
   hospital: string;
-  alinhamento: string;
-  reforco: string;
-  procedimento: string;
-  // Technique
-  enxerto: string;
-  diametroEnxerto: string;
-  fixacaoFemoral: string;
-  fixacaoTibial: string;
   // Patient
   sexo: string;
   nivelAtividade: string;
-  esportePivot: string;
   lado: string;
   idadeMin: string;
   idadeMax: string;
@@ -123,11 +82,12 @@ type FilterState = {
 
 const EMPTY_FILTERS: FilterState = {
   tempo: "", retornoEsporte: "", falha: "",
-  tipoCaso: "", ligamentos: [], dataInicio: "", dataFim: "", hospital: "", alinhamento: "", reforco: "", procedimento: "",
-  enxerto: "", diametroEnxerto: "", fixacaoFemoral: "", fixacaoTibial: "",
-  sexo: "", nivelAtividade: "", esportePivot: "", lado: "", idadeMin: "", idadeMax: "",
+  regiao: "", tipoCaso: "", dataInicio: "", dataFim: "", hospital: "",
+  sexo: "", nivelAtividade: "", lado: "", idadeMin: "", idadeMax: "",
   medicoId: "",
 };
+
+const caseTypeLabel = (key: string) => CASE_TYPE_BY_KEY.get(key)?.label ?? key;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function scoreCell(v: number | null, max: number = 100, invert = false) {
@@ -252,8 +212,7 @@ export default function Reports() {
   });
   const [scoreForm, setScoreForm] = useState<ScoreForm>({
     tempo: "",
-    ikdc: "", lysholm: "", tegner: "", kujala: "", vasDor: "", aclRsi: "", marx: "",
-    koos12: "",
+    vasDor: "",
     retornoEsporte: "", nivelRetorno: "", falha: "", falhaType: "", observacoes: "", dataAvaliacao: "",
   });
 
@@ -261,13 +220,6 @@ export default function Reports() {
   const highlightEscala = urlEscala;
 
   const setFilter = (k: keyof FilterState, v: string) => setFilters(f => ({ ...f, [k]: v }));
-  const toggleLigamento = (lig: string) => setFilters(f => ({
-    ...f,
-    ligamentos: f.ligamentos.includes(lig)
-      ? f.ligamentos.filter(l => l !== lig)
-      : [...f.ligamentos, lig],
-  }));
-
   const buildQuery = (f: FilterState) => {
     const p = new URLSearchParams();
     (Object.entries(f) as [keyof FilterState, unknown][]).forEach(([k, v]) => {
@@ -309,10 +261,7 @@ export default function Reports() {
   const chartsRef = useRef<HTMLDivElement>(null);
 
   const applyFollowupFilters = () => {
-    setApplied({
-      ...filters,
-      ligamentos: [...filters.ligamentos],
-    });
+    setApplied({ ...filters });
     toast({ title: tx("filtersApplied"), description: tx("updatingReport") });
   };
 
@@ -339,12 +288,7 @@ export default function Reports() {
         return {
           tempo,
           n: recs.length,
-          ikdc: avg(recs.map(r => r.ikdc)) != null ? parseFloat(avg(recs.map(r => r.ikdc))!.toFixed(1)) : null,
-          lysholm: avg(recs.map(r => r.lysholm)) != null ? parseFloat(avg(recs.map(r => r.lysholm))!.toFixed(1)) : null,
-          tegner: avg(recs.map(r => r.tegner)) != null ? parseFloat(avg(recs.map(r => r.tegner))!.toFixed(2)) : null,
           vasDor: avg(recs.map(r => r.vasDor)) != null ? parseFloat(avg(recs.map(r => r.vasDor))!.toFixed(1)) : null,
-          aclRsi: avg(recs.map(r => r.aclRsi)) != null ? parseFloat(avg(recs.map(r => r.aclRsi))!.toFixed(1)) : null,
-          koos12: avg(recs.map(r => (r as any).koos12)) != null ? parseFloat(avg(recs.map(r => (r as any).koos12))!.toFixed(1)) : null,
           taxaRetorno: retRecs.length > 0
             ? parseFloat((retRecs.filter(r => r.retornoEsporte).length / retRecs.length * 100).toFixed(0))
             : null,
@@ -355,14 +299,16 @@ export default function Reports() {
       });
   }, [filtered]);
 
-  const ligamentData = useMemo(() => {
+  // Cirurgias (não avaliações) por tipo de caso
+  const caseTypeData = useMemo(() => {
+    const seen = new Set<number>();
     const counts = new Map<string, number>();
     for (const r of filtered) {
-      for (const l of r.ligamentosAcometidos) {
-        counts.set(l, (counts.get(l) ?? 0) + 1);
-      }
+      if (seen.has(r.surgeryId)) continue;
+      seen.add(r.surgeryId);
+      for (const key of r.tiposProcedimento) counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-    return [...counts.entries()].map(([name, value]) => ({ name, value }));
+    return [...counts.entries()].map(([key, value]) => ({ name: caseTypeLabel(key), value }));
   }, [filtered]);
 
   const PIE_COLORS = ["#1A365D", "#1FB6E1", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
@@ -488,7 +434,7 @@ export default function Reports() {
       pdf.addImage(imgData, "PNG", 10, topMargin, imgW, safeImgH);
       const result = await sharePdfOrDownload(
         pdf,
-        `relatorio_docknee_${new Date().toISOString().slice(0, 10)}.pdf`,
+        `relatorio_docsholder_${new Date().toISOString().slice(0, 10)}.pdf`,
         setPdfShareUrl,
       );
       toast(result.deferred
@@ -530,10 +476,7 @@ export default function Reports() {
     setEditRow(row);
     setScoreForm({
       tempo: row.tempo ?? "",
-      ikdc: row.ikdc?.toString() ?? "", lysholm: row.lysholm?.toString() ?? "",
-      tegner: row.tegner?.toString() ?? "", kujala: row.kujala?.toString() ?? "",
-      vasDor: row.vasDor?.toString() ?? "", aclRsi: row.aclRsi?.toString() ?? "",
-      marx: row.marx?.toString() ?? "", koos12: (row as any).koos12?.toString() ?? "",
+      vasDor: row.vasDor?.toString() ?? "",
       retornoEsporte: row.retornoEsporte == null ? "" : row.retornoEsporte ? "sim" : "nao",
       nivelRetorno: row.nivelRetorno ?? "", falha: row.falha == null ? "" : row.falha ? "sim" : "nao",
       falhaType: row.falhaType ?? "", observacoes: row.observacoes ?? "", dataAvaliacao: row.dataAvaliacao ?? "",
@@ -542,15 +485,11 @@ export default function Reports() {
 
   const saveScores = () => {
     if (!editRow) return;
-    const n = (s: string) => s === "" ? null : parseFloat(s);
     const ni = (s: string) => s === "" ? null : parseInt(s);
     const b = (s: string) => s === "" ? null : s === "sim";
     updateMut.mutate({ id: editRow.id, surgeryId: editRow.surgeryId, data: {
       tempo: scoreForm.tempo || "Pré-operatório",
-      ikdc: n(scoreForm.ikdc), lysholm: ni(scoreForm.lysholm), tegner: ni(scoreForm.tegner),
-      kujala: ni(scoreForm.kujala), vasDor: ni(scoreForm.vasDor),
-      aclRsi: n(scoreForm.aclRsi), marx: ni(scoreForm.marx),
-      koos12: n(scoreForm.koos12),
+      vasDor: ni(scoreForm.vasDor),
       retornoEsporte: b(scoreForm.retornoEsporte), nivelRetorno: scoreForm.nivelRetorno || null,
       falha: b(scoreForm.falha), falhaType: scoreForm.falhaType || null,
       observacoes: scoreForm.observacoes || null, dataAvaliacao: scoreForm.dataAvaliacao || null,
@@ -563,40 +502,32 @@ export default function Reports() {
       return;
     }
     const isAdminExport = user?.isAdmin ?? false;
-    const headers = [isAdminExport ? tx("csvSurgeryId") : tx("csvPatient"), tx("csvSex"), tx("csvAge"), tx("csvSide"), tx("csvActivityLevel"), tx("csvPivotSport"),
-      tx("csvDoctor"), tx("csvType"), tx("csvLigament"), tx("csvHospital"), tx("csvAlignment"), tx("csvGraft"), tx("csvDiameter"), tx("csvFemoralFixation"), tx("csvTibialFixation"), tx("csvReinforcement"),
-      tx("csvSurgeryDate"), tx("csvFollowupTime"), tx("csvAssessmentDate"),
-      "IKDC", "Lysholm", "Tegner", "Kujala", tx("csvVasPain"), "ACL-RSI", "Marx",
-      "KOOS-12",
+    const headers = [isAdminExport ? tx("csvSurgeryId") : tx("csvPatient"), tx("csvSex"), tx("csvAge"), tx("csvSide"), tx("csvActivityLevel"),
+      tx("csvDoctor"), tx("region"), tx("csvType"), tx("csvDiagnosis"), tx("csvHospital"),
+      tx("csvSurgeryDate"), tx("csvFollowupTime"), tx("csvAssessmentDate"), tx("csvVasPain"),
       tx("csvReturnSport"), tx("csvReturnLevel"), tx("csvFailure"), tx("csvFailureType")];
+    const yesNo = (v: boolean | null) => v == null ? "" : v ? documentText(locale, "yes") : documentText(locale, "no");
     const rows = filtered.map(r => [
       isAdminExport ? tx("surgeryId", { id: r.surgeryId }) : (r.patientNome ?? ""), r.patientSexo ?? "", r.idade ?? "", r.patientLado ?? "",
-      r.patientNivelAtividade ?? "", r.patientEsportePivot ? documentText(locale, "yes") : documentText(locale, "no"),
-      r.doctorNome ?? "", r.tiposProcedimento.join("; "), r.ligamentosAcometidos.join("; "),
-      r.hospital ?? "", r.alinhamento ?? "", r.enxerto ?? "", r.diametroEnxerto ?? "",
-      r.fixacaoFemoral ?? "", r.fixacaoTibial ?? "", r.reforco ?? "",
-      r.dataCirurgia ?? "", r.tempo, r.dataAvaliacao ?? "",
-      r.ikdc ?? "", r.lysholm ?? "", r.tegner ?? "", r.kujala ?? "", r.vasDor ?? "", r.aclRsi ?? "", r.marx ?? "",
-      (r as any).koos12 ?? "",
-      r.retornoEsporte == null ? "" : r.retornoEsporte ? documentText(locale, "yes") : documentText(locale, "no"),
-      r.nivelRetorno ?? "", r.falha == null ? "" : r.falha ? documentText(locale, "yes") : documentText(locale, "no"), r.falhaType ?? "",
+      r.patientNivelAtividade ?? "",
+      r.doctorNome ?? "", regionLabel(r.regiao), r.tiposProcedimento.map(caseTypeLabel).join("; "), r.diagnostico ?? "",
+      r.hospital ?? "", r.dataCirurgia ?? "", r.tempo, r.dataAvaliacao ?? "", r.vasDor ?? "",
+      yesNo(r.retornoEsporte), r.nivelRetorno ?? "", yesNo(r.falha), r.falhaType ?? "",
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "relatorio_docknee.csv"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = "relatorio_docsholder.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
   // Summary stats
-  const avgIkdc = avg(filtered.map(r => r.ikdc));
-  const avgLysholm = avg(filtered.map(r => r.lysholm));
-  const avgTegner = avg(filtered.map(r => r.tegner));
   const avgVas = avg(filtered.map(r => r.vasDor));
   const withRetorno = filtered.filter(r => r.retornoEsporte != null);
   const taxaRetorno = withRetorno.length > 0 ? (withRetorno.filter(r => r.retornoEsporte).length / withRetorno.length * 100) : null;
   const taxaFalha = filtered.length > 0 ? (filtered.filter(r => r.falha).length / filtered.length * 100) : null;
 
+  const regionLabel = (value: string | null) => value === "shoulder" ? tx("shoulder") : value === "elbow" ? tx("elbow") : "—";
   const sf = scoreForm;
   const setSf = (k: keyof ScoreForm, v: string) => setScoreForm(p => ({ ...p, [k]: v }));
 
@@ -851,62 +782,32 @@ export default function Reports() {
 
           {/* Cirurgia */}
            <FilterSection title={tx("surgicalData")} defaultOpen>
-              <FilterSelect label={tx("caseType")} value={filters.tipoCaso} options={TIPOS_PROCEDIMENTO} onChange={v => setFilter("tipoCaso", v)} placeholder={tx("all")} locale={locale} />
-            <div className="space-y-1 sm:col-span-2 lg:col-span-2">
-              <Label className="text-xs text-muted-foreground">{tx("affectedLigaments")}</Label>
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {LIGAMENTOS.map(lig => {
-                  const active = filters.ligamentos.includes(lig);
-                  return (
-                    <button
-                      key={lig}
-                      type="button"
-                      onClick={() => toggleLigamento(lig)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-                      }`}
-                    >
-                      {lig}
-                    </button>
-                  );
-                })}
-                {filters.ligamentos.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setFilters(f => ({ ...f, ligamentos: [] }))}
-                    className="text-xs px-2 py-1 text-muted-foreground hover:text-destructive"
-                  >
-                    {tx("clear")}
-                  </button>
-                )}
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{tx("region")}</Label>
+              <Select value={filters.regiao} onValueChange={v => setFilters(f => ({ ...f, regiao: v === "_all" ? "" : v, tipoCaso: "" }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={tx("all")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">{tx("all")}</SelectItem>
+                  <SelectItem value="shoulder">{tx("shoulder")}</SelectItem>
+                  <SelectItem value="elbow">{tx("elbow")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-             <FilterSelect label={tx("frontalAlignment")} value={filters.alinhamento} options={ALINHAMENTOS} onChange={v => setFilter("alinhamento", v)} placeholder={tx("all")} locale={locale} />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{tx("caseType")}</Label>
+              <Select value={filters.tipoCaso} onValueChange={v => setFilter("tipoCaso", v === "_all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={tx("all")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">{tx("all")}</SelectItem>
+                  {CASE_TYPE_OPTIONS.filter(c => !filters.regiao || c.region === filters.regiao).map(c => (
+                    <SelectItem key={c.key} value={c.key}>{c.label}{filters.regiao ? "" : ` (${c.region === "shoulder" ? tx("shoulder") : tx("elbow")})`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">{tx("hospitalContains")}</Label>
               <Input className="h-8 text-xs" placeholder={tx("hospitalExample")} value={filters.hospital} onChange={e => setFilter("hospital", e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">{tx("meniscalProcedure")}</Label>
-              <Select value={filters.procedimento} onValueChange={v => setFilter("procedimento", v === "_all" ? "" : v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={tx("all")} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">{tx("all")}</SelectItem>
-                  {reportCatalogOptions(locale, PROCEDIMENTOS_MENISCAIS).map(({ value, label }) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">{tx("extraArticularReinforcement")}</Label>
-              <Select value={filters.reforco} onValueChange={v => setFilter("reforco", v === "_all" ? "" : v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={tx("all")} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">{tx("all")}</SelectItem>
-                  {reportCatalogOptions(locale, REFORCOS).map(({ value, label }) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">{tx("surgeryFrom")}</Label>
@@ -918,15 +819,7 @@ export default function Reports() {
             </div>
           </FilterSection>
 
-          {/* Técnica */}
-           <FilterSection title={tx("surgicalTechnique")}>
-              <FilterSelect label={tx("graftType")} value={filters.enxerto} options={ENXERTOS} onChange={v => setFilter("enxerto", v)} placeholder={tx("all")} locale={locale} />
-              <FilterSelect label={tx("graftDiameter")} value={filters.diametroEnxerto} options={DIAMETROS} onChange={v => setFilter("diametroEnxerto", v)} placeholder={tx("all")} locale={locale} />
-              <FilterSelect label={tx("femoralFixation")} value={filters.fixacaoFemoral} options={FIXACOES_FEMORAIS} onChange={v => setFilter("fixacaoFemoral", v)} placeholder={tx("all")} locale={locale} />
-              <FilterSelect label={tx("tibialFixation")} value={filters.fixacaoTibial} options={FIXACOES_TIBIAIS} onChange={v => setFilter("fixacaoTibial", v)} placeholder={tx("all")} locale={locale} />
-          </FilterSection>
-
-          {/* Paciente / Fatores de risco */}
+          {/* Paciente */}
            <FilterSection title={tx("patientRiskFactors")}>
              <FilterSelect label={tx("sex")} value={filters.sexo} options={["Masculino", "Feminino"]} onChange={v => setFilter("sexo", v)} placeholder={tx("all")} locale={locale} />
             <div className="space-y-1">
@@ -939,17 +832,6 @@ export default function Reports() {
             </div>
              <FilterSelect label={tx("operatedSide")} value={filters.lado} options={LADOS} onChange={v => setFilter("lado", v)} placeholder={tx("all")} locale={locale} />
              <FilterSelect label={tx("activityLevel")} value={filters.nivelAtividade} options={NIVEIS_ATIVIDADE} onChange={v => setFilter("nivelAtividade", v)} placeholder={tx("all")} locale={locale} />
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">{tx("pivotSport")}</Label>
-              <Select value={filters.esportePivot} onValueChange={v => setFilter("esportePivot", v === "_all" ? "" : v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={tx("all")} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">{tx("all")}</SelectItem>
-                  <SelectItem value="true">{tx("yesPivotSport")}</SelectItem>
-                  <SelectItem value="false">{tx("no")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </FilterSection>
 
           {/* Admin */}
@@ -1134,11 +1016,11 @@ export default function Reports() {
       {/* Summary Cards */}
       <div className="max-w-7xl mx-auto">
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Card className="border-border shadow-sm bg-primary text-primary-foreground">
               <CardContent className="pt-4 pb-4">
                 <div className="text-xs text-primary-foreground/70 mb-1">{tx("followups")}</div>
@@ -1147,9 +1029,6 @@ export default function Reports() {
               </CardContent>
             </Card>
             {[
-              { label: tx("averageIkdc"), val: fmtAvg(avgIkdc), unit: "/100" },
-              { label: tx("averageLysholm"), val: fmtAvg(avgLysholm, 0), unit: "/100" },
-              { label: tx("averageTegner"), val: fmtAvg(avgTegner), unit: "/10" },
               { label: tx("averageVas"), val: fmtAvg(avgVas, 1), unit: "/10" },
             ].map(c => (
               <Card key={c.label} className="border-border shadow-sm">
@@ -1197,52 +1076,39 @@ export default function Reports() {
 
             {/* Row 1: Line chart + Pie chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Evolution Line Chart */}
+              {/* Dor média por período */}
               <div className="lg:col-span-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{tx("scalesEvolution")}</p>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={chartData} margin={{ top: 4, right: 16, left: -10, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="tempo" tickFormatter={(value) => reportCatalogLabel(locale, String(value))} tick={{ fontSize: 9 }} angle={-30} textAnchor="end" height={48} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
-                    <Tooltip
-                      formatter={(val: any, name: string) => [val != null ? val.toFixed(1) : "—", name]}
-                      labelFormatter={(value) => reportCatalogLabel(locale, String(value))}
-                      labelStyle={{ fontSize: 11, fontWeight: 600 }}
-                      contentStyle={{ fontSize: 11 }}
-                    />
-                    <Legend iconSize={10} wrapperStyle={{ fontSize: 10 }} />
-                    {chartData.some(d => d.ikdc != null) && (
-                      <Line type="monotone" dataKey="ikdc" name="IKDC" stroke="#1A365D" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    )}
-                    {chartData.some(d => d.lysholm != null) && (
-                      <Line type="monotone" dataKey="lysholm" name="Lysholm" stroke="#1FB6E1" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    )}
-                    {chartData.some(d => d.aclRsi != null) && (
-                      <Line type="monotone" dataKey="aclRsi" name="ACL-RSI" stroke="#10B981" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 3 }} connectNulls />
-                    )}
-                    {chartData.some(d => (d as any).koos12 != null) && (
-                      <Line type="monotone" dataKey="koos12" name="KOOS-12" stroke="#8B5CF6" strokeWidth={2} strokeDasharray="2 2" dot={{ r: 3 }} connectNulls />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{tx("averageVasPain")}</p>
+                {chartData.some(d => d.vasDor != null) ? (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={chartData} margin={{ top: 4, right: 16, left: -10, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="tempo" tickFormatter={(value) => reportCatalogLabel(locale, String(value))} tick={{ fontSize: 9 }} angle={-30} textAnchor="end" height={48} />
+                      <YAxis domain={[0, 10]} tick={{ fontSize: 9 }} />
+                      <Tooltip formatter={(v: any) => [v?.toFixed(1), tx("vasPain")]} labelFormatter={(value) => reportCatalogLabel(locale, String(value))} contentStyle={{ fontSize: 11 }} />
+                      <Line type="monotone" dataKey="vasDor" name="VAS" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[260px] flex items-center justify-center text-xs text-muted-foreground">{tx("noData")}</div>
+                )}
               </div>
 
-              {/* Ligament Pie Chart */}
+              {/* Distribuição por tipo de caso */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{tx("ligamentDistribution")}</p>
-                {ligamentData.length > 0 ? (
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{tx("caseTypeDistribution")}</p>
+                {caseTypeData.length > 0 ? (
                   <>
                     <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
-                        <Pie data={ligamentData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                          {ligamentData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                        <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                          {caseTypeData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip formatter={(v: any) => [v, tx("surgeries")]} contentStyle={{ fontSize: 11 }} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="flex flex-wrap gap-2 justify-center mt-2">
-                      {ligamentData.map((d, i) => (
+                      {caseTypeData.map((d, i) => (
                         <div key={d.name} className="flex items-center gap-1.5 text-xs">
                           <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
                           <span>{d.name}: <strong>{d.value}</strong></span>
@@ -1256,7 +1122,7 @@ export default function Reports() {
               </div>
             </div>
 
-            {/* Row 2: Return to sport + VAS + Tegner */}
+            {/* Row 2: Return to sport */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
               {/* Return bar chart */}
               {chartData.some(d => d.taxaRetorno != null) && (
@@ -1276,35 +1142,6 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* VAS + Tegner mini charts */}
-              <div className="space-y-4">
-                {chartData.some(d => d.vasDor != null) && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{tx("averageVasPain")}</p>
-                    <ResponsiveContainer width="100%" height={90}>
-                      <LineChart data={chartData} margin={{ top: 2, right: 8, left: -20, bottom: 2 }}>
-                        <XAxis dataKey="tempo" tickFormatter={(value) => reportCatalogLabel(locale, String(value))} tick={{ fontSize: 8 }} angle={-30} textAnchor="end" height={36} />
-                        <YAxis domain={[0, 10]} tick={{ fontSize: 8 }} />
-                        <Tooltip formatter={(v: any) => [v?.toFixed(1), tx("vasPain")]} labelFormatter={(value) => reportCatalogLabel(locale, String(value))} contentStyle={{ fontSize: 10 }} />
-                        <Line type="monotone" dataKey="vasDor" name="VAS" stroke="#EF4444" strokeWidth={2} dot={{ r: 2 }} connectNulls />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                {chartData.some(d => d.tegner != null) && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{tx("averageTegnerScore")}</p>
-                    <ResponsiveContainer width="100%" height={90}>
-                      <LineChart data={chartData} margin={{ top: 2, right: 8, left: -20, bottom: 2 }}>
-                        <XAxis dataKey="tempo" tickFormatter={(value) => reportCatalogLabel(locale, String(value))} tick={{ fontSize: 8 }} angle={-30} textAnchor="end" height={36} />
-                        <YAxis domain={[0, 10]} tick={{ fontSize: 8 }} />
-                        <Tooltip formatter={(v: any) => [v?.toFixed(1), "Tegner"]} labelFormatter={(value) => reportCatalogLabel(locale, String(value))} contentStyle={{ fontSize: 10 }} />
-                        <Line type="monotone" dataKey="tegner" name="Tegner" stroke="#F59E0B" strokeWidth={2} dot={{ r: 2 }} connectNulls />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Number of cases per period */}
@@ -1342,8 +1179,8 @@ export default function Reports() {
                   <TableRow className="bg-muted/30">
                     <TableHead className="whitespace-nowrap text-xs w-8">#</TableHead>
                     <TableHead className="whitespace-nowrap text-xs">{tx("age")}</TableHead>
-                    <TableHead className="whitespace-nowrap text-xs">{tx("ligament")}</TableHead>
-                    <TableHead className="whitespace-nowrap text-xs">{tx("graft")}</TableHead>
+                    <TableHead className="whitespace-nowrap text-xs">{tx("region")}</TableHead>
+                    <TableHead className="whitespace-nowrap text-xs">{tx("caseType")}</TableHead>
                     {user?.isAdmin && <TableHead className="whitespace-nowrap text-xs">{tx("doctor")}</TableHead>}
                     <TableHead className="whitespace-nowrap text-xs">{tx("surgery")}</TableHead>
                     <TableHead className="whitespace-nowrap text-xs">{tx("followupTime")}</TableHead>
@@ -1372,14 +1209,16 @@ export default function Reports() {
                         {row.idade != null && <span className="ml-1">{row.idade}a</span>}
                       </TableCell>
                       <TableCell onClick={!user?.isAdmin ? () => window.open(`/surgeries/${row.surgeryId}`, "_blank") : undefined}>
-                        <div className="flex flex-wrap gap-1">
-                          {row.ligamentosAcometidos.map(l => <Badge key={l} className="text-xs bg-primary/10 text-primary border-0">{l}</Badge>)}
-                        </div>
+                        <span className="text-xs">{regionLabel(row.regiao)}</span>
                       </TableCell>
                       <TableCell
                         className="text-xs whitespace-nowrap text-muted-foreground"
                         onClick={!user?.isAdmin ? () => window.open(`/surgeries/${row.surgeryId}`, "_blank") : undefined}
-                      >{row.enxerto ? reportCatalogLabel(locale, row.enxerto) : "—"}</TableCell>
+                      >
+                        <div className="flex flex-wrap gap-1">
+                          {row.tiposProcedimento.map(k => <Badge key={k} className="text-xs bg-primary/10 text-primary border-0">{caseTypeLabel(k)}</Badge>)}
+                        </div>
+                      </TableCell>
                       {user?.isAdmin && (
                         <TableCell
                           className="text-xs whitespace-nowrap"
@@ -1477,45 +1316,12 @@ export default function Reports() {
                 </div>
                 <div className="col-span-2">
                   <span className="text-muted-foreground">{tx("type")} </span>
-                  <span className="font-medium">{(editRow.tiposProcedimento ?? []).map(value => reportCatalogLabel(locale, value)).join(", ") || "—"}</span>
+                  <span className="font-medium">{(editRow.tiposProcedimento ?? []).map(caseTypeLabel).join(", ") || "—"}</span>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">{tx("ligaments")} </span>
-                  {(editRow.ligamentosAcometidos ?? []).length > 0
-                    ? (editRow.ligamentosAcometidos ?? []).map(l => (
-                        <Badge key={l} className="mr-1 text-xs h-4 px-1.5 bg-primary/10 text-primary border-0">{l}</Badge>
-                      ))
-                    : <span className="font-medium">—</span>}
-                </div>
-                {editRow.enxerto && (
-                  <div>
-                    <span className="text-muted-foreground">{tx("graft")}: </span>
-                    <span className="font-medium">{reportCatalogLabel(locale, editRow.enxerto)}</span>
-                    {editRow.diametroEnxerto && <span className="text-muted-foreground ml-1">({editRow.diametroEnxerto})</span>}
-                  </div>
-                )}
-                {editRow.fixacaoFemoral && (
-                  <div>
-                    <span className="text-muted-foreground">{tx("femoralFixationShort")} </span>
-                    <span className="font-medium">{reportCatalogLabel(locale, editRow.fixacaoFemoral)}</span>
-                  </div>
-                )}
-                {editRow.fixacaoTibial && (
-                  <div>
-                    <span className="text-muted-foreground">{tx("tibialFixationShort")} </span>
-                    <span className="font-medium">{reportCatalogLabel(locale, editRow.fixacaoTibial)}</span>
-                  </div>
-                )}
-                {editRow.alinhamento && (
-                  <div>
-                    <span className="text-muted-foreground">{tx("alignment")} </span>
-                    <span className="font-medium">{reportCatalogLabel(locale, editRow.alinhamento)}</span>
-                  </div>
-                )}
-                {editRow.reforco && (
+                {editRow.diagnostico && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground">{tx("reinforcement")} </span>
-                    <span className="font-medium">{reportCatalogLabel(locale, editRow.reforco)}</span>
+                    <span className="text-muted-foreground">{tx("csvDiagnosis")}: </span>
+                    <span className="font-medium">{editRow.diagnostico}</span>
                   </div>
                 )}
                 {editRow.patientNivelAtividade && (
@@ -1542,7 +1348,7 @@ export default function Reports() {
                 <Select value={sf.tempo} onValueChange={v => setSf("tempo", v)}>
                   <SelectTrigger><SelectValue placeholder={tx("selectPeriod")} /></SelectTrigger>
                   <SelectContent>
-                    {["Pré-operatório","2 semanas","30 dias","45 dias","60 dias","3 meses","6 meses","9 meses","12 meses","18 meses","24 meses","36 meses","48 meses","60 meses"].map(t => (
+                    {TEMPOS.map(t => (
                       <SelectItem key={t} value={t}>{reportCatalogLabel(locale, t)}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1557,29 +1363,10 @@ export default function Reports() {
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{tx("mainScales")}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  { key: "ikdc" as const, label: tx("ikdcSubjective"), min: 0, max: 100, step: 0.1, unit: "/100" },
-                  { key: "lysholm" as const, label: "Lysholm", min: 0, max: 100, step: 1, unit: "/100" },
-                  { key: "tegner" as const, label: "Tegner", min: 0, max: 10, step: 1, unit: "/10" },
-                  { key: "kujala" as const, label: tx("kujalaPatellar"), min: 0, max: 100, step: 1, unit: "/100" },
-                  { key: "vasDor" as const, label: tx("vasPain"), min: 0, max: 10, step: 1, unit: "/10" },
-                  { key: "aclRsi" as const, label: tx("aclRsiReturnSport"), min: 0, max: 100, step: 0.1, unit: "/100" },
-                  { key: "marx" as const, label: tx("marxActivity"), min: 0, max: 16, step: 1, unit: "/16" },
-                ].map(({ key, label, min, max, step, unit }) => (
-                  <div key={key} className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">{label} <span className="opacity-50">{unit}</span></Label>
-                    <Input type="number" min={min} max={max} step={step} value={sf[key]} onChange={e => setSf(key, e.target.value)} placeholder="—" className="h-8" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">KOOS-12</p>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">{tx("koosTotal")} <span className="opacity-50">/100</span></Label>
-                <Input type="number" min={0} max={100} step={0.1} value={sf["koos12"]} onChange={e => setSf("koos12", e.target.value)} placeholder="—" className="h-8" />
-                <p className="text-xs text-muted-foreground opacity-60">{tx("koosFormula")}</p>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{tx("vasPain")} <span className="opacity-50">/10</span></Label>
+                  <Input type="number" min={0} max={10} step={1} value={sf.vasDor} onChange={e => setSf("vasDor", e.target.value)} placeholder="—" className="h-8" />
+                </div>
               </div>
             </div>
 
@@ -1634,7 +1421,6 @@ export default function Reports() {
                       <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">—</SelectItem>
-                        <SelectItem value="Ruptura do enxerto">{reportCatalogLabel(locale, "Ruptura do enxerto")}</SelectItem>
                         <SelectItem value="Instabilidade residual">{reportCatalogLabel(locale, "Instabilidade residual")}</SelectItem>
                         <SelectItem value="Rigidez articular">{reportCatalogLabel(locale, "Rigidez articular")}</SelectItem>
                         <SelectItem value="Infecção">{reportCatalogLabel(locale, "Infecção")}</SelectItem>

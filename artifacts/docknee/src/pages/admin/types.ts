@@ -41,7 +41,6 @@ export interface AllSurgery {
   hospital: string | null;
   tipoCaso: string | null;
   tiposProcedimento: string[];
-  ligamentosAcometidos: string[];
   createdAt: string;
   doctorId: number;
   doctorNome: string | null;

@@ -174,7 +174,6 @@ export default function NewShoulderSurgery() {
       regiao: region,
       tipoCaso: typeLabels.join(" + "),
       tiposProcedimento: tipos,
-      ligamentosAcometidos: [],
       diagnostico: diagnosisText(diagnoses),
       procedimentoRealizado: procedimentos.map((p) => procedureName(p)).join(", "),
       observacoes,

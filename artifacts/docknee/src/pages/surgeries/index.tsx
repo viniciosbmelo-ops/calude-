@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
-import { surgeryNewDisplayLabels } from "@/locales/surgery-new";
+import { CASE_TYPE_BY_KEY } from "@workspace/clinical/web";
 import { surgeryListMessages } from "@/locales/surgery-routes";
 import {
   AlertDialog,
@@ -27,7 +27,7 @@ import {
 export default function SurgeriesList() {
   const t = useScopedTranslations(surgeryListMessages);
   const { locale, formatDate } = useLanguage();
-  const displayLabel = (value: string) => surgeryNewDisplayLabels[locale][value] ?? value;
+  const displayLabel = (value: string) => CASE_TYPE_BY_KEY.get(value)?.label ?? value;
   const { data: surgeries, isLoading } = useListSurgeries();
   const deleteMutation = useDeleteSurgery();
   const queryClient = useQueryClient();

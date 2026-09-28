@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import type { Locale } from "./i18n";
 import { documentDate, documentText } from "@/locales/document-locales";
+import { CASE_TYPE_BY_KEY } from "@workspace/clinical/web";
 
 export type SurgicalConsentDoctor = {
   nome?: string | null;
@@ -17,9 +18,7 @@ export type SurgicalConsentSurgery = {
   tipoCaso?: string | null;
   diagnostico?: string | null;
   tiposProcedimento?: string[] | null;
-  ligamentosAcometidos?: string[] | null;
   procedimentoRealizado?: string | null;
-  procedimentosDetalhados?: string | null;
   patient?: {
     nome?: string | null;
     cpf?: string | null;
@@ -30,12 +29,6 @@ export type SurgicalConsentSurgery = {
 };
 
 type ConsentFamily =
-  | "artroplastia"
-  | "meniscal"
-  | "ligamentar"
-  | "osteotomia"
-  | "osteocondral"
-  | "patelar"
   | "fratura"
   | "tendao"
   | "ortobiologico"
@@ -63,12 +56,6 @@ export type SurgicalConsentDocument = {
 };
 
 const FAMILY_ORDER: ConsentFamily[] = [
-  "artroplastia",
-  "ligamentar",
-  "meniscal",
-  "patelar",
-  "osteotomia",
-  "osteocondral",
   "fratura",
   "tendao",
   "ortobiologico",
@@ -76,74 +63,6 @@ const FAMILY_ORDER: ConsentFamily[] = [
 ];
 
 const FAMILY_SECTIONS_PT: Record<ConsentFamily, Omit<ConsentSection, "family">> = {
-  artroplastia: {
-    title: "Artroplastia do joelho",
-    explanation:
-      "A artroplastia substitui superfícies articulares comprometidas por componentes protéticos, com o objetivo de aliviar dor, corrigir deformidade e melhorar a função. A extensão da cirurgia, a necessidade de revisão, enxerto, hastes ou outros componentes poderá ser ajustada conforme os achados clínicos e intraoperatórios.",
-    risks: [
-      "dor residual, rigidez, limitação de movimento ou necessidade de reabilitação prolongada",
-      "infecção, sangramento, hematoma, necessidade de transfusão ou nova abordagem cirúrgica",
-      "trombose venosa, embolia pulmonar e complicações clínicas relacionadas ao período de imobilização",
-      "instabilidade, desalinhamento, fratura ao redor da prótese, soltura, desgaste ou falha de componentes",
-      "necessidade de revisão da prótese ou de outros procedimentos ao longo do acompanhamento",
-    ],
-  },
-  ligamentar: {
-    title: "Reconstrução ou reparo ligamentar",
-    explanation:
-      "O procedimento busca reparar ou reconstruir ligamentos do joelho para restaurar estabilidade e função. Poderão ser utilizados enxertos do próprio paciente, de banco de tecidos ou outros materiais adequados, além de túneis ósseos, implantes e métodos de fixação conforme a indicação.",
-    risks: [
-      "falha do reparo ou do enxerto, nova instabilidade, ruptura recorrente ou necessidade de revisão",
-      "dor, dormência, lesão de nervos ou vasos, rigidez e perda de força muscular",
-      "complicações da área de retirada do enxerto, quando aplicável",
-      "problemas relacionados a túneis, implantes ou fixações, incluindo necessidade de retirada ou revisão",
-      "restrição temporária de atividades e risco de lesão em retorno precoce ao esporte",
-    ],
-  },
-  meniscal: {
-    title: "Procedimento artroscópico para lesão meniscal",
-    explanation:
-      "A artroscopia permite tratar lesões meniscais e outras alterações internas do joelho por pequenas incisões. Conforme o padrão e a qualidade do tecido, pode ser indicada sutura, regularização, ressecção parcial ou outra conduta técnica apropriada.",
-    risks: [
-      "persistência ou retorno de dor, derrame, bloqueio ou sintomas mecânicos",
-      "falha da sutura ou necessidade de nova artroscopia, meniscectomia complementar ou outro tratamento",
-      "progressão de desgaste articular, especialmente quando há perda de tecido meniscal",
-      "infecção, sangramento, trombose, rigidez ou lesão de estruturas neurovasculares",
-    ],
-  },
-  osteotomia: {
-    title: "Osteotomia do joelho",
-    explanation:
-      "A osteotomia corrige o eixo do membro por meio de corte controlado do osso, podendo envolver tíbia, fêmur ou ambos, com fixação por placas, parafusos, enxerto ósseo ou outros materiais. O planejamento poderá ser ajustado durante o procedimento para alcançar correção segura e adequada.",
-    risks: [
-      "atraso de consolidação, pseudoartrose, perda ou excesso de correção e necessidade de nova cirurgia",
-      "dor ou incômodo por placas e parafusos, com eventual necessidade de retirada de material",
-      "fratura, sangramento, infecção, trombose, rigidez ou lesão de nervos e vasos",
-      "alteração de carga, limitação funcional temporária e necessidade de reabilitação e proteção de peso",
-    ],
-  },
-  osteocondral: {
-    title: "Tratamento de lesão osteocondral",
-    explanation:
-      "O tratamento busca abordar lesões de cartilagem e osso subcondral. Dependendo da lesão, podem ser empregados desbridamento, micro ou nanofraturas, fixação, enxertos osteocondrais, mosaicoplastia, membranas ou outros recursos. A técnica definitiva depende da extensão e viabilidade do tecido observadas no procedimento.",
-    risks: [
-      "integração incompleta, falha do reparo ou do enxerto, persistência de dor e limitação funcional",
-      "progressão de desgaste articular, necessidade de proteção de carga e reabilitação prolongada",
-      "necessidade de procedimento complementar, nova artroscopia, enxerto adicional ou conversão de técnica",
-      "infecção, sangramento, trombose, rigidez ou lesão de estruturas neurovasculares",
-    ],
-  },
-  patelar: {
-    title: "Tratamento de instabilidade patelar",
-    explanation:
-      "O procedimento busca tratar episódios de instabilidade da patela e fatores anatômicos associados, podendo incluir reconstruções ligamentares, realinhamento do mecanismo extensor, osteotomias, trocleoplastia ou outras técnicas indicadas.",
-    risks: [
-      "recidiva de instabilidade, dor anterior, crepitação ou persistência de limitação funcional",
-      "rigidez, excesso de tensão, alteração do rastreamento patelar ou necessidade de revisão",
-      "fratura patelar, problemas com enxerto, implantes ou fixações e necessidade de retirada de material",
-      "infecção, sangramento, trombose ou lesão de nervos e vasos",
-    ],
-  },
   fratura: {
     title: "Tratamento cirúrgico de fratura",
     explanation:
@@ -160,7 +79,7 @@ const FAMILY_SECTIONS_PT: Record<ConsentFamily, Omit<ConsentSection, "family">> 
     explanation:
       "O procedimento busca reparar ou reconstruir o tendão lesionado, podendo incluir suturas, âncoras, enxertos, reforços ou outros materiais. A estratégia final dependerá da qualidade do tecido e da extensão da lesão.",
     risks: [
-      "nova ruptura, alongamento, perda de força ou déficit de extensão do joelho",
+      "nova ruptura, alongamento, perda de força ou déficit funcional",
       "rigidez, aderências, dor persistente, alteração de sensibilidade ou necessidade de revisão",
       "infecção, sangramento, trombose ou lesão de nervos e vasos",
       "necessidade de imobilização, limitação de carga e reabilitação progressiva",
@@ -177,7 +96,7 @@ const FAMILY_SECTIONS_PT: Record<ConsentFamily, Omit<ConsentSection, "family">> 
     ],
   },
   outros: {
-    title: "Outros procedimentos do joelho",
+    title: "Outros procedimentos de ombro e cotovelo",
     explanation:
       "Foram explicados os objetivos, as etapas previsíveis e as alternativas dos procedimentos adicionais descritos neste termo. A conduta poderá ser modificada de modo tecnicamente necessário para tratar achados relevantes durante a cirurgia.",
     risks: [
@@ -189,16 +108,10 @@ const FAMILY_SECTIONS_PT: Record<ConsentFamily, Omit<ConsentSection, "family">> 
 };
 
 const FAMILY_SECTIONS_ES: Record<ConsentFamily, Omit<ConsentSection, "family">> = {
-  artroplastia: { title: "Artroplastia de rodilla", explanation: "La artroplastia sustituye las superficies articulares afectadas por componentes protésicos para aliviar el dolor, corregir la deformidad y mejorar la función. La extensión de la cirugía y la necesidad de revisión, injerto, vástagos u otros componentes podrán ajustarse según los hallazgos clínicos e intraoperatorios.", risks: ["dolor residual, rigidez, limitación del movimiento o necesidad de rehabilitación prolongada", "infección, sangrado, hematoma, necesidad de transfusión o nueva cirugía", "trombosis venosa, embolia pulmonar y complicaciones clínicas relacionadas con la inmovilización", "inestabilidad, desalineación, fractura alrededor de la prótesis, aflojamiento, desgaste o falla de componentes", "necesidad de revisión de la prótesis u otros procedimientos durante el seguimiento"] },
-  ligamentar: { title: "Reconstrucción o reparación ligamentaria", explanation: "El procedimiento busca reparar o reconstruir los ligamentos de la rodilla para restaurar la estabilidad y la función. Podrán utilizarse injertos del propio paciente, de banco de tejidos u otros materiales adecuados, además de túneles óseos, implantes y métodos de fijación según la indicación.", risks: ["falla de la reparación o del injerto, nueva inestabilidad, ruptura recurrente o necesidad de revisión", "dolor, entumecimiento, lesión de nervios o vasos, rigidez y pérdida de fuerza muscular", "complicaciones en la zona de extracción del injerto, cuando corresponda", "problemas relacionados con túneles, implantes o fijaciones, incluida la necesidad de retiro o revisión", "restricción temporal de actividades y riesgo de lesión al volver tempranamente al deporte"] },
-  meniscal: { title: "Procedimiento artroscópico por lesión meniscal", explanation: "La artroscopia permite tratar lesiones meniscales y otras alteraciones internas de la rodilla mediante pequeñas incisiones. Según el patrón y la calidad del tejido, podrá indicarse sutura, regularización, resección parcial u otra conducta técnica apropiada.", risks: ["persistencia o retorno de dolor, derrame, bloqueo o síntomas mecánicos", "falla de la sutura o necesidad de nueva artroscopia, meniscectomía complementaria u otro tratamiento", "progresión del desgaste articular, especialmente si hay pérdida de tejido meniscal", "infección, sangrado, trombosis, rigidez o lesión de estructuras neurovasculares"] },
-  osteotomia: { title: "Osteotomía de rodilla", explanation: "La osteotomía corrige el eje del miembro mediante un corte controlado del hueso, pudiendo involucrar tibia, fémur o ambos, con fijación por placas, tornillos, injerto óseo u otros materiales. La planificación podrá ajustarse durante el procedimiento para lograr una corrección segura y adecuada.", risks: ["retraso de consolidación, seudoartrosis, pérdida o exceso de corrección y necesidad de nueva cirugía", "dolor o molestia por placas y tornillos, con posible necesidad de retirar material", "fractura, sangrado, infección, trombosis, rigidez o lesión de nervios y vasos", "alteración de carga, limitación funcional temporal y necesidad de rehabilitación y protección de peso"] },
-  osteocondral: { title: "Tratamiento de lesión osteocondral", explanation: "El tratamiento busca abordar lesiones de cartílago y hueso subcondral. Según la lesión, pueden emplearse desbridamiento, micro o nanofracturas, fijación, injertos osteocondrales, mosaicoplastia, membranas u otros recursos. La técnica definitiva depende de la extensión y viabilidad del tejido observadas durante el procedimiento.", risks: ["integración incompleta, falla de la reparación o injerto, persistencia de dolor y limitación funcional", "progresión del desgaste articular, necesidad de proteger la carga y rehabilitación prolongada", "necesidad de procedimiento complementario, nueva artroscopia, injerto adicional o cambio de técnica", "infección, sangrado, trombosis, rigidez o lesión de estructuras neurovasculares"] },
-  patelar: { title: "Tratamiento de inestabilidad patelar", explanation: "El procedimiento busca tratar episodios de inestabilidad de la patela y factores anatómicos asociados, pudiendo incluir reconstrucciones ligamentarias, realineación del mecanismo extensor, osteotomías, trocleoplastia u otras técnicas indicadas.", risks: ["recidiva de inestabilidad, dolor anterior, crepitación o persistencia de limitación funcional", "rigidez, tensión excesiva, alteración del seguimiento patelar o necesidad de revisión", "fractura patelar, problemas con injerto, implantes o fijaciones y necesidad de retirar material", "infección, sangrado, trombosis o lesión de nervios y vasos"] },
   fratura: { title: "Tratamiento quirúrgico de fractura", explanation: "El objetivo es reducir y estabilizar la fractura para favorecer la consolidación y recuperación funcional. Podrán utilizarse placas, tornillos, clavos, alambres, injerto óseo, fijadores u otros métodos de estabilización, según el patrón de la fractura y las condiciones encontradas.", risks: ["retraso de consolidación, seudoartrosis, consolidación viciosa, falla de implantes o necesidad de reoperación", "infección, sangrado, trombosis, lesión de nervios o vasos y síndrome doloroso regional complejo", "rigidez, dolor persistente, alteraciones de alineación, discrepancia funcional o artrosis postraumática", "necesidad de inmovilización, restricción de carga, fisioterapia y tratamientos complementarios"] },
-  tendao: { title: "Reparación o reconstrucción tendinosa", explanation: "El procedimiento busca reparar o reconstruir el tendón lesionado, pudiendo incluir suturas, anclajes, injertos, refuerzos u otros materiales. La estrategia final dependerá de la calidad del tejido y de la extensión de la lesión.", risks: ["nueva ruptura, elongación, pérdida de fuerza o déficit de extensión de la rodilla", "rigidez, adherencias, dolor persistente, alteración de sensibilidad o necesidad de revisión", "infección, sangrado, trombosis o lesión de nervios y vasos", "necesidad de inmovilización, limitación de carga y rehabilitación progresiva"] },
+  tendao: { title: "Reparación o reconstrucción tendinosa", explanation: "El procedimiento busca reparar o reconstruir el tendón lesionado, pudiendo incluir suturas, anclajes, injertos, refuerzos u otros materiales. La estrategia final dependerá de la calidad del tejido y de la extensión de la lesión.", risks: ["nueva ruptura, elongación, pérdida de fuerza o déficit funcional", "rigidez, adherencias, dolor persistente, alteración de sensibilidad o necesidad de revisión", "infección, sangrado, trombosis o lesión de nervios y vasos", "necesidad de inmovilización, limitación de carga y rehabilitación progresiva"] },
   ortobiologico: { title: "Uso de recursos ortobiológicos", explanation: "Los recursos ortobiológicos pueden utilizarse como complemento del tratamiento, según la indicación registrada y la evaluación intraoperatoria. El beneficio esperado, alternativas y limitaciones del recurso fueron discutidos individualmente.", risks: ["ausencia de respuesta clínica o necesidad de tratamiento complementario", "dolor, edema, reacción local, sangrado o infección relacionada con la extracción, preparación o aplicación", "necesidad de ajustar el plan terapéutico según la evolución clínica"] },
-  outros: { title: "Otros procedimientos de rodilla", explanation: "Se explicaron los objetivos, etapas previsibles y alternativas de los procedimientos adicionales descritos en este consentimiento. La conducta podrá modificarse de manera técnicamente necesaria para tratar hallazgos relevantes durante la cirugía.", risks: ["persistencia de síntomas, limitación funcional o necesidad de tratamiento adicional", "infección, sangrado, hematoma, trombosis, rigidez y dolor prolongado", "lesión de nervios, vasos u otras estructuras, además de necesidad de reoperación en situaciones seleccionadas"] },
+  outros: { title: "Otros procedimientos de hombro y codo", explanation: "Se explicaron los objetivos, etapas previsibles y alternativas de los procedimientos adicionales descritos en este consentimiento. La conducta podrá modificarse de manera técnicamente necesaria para tratar hallazgos relevantes durante la cirugía.", risks: ["persistencia de síntomas, limitación funcional o necesidad de tratamiento adicional", "infección, sangrado, hematoma, trombosis, rigidez y dolor prolongado", "lesión de nervios, vasos u otras estructuras, además de necesidad de reoperación en situaciones seleccionadas"] },
 };
 
 function safeText(value: unknown, fallback = "Não informado"): string {
@@ -227,16 +140,6 @@ function cleanPdfText(value: string): string {
     .replace(/[^\x00-\xFF]/g, "?");
 }
 
-function parseDetails(value: unknown): Record<string, any> {
-  if (typeof value !== "string" || !value.trim()) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 function selectedStrings(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -248,128 +151,22 @@ function unique(values: string[]): string[] {
   return [...new Set(values.map((item) => item.trim()).filter(Boolean))];
 }
 
-function isTrue(value: unknown): boolean {
-  return value === true;
+// Procedimentos: os nomes registrados no procedimento; na falta deles, o tipo de caso.
+function collectProcedureLabels(surgery: SurgicalConsentSurgery): string[] {
+  const performed = (surgery.procedimentoRealizado ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+  if (performed.length) return unique(performed);
+  return unique(selectedStrings(surgery.tiposProcedimento).map((key) => CASE_TYPE_BY_KEY.get(key)?.label ?? key));
 }
 
-const PROCEDURE_LABELS = {
-  "pt-BR": {
-    totalArthroplasty: "Artroplastia Total do Joelho",
-    unicompartmentalArthroplasty: "Artroplastia Unicompartimental do Joelho",
-    patellofemoralArthroplasty: "Artroplastia Patelofemoral",
-    revisionArthroplasty: "Revisão de Artroplastia do Joelho",
-    kneeArthroplasty: "Artroplastia do Joelho",
-    ligamentRepair: "Reconstrução/Reparo de",
-    ligamentReconstruction: "Reconstrução ou Reparo Ligamentar",
-    meniscalTreatment: "Tratamento Artroscópico de Lesão Meniscal",
-    patellarInstabilityTreatment: "Tratamento Cirúrgico de Instabilidade Patelar",
-    osteochondralTreatment: "Tratamento de Lesão Osteocondral",
-    kneeOsteotomy: "Osteotomia do Joelho",
-    tendonRepair: "Reparo/Reconstrução:",
-    tendonReconstruction: "Reparo ou Reconstrução Tendínea",
-    fractureTreatment: "Tratamento de Fratura:",
-    surgicalFractureTreatment: "Tratamento Cirúrgico de Fratura",
-    orthobiologicalApplication: "Aplicação de Recursos Ortobiológicos",
-  },
-  es: {
-    totalArthroplasty: "Artroplastia total de rodilla",
-    unicompartmentalArthroplasty: "Artroplastia unicompartimental de rodilla",
-    patellofemoralArthroplasty: "Artroplastia patelofemoral",
-    revisionArthroplasty: "Revisión de artroplastia de rodilla",
-    kneeArthroplasty: "Artroplastia de rodilla",
-    ligamentRepair: "Reconstrucción/reparación de",
-    ligamentReconstruction: "Reconstrucción o reparación ligamentaria",
-    meniscalTreatment: "Tratamiento artroscópico de lesión meniscal",
-    patellarInstabilityTreatment: "Tratamiento quirúrgico de inestabilidad patelar",
-    osteochondralTreatment: "Tratamiento de lesión osteocondral",
-    kneeOsteotomy: "Osteotomía de rodilla",
-    tendonRepair: "Reparación/reconstrucción:",
-    tendonReconstruction: "Reparación o reconstrucción tendinosa",
-    fractureTreatment: "Tratamiento de fractura:",
-    surgicalFractureTreatment: "Tratamiento quirúrgico de fractura",
-    orthobiologicalApplication: "Aplicación de recursos ortobiológicos",
-  },
-} as const;
+const TENDON_CASE_TYPES = new Set(["SH_CUFF", "SH_BICEPS_SLAP", "SH_OTHER_TENDON", "EL_DISTAL_BICEPS", "EL_NERVE_TENDON"]);
 
-function collectProcedureLabels(surgery: SurgicalConsentSurgery, details: Record<string, any>, locale: Locale): string[] {
+function getFamilies(surgery: SurgicalConsentSurgery): ConsentFamily[] {
   const types = selectedStrings(surgery.tiposProcedimento);
-  const labels: string[] = [];
-  const artroplastia = details.artroplastia;
-  const text = PROCEDURE_LABELS[locale];
-  const artroplastiaMap: Record<string, string> = {
-    TKA: text.totalArthroplasty,
-    UKA: text.unicompartmentalArthroplasty,
-    PKA: text.patellofemoralArthroplasty,
-    Revisao: text.revisionArthroplasty,
-  };
-
-  types.forEach((type) => {
-    if (type === "Artroplastias") {
-      labels.push(artroplastiaMap[artroplastia?.tipo] ?? text.kneeArthroplasty);
-      return;
-    }
-    if (type === "Lesão Ligamentar") {
-      const ligaments = selectedStrings(surgery.ligamentosAcometidos);
-      labels.push(ligaments.length ? `${text.ligamentRepair} ${ligaments.join(", ")}` : text.ligamentReconstruction);
-      return;
-    }
-    if (type === "Lesão Meniscal") {
-      labels.push(text.meniscalTreatment);
-      return;
-    }
-    if (type === "Instabilidade Patelar") {
-      labels.push(text.patellarInstabilityTreatment);
-      return;
-    }
-    if (type === "Lesões Osteocondrais") {
-      const procedures = selectedStrings(details.osteocondral?.procedimentos);
-      labels.push(procedures.length ? procedures.join(", ") : text.osteochondralTreatment);
-      return;
-    }
-    if (type === "Osteotomia") {
-      labels.push(text.kneeOsteotomy);
-      return;
-    }
-    if (type === "Rupturas Tendíneas") {
-      const tendons = selectedStrings(details.tendoes);
-      labels.push(tendons.length ? `${text.tendonRepair} ${tendons.join(", ")}` : text.tendonReconstruction);
-      return;
-    }
-    if (type === "Fraturas") {
-      const fractures = selectedStrings(details.fraturas);
-      labels.push(fractures.length ? `${text.fractureTreatment} ${fractures.join(", ")}` : text.surgicalFractureTreatment);
-      return;
-    }
-    if (type === "Ortobiológicos" || type === "Ortobiológico") {
-      labels.push(text.orthobiologicalApplication);
-      return;
-    }
-    labels.push(type);
-  });
-
-  const otherProcedures = selectedStrings(details.outrosProcedimentos);
-  if (otherProcedures.length) labels.push(...otherProcedures);
-  if (!labels.length && surgery.procedimentoRealizado) labels.push(surgery.procedimentoRealizado);
-  return unique(labels);
-}
-
-function getFamilies(surgery: SurgicalConsentSurgery, details: Record<string, any>): ConsentFamily[] {
-  const types = selectedStrings(surgery.tiposProcedimento).map((value) => value.toLocaleLowerCase("pt-BR"));
-  const ligaments = selectedStrings(surgery.ligamentosAcometidos);
-  const hasType = (expression: RegExp) => types.some((type) => expression.test(type));
   const detected = new Set<ConsentFamily>();
-
-  if (hasType(/artroplast/) || details.artroplastia?.tipo) detected.add("artroplastia");
-  if (hasType(/ligament|lca|lcp|cpl|cpm/) || ligaments.length) detected.add("ligamentar");
-  if (hasType(/menisc/) || surgery.procedimentoRealizado?.toLocaleLowerCase("pt-BR").includes("menisc")) detected.add("meniscal");
-  if (hasType(/instabilidade patelar/) || selectedStrings(details.patelar?.tecnicas).length) detected.add("patelar");
-  if (hasType(/osteotomia/) || isTrue(details.osteotomia?.tibial) || isTrue(details.osteotomia?.femoral) || isTrue(details.osteotomia?.dupla)) detected.add("osteotomia");
-  if (hasType(/osteocondral/) || selectedStrings(details.osteocondral?.procedimentos).length) detected.add("osteocondral");
-  if (hasType(/fratura/) || selectedStrings(details.fraturas).length) detected.add("fratura");
-  if (hasType(/ruptura tend|tend/) || selectedStrings(details.tendoes).length) detected.add("tendao");
-  if (hasType(/ortobiol/) || ["bma", "ha", "prp", "hidrogel", "gorduraMicroFragmentada", "svf", "exossomos"].some((key) => isTrue(details.ortobiologico?.[key]))) detected.add("ortobiologico");
-  if (hasType(/outros procedimentos/) || selectedStrings(details.outrosProcedimentos).length) detected.add("outros");
-
+  if (types.some((type) => type.endsWith("_FRACTURE"))) detected.add("fratura");
+  if (types.some((type) => TENDON_CASE_TYPES.has(type))) detected.add("tendao");
+  if (types.some((type) => type.endsWith("_ORTHOBIO"))) detected.add("ortobiologico");
+  if (types.some((type) => !type.endsWith("_FRACTURE") && !TENDON_CASE_TYPES.has(type) && !type.endsWith("_ORTHOBIO"))) detected.add("outros");
   if (!detected.size) detected.add("outros");
   return FAMILY_ORDER.filter((family) => detected.has(family));
 }
@@ -379,14 +176,13 @@ export function buildSurgicalConsentDocument(
   doctor?: SurgicalConsentDoctor | null,
   locale: Locale = "pt-BR",
 ): SurgicalConsentDocument {
-  const details = parseDetails(surgery.procedimentosDetalhados);
-  const procedureLabels = collectProcedureLabels(surgery, details, locale);
-  const families = getFamilies(surgery, details);
+  const procedureLabels = collectProcedureLabels(surgery);
+  const families = getFamilies(surgery);
   const doctorCrmParts = [doctor?.crmEstado, doctor?.crm].filter(Boolean);
   const familySections = locale === "es" ? FAMILY_SECTIONS_ES : FAMILY_SECTIONS_PT;
 
   return {
-    procedureLabel: procedureLabels.join("; ") || "Procedimento cirúrgico do joelho",
+    procedureLabel: procedureLabels.join("; ") || (locale === "es" ? "Procedimiento quirúrgico" : "Procedimento cirúrgico"),
     families,
     sections: families.map((family) => ({ family, ...familySections[family] })),
     patientName: safeText(surgery.patient?.nome, documentText(locale, "notInformed")),
@@ -638,7 +434,6 @@ export async function generateSurgicalConsentPDF(
     text
       .replace(/^O procedimento busca /i, "Busca ")
       .replace(/^O tratamento busca /i, "Busca ")
-      .replace(/^A artroplastia substitui /i, "Substitui ")
       .replace(/\s+/g, " ")
       .trim(),
     dense ? 145 : 165,

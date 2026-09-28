@@ -35,9 +35,7 @@ interface RehabData {
   }>;
   rehabSummary: {
     progressPercent: number | null;
-    lsiQuadriceps: number | null;
-    lsiHop: number | null;
-    aclRsi: number | null;
+    returnToSport: string | null;
     nextFollowup: { title: string; dueDate: string } | null;
     totalAssessments: number;
     redFlags: Array<{ flag: string; assessmentType: string; createdAt: string }>;
@@ -205,12 +203,16 @@ export function RehabReferralCard({ patientId, surgeries }: { patientId: number;
                     </ul>
                   </div>
                 )}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {[
                     { label: rr("progress"), value: summary.progressPercent !== null ? `${summary.progressPercent}%` : "—" },
-                    { label: rr("quadricepsLsi"), value: summary.lsiQuadriceps !== null ? `${summary.lsiQuadriceps}%` : "—" },
-                    { label: rr("hopLsi"), value: summary.lsiHop !== null ? `${summary.lsiHop}%` : "—" },
-                    { label: rr("aclRsi"), value: summary.aclRsi !== null ? String(summary.aclRsi) : "—" },
+                    {
+                      label: rr("returnToSport"),
+                      value: summary.returnToSport === "apto" ? rr("returnFit")
+                        : summary.returnToSport === "parcial" ? rr("returnPartial")
+                        : summary.returnToSport === "nao_apto" ? rr("returnNotFit")
+                        : "—",
+                    },
                   ].map((m) => (
                     <div key={m.label} className="rounded-lg border border-border p-2.5 text-center">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>

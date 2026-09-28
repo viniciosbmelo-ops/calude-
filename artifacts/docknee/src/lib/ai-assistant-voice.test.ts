@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  JoiaVoiceController,
+  AssistantVoiceController,
   type MediaRecorderLike,
   type SpeechRecognitionLike,
   audioFilenameForMimeType,
   getSupportedAudioMimeType,
-} from "../components/joia/voice-controller";
+} from "../components/ai-assistant/voice-controller";
 
 function fakeStream() {
   const tracks = [{ stop: vi.fn() }];
@@ -17,7 +17,7 @@ function fakeStream() {
   };
 }
 
-function controllerOptions(overrides: Partial<ConstructorParameters<typeof JoiaVoiceController>[0]> = {}) {
+function controllerOptions(overrides: Partial<ConstructorParameters<typeof AssistantVoiceController>[0]> = {}) {
   return {
     locale: "pt-BR",
     getMessage: (key: string) => key,
@@ -67,13 +67,13 @@ class FakeMediaRecorder implements MediaRecorderLike {
   }
 }
 
-describe("JoIA voice lifecycle", () => {
+describe("AI assistant voice lifecycle", () => {
   it("commits one final speech result that arrives after stop", () => {
     const options = controllerOptions({
       speechRecognition: FakeSpeechRecognition,
       appleMobile: false,
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     const recognition = FakeSpeechRecognition.instance!;
 
@@ -103,7 +103,7 @@ describe("JoIA voice lifecycle", () => {
       speechRecognition: FakeSpeechRecognition,
       appleMobile: false,
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     const recognition = FakeSpeechRecognition.instance!;
     const lateResult = recognition.onresult!;
@@ -122,7 +122,7 @@ describe("JoIA voice lifecycle", () => {
       speechRecognition: FakeSpeechRecognition,
       appleMobile: false,
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     const firstRecognition = FakeSpeechRecognition.instance!;
     controller.cancel({ notify: false });
@@ -143,7 +143,7 @@ describe("JoIA voice lifecycle", () => {
         speechRecognition: FakeSpeechRecognition,
         appleMobile: false,
       });
-      const controller = new JoiaVoiceController(options);
+      const controller = new AssistantVoiceController(options);
       controller.start();
       const recognition = FakeSpeechRecognition.instance!;
 
@@ -171,7 +171,7 @@ describe("JoIA voice lifecycle", () => {
         permission.resolve = resolve;
       }),
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     controller.cancel();
 
@@ -191,7 +191,7 @@ describe("JoIA voice lifecycle", () => {
       const body = init?.body as FormData;
       const audio = body.get("audio") as Blob & { name?: string };
       expect(audio.type).toBe("audio/mp4");
-      expect(audio.name).toBe("joia-audio.m4a");
+      expect(audio.name).toBe("assistente-audio.m4a");
       expect(body.get("locale")).toBe("pt-BR");
       return new Response(JSON.stringify({ text: "texto transcrito" }), {
         status: 200,
@@ -205,7 +205,7 @@ describe("JoIA voice lifecycle", () => {
       getUserMedia: async () => stream.stream,
       fetch: fetcher,
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     await Promise.resolve();
     await Promise.resolve();
@@ -239,7 +239,7 @@ describe("JoIA voice lifecycle", () => {
         getUserMedia: async () => stream.stream,
         fetch: fetcher,
       });
-      const controller = new JoiaVoiceController(options);
+      const controller = new AssistantVoiceController(options);
       controller.start();
       await Promise.resolve();
       await Promise.resolve();
@@ -269,7 +269,7 @@ describe("JoIA voice lifecycle", () => {
       getUserMedia: async () => stream.stream,
       fetch: fetcher,
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     await Promise.resolve();
     await Promise.resolve();
@@ -289,7 +289,7 @@ describe("JoIA voice lifecycle", () => {
         throw Object.assign(new Error("denied"), { name: "NotAllowedError" });
       },
     });
-    const denied = new JoiaVoiceController(deniedOptions);
+    const denied = new AssistantVoiceController(deniedOptions);
     denied.start();
     await Promise.resolve();
     expect(deniedOptions.onError).toHaveBeenCalledWith("microphonePermissionDenied");
@@ -301,7 +301,7 @@ describe("JoIA voice lifecycle", () => {
         throw Object.assign(new Error("missing"), { name: "NotFoundError" });
       },
     });
-    const missing = new JoiaVoiceController(missingOptions);
+    const missing = new AssistantVoiceController(missingOptions);
     missing.start();
     await Promise.resolve();
     expect(missingOptions.onError).toHaveBeenCalledWith("microphoneDeviceUnavailable");
@@ -312,7 +312,7 @@ describe("JoIA voice lifecycle", () => {
       speechRecognition: FakeSpeechRecognition,
       appleMobile: false,
     });
-    const controller = new JoiaVoiceController(options);
+    const controller = new AssistantVoiceController(options);
     controller.start();
     const recognition = FakeSpeechRecognition.instance!;
     const lateResult = recognition.onresult!;
@@ -336,7 +336,7 @@ describe("JoIA voice lifecycle", () => {
         speechRecognition: FakeSpeechRecognition,
         appleMobile: false,
       });
-      const controller = new JoiaVoiceController(options);
+      const controller = new AssistantVoiceController(options);
       controller.start();
       const recognition = FakeSpeechRecognition.instance!;
       controller.stop();
@@ -350,10 +350,10 @@ describe("JoIA voice lifecycle", () => {
   });
 });
 
-describe("JoIA audio format contract", () => {
+describe("AI assistant audio format contract", () => {
   it("prefers a supported Safari MIME and derives the backend filename", () => {
     expect(getSupportedAudioMimeType(FakeMediaRecorder)).toBe("audio/mp4");
-    expect(audioFilenameForMimeType("audio/mp4;codecs=mp4a.40.2")).toBe("joia-audio.m4a");
-    expect(audioFilenameForMimeType("audio/webm;codecs=opus")).toBe("joia-audio.webm");
+    expect(audioFilenameForMimeType("audio/mp4;codecs=mp4a.40.2")).toBe("assistente-audio.m4a");
+    expect(audioFilenameForMimeType("audio/webm;codecs=opus")).toBe("assistente-audio.webm");
   });
 });

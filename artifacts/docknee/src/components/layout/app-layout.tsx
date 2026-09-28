@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { useLanguage } from "@/lib/i18n";
-import { JoIA } from "@/components/joia";
+import { AIAssistant, AssistantMark } from "@/components/ai-assistant";
 
 const NAV_ITEMS = [
   { href: "/dashboard", key: "nav.home", Icon: LayoutDashboard },
@@ -138,28 +138,24 @@ function BottomNav() {
           );
         })}
 
-        {/* JoIA */}
+        {/* Assistente IA */}
         <div className="flex-1">
           <button
-            onClick={() => window.dispatchEvent(new Event("joia-open"))}
+            onClick={() => window.dispatchEvent(new Event("assistant-open"))}
             className="w-full h-full flex flex-col items-center justify-center gap-0.5 relative group"
-            aria-label={t("nav.openJoia")}
+            aria-label={t("nav.openAssistant")}
           >
             <div
               className="rounded-full overflow-hidden"
               style={{ width: 22, height: 22 }}
             >
-              <img
-                src={`${import.meta.env.BASE_URL}joia-logo.png`}
-                alt="JoIA"
-                className="w-full h-full object-cover"
-              />
+              <AssistantMark />
             </div>
             <span
               className="text-[10px] font-semibold tracking-tight"
               style={{ color: "#94A3B8" }}
             >
-              JoIA
+              IA
             </span>
           </button>
         </div>
@@ -321,7 +317,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </main>
         {!isAdmin && <BottomNav />}
       </div>
-      <JoIA />
+      <AIAssistant />
     </div>
   );
 }
