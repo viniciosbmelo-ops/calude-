@@ -10,6 +10,7 @@ import {
   numeric,
   jsonb,
   unique,
+  foreignKey,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -209,15 +210,20 @@ export const regenScaleResponsesTable = pgTable(
   "regen_scale_responses",
   {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    notificationId: uuid("notification_id")
-      .notNull()
-      .references(() => regenFollowupNotificationsTable.id, { onDelete: "cascade" }),
+    notificationId: uuid("notification_id").notNull(),
     nomeEscala: text("nome_escala").notNull(),
     respostas: jsonb("respostas").notNull().default({}),
     score: numeric("score", { precision: 10, scale: 2 }),
     completadoEm: timestamp("completado_em", { withTimezone: true }).defaultNow(),
   },
   (t) => [
+    // Explicit name: the auto-generated one exceeds Postgres' 63-char limit,
+    // which made drizzle-kit push drop/re-add this FK on every run.
+    foreignKey({
+      name: "regen_scale_responses_notification_id_fk",
+      columns: [t.notificationId],
+      foreignColumns: [regenFollowupNotificationsTable.id],
+    }).onDelete("cascade"),
     uniqueIndex("regen_scale_responses_notification_id_nome_escala_unique").on(
       t.notificationId,
       t.nomeEscala,

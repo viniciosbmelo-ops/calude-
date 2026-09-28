@@ -1,5 +1,6 @@
 import {
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -57,9 +58,7 @@ export const preConsultInvitesTable = pgTable(
   "pre_consult_invites",
   {
     id: serial("id").primaryKey(),
-    questionnaireId: integer("questionnaire_id")
-      .notNull()
-      .references(() => preConsultQuestionnairesTable.id, { onDelete: "cascade" }),
+    questionnaireId: integer("questionnaire_id").notNull(),
     patientId: integer("patient_id")
       .notNull()
       .references(() => patientsTable.id, { onDelete: "cascade" }),
@@ -75,6 +74,13 @@ export const preConsultInvitesTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    // Explicit name: the auto-generated one exceeds Postgres' 63-char limit,
+    // which made drizzle-kit push drop/re-add this FK on every run.
+    foreignKey({
+      name: "pre_consult_invites_questionnaire_id_fk",
+      columns: [t.questionnaireId],
+      foreignColumns: [preConsultQuestionnairesTable.id],
+    }).onDelete("cascade"),
     index("pre_consult_invites_patient_idx").on(t.patientId),
     index("pre_consult_invites_questionnaire_idx").on(t.questionnaireId),
     index("pre_consult_invites_expires_at_idx").on(t.expiresAt),

@@ -1,0 +1,14 @@
+diff --git a/bin.cjs b/bin.cjs
+index 327fdfde1aac8ddf7a0db6dc357796757be8986a..4068a3e3b103c945eb84c3ed0ca39e0bd1ccc858 100755
+--- a/bin.cjs
++++ b/bin.cjs
+@@ -20032,6 +20032,9 @@ WHERE
+       }
+       column11.column_default = column11.column_default.replace(/::(.*?)(?<![^\w"])(?=$)/, "");
+       const columnDefaultAsString = column11.column_default.toString();
++      if (isArray && columnDefaultAsString === "'{}'") {
++        return "'{}'";
++      }
+       if (isArray) {
+         return `'{${columnDefaultAsString.slice(2, -2).split(/\s*,\s*/g).map((value) => {
+           if (["integer", "smallint", "bigint", "double precision", "real"].includes(column11.data_type.slice(0, -2))) {

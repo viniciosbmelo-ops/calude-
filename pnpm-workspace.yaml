@@ -152,3 +152,8 @@ overrides:
   rollup>@rollup/rollup-win32-ia32-msvc: '-'
   rollup>@rollup/rollup-win32-x64-gnu: '-'
   rollup>@rollup/rollup-win32-x64-msvc: '-'
+
+# Local fix: drizzle-kit 0.31.x introspects an empty array default ('{}'::text[])
+# as '{""}', so push re-applied SET DEFAULT on every run. See the patch file.
+patchedDependencies:
+  drizzle-kit@0.31.9: patches/drizzle-kit@0.31.9.patch
