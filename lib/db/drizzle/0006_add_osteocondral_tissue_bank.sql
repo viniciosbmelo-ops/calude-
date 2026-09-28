@@ -1,0 +1,1 @@
+ALTER TABLE "exame_osteocondral" ADD COLUMN "banco_tecidos_disponivel" boolean;

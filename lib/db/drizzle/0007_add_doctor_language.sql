@@ -1,0 +1,1 @@
+ALTER TABLE "doctors" ADD COLUMN "idioma" text NOT NULL DEFAULT 'pt-BR';

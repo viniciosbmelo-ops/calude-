@@ -1,0 +1,47 @@
+modules = ["nodejs-24", "python-3.11", "postgresql-16"]
+
+[[artifacts]]
+id = "artifacts/api-server"
+
+[[artifacts]]
+id = "artifacts/mockup-sandbox"
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+integrations = ["stripe:1.0.0"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+APP_URL = "https://dockneeapp.com"
+EVOLUTION_INSTANCE = "docknee-clinica-1"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-576d9253-0c10-4762-8525-92ccc28144a9"
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[[ports]]
+localPort = 20451
+externalPort = 3000

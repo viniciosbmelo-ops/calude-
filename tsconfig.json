@@ -1,20 +1,25 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "strict": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "outDir": "dist",
-    "rootDir": "."
-  },
-  "include": [
-    "src",
-    "tests",
-    "scripts",
-    "server",
-    "e2e",
-    "playwright.config.ts"
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./lib/db"
+    },
+    {
+      "path": "./lib/api-client-react"
+    },
+    {
+      "path": "./lib/api-zod"
+    },
+    {
+      "path": "./lib/integrations-openai-ai-server"
+    },
+    {
+      "path": "./lib/integrations-gemini-ai"
+    },
+    {
+      "path": "./lib/clinical"
+    }
   ]
 }

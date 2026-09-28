@@ -1,0 +1,36 @@
+import type { ScopedMessages } from "@/lib/i18n";
+
+export const rehabReferralMessages = {
+  "pt-BR": {
+    loadError: "Erro ao carregar dados de reabilitação", inviteError: "Erro ao gerar convite", error: "Erro", revokeError: "Erro ao revogar vínculo",
+    revoked: "Vínculo revogado", revokedDescription: "O fisioterapeuta não terá mais acesso aos dados deste paciente.", copied: "Link copiado",
+    verbal: "Verbal presencial", signed: "Termo assinado", clinical: "Avaliação clínica", rehabilitation: "Reabilitação",
+    subtitle: "Encaminhamento e acompanhamento com fisioterapeuta", refer: "Encaminhar", loading: "Carregando...", activeLink: "Vínculo ativo",
+    since: "Desde {date}", revokeAccessConfirm: "Revogar o acesso deste fisioterapeuta aos dados do paciente?", revoke: "Revogar",
+    awaitingInvite: "Convite aguardando aceite", inviteDetails: "Enviado em {sent} · expira em {expires} · consentimento: {consent}",
+    needProcedure: "Registre um procedimento para encaminhar o paciente à fisioterapia.", noPhysio: "Nenhum fisioterapeuta vinculado. Encaminhe o paciente para acompanhar a reabilitação.",
+    warningSigns: "Sinais de atenção", progress: "Progresso", quadricepsLsi: "LSI quadríceps", hopLsi: "LSI Hop", aclRsi: "ACL-RSI", nextMilestone: "Próximo marco:",
+    latestAssessments: "Últimas avaliações do fisioterapeuta", phase: "fase {phase}", dialogTitle: "Encaminhar para fisioterapia",
+    dialogDescription: "Gere um link de convite para o fisioterapeuta acompanhar a reabilitação deste paciente.", surgery: "Cirurgia",
+    selectSurgery: "Selecione a cirurgia", surgeryNumber: "Cirurgia #{id}", consent: "Consentimento do paciente (LGPD)",
+    consentPlaceholder: "Como o paciente autorizou?", verbalAuthorization: "Autorização verbal presencial", whatsappAuthorization: "Autorização por WhatsApp",
+    signedAuthorization: "Termo de consentimento assinado", consentDeclaration: "Ao gerar o convite, você declara que o paciente autorizou o compartilhamento dos dados da cirurgia com o fisioterapeuta.",
+    generating: "Gerando...", generateInvite: "Gerar convite", linkHelp: "Envie este link ao fisioterapeuta. Ele é válido por 7 dias e pode ser usado uma única vez.", copyLink: "Copiar link",
+  },
+  es: {
+    loadError: "Error al cargar los datos de rehabilitación", inviteError: "Error al generar la invitación", error: "Error", revokeError: "Error al revocar el vínculo",
+    revoked: "Vínculo revocado", revokedDescription: "El fisioterapeuta ya no tendrá acceso a los datos de este paciente.", copied: "Enlace copiado",
+    verbal: "Verbal presencial", signed: "Documento firmado", clinical: "Evaluación clínica", rehabilitation: "Rehabilitación",
+    subtitle: "Derivación y seguimiento con el fisioterapeuta", refer: "Derivar", loading: "Cargando...", activeLink: "Vínculo activo",
+    since: "Desde el {date}", revokeAccessConfirm: "¿Revocar el acceso de este fisioterapeuta a los datos del paciente?", revoke: "Revocar",
+    awaitingInvite: "Invitación pendiente de aceptación", inviteDetails: "Enviada el {sent} · vence el {expires} · consentimiento: {consent}",
+    needProcedure: "Registre un procedimiento para derivar al paciente a fisioterapia.", noPhysio: "No hay ningún fisioterapeuta vinculado. Derive al paciente para seguir la rehabilitación.",
+    warningSigns: "Señales de alerta", progress: "Progreso", quadricepsLsi: "LSI de cuádriceps", hopLsi: "LSI de salto", aclRsi: "ACL-RSI", nextMilestone: "Próximo hito:",
+    latestAssessments: "Últimas evaluaciones del fisioterapeuta", phase: "fase {phase}", dialogTitle: "Derivar a fisioterapia",
+    dialogDescription: "Genere un enlace de invitación para que el fisioterapeuta siga la rehabilitación de este paciente.", surgery: "Cirugía",
+    selectSurgery: "Seleccione la cirugía", surgeryNumber: "Cirugía #{id}", consent: "Consentimiento del paciente (LGPD)",
+    consentPlaceholder: "¿Cómo autorizó el paciente?", verbalAuthorization: "Autorización verbal presencial", whatsappAuthorization: "Autorización por WhatsApp",
+    signedAuthorization: "Documento de consentimiento firmado", consentDeclaration: "Al generar la invitación, declara que el paciente autorizó compartir los datos de la cirugía con el fisioterapeuta.",
+    generating: "Generando...", generateInvite: "Generar invitación", linkHelp: "Envíe este enlace al fisioterapeuta. Es válido durante 7 días y solo se puede usar una vez.", copyLink: "Copiar enlace",
+  },
+} satisfies ScopedMessages<Record<string, string>>;

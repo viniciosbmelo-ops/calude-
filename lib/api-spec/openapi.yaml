@@ -1,0 +1,2258 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: DocKnee API - Plataforma de Documentação Cirúrgica do Joelho
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: doctors
+    description: Doctor management
+  - name: patients
+    description: Patient management
+  - name: surgeries
+    description: Surgery documentation
+  - name: followup
+    description: Follow-up records
+  - name: reports
+    description: Dashboard and reports
+  - name: admin
+    description: Administrative analytics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: registerDoctor
+      tags: [auth]
+      summary: Register a new doctor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDoctorBody"
+      responses:
+        "201":
+          description: Doctor registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginDoctor
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logoutDoctor
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentDoctor
+      tags: [auth]
+      summary: Get current logged in doctor
+      responses:
+        "200":
+          description: Current doctor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "204":
+          description: No active doctor session
+        "401":
+          description: Invalid or expired session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /doctors:
+    get:
+      operationId: listDoctors
+      tags: [doctors]
+      summary: List all doctors (admin only)
+      responses:
+        "200":
+          description: List of doctors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DoctorWithStats"
+
+  /doctors/{id}:
+    get:
+      operationId: getDoctor
+      tags: [doctors]
+      summary: Get doctor profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Doctor profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateDoctor
+      tags: [doctors]
+      summary: Update doctor profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDoctorBody"
+      responses:
+        "200":
+          description: Updated doctor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+
+  /patients:
+    get:
+      operationId: listPatients
+      tags: [patients]
+      summary: List patients for the current doctor
+      responses:
+        "200":
+          description: List of patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PatientWithSurgeries"
+    post:
+      operationId: createPatient
+      tags: [patients]
+      summary: Create a new patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatientBody"
+      responses:
+        "201":
+          description: Created patient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+
+  /patients/{id}:
+    get:
+      operationId: getPatient
+      tags: [patients]
+      summary: Get patient details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Patient details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientWithSurgeries"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updatePatient
+      tags: [patients]
+      summary: Update patient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatientBody"
+      responses:
+        "200":
+          description: Updated patient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+    delete:
+      operationId: deletePatient
+      tags: [patients]
+      summary: Delete patient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /surgeries:
+    get:
+      operationId: listSurgeries
+      tags: [surgeries]
+      summary: List surgeries for current doctor
+      responses:
+        "200":
+          description: List of surgeries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SurgeryWithPatient"
+    post:
+      operationId: createSurgery
+      tags: [surgeries]
+      summary: Create a new surgery record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSurgeryBody"
+      responses:
+        "201":
+          description: Surgery created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Surgery"
+
+  /surgeries/{id}:
+    get:
+      operationId: getSurgery
+      tags: [surgeries]
+      summary: Get surgery full details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Surgery full details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurgeryDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateSurgery
+      tags: [surgeries]
+      summary: Update surgery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSurgeryBody"
+      responses:
+        "200":
+          description: Updated surgery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Surgery"
+    delete:
+      operationId: deleteSurgery
+      tags: [surgeries]
+      summary: Delete surgery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /surgeries/calculate-krirs:
+    post:
+      operationId: calculateKrirs
+      tags: [surgeries]
+      summary: Classify KRIRS risk for ACL reconstruction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KrirsInput"
+      responses:
+        "200":
+          description: KRIRS result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KrirsResult"
+
+  /surgeries/calculate-pics:
+    post:
+      operationId: calculatePics
+      tags: [surgeries]
+      summary: Calculate PICS 2.0 score for patellar instability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PicsInput"
+      responses:
+        "200":
+          description: PICS result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PicsResult"
+
+  /surgeries/calculate-acl-decision:
+    post:
+      operationId: calculateAclDecision
+      tags: [surgeries]
+      summary: Compute LEAP (LET/ALLR) decision-support recommendations for ACL reconstruction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AclDecisionInput"
+      responses:
+        "200":
+          description: ACL LEAP decision result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AclDecisionResult"
+
+  /followup:
+    post:
+      operationId: createFollowup
+      tags: [followup]
+      summary: Create a follow-up record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFollowupBody"
+      responses:
+        "201":
+          description: Follow-up created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Followup"
+
+  /followup/{surgeryId}:
+    get:
+      operationId: listFollowup
+      tags: [followup]
+      summary: List follow-ups for a surgery
+      parameters:
+        - name: surgeryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of follow-ups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Followup"
+
+  /followup/{id}/update:
+    patch:
+      operationId: updateFollowup
+      tags: [followup]
+      summary: Update a follow-up record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFollowupBody"
+      responses:
+        "200":
+          description: Updated follow-up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Followup"
+
+  /reports/dashboard:
+    get:
+      operationId: getDoctorDashboard
+      tags: [reports]
+      summary: Get dashboard stats for the current doctor
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoctorDashboard"
+
+  /reports/admin:
+    get:
+      operationId: getAdminDashboard
+      tags: [reports]
+      summary: Get global admin dashboard (admin only)
+      responses:
+        "200":
+          description: Admin dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+
+  /admin/analytics:
+    get:
+      operationId: getAdminAnalytics
+      tags: [admin]
+      summary: Get aggregated admin analytics (admin only)
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 12m]
+            default: 30d
+      responses:
+        "200":
+          description: Aggregated analytics, utilization cohorts, and navigation click ranking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAnalytics"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin access required
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    AdminAnalytics:
+      type: object
+      description: Existing admin analytics envelope with the usage fields below.
+      additionalProperties: true
+      properties:
+        usageFunnel:
+          $ref: "#/components/schemas/AdminUsageFunnel"
+        navigationClickRanking:
+          $ref: "#/components/schemas/AdminNavigationClickRanking"
+      required: [usageFunnel, navigationClickRanking]
+
+    AdminUsageFunnel:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+            timezone:
+              type: string
+            bounds:
+              type: string
+              example: "inclusive [start, end] UTC"
+          required: [start, end, timezone, bounds]
+        coverage:
+          type: object
+          properties:
+            documentationSources:
+              type: array
+              items: { type: string }
+            xraySuccessSource:
+              type: string
+            clickSource:
+              type: string
+            documentationLimitations:
+              type: array
+              items: { type: string }
+            start:
+              type: ["string", "null"]
+              format: date-time
+            empty:
+              type: boolean
+            unavailableReason:
+              type: string
+          required: [documentationSources, xraySuccessSource, clickSource, documentationLimitations, start, empty]
+        activeDoctors:
+          type: integer
+        rxOnlyDoctors:
+          type: integer
+        enteredWithoutDocumentationDoctors:
+          type: integer
+        documentedDoctors:
+          type: integer
+        overlap:
+          type: object
+          properties:
+            rxOnlyIncludedInEnteredWithoutDocumentation:
+              type: boolean
+            rxOnlyAndDocumentedDoctors:
+              type: integer
+          required: [rxOnlyIncludedInEnteredWithoutDocumentation, rxOnlyAndDocumentedDoctors]
+        rxOnlyDoctorList:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminDoctorIdentity"
+        enteredWithoutDocumentationDoctorList:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminDoctorIdentity"
+      required: [period, coverage, activeDoctors, rxOnlyDoctors, enteredWithoutDocumentationDoctors, documentedDoctors, overlap, rxOnlyDoctorList, enteredWithoutDocumentationDoctorList]
+
+    AdminDoctorIdentity:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+      required: [name, email]
+
+    AdminNavigationClickRanking:
+      type: object
+      properties:
+        bounds:
+          type: string
+          example: "inclusive [period.start, period.end] UTC"
+        coverageStart:
+          type: ["string", "null"]
+          format: date-time
+        empty:
+          type: boolean
+        unavailableReason:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              route:
+                type: string
+              feature:
+                type: string
+              count:
+                type: integer
+              uniqueDoctors:
+                type: integer
+            required: [route, feature, count, uniqueDoctors]
+      required: [bounds, coverageStart, empty, items]
+
+    RegisterDoctorBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        email:
+          type: string
+        senha:
+          type: string
+        estrangeiro:
+          type: boolean
+        paisOrigem:
+          type: string
+        crm:
+          type: string
+        crmEstado:
+          type: string
+        telefone:
+          type: string
+        cpf:
+          type: string
+        dataNascimento:
+          type: string
+          nullable: true
+          description: Data de nascimento (YYYY-MM-DD)
+        endereco:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        cep:
+          type: string
+        especialidade:
+          type: string
+        idioma:
+          type: string
+          enum: [pt-BR, es]
+          default: pt-BR
+      required: [nome, email, senha]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        senha:
+          type: string
+      required: [email, senha]
+
+    AuthResponse:
+      type: object
+      properties:
+        doctor:
+          $ref: "#/components/schemas/Doctor"
+      required: [doctor]
+
+    Doctor:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        email:
+          type: string
+        crm:
+          type: string
+        crmEstado:
+          type: string
+        telefone:
+          type: ["string", "null"]
+        cpf:
+          type: string
+        dataNascimento:
+          type: ["string", "null"]
+          description: Data de nascimento (YYYY-MM-DD)
+        endereco:
+          type: ["string", "null"]
+        cidade:
+          type: ["string", "null"]
+        estado:
+          type: ["string", "null"]
+        cep:
+          type: ["string", "null"]
+        especialidade:
+          type: ["string", "null"]
+        idioma:
+          type: string
+          enum: [pt-BR, es]
+          default: pt-BR
+        whatsappBusiness:
+          type: ["string", "null"]
+          description: Número WhatsApp Business do médico (com DDD, somente dígitos)
+        isAdmin:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, nome, email, crm, crmEstado, cpf, idioma, isAdmin, createdAt]
+
+    UpdateDoctorBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        crm:
+          type: string
+        crmEstado:
+          type: string
+        telefone:
+          type: string
+        dataNascimento:
+          type: string
+          nullable: true
+          description: Data de nascimento (YYYY-MM-DD)
+        endereco:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        cep:
+          type: string
+        especialidade:
+          type: string
+        idioma:
+          type: string
+          enum: [pt-BR, es]
+        whatsappBusiness:
+          type: string
+          nullable: true
+          description: Número WhatsApp Business do médico (com DDD, somente dígitos)
+
+    DoctorWithStats:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        email:
+          type: string
+        crm:
+          type: string
+        crmEstado:
+          type: string
+        especialidade:
+          type: ["string", "null"]
+        isAdmin:
+          type: boolean
+        totalPatients:
+          type: integer
+        totalSurgeries:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, nome, email, crm, crmEstado, isAdmin, totalPatients, totalSurgeries, createdAt]
+
+    AdminDoctorWithStats:
+      allOf:
+        - $ref: "#/components/schemas/DoctorWithStats"
+        - type: object
+          properties:
+            aprovado:
+              type: boolean
+            isFree:
+              type: boolean
+            temporaryAccessExpiresAt:
+              type: ["string", "null"]
+            subscriptionStatus:
+              type: ["string", "null"]
+            subscriptionPeriodEnd:
+              type: ["integer", "null"]
+            lastLoginAt:
+              type: ["string", "null"]
+            lastActivityAt:
+              type: ["string", "null"]
+          required: [aprovado, isFree, temporaryAccessExpiresAt, subscriptionStatus, subscriptionPeriodEnd, lastLoginAt, lastActivityAt]
+
+    Patient:
+      type: object
+      properties:
+        id:
+          type: integer
+        doctorId:
+          type: integer
+        nome:
+          type: string
+        dataNascimento:
+          type: ["string", "null"]
+        sexo:
+          type: ["string", "null"]
+        telefone:
+          type: ["string", "null"]
+        lado:
+          type: ["string", "null"]
+        nivelAtividade:
+          type: ["string", "null"]
+        esportePivot:
+          type: boolean
+        beightonScore:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+      required: [id, doctorId, nome, esportePivot, createdAt]
+
+    PatientWithSurgeries:
+      type: object
+      properties:
+        id:
+          type: integer
+        doctorId:
+          type: integer
+        nome:
+          type: string
+        dataNascimento:
+          type: ["string", "null"]
+        sexo:
+          type: ["string", "null"]
+        telefone:
+          type: ["string", "null"]
+        lado:
+          type: ["string", "null"]
+        nivelAtividade:
+          type: ["string", "null"]
+        esportePivot:
+          type: boolean
+        beightonScore:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        surgeries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Surgery"
+      required: [id, doctorId, nome, esportePivot, createdAt, surgeries]
+
+    CreatePatientBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cpf:
+          type: string
+        dataNascimento:
+          type: string
+        email:
+          type: string
+        sexo:
+          type: string
+        telefone:
+          type: string
+        lado:
+          type: string
+        nivelAtividade:
+          type: string
+        esportePivot:
+          type: boolean
+        beightonScore:
+          type: integer
+        planoSaude:
+          type: string
+        indicadoPor:
+          type: string
+        endereco:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        cep:
+          type: string
+      required: [nome]
+
+    UpdatePatientBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cpf:
+          type: string
+        dataNascimento:
+          type: string
+        email:
+          type: string
+        sexo:
+          type: string
+        telefone:
+          type: string
+        lado:
+          type: string
+        nivelAtividade:
+          type: string
+        esportePivot:
+          type: boolean
+        beightonScore:
+          type: integer
+        anamnese:
+          type: string
+          nullable: true
+        laudos:
+          type: string
+          nullable: true
+        planoSaude:
+          type: string
+        indicadoPor:
+          type: string
+        endereco:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        cep:
+          type: string
+
+    Surgery:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        doctorId:
+          type: integer
+        dataCirurgia:
+          type: ["string", "null"]
+        hospital:
+          type: ["string", "null"]
+        tipoCaso:
+          type: ["string", "null"]
+        alinhamento:
+          type: ["string", "null"]
+        grauAlinhamento:
+          type: ["string", "null"]
+        rxAnaliseJson:
+          type: ["string", "null"]
+        tiposProcedimento:
+          type: array
+          items:
+            type: string
+        ligamentosAcometidos:
+          type: array
+          items:
+            type: string
+        enxerto:
+          type: ["string", "null"]
+        diametroEnxerto:
+          type: ["string", "null"]
+        fixacaoFemoral:
+          type: ["string", "null"]
+        fixacaoTibial:
+          type: ["string", "null"]
+        internalBrace:
+          type: ["string", "null"]
+        tipoLca:
+          type: ["string", "null"]
+        localizacaoLesaoLca:
+          type: ["string", "null"]
+        fixacaoReparoLca:
+          type: ["string", "null"]
+        preservacaoRemanescente:
+          type: ["string", "null"]
+        reforco:
+          type: ["string", "null"]
+        procedimentoRealizado:
+          type: ["string", "null"]
+        observacoes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, patientId, doctorId, tiposProcedimento, ligamentosAcometidos, createdAt]
+
+    SurgeryWithPatient:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        doctorId:
+          type: integer
+        dataCirurgia:
+          type: ["string", "null"]
+        hospital:
+          type: ["string", "null"]
+        tipoCaso:
+          type: ["string", "null"]
+        alinhamento:
+          type: ["string", "null"]
+        tiposProcedimento:
+          type: array
+          items:
+            type: string
+        ligamentosAcometidos:
+          type: array
+          items:
+            type: string
+        observacoes:
+          type: ["string", "null"]
+        status:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        patientNome:
+          type: string
+        patientSexo:
+          type: ["string", "null"]
+        patientLado:
+          type: ["string", "null"]
+      required: [id, patientId, doctorId, tiposProcedimento, ligamentosAcometidos, createdAt, patientNome]
+
+    SurgeryDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        doctorId:
+          type: integer
+        dataCirurgia:
+          type: ["string", "null"]
+        hospital:
+          type: ["string", "null"]
+        tipoCaso:
+          type: ["string", "null"]
+        alinhamento:
+          type: ["string", "null"]
+        grauAlinhamento:
+          type: ["string", "null"]
+        rxAnaliseJson:
+          type: ["string", "null"]
+        tiposProcedimento:
+          type: array
+          items:
+            type: string
+        ligamentosAcometidos:
+          type: array
+          items:
+            type: string
+        enxerto:
+          type: ["string", "null"]
+        diametroEnxerto:
+          type: ["string", "null"]
+        fixacaoFemoral:
+          type: ["string", "null"]
+        fixacaoTibial:
+          type: ["string", "null"]
+        internalBrace:
+          type: ["string", "null"]
+        tipoLca:
+          type: ["string", "null"]
+        localizacaoLesaoLca:
+          type: ["string", "null"]
+        fixacaoReparoLca:
+          type: ["string", "null"]
+        preservacaoRemanescente:
+          type: ["string", "null"]
+        reforco:
+          type: ["string", "null"]
+        procedimentoRealizado:
+          type: ["string", "null"]
+        observacoes:
+          type: ["string", "null"]
+        diagnostico:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        patient:
+          $ref: "#/components/schemas/Patient"
+        exameLigamentar:
+          $ref: "#/components/schemas/ExameLigamentar"
+        lcaAlgorithm:
+          $ref: "#/components/schemas/LcaAlgorithm"
+        procedimentoMeniscal:
+          $ref: "#/components/schemas/ProcedimentoMeniscal"
+        examePatelar:
+          $ref: "#/components/schemas/ExamePatelar"
+        picsScore:
+          $ref: "#/components/schemas/PicsScore"
+        followups:
+          type: array
+          items:
+            $ref: "#/components/schemas/Followup"
+      required: [id, patientId, doctorId, tiposProcedimento, ligamentosAcometidos, createdAt, patient, followups]
+
+    CreateSurgeryBody:
+      type: object
+      properties:
+        patientId:
+          type: integer
+        dataCirurgia:
+          type: string
+        hospital:
+          type: string
+        tipoCaso:
+          type: string
+        alinhamento:
+          type: string
+        grauAlinhamento:
+          type: string
+        rxAnaliseJson:
+          type: ["string", "null"]
+        tiposProcedimento:
+          type: array
+          items:
+            type: string
+        ligamentosAcometidos:
+          type: array
+          items:
+            type: string
+        enxerto:
+          type: string
+        diametroEnxerto:
+          type: string
+        fixacaoFemoral:
+          type: string
+        fixacaoTibial:
+          type: string
+        internalBrace:
+          type: string
+        tipoLca:
+          type: string
+        localizacaoLesaoLca:
+          type: string
+        fixacaoReparoLca:
+          type: string
+        preservacaoRemanescente:
+          type: string
+        reforco:
+          type: string
+        procedimentoRealizado:
+          type: string
+        observacoes:
+          type: string
+        procedimentosDetalhados:
+          type: ["string", "null"]
+        exameLigamentar:
+          $ref: "#/components/schemas/ExameLigamenarInput"
+        lcaAlgorithm:
+          $ref: "#/components/schemas/LcaAlgorithmInput"
+        procedimentoMeniscal:
+          $ref: "#/components/schemas/ProcedimentoMeniscalInput"
+        examePatelar:
+          $ref: "#/components/schemas/ExamePatelarInput"
+        picsScore:
+          $ref: "#/components/schemas/PicsScoreInput"
+      required: [patientId, tiposProcedimento, ligamentosAcometidos]
+
+    UpdateSurgeryBody:
+      type: object
+      properties:
+        dataCirurgia:
+          type: string
+        hospital:
+          type: string
+        lado:
+          type: ["string", "null"]
+        tipoCaso:
+          type: string
+        diagnostico:
+          type: ["string", "null"]
+        alinhamento:
+          type: string
+        grauAlinhamento:
+          type: string
+        rxAnaliseJson:
+          type: ["string", "null"]
+        tiposProcedimento:
+          type: array
+          items:
+            type: string
+        ligamentosAcometidos:
+          type: array
+          items:
+            type: string
+        enxerto:
+          type: string
+        diametroEnxerto:
+          type: string
+        fixacaoFemoral:
+          type: string
+        fixacaoTibial:
+          type: string
+        internalBrace:
+          type: string
+        tipoLca:
+          type: string
+        localizacaoLesaoLca:
+          type: string
+        fixacaoReparoLca:
+          type: string
+        preservacaoRemanescente:
+          type: string
+        reforco:
+          type: string
+        procedimentoRealizado:
+          type: string
+        observacoes:
+          type: string
+        procedimentosDetalhados:
+          type: ["string", "null"]
+        examePatelar:
+          anyOf:
+            - $ref: "#/components/schemas/ExamePatelarInput"
+            - type: "null"
+
+    ExameLigamenarInput:
+      type: object
+      properties:
+        lachman:
+          type: ["integer", "null"]
+        gavetaNeutra:
+          type: ["integer", "null"]
+        pivotShift:
+          type: ["integer", "null"]
+        aderTest:
+          type: ["boolean", "null"]
+        gavetaRotInterna:
+          type: ["boolean", "null"]
+        estresseValgo0:
+          type: ["integer", "null"]
+        estresseValgo30:
+          type: ["integer", "null"]
+        estresseVaro0:
+          type: ["integer", "null"]
+        estresseVaro30:
+          type: ["integer", "null"]
+        gavetaPosterior:
+          type: ["integer", "null"]
+        sagSign:
+          type: ["boolean", "null"]
+        quadricepsAtivo:
+          type: ["boolean", "null"]
+        dialTest:
+          type: ["boolean", "null"]
+        recurvato:
+          type: ["boolean", "null"]
+        hiperextensao:
+          type: ["string", "null"]
+        slopeTibialPts:
+          type: ["number", "null"]
+
+    ExameLigamentar:
+      type: object
+      properties:
+        id:
+          type: integer
+        surgeryId:
+          type: integer
+        lachman:
+          type: ["integer", "null"]
+        gavetaNeutra:
+          type: ["integer", "null"]
+        pivotShift:
+          type: ["integer", "null"]
+        aderTest:
+          type: ["boolean", "null"]
+        gavetaRotInterna:
+          type: ["boolean", "null"]
+        estresseValgo0:
+          type: ["integer", "null"]
+        estresseValgo30:
+          type: ["integer", "null"]
+        estresseVaro0:
+          type: ["integer", "null"]
+        estresseVaro30:
+          type: ["integer", "null"]
+        gavetaPosterior:
+          type: ["integer", "null"]
+        sagSign:
+          type: ["boolean", "null"]
+        quadricepsAtivo:
+          type: ["boolean", "null"]
+        dialTest:
+          type: ["boolean", "null"]
+        recurvato:
+          type: ["boolean", "null"]
+        hiperextensao:
+          type: ["string", "null"]
+        slopeTibialPts:
+          type: ["number", "null"]
+      required: [id, surgeryId]
+
+    LcaAlgorithmInput:
+      type: object
+      properties:
+        idade:
+          type: ["integer", "null"]
+        esportePivot:
+          type: ["boolean", "null"]
+        pivotShift:
+          type: ["integer", "null"]
+        revisao:
+          type: ["boolean", "null"]
+        hiperlaxidade:
+          type: ["boolean", "null"]
+        meniscoLateral:
+          type: ["boolean", "null"]
+        lesaoCronica:
+          type: ["boolean", "null"]
+        krirsScore:
+          type: ["integer", "null"]
+        krirsInterpretacao:
+          type: ["string", "null"]
+        tecnicaRecomendada:
+          type: ["string", "null"]
+        justificativa:
+          type: ["string", "null"]
+        flagAltoRisco:
+          type: ["boolean", "null"]
+
+    LcaAlgorithm:
+      type: object
+      properties:
+        id:
+          type: integer
+        surgeryId:
+          type: integer
+        idade:
+          type: ["integer", "null"]
+        esportePivot:
+          type: ["boolean", "null"]
+        pivotShift:
+          type: ["integer", "null"]
+        revisao:
+          type: ["boolean", "null"]
+        hiperlaxidade:
+          type: ["boolean", "null"]
+        meniscoLateral:
+          type: ["boolean", "null"]
+        lesaoCronica:
+          type: ["boolean", "null"]
+        krirsScore:
+          type: ["integer", "null"]
+        krirsInterpretacao:
+          type: ["string", "null"]
+        tecnicaRecomendada:
+          type: ["string", "null"]
+        justificativa:
+          type: ["string", "null"]
+        flagAltoRisco:
+          type: ["boolean", "null"]
+      required: [id, surgeryId]
+
+    MeniscalSideDetails:
+      type: object
+      properties:
+        sutura:
+          type: ["boolean", "null"]
+        lesaoRampa:
+          type: ["boolean", "null"]
+        lesaoRaiz:
+          type: ["boolean", "null"]
+        lesaoRaizAnterior:
+          type: ["boolean", "null"]
+        lesaoCornoAnterior:
+          type: ["boolean", "null"]
+        lesaoCornoPosterior:
+          type: ["boolean", "null"]
+        lesaoAlcaBalde:
+          type: ["boolean", "null"]
+        lesaoRadial:
+          type: ["boolean", "null"]
+        lesaoCorpo:
+          type: ["boolean", "null"]
+        lesaoDiscoide:
+          type: ["boolean", "null"]
+        fixacaoRaiz:
+          type: ["string", "null"]
+        centralizacaoRaiz:
+          type: ["boolean", "null"]
+        centralizacaoMetodo:
+          type: ["string", "null"]
+        tecnicasSutura:
+          type: array
+          items:
+            type: string
+        numPontos:
+          type: ["integer", "null"]
+        pontosPorTecnica:
+          type: ["string", "null"]
+        tipoFio:
+          type: ["string", "null"]
+        estimuloBiologico:
+          type: ["boolean", "null"]
+        estimuloPerfuracaoIntercondilo:
+          type: ["boolean", "null"]
+        estimuloCoaguloFibrina:
+          type: ["boolean", "null"]
+        estimuloOrtobiologico:
+          type: ["boolean", "null"]
+        estimuloOrtobiologicoTipo:
+          type: ["string", "null"]
+        saucerizacao:
+          type: ["boolean", "null"]
+        meniscectomia:
+          type: ["boolean", "null"]
+
+    ProcedimentoMeniscalInput:
+      type: object
+      properties:
+        dorInterlinha:
+          type: ["string", "null"]
+        mcMurrayMedial:
+          type: ["boolean", "null"]
+        mcMurrayLateral:
+          type: ["boolean", "null"]
+        apleyCompressao:
+          type: ["boolean", "null"]
+        apleyTracao:
+          type: ["boolean", "null"]
+        marchaPato:
+          type: ["boolean", "null"]
+        steinmann1:
+          type: ["boolean", "null"]
+        steinmann2:
+          type: ["boolean", "null"]
+        observacoesExame:
+          type: ["string", "null"]
+        contexto:
+          type: ["string", "null"]
+        meniscectomia:
+          type: ["boolean", "null"]
+        sutura:
+          type: ["boolean", "null"]
+        ladoMedial:
+          type: ["boolean", "null"]
+        ladoLateral:
+          type: ["boolean", "null"]
+        lesaoRampa:
+          type: ["boolean", "null"]
+        lesaoRaiz:
+          type: ["boolean", "null"]
+        lesaoAlcaBalde:
+          type: ["boolean", "null"]
+        lesaoRadial:
+          type: ["boolean", "null"]
+        lesaoCorpo:
+          type: ["boolean", "null"]
+        tecnicasSutura:
+          type: array
+          items:
+            type: string
+        numPontos:
+          type: ["integer", "null"]
+        pontosPorTecnica:
+          type: ["string", "null"]
+        tipoFio:
+          type: ["string", "null"]
+        detalhesMedial:
+          oneOf:
+            - $ref: "#/components/schemas/MeniscalSideDetails"
+            - type: "null"
+        detalhesLateral:
+          oneOf:
+            - $ref: "#/components/schemas/MeniscalSideDetails"
+            - type: "null"
+
+    ProcedimentoMeniscal:
+      type: object
+      properties:
+        id:
+          type: integer
+        surgeryId:
+          type: integer
+        dorInterlinha:
+          type: ["string", "null"]
+        mcMurrayMedial:
+          type: ["boolean", "null"]
+        mcMurrayLateral:
+          type: ["boolean", "null"]
+        apleyCompressao:
+          type: ["boolean", "null"]
+        apleyTracao:
+          type: ["boolean", "null"]
+        marchaPato:
+          type: ["boolean", "null"]
+        steinmann1:
+          type: ["boolean", "null"]
+        steinmann2:
+          type: ["boolean", "null"]
+        observacoesExame:
+          type: ["string", "null"]
+        contexto:
+          type: ["string", "null"]
+        meniscectomia:
+          type: ["boolean", "null"]
+        sutura:
+          type: ["boolean", "null"]
+        ladoMedial:
+          type: ["boolean", "null"]
+        ladoLateral:
+          type: ["boolean", "null"]
+        lesaoRampa:
+          type: ["boolean", "null"]
+        lesaoRaiz:
+          type: ["boolean", "null"]
+        lesaoAlcaBalde:
+          type: ["boolean", "null"]
+        lesaoRadial:
+          type: ["boolean", "null"]
+        lesaoCorpo:
+          type: ["boolean", "null"]
+        tecnicasSutura:
+          type: array
+          items:
+            type: string
+        numPontos:
+          type: ["integer", "null"]
+        pontosPorTecnica:
+          type: ["string", "null"]
+        tipoFio:
+          type: ["string", "null"]
+        detalhesMedial:
+          oneOf:
+            - $ref: "#/components/schemas/MeniscalSideDetails"
+            - type: "null"
+        detalhesLateral:
+          oneOf:
+            - $ref: "#/components/schemas/MeniscalSideDetails"
+            - type: "null"
+      required: [id, surgeryId]
+
+    ExamePatelarInput:
+      type: object
+      properties:
+        luxacaoAguda:
+          type: ["boolean", "null"]
+        luxacaoCronica:
+          type: ["boolean", "null"]
+        numEpisodios:
+          type: ["integer", "null"]
+        apprehensionTest:
+          type: ["boolean", "null"]
+        jSign:
+          type: ["boolean", "null"]
+        jSignGrau:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 4
+        tiltPatelar:
+          type: ["string", "null"]
+        ttTgMm:
+          type: ["number", "null"]
+        catonDeschamps:
+          type: ["number", "null"]
+        dejourTipo:
+          type: ["string", "null"]
+        inclinacaoPatelarGraus:
+          type: ["number", "null"]
+        inclinacaoPatelarCategoria:
+          type: ["string", "null"]
+        lesaoCondral:
+          type: ["boolean", "null"]
+        maltrackingDinamico:
+          type: ["boolean", "null"]
+
+    ExamePatelar:
+      type: object
+      properties:
+        id:
+          type: integer
+        surgeryId:
+          type: integer
+        luxacaoAguda:
+          type: ["boolean", "null"]
+        luxacaoCronica:
+          type: ["boolean", "null"]
+        numEpisodios:
+          type: ["integer", "null"]
+        apprehensionTest:
+          type: ["boolean", "null"]
+        jSign:
+          type: ["boolean", "null"]
+        jSignGrau:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 4
+        tiltPatelar:
+          type: ["string", "null"]
+        ttTgMm:
+          type: ["number", "null"]
+        catonDeschamps:
+          type: ["number", "null"]
+        dejourTipo:
+          type: ["string", "null"]
+        inclinacaoPatelarGraus:
+          type: ["number", "null"]
+        inclinacaoPatelarCategoria:
+          type: ["string", "null"]
+        lesaoCondral:
+          type: ["boolean", "null"]
+        maltrackingDinamico:
+          type: ["boolean", "null"]
+      required: [id, surgeryId]
+
+    PicsScoreInput:
+      type: object
+      properties:
+        ptsTotal:
+          type: ["integer", "null"]
+        ptsRisco:
+          type: ["string", "null"]
+        ptsConduta:
+          type: ["string", "null"]
+        fatorDominante:
+          type: ["string", "null"]
+
+    PicsScore:
+      type: object
+      properties:
+        id:
+          type: integer
+        surgeryId:
+          type: integer
+        ptsTotal:
+          type: ["integer", "null"]
+        ptsRisco:
+          type: ["string", "null"]
+        ptsConduta:
+          type: ["string", "null"]
+        fatorDominante:
+          type: ["string", "null"]
+      required: [id, surgeryId]
+
+    KrirsInput:
+      type: object
+      properties:
+        idade:
+          type: integer
+        esportePivot:
+          type: boolean
+        pivotShift:
+          type: integer
+        revisao:
+          type: boolean
+        hiperlaxidade:
+          type: boolean
+        meniscoLateral:
+          type: boolean
+        lesaoCronica:
+          type: boolean
+        aderTest:
+          type: boolean
+        gavetaRotInterna:
+          type: boolean
+      required: [idade, esportePivot, pivotShift, revisao, hiperlaxidade, meniscoLateral, lesaoCronica]
+
+    KrirsResult:
+      type: object
+      properties:
+        score:
+          type: integer
+        nivelRisco:
+          type: string
+          enum: [alto, intermediario, baixo]
+        tecnica:
+          type: string
+        justificativa:
+          type: string
+        flagAltoRisco:
+          type: boolean
+        instabAnteromedial:
+          type: boolean
+        instabAnterolateral:
+          type: boolean
+        instabCombinada:
+          type: boolean
+        duplaExtraArticular:
+          type: boolean
+        recomendacao:
+          type: array
+          items:
+            type: string
+        alerta:
+          type: ["string", "null"]
+      required: [score, nivelRisco, tecnica, justificativa, flagAltoRisco, instabAnteromedial, instabAnterolateral, instabCombinada, duplaExtraArticular, recomendacao]
+
+    PicsInput:
+      type: object
+      properties:
+        dejourTipo:
+          type: string
+        numEpisodios:
+          type: integer
+        luxacaoCronica:
+          type: boolean
+        idade:
+          type: integer
+        ttTgMm:
+          type: number
+        catonDeschamps:
+          type: number
+        maltrackingDinamico:
+          type: boolean
+        inclinacaoPatelarGraus:
+          type: number
+        lesaoCondral:
+          type: boolean
+        hiperlaxidade:
+          type: boolean
+        sexo:
+          type: string
+      required: [dejourTipo, numEpisodios, luxacaoCronica, idade, ttTgMm, catonDeschamps, maltrackingDinamico, inclinacaoPatelarGraus, lesaoCondral, hiperlaxidade, sexo]
+
+    PicsResult:
+      type: object
+      properties:
+        picsTotal:
+          type: integer
+        picsRisco:
+          type: string
+        picsConduta:
+          type: string
+        fatorDominante:
+          type: string
+        sugestoes:
+          type: array
+          items:
+            type: string
+      required: [picsTotal, picsRisco, picsConduta, fatorDominante, sugestoes]
+
+    AclDecisionInput:
+      type: object
+      properties:
+        idade:
+          type: integer
+        sexo:
+          type: ["string", "null"]
+        enxerto:
+          type: ["string", "null"]
+        pivotShift:
+          type: ["integer", "null"]
+        lachman:
+          type: ["integer", "null"]
+        hiperextensaoGraus:
+          type: ["number", "null"]
+        revisao:
+          type: boolean
+        esqueletoImaturo:
+          type: ["boolean", "null"]
+        lesaoCronica:
+          type: ["boolean", "null"]
+        esportePivot:
+          type: ["boolean", "null"]
+        ptsGraus:
+          type: ["number", "null"]
+        contralateralLca:
+          type: ["boolean", "null"]
+        tabagismo:
+          type: ["boolean", "null"]
+        atrasoCirurgicoDias:
+          type: ["integer", "null"]
+        earlyRtsPivot:
+          type: ["boolean", "null"]
+        tunelComprometido:
+          type: ["boolean", "null"]
+        aloenxertoJovem:
+          type: ["boolean", "null"]
+        allIsoladaConduta:
+          type: ["boolean", "null"]
+        segondFratura:
+          type: ["boolean", "null"]
+        notchEstreito:
+          type: ["boolean", "null"]
+        lesaoAlcImagem:
+          type: ["boolean", "null"]
+        meniscalConcomitante:
+          type: ["boolean", "null"]
+        graftDiametroMm:
+          type: ["number", "null"]
+      required: [idade, revisao]
+
+    AclDecisionRegra:
+      type: object
+      properties:
+        id:
+          type: string
+        modulo:
+          type: string
+          enum: [leap, pts, graft, revision, behavioral]
+        forca:
+          type: string
+        evidencia:
+          type: array
+          items:
+            type: string
+        titulo:
+          type: string
+        alavanca:
+          type: string
+        justificativa:
+          type: string
+        contraindicado:
+          type: ["string", "null"]
+      required: [id, modulo, forca, evidencia, titulo, alavanca, justificativa]
+
+    AclDecisionResult:
+      type: object
+      properties:
+        disclaimers:
+          type: object
+          properties:
+            naoCalibrado:
+              type: string
+            populacao:
+              type: string
+            vies:
+              type: string
+          required: [naoCalibrado, populacao, vies]
+        driversNaoModificaveis:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              presente:
+                type: boolean
+            required: [id, label, presente]
+        regras:
+          type: array
+          items:
+            $ref: "#/components/schemas/AclDecisionRegra"
+        leapIndicado:
+          type: boolean
+        forcaMaxima:
+          type: ["string", "null"]
+        fatoresAcessorios:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              presente:
+                type: boolean
+            required: [id, label, presente]
+        fatoresAcessoriosCount:
+          type: integer
+        camadaSeguranca:
+          type: ["object", "null"]
+          properties:
+            reassurance:
+              type: array
+              items:
+                type: string
+            caveats:
+              type: array
+              items:
+                type: string
+            consentComplications:
+              type: array
+              items:
+                type: string
+        execucaoTecnica:
+          type: ["object", "null"]
+          properties:
+            nota:
+              type: string
+            itens:
+              type: array
+              items:
+                type: string
+      required: [disclaimers, driversNaoModificaveis, regras, leapIndicado, forcaMaxima, fatoresAcessorios, fatoresAcessoriosCount]
+
+    CreateFollowupBody:
+      type: object
+      properties:
+        surgeryId:
+          type: integer
+        tempo:
+          type: string
+        dataAvaliacao:
+          type: string
+        ikdc:
+          type: ["number", "null"]
+        koos12:
+          type: ["number", "null"]
+        koosSintomas:
+          type: ["number", "null"]
+        koosDor:
+          type: ["number", "null"]
+        koosFuncao:
+          type: ["number", "null"]
+        koosEsporte:
+          type: ["number", "null"]
+        koosQualidade:
+          type: ["number", "null"]
+        lysholm:
+          type: ["number", "null"]
+        tegner:
+          type: ["number", "null"]
+        kujala:
+          type: ["number", "null"]
+        vasDor:
+          type: ["number", "null"]
+        aclRsi:
+          type: ["number", "null"]
+        marx:
+          type: ["number", "null"]
+        womac:
+          type: ["number", "null"]
+        admFlexao:
+          type: ["integer", "null"]
+        admExtensao:
+          type: ["integer", "null"]
+        complicacoes:
+          type: array
+          items:
+            type: string
+        retornoEsporte:
+          type: ["boolean", "null"]
+        nivelRetorno:
+          type: ["string", "null"]
+        falha:
+          type: ["boolean", "null"]
+        falhaType:
+          type: ["string", "null"]
+        observacoes:
+          type: ["string", "null"]
+      required: [surgeryId, tempo]
+
+    UpdateFollowupBody:
+      type: object
+      properties:
+        ikdc:
+          type: ["number", "null"]
+        koosSintomas:
+          type: ["number", "null"]
+        koosDor:
+          type: ["number", "null"]
+        koosFuncao:
+          type: ["number", "null"]
+        koosEsporte:
+          type: ["number", "null"]
+        koosQualidade:
+          type: ["number", "null"]
+        lysholm:
+          type: ["integer", "null"]
+        tegner:
+          type: ["integer", "null"]
+        kujala:
+          type: ["integer", "null"]
+        vasDor:
+          type: ["integer", "null"]
+        retornoEsporte:
+          type: ["boolean", "null"]
+        nivelRetorno:
+          type: ["string", "null"]
+        falha:
+          type: ["boolean", "null"]
+        falhaType:
+          type: ["string", "null"]
+        observacoes:
+          type: ["string", "null"]
+
+    Followup:
+      type: object
+      properties:
+        id:
+          type: integer
+        surgeryId:
+          type: integer
+        tempo:
+          type: string
+        dataAvaliacao:
+          type: ["string", "null"]
+        ikdc:
+          type: ["number", "null"]
+        koosSintomas:
+          type: ["number", "null"]
+        koosDor:
+          type: ["number", "null"]
+        koosFuncao:
+          type: ["number", "null"]
+        koosEsporte:
+          type: ["number", "null"]
+        koosQualidade:
+          type: ["number", "null"]
+        lysholm:
+          type: ["integer", "null"]
+        tegner:
+          type: ["integer", "null"]
+        kujala:
+          type: ["integer", "null"]
+        vasDor:
+          type: ["integer", "null"]
+        retornoEsporte:
+          type: ["boolean", "null"]
+        nivelRetorno:
+          type: ["string", "null"]
+        falha:
+          type: ["boolean", "null"]
+        falhaType:
+          type: ["string", "null"]
+        observacoes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, surgeryId, tempo, createdAt]
+
+    DoctorDashboard:
+      type: object
+      properties:
+        totalPatients:
+          type: integer
+        totalSurgeries:
+          type: integer
+        surgeriesByType:
+          type: array
+          items:
+            type: object
+            properties:
+              tipo:
+                type: string
+              count:
+                type: integer
+            required: [tipo, count]
+        surgeriesByLigament:
+          type: array
+          items:
+            type: object
+            properties:
+              ligamento:
+                type: string
+              count:
+                type: integer
+            required: [ligamento, count]
+        recentSurgeries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurgeryWithPatient"
+        followupCompliance:
+          type: number
+        avgIkdc:
+          type: ["number", "null"]
+        returnToSportRate:
+          type: ["number", "null"]
+      required: [totalPatients, totalSurgeries, surgeriesByType, surgeriesByLigament, recentSurgeries, followupCompliance]
+
+    AdminDashboard:
+      type: object
+      properties:
+        totalDoctors:
+          type: integer
+        totalPatients:
+          type: integer
+        totalSurgeries:
+          type: integer
+        surgeriesByType:
+          type: array
+          items:
+            type: object
+            properties:
+              tipo:
+                type: string
+              count:
+                type: integer
+            required: [tipo, count]
+        surgeriesByLigament:
+          type: array
+          items:
+            type: object
+            properties:
+              ligamento:
+                type: string
+              count:
+                type: integer
+            required: [ligamento, count]
+        avgIkdc:
+          type: ["number", "null"]
+        avgLysholm:
+          type: ["number", "null"]
+        returnToSportRate:
+          type: ["number", "null"]
+        doctorStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminDoctorWithStats"
+        monthlySurgeries:
+          type: array
+          items:
+            type: object
+            properties:
+              month:
+                type: string
+              count:
+                type: integer
+            required: [month, count]
+        totalAcessos:
+          type: integer
+        acessosHoje:
+          type: integer
+        acessosSemana:
+          type: integer
+        medicosAtivos30dias:
+          type: integer
+        visitasHoje:
+          type: integer
+        visitasMes:
+          type: integer
+        visitasAno:
+          type: integer
+        visitasTotal:
+          type: integer
+        siteHoje:
+          type: integer
+        siteMes:
+          type: integer
+        siteAno:
+          type: integer
+        siteTotal:
+          type: integer
+        cadastroHoje:
+          type: integer
+          description: Visitas à página de cadastro — hoje
+        cadastroOntem:
+          type: integer
+          description: Visitas à página de cadastro — ontem
+        cadastroSemana:
+          type: integer
+          description: Visitas à página de cadastro — últimos 7 dias
+        cadastroMes:
+          type: integer
+          description: Visitas à página de cadastro — mês corrente
+        geographicAccesses:
+          $ref: "#/components/schemas/GeographicAccessSummary"
+      required: [totalDoctors, totalPatients, totalSurgeries, surgeriesByType, surgeriesByLigament, doctorStats, monthlySurgeries, totalAcessos, acessosHoje, acessosSemana, medicosAtivos30dias, visitasHoje, visitasMes, visitasAno, visitasTotal, siteHoje, siteMes, siteAno, siteTotal, cadastroHoje, cadastroOntem, cadastroSemana, cadastroMes, geographicAccesses]
+
+    GeographicAccessItem:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [state, country, unknown]
+        code:
+          type: ["string", "null"]
+        label:
+          type: string
+        count:
+          type: integer
+      required: [kind, code, label, count]
+
+    GeographicAccessSummary:
+      type: object
+      properties:
+        periodDays:
+          type: integer
+        site:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeographicAccessItem"
+        platform:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeographicAccessItem"
+      required: [periodDays, site, platform]

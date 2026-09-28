@@ -1,0 +1,125 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785326234990,
+      "tag": "0000_tanner_pediatrico",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786635876623,
+      "tag": "0001_add_exame_osteocondral",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786635876624,
+      "tag": "0002_ocd_missing_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787440780700,
+      "tag": "0003_pre_consultation",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787441062586,
+      "tag": "0004_register_pre_consult_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787448005068,
+      "tag": "0005_soften_regen_patient_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787490126128,
+      "tag": "0006_add_osteocondral_tissue_bank",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788000000000,
+      "tag": "0007_add_doctor_language",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787920367133,
+      "tag": "0008_add_meniscal_exam_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787930419049,
+      "tag": "0009_add_meniscal_side_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788183177862,
+      "tag": "0010_add_whatsapp_crm",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788240427709,
+      "tag": "0011_add_flipcutter_to_acl_pcl",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788257390975,
+      "tag": "0012_repair_pre_consult_upload_purpose",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788371457724,
+      "tag": "0013_add_doctor_temporary_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788652304689,
+      "tag": "0014_add_whatsapp_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788654458569,
+      "tag": "0015_add_storage_object_generations",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788655006906,
+      "tag": "0016_reconcile_whatsapp_outbox_columns",
+      "breakpoints": true
+    }
+  ]
+}

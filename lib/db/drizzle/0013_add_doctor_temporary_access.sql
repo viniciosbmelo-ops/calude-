@@ -1,0 +1,1 @@
+ALTER TABLE "doctors" ADD COLUMN "temporary_access_expires_at" timestamp with time zone;
