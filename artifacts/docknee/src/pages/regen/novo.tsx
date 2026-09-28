@@ -2442,7 +2442,7 @@ export default function RegenNovo() {
                 )}>
                    <span className="text-muted-foreground">{t("clinicalAlerts")}</span>
                   <span className={cn("font-medium", compliance.flags.length > 0 ? "text-orange-700" : "text-green-700")}>
-                     {compliance.flags.length === 0 ? t("none") : t("alertCount", { count: compliance.flags.length })}
+                     {compliance.flags.length === 0 ? t("none") : t((compliance.flags.length) === 1 ? "alertCountOne" : "alertCount", { count: compliance.flags.length })}
                   </span>
                 </div>
               </div>

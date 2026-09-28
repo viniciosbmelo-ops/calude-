@@ -17,6 +17,7 @@ import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { operationalPatientRecordMessages } from "@/locales/operational-patient-record";
 import { caseTypeLabel } from "@/locales/case-types";
+import { surgeryCaseTypeChips } from "@/lib/surgery-case-chips";
 import { useAuth } from "@/lib/auth";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInYears } from "date-fns";
@@ -804,23 +805,26 @@ export default function PatientDetail() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {(patient.surgeries as SurgeryItem[]).map((surgery) => (
-                      <div key={surgery.id} className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-muted/20">
-                        <div className="flex flex-col gap-1 min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-foreground">{surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), 'dd/MM/yyyy') : '-'}</span>
-                            {surgery.tipoCaso && <Badge variant="secondary" className="text-xs">{caseTypeLabel(locale, surgery.tipoCaso)}</Badge>}
+                    {(patient.surgeries as SurgeryItem[]).map((surgery) => {
+                      const { caseTypeChip, procedureChips } = surgeryCaseTypeChips(surgery, (key) => caseTypeLabel(locale, key));
+                      return (
+                        <div key={surgery.id} className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-muted/20">
+                          <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-foreground">{surgery.dataCirurgia ? format(new Date(surgery.dataCirurgia), 'dd/MM/yyyy') : '-'}</span>
+                              {caseTypeChip && <Badge variant="secondary" className="text-xs">{caseTypeChip}</Badge>}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{surgery.hospital || tr("hospitalUnknown")}</span>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {procedureChips.map((label) => (
+                                <Badge key={label} variant="outline" className="text-xs text-blue-700 border-blue-200 bg-blue-50/60 dark:text-blue-300 dark:border-blue-800 dark:bg-blue-950/30">{label}</Badge>
+                              ))}
+                            </div>
                           </div>
-                          <span className="text-xs text-muted-foreground">{surgery.hospital || tr("hospitalUnknown")}</span>
-                          <div className="flex flex-wrap gap-1 mt-0.5">
-                            {surgery.tiposProcedimento.map((proc: string) => (
-                              <Badge key={proc} variant="outline" className="text-xs text-blue-700 border-blue-200 bg-blue-50/60 dark:text-blue-300 dark:border-blue-800 dark:bg-blue-950/30">{caseTypeLabel(locale, proc)}</Badge>
-                            ))}
-                          </div>
+                          <Link href={`/surgeries/${surgery.id}`}><Button variant="ghost" size="sm" className="shrink-0 ml-2">{tr("view")}</Button></Link>
                         </div>
-                        <Link href={`/surgeries/${surgery.id}`}><Button variant="ghost" size="sm" className="shrink-0 ml-2">{tr("view")}</Button></Link>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

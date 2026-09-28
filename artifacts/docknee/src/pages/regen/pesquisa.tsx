@@ -215,7 +215,7 @@ export default function RegenPesquisa() {
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-blue-500" />
-                 <p className="text-sm font-bold text-gray-900">{t("results", { count: rows.length })}</p>
+                 <p className="text-sm font-bold text-gray-900">{t((rows.length) === 1 ? "resultsOne" : "results", { count: rows.length })}</p>
               </div>
                <p className="text-xs text-gray-400">{t("anonymizedData")}</p>
             </div>

@@ -1239,9 +1239,9 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
                <p className="min-w-0 text-xs font-bold uppercase tracking-wide text-gray-500">{t("scaleSendTimeline")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-              <span className="text-xs text-gray-400">{t("pendingCount", { count: notifs.filter(n => n.status === "pending").length })}</span>
+              <span className="text-xs text-gray-400">{(() => { const count = notifs.filter(n => n.status === "pending").length; return t(count === 1 ? "pendingCountOne" : "pendingCount", { count }); })()}</span>
               <span className="text-gray-300">·</span>
-              <span className="text-xs text-gray-400">{t("sentCount", { count: notifs.filter(n => n.status === "sent" || n.status === "completed").length })}</span>
+              <span className="text-xs text-gray-400">{(() => { const count = notifs.filter(n => n.status === "sent" || n.status === "completed").length; return t(count === 1 ? "sentCountOne" : "sentCount", { count }); })()}</span>
             </div>
           </div>
 
@@ -1276,7 +1276,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
                       <p className="mt-0.5 break-words text-xs text-gray-500">
                          {(n.scales as string[]).map(tr).join(", ")}
                         {n.response_count > 0 && (
-                           <span className="ml-2 text-green-600 font-semibold">· {t("completedCount", { count: n.response_count, total: n.scales.length })}</span>
+                           <span className="ml-2 text-green-600 font-semibold">· {t((n.response_count) === 1 ? "completedCountOne" : "completedCount", { count: n.response_count, total: n.scales.length })}</span>
                         )}
                       </p>
                     </div>

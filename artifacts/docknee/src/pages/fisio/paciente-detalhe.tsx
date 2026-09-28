@@ -165,7 +165,7 @@ export default function FisioPacienteDetalhe() {
       const body = await res.json();
       if (!res.ok) { toast.error(body.error ?? t("assessmentSaveError")); return; }
       if (body.completedFollowupIds?.length > 0) {
-        toast.success(t("assessmentAutoCompleted", { count: body.completedFollowupIds.length }));
+        toast.success(t((body.completedFollowupIds.length) === 1 ? "assessmentAutoCompletedOne" : "assessmentAutoCompleted", { count: body.completedFollowupIds.length }));
       } else {
         toast.success(t("assessmentSaved"));
       }

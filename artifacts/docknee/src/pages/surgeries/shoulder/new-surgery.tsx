@@ -443,7 +443,7 @@ export default function NewShoulderSurgery() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-semibold">{t("stepTechnique")}</h2>
-                <p className="text-sm text-muted-foreground mt-1">{t("techniqueHelp")}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t(arthroscopic ? "techniqueHelp" : "techniqueHelpNonArthroscopic")}</p>
               </div>
 
               {serverIssues && (
@@ -547,7 +547,7 @@ function Section({ title, pending, children, t }: { title: string; pending?: num
         <span>{title}</span>
         {pending !== undefined && (
           pending > 0
-            ? <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">{t("pending", { n: pending })}</span>
+            ? <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">{t(pending === 1 ? "pendingOne" : "pending", { n: pending })}</span>
             : <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">{t("complete")}</span>
         )}
       </summary>

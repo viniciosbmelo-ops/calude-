@@ -27,7 +27,9 @@ const COMPLIANCE_ES: Record<string, (message: string) => string> = {
   LB02: (source) => {
     const count = source.match(/^(\d+) analito/)?.[1];
     return count
-      ? `${count} analito(s) de laboratorio fuera del intervalo de referencia — revíselos antes de continuar con el procedimiento.`
+      ? count === "1"
+        ? `${count} analito de laboratorio fuera del intervalo de referencia — revíselo antes de continuar con el procedimiento.`
+        : `${count} analitos de laboratorio fuera del intervalo de referencia — revíselos antes de continuar con el procedimiento.`
       : source;
   },
   WN01: () => "Paciente pediátrico (< 18 años) — evidencia limitada; documente la justificación clínica y obtenga el consentimiento de los responsables.",

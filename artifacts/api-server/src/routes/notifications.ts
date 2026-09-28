@@ -9,6 +9,7 @@ import { filterSupportedFollowupScales, hasFractureProcedure, isPreoperativePeri
 import { resolveDoctorLocale } from "../lib/locale";
 import { localeForDoctorId } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
+import { classifyFollowupNotification, hasRecordedAssessment } from "../lib/followup-assessment";
 
 const router: IRouter = Router();
 
@@ -515,10 +516,20 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
         patientTelefone: patientsTable.telefone,
         dataCirurgia: surgeriesTable.dataCirurgia,
         tiposProcedimento: surgeriesTable.tiposProcedimento,
+        fuId: followupTable.id,
+        fuVasDor: followupTable.vasDor,
+        fuAdmFlexao: followupTable.admFlexao,
+        fuAdmExtensao: followupTable.admExtensao,
+        fuComplicacoes: followupTable.complicacoes,
+        fuRetornoEsporte: followupTable.retornoEsporte,
+        fuNivelRetorno: followupTable.nivelRetorno,
+        fuFalha: followupTable.falha,
+        fuFalhaType: followupTable.falhaType,
       })
       .from(scheduledNotificationsTable)
       .innerJoin(patientsTable, eq(scheduledNotificationsTable.patientId, patientsTable.id))
       .innerJoin(surgeriesTable, eq(scheduledNotificationsTable.surgeryId, surgeriesTable.id))
+      .leftJoin(followupTable, eq(scheduledNotificationsTable.followupId, followupTable.id))
       .where(inArray(scheduledNotificationsTable.surgeryId, surgeryIds))
       .orderBy(scheduledNotificationsTable.scheduledDate);
 
@@ -543,18 +554,29 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
       ) {
         continue;
       }
-      const { tiposProcedimento: _tiposProcedimento, ...rest } = row;
+      const {
+        tiposProcedimento: _tiposProcedimento,
+        fuId, fuVasDor, fuAdmFlexao, fuAdmExtensao, fuComplicacoes,
+        fuRetornoEsporte, fuNivelRetorno, fuFalha, fuFalhaType,
+        ...rest
+      } = row;
       // Linhas antigas podem listar escalas do joelho já retiradas.
       const publicRow: PublicRow = { ...rest, scales: filterSupportedFollowupScales(rest.scales) };
-      if (publicRow.followupId !== null) {
-        respondidos.push(publicRow);
-      } else if (publicRow.status === "sent") {
-        aguardando.push(publicRow);
-      } else if (publicRow.scheduledDate && publicRow.scheduledDate <= today) {
-        vencidos.push(publicRow);
-      } else {
-        agendados.push(publicRow);
-      }
+      // O registro de follow-up nasce no envio do questionário; só conta como
+      // respondido quando há desfecho registrado (mesma regra dos relatórios).
+      const answered = hasRecordedAssessment({
+        id: fuId,
+        vasDor: fuVasDor,
+        admFlexao: fuAdmFlexao,
+        admExtensao: fuAdmExtensao,
+        complicacoes: fuComplicacoes,
+        retornoEsporte: fuRetornoEsporte,
+        nivelRetorno: fuNivelRetorno,
+        falha: fuFalha,
+        falhaType: fuFalhaType,
+      });
+      const bucket = classifyFollowupNotification(publicRow, answered, today);
+      ({ respondidos, aguardando, vencidos, agendados })[bucket].push(publicRow);
     }
 
     res.json({

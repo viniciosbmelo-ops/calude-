@@ -2445,7 +2445,7 @@ function brComputeScore(inp: BRInput): { score: number; gradeLabel: string; grad
     const flagCnt = inp.labFlagCount ?? 0; let labScore = 10; const labDets: string[] = [];
     if (flagCnt >= 5) { labScore -= 8; labDets.push(`${flagCnt} analitos alterados`); }
     else if (flagCnt >= 3) { labScore -= 5; labDets.push(`${flagCnt} analitos alterados`); }
-    else if (flagCnt >= 1) { labScore -= 2; labDets.push(`${flagCnt} analito(s) alterado(s)`); }
+    else if (flagCnt >= 1) { labScore -= 2; labDets.push(flagCnt === 1 ? "1 analito alterado" : `${flagCnt} analitos alterados`); }
     else labDets.push("exames dentro da normalidade");
     if (platelets != null && platelets < 100) { labScore -= 4; labDets.push(`plaquetas ${platelets} × 10³/µL (muito baixas)`); }
     else if (platelets != null && platelets < 150) { labScore -= 2; labDets.push(`plaquetas ${platelets} × 10³/µL (baixas)`); }

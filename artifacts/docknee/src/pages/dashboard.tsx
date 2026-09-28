@@ -9,7 +9,7 @@ import {
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { capitalizeFirst, cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
@@ -435,7 +435,7 @@ export default function Dashboard() {
       label: t("dashboardSurgeriesCompleted"),
       value: String(data.totalSurgeries),
       // totalSurgeries exclui rascunhos (API); o subtítulo é a contagem de pacientes.
-      sub: t("dashboardSurgeriesCompletedPatients", { count: data.totalPatients }),
+      sub: t((data.totalPatients) === 1 ? "dashboardSurgeriesCompletedPatientsOne" : "dashboardSurgeriesCompletedPatients", { count: data.totalPatients }),
       href: "/surgeries",
       accent: "#2563EB",
     },
@@ -476,7 +476,7 @@ export default function Dashboard() {
       {/* ── Mobile greeting banner ── */}
       <div className="md:hidden px-5 pt-5 pb-4 mb-1"
         style={{ background: "linear-gradient(135deg, #0A1628 0%, #0D2040 100%)" }}>
-        <p className="text-xs font-medium mb-0.5 capitalize" style={{ color: "rgba(31,182,225,0.8)" }}>{dateStr}</p>
+        <p className="text-xs font-medium mb-0.5" style={{ color: "rgba(31,182,225,0.8)" }}>{capitalizeFirst(dateStr, locale)}</p>
         <h1 className="text-xl font-bold text-white">{greeting}, Dr. {formatDoctorFirstName(user?.nome)}</h1>
         <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>{tx("overviewDescription")}</p>
       </div>

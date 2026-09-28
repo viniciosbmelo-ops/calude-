@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db, surgeriesTable, patientsTable, doctorsTable, followupTable, auditLogsTable, pageVisitsTable, appointmentsTable } from "@workspace/db";
-import { eq, count, avg, sql, and, ilike, gte, isNotNull, lte } from "drizzle-orm";
+import { eq, count, avg, sql, and, ilike, gte, isNotNull, lte, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/requireAuth";
 import { toInitials } from "../lib/anonymize";
 import { describeAccessGeography, type AccessType } from "../lib/accessGeography";
 import { serializeDoctor } from "../lib/doctorSerializer";
 import { isHiddenFracturePreoperative } from "../lib/followup-schedule";
+import { hasRecordedAssessment } from "../lib/followup-assessment";
 
 const router: IRouter = Router();
 
@@ -53,6 +54,8 @@ export function summarizeDashboardSurgeries(
     surgeriesByType: [...typeCount].map(([tipo, count]) => ({ tipo, count })),
   };
 }
+
+export { hasRecordedAssessment };
 
 router.get("/reports/dashboard", requireAuth, async (req, res): Promise<void> => {
   const doctorId = req.doctorId!;
@@ -354,7 +357,9 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
     retornoEsporte, falha,
   } = q;
 
-  const conditions: ReturnType<typeof eq>[] = [];
+  // Rascunhos não são cirurgias realizadas: ficam fora da tabela, das contagens,
+  // dos gráficos e da exportação.
+  const conditions: ReturnType<typeof eq>[] = [ne(surgeriesTable.status, DRAFT_SURGERY_STATUS)];
 
   if (!isAdmin) {
     conditions.push(eq(surgeriesTable.doctorId, doctorId));
@@ -408,6 +413,9 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       followupTempo: followupTable.tempo,
       followupDataAvaliacao: followupTable.dataAvaliacao,
       followupVasDor: followupTable.vasDor,
+      followupAdmFlexao: followupTable.admFlexao,
+      followupAdmExtensao: followupTable.admExtensao,
+      followupComplicacoes: followupTable.complicacoes,
       followupRetornoEsporte: followupTable.retornoEsporte,
       followupNivelRetorno: followupTable.nivelRetorno,
       followupFalha: followupTable.falha,
@@ -415,6 +423,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       followupObservacoes: followupTable.observacoes,
       followupCreatedAt: followupTable.createdAt,
       surgeryId: surgeriesTable.id,
+      surgeryStatus: surgeriesTable.status,
       dataCirurgia: surgeriesTable.dataCirurgia,
       hospital: surgeriesTable.hospital,
       regiao: surgeriesTable.regiao,
@@ -441,12 +450,14 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
 
   const now = new Date();
   const data = rows
+    .filter((row) => isCompletedSurgery({ status: row.surgeryStatus }))
     .filter((row) => !isHiddenFracturePreoperative(
       row.tiposProcedimento as string[] | null,
       row.followupTempo,
     ))
     .map(({ patientDatNasc, followupId, followupTempo, followupDataAvaliacao,
-    followupVasDor, followupRetornoEsporte, followupNivelRetorno,
+    followupVasDor, followupAdmFlexao, followupAdmExtensao, followupComplicacoes,
+    followupRetornoEsporte, followupNivelRetorno,
     followupFalha, followupFalhaType, followupObservacoes, followupCreatedAt, surgeryCreatedAt,
     ...rest }) => {
     let idade: number | null = null;
@@ -468,6 +479,17 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
       falha: followupFalha ?? null,
       falhaType: followupFalhaType ?? null,
       observacoes: followupObservacoes ?? null,
+      respondida: hasRecordedAssessment({
+        id: followupId,
+        vasDor: followupVasDor,
+        admFlexao: followupAdmFlexao,
+        admExtensao: followupAdmExtensao,
+        complicacoes: followupComplicacoes,
+        retornoEsporte: followupRetornoEsporte,
+        nivelRetorno: followupNivelRetorno,
+        falha: followupFalha,
+        falhaType: followupFalhaType,
+      }),
       createdAt: followupCreatedAt?.toISOString() ?? surgeryCreatedAt.toISOString(),
       ...rest,
       idade,

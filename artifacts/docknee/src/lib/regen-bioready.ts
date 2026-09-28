@@ -595,7 +595,7 @@ function factorLabs(inp: BioReadyInput): BioReadyFactor {
 
   if (flagCount >= 5)       { score -= 8; details.push(`${flagCount} analitos alterados`); }
   else if (flagCount >= 3)  { score -= 5; details.push(`${flagCount} analitos alterados`); }
-  else if (flagCount >= 1)  { score -= 2; details.push(`${flagCount} analito(s) alterado(s)`); }
+  else if (flagCount >= 1)  { score -= 2; details.push(flagCount === 1 ? "1 analito alterado" : `${flagCount} analitos alterados`); }
   else                      { details.push("exames dentro da normalidade"); }
 
   if (platelets != null && platelets < 100) {

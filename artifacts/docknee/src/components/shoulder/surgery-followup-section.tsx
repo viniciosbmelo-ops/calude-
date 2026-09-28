@@ -201,10 +201,14 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
             <Bell className="h-4 w-4 text-slate-500 shrink-0" />
             <span className="font-semibold text-slate-700 text-sm">{t("ts_scaleDeliveryTimeline")}</span>
             <span className="ml-auto text-xs text-slate-500">
-              {t("ts_scheduleSummary", {
-                pending: schedule.filter((n) => n.status === "pending").length,
-                sent: schedule.filter((n) => n.status === "sent" || n.status === "completed").length,
-              })}
+              {(() => {
+                const pending = schedule.filter((n) => n.status === "pending").length;
+                const sent = schedule.filter((n) => n.status === "sent" || n.status === "completed").length;
+                return t("ts_scheduleSummary", {
+                  pending: t(pending === 1 ? "ts_pendingCountOne" : "ts_pendingCount", { count: pending }),
+                  sent: t(sent === 1 ? "ts_sentCountOne" : "ts_sentCount", { count: sent }),
+                });
+              })()}
             </span>
             <button onClick={generateSchedule} disabled={generating} title={t("ts_regenerateSchedule")} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
               {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3" />}

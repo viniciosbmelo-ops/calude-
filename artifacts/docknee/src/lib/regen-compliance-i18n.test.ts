@@ -42,8 +42,8 @@ describe("regenerative compliance localization", () => {
     expect(complianceFlagText("es", {
       code: "LB02",
       severity: "info",
-      message: "3 analito(s) laboratorial(is) fora de referência — revise antes de prosseguir com o procedimento.",
-    })).toContain("3 analito(s) de laboratorio");
+      message: "3 analitos laboratoriais fora de referência — revise antes de prosseguir com o procedimento.",
+    })).toContain("3 analitos de laboratorio");
     expect(complianceFlagText("es", {
       code: "WN01",
       severity: "warning",

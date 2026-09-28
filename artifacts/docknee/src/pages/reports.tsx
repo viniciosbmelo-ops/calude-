@@ -42,6 +42,9 @@ interface FollowupRecord {
   vasDor: number | null;
   retornoEsporte: boolean | null; nivelRetorno: string | null;
   falha: boolean | null; falhaType: string | null; observacoes: string | null;
+  /** Registro de follow-up com algum desfecho registrado (resposta do paciente ou do médico). */
+  respondida: boolean;
+  surgeryStatus?: string | null;
   dataCirurgia: string | null; hospital: string | null;
   regiao: string | null; tipoCaso: string | null; diagnostico: string | null;
   tiposProcedimento: string[]; procedimentoRealizado: string | null;
@@ -88,6 +91,55 @@ const EMPTY_FILTERS: FilterState = {
 };
 
 const caseTypeLabel = (key: string) => CASE_TYPE_BY_KEY.get(key)?.label ?? key;
+
+const DRAFT_SURGERY_STATUS = "rascunho";
+
+type ReportRow = Pick<FollowupRecord, "id" | "surgeryId" | "respondida" | "tiposProcedimento"> & { surgeryStatus?: string | null };
+
+/** Rascunhos não são cirurgias realizadas e não entram no relatório. */
+export function excludeDraftRows<T extends { surgeryStatus?: string | null }>(rows: readonly T[]): T[] {
+  return rows.filter((row) => row.surgeryStatus !== DRAFT_SURGERY_STATUS);
+}
+
+/**
+ * Contagens do relatório. Cada linha é um registro de follow-up ou, quando a
+ * cirurgia ainda não tem nenhum, a própria cirurgia (id nulo).
+ * - surgeries: cirurgias realizadas distintas;
+ * - recordedFollowups: registros de follow-up (criados no envio do questionário
+ *   ou ao inserir uma avaliação), respondidos ou não;
+ * - answeredAssessments: registros com algum desfecho preenchido.
+ */
+export function summarizeReportRows(rows: readonly ReportRow[]) {
+  const completed = excludeDraftRows(rows);
+  return {
+    surgeries: new Set(completed.map((row) => row.surgeryId)).size,
+    recordedFollowups: completed.filter((row) => row.id != null).length,
+    answeredAssessments: completed.filter((row) => row.id != null && row.respondida).length,
+  };
+}
+
+/**
+ * Mesma convenção do painel: % das cirurgias realizadas, cada tipo contado uma
+ * vez por cirurgia. Como uma cirurgia pode ter vários tipos, a soma pode passar de 100%.
+ */
+export function summarizeReportCaseTypes(rows: readonly ReportRow[]) {
+  const seen = new Set<number>();
+  const counts = new Map<string, number>();
+  for (const row of excludeDraftRows(rows)) {
+    if (seen.has(row.surgeryId)) continue;
+    seen.add(row.surgeryId);
+    for (const key of new Set(row.tiposProcedimento ?? [])) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const surgeries = seen.size;
+  return {
+    surgeries,
+    byType: [...counts.entries()].map(([key, count]) => ({
+      key,
+      count,
+      percent: surgeries > 0 ? Math.round((count / surgeries) * 100) : 0,
+    })),
+  };
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function scoreCell(v: number | null, max: number = 100, invert = false) {
@@ -258,7 +310,9 @@ export default function Reports() {
   });
   const sortedDoctors = sortByPtBrName(doctors, (doctor) => doctor.nome, (doctor) => doctor.id);
 
-  const filtered = useMemo(() => records, [records]);
+  const filtered = useMemo(() => excludeDraftRows(records), [records]);
+  const answered = useMemo(() => filtered.filter((r) => r.id != null && r.respondida), [filtered]);
+  const reportCounts = useMemo(() => summarizeReportRows(filtered), [filtered]);
   const isExportPending = isLoading || isFetching;
 
   const chartsRef = useRef<HTMLDivElement>(null);
@@ -279,7 +333,7 @@ export default function Reports() {
 
   const chartData = useMemo(() => {
     const groups = new Map<string, FollowupRecord[]>();
-    for (const r of filtered) {
+    for (const r of answered) {
       const key = r.tempo ?? "";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(r);
@@ -295,26 +349,18 @@ export default function Reports() {
           taxaRetorno: retRecs.length > 0
             ? parseFloat((retRecs.filter(r => r.retornoEsporte).length / retRecs.length * 100).toFixed(0))
             : null,
-          taxaFalha: recs.length > 0
-            ? parseFloat((recs.filter(r => r.falha).length / recs.length * 100).toFixed(0))
+          taxaFalha: recs.some(r => r.falha != null)
+            ? parseFloat((recs.filter(r => r.falha).length / recs.filter(r => r.falha != null).length * 100).toFixed(0))
             : null,
         };
       });
-  }, [filtered]);
+  }, [answered]);
 
-  // Cirurgias (não avaliações) por tipo de caso
-  const caseTypeData = useMemo(() => {
-    const seen = new Set<number>();
-    const counts = new Map<string, number>();
-    for (const r of filtered) {
-      if (seen.has(r.surgeryId)) continue;
-      seen.add(r.surgeryId);
-      for (const key of r.tiposProcedimento) counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return [...counts.entries()].map(([key, value]) => ({ name: caseTypeLabel(key), value }));
-  }, [filtered]);
-
-  const caseTypeTotal = caseTypeData.reduce((sum, d) => sum + d.value, 0);
+  // Cirurgias realizadas (não avaliações) por tipo de caso — % das cirurgias.
+  const caseTypeData = useMemo(
+    () => summarizeReportCaseTypes(filtered).byType.map(({ key, count, percent }) => ({ name: caseTypeLabel(key), value: count, percent })),
+    [filtered],
+  );
   const PIE_COLORS = ["#1A365D", "#1FB6E1", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
   const generatePDF = async () => {
@@ -424,7 +470,7 @@ export default function Reports() {
       pdf.text(documentText(locale, "followupReport"), 10, 12);
       pdf.setFontSize(9);
       pdf.setTextColor(100, 100, 100);
-      pdf.text(`${documentText(locale, "generatedOn")} ${formatDate(new Date())} · ${filtered.length} ${documentText(locale, "followups")} · ${new Set(filtered.map(r => r.surgeryId)).size} ${documentText(locale, "surgeries")}`, 10, 18);
+      pdf.text(`${documentText(locale, "generatedOn")} ${formatDate(new Date())} · ${countLabel(reportCounts.answeredAssessments, "answeredAssessmentCount", "answeredAssessmentsCount")} · ${countLabel(reportCounts.recordedFollowups, "recordedFollowupCount", "recordedFollowupsCount")} · ${countLabel(reportCounts.surgeries, "surgeryCount", "surgeriesCount")}`, 10, 18);
       if (hasActiveFilters) {
         const filterSummary = Object.entries(applied)
           .filter(([, v]) => Array.isArray(v) ? v.length > 0 : v !== "")
@@ -526,10 +572,11 @@ export default function Reports() {
   };
 
   // Summary stats
-  const avgVas = avg(filtered.map(r => r.vasDor));
-  const withRetorno = filtered.filter(r => r.retornoEsporte != null);
+  const avgVas = avg(answered.map(r => r.vasDor));
+  const withRetorno = answered.filter(r => r.retornoEsporte != null);
   const taxaRetorno = withRetorno.length > 0 ? (withRetorno.filter(r => r.retornoEsporte).length / withRetorno.length * 100) : null;
-  const taxaFalha = filtered.length > 0 ? (filtered.filter(r => r.falha).length / filtered.length * 100) : null;
+  const withFalha = answered.filter(r => r.falha != null);
+  const taxaFalha = withFalha.length > 0 ? (withFalha.filter(r => r.falha).length / withFalha.length * 100) : null;
 
   const regionLabel = (value: string | null) => value === "shoulder" ? tx("shoulder") : value === "elbow" ? tx("elbow") : "—";
   const sf = scoreForm;
@@ -559,7 +606,7 @@ export default function Reports() {
         <div className="px-4 pb-4 flex gap-2">
           <button
             onClick={generatePDF}
-            disabled={isExportPending || filtered.length === 0 || chartData.length === 0}
+            disabled={isExportPending || filtered.length === 0}
             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 0", borderRadius: 10, fontSize: 12, fontWeight: 600, background: "rgba(255,255,255,0.1)", color: isExportPending || filtered.length === 0 ? "rgba(255,255,255,0.3)" : "#fff", border: "none", cursor: isExportPending || filtered.length === 0 ? "default" : "pointer" }}
           >
             <FileText style={{ width: 14, height: 14 }} />
@@ -594,7 +641,7 @@ export default function Reports() {
           )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={generatePDF} disabled={isExportPending || filtered.length === 0 || chartData.length === 0}>
+          <Button variant="outline" onClick={generatePDF} disabled={isExportPending || filtered.length === 0}>
             <FileText className="mr-2 h-4 w-4" />
             {tx("generatePdf")}
           </Button>
@@ -1027,9 +1074,11 @@ export default function Reports() {
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="border-border shadow-sm bg-primary text-primary-foreground">
               <CardContent className="pt-4 pb-4">
-                <div className="text-xs text-primary-foreground/70 mb-1">{tx("followups")}</div>
-                <div className="text-3xl font-bold">{filtered.length}</div>
-                <div className="text-xs text-primary-foreground/60">{new Set(filtered.map(r => r.surgeryId)).size} {tx("surgeries")}</div>
+                <div className="text-xs text-primary-foreground/70 mb-1">{tx("answeredAssessments")}</div>
+                <div className="text-3xl font-bold">{reportCounts.answeredAssessments}</div>
+                <div className="text-xs text-primary-foreground/60">
+                  {countLabel(reportCounts.recordedFollowups, "recordedFollowupCount", "recordedFollowupsCount")} · {countLabel(reportCounts.surgeries, "surgeryCount", "surgeriesCount")}
+                </div>
               </CardContent>
             </Card>
             {[
@@ -1057,7 +1106,7 @@ export default function Reports() {
       </div>
 
       {/* Charts Section */}
-      {filtered.length > 0 && chartData.length > 0 && (
+      {filtered.length > 0 && (
         <div className="max-w-7xl mx-auto space-y-4">
           <div
             ref={chartsRef}
@@ -1070,8 +1119,8 @@ export default function Reports() {
                 <h2 className="text-lg font-bold text-[#1A365D]">{tx("graphicalAnalysis")}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {tx("chartSummary", {
-                    followups: countLabel(filtered.length, "followupCount", "followupsCount"),
-                    surgeries: countLabel(new Set(filtered.map(r => r.surgeryId)).size, "surgeryCount", "surgeriesCount"),
+                    followups: countLabel(reportCounts.answeredAssessments, "answeredAssessmentCount", "answeredAssessmentsCount"),
+                    surgeries: countLabel(reportCounts.surgeries, "surgeryCount", "surgeriesCount"),
                     periods: countLabel(chartData.length, "periodEvaluated", "periodsEvaluated"),
                   })}
                 </p>
@@ -1122,11 +1171,12 @@ export default function Reports() {
                           <span className="min-w-0 flex-1 break-words">{d.name}</span>
                           <span className="shrink-0 tabular-nums text-muted-foreground">
                             <strong className="text-foreground">{d.value}</strong>
-                            {caseTypeTotal > 0 && <> · {Math.round((d.value / caseTypeTotal) * 100)}%</>}
+                            {" · "}{d.percent}%
                           </span>
                         </li>
                       ))}
                     </ul>
+                    <p className="mt-2 text-[10px] text-muted-foreground">{tx("caseTypeShareNote")}</p>
                   </>
                 ) : (
                   <div className="h-[200px] flex items-center justify-center text-xs text-muted-foreground">{tx("noData")}</div>
@@ -1160,6 +1210,7 @@ export default function Reports() {
             <div className="pt-2 border-t border-border">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{tx("assessmentsByPeriod")}</p>
               <div className="flex flex-wrap gap-2">
+                {chartData.length === 0 && <div className="text-xs text-muted-foreground">{tx("noData")}</div>}
                 {chartData.map(d => (
                   <div key={d.tempo} className="bg-muted/40 rounded-lg px-3 py-1.5 text-center">
                     <div className="text-xs text-muted-foreground">{reportCatalogLabel(locale, d.tempo)}</div>
@@ -1177,8 +1228,9 @@ export default function Reports() {
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-sm font-semibold text-muted-foreground">
              {tx("clickToOpenRecord", {
-               surgeries: countLabel(new Set(filtered.map(r => r.surgeryId)).size, "surgeryCount", "surgeriesCount"),
-               assessments: countLabel(filtered.filter(r => r.id != null).length, "assessmentCount", "assessmentsCount"),
+               surgeries: countLabel(reportCounts.surgeries, "surgeryCount", "surgeriesCount"),
+               followups: countLabel(reportCounts.recordedFollowups, "recordedFollowupCount", "recordedFollowupsCount"),
+               assessments: countLabel(reportCounts.answeredAssessments, "answeredAssessmentCount", "answeredAssessmentsCount"),
              })}
           </CardTitle>
         </CardHeader>

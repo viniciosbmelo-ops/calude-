@@ -144,7 +144,7 @@ function evaluate(ctx: RegenContext, mode: "registro" | "planejamento"): Complia
     flags.push({
       code: "LB02",
       severity: "info",
-      message: `${ctx.labFlagCount} analito(s) laboratorial(is) fora de referência — revise antes de prosseguir com o procedimento.`,
+      message: `${ctx.labFlagCount} ${ctx.labFlagCount === 1 ? "analito laboratorial" : "analitos laboratoriais"} fora de referência — revise antes de prosseguir com o procedimento.`,
     });
   }
 

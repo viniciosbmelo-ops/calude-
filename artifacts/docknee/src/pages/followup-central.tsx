@@ -374,7 +374,7 @@ function RegenNotifCard({
           {!row.patient_phone && <span className="text-red-500 flex items-center gap-1"><Phone className="h-3 w-3" /> {t("followupNoPhone")}</span>}
         </div>
         {row.response_count > 0 && (
-          <p className="text-xs text-emerald-600 font-medium">{t("followupResponsesReceived", { count: row.response_count })}</p>
+          <p className="text-xs text-emerald-600 font-medium">{t((row.response_count) === 1 ? "followupResponsesReceivedOne" : "followupResponsesReceived", { count: row.response_count })}</p>
         )}
       </div>
 
@@ -700,11 +700,11 @@ export default function FollowupCentral() {
       const result = await res.json() as DispatchResult;
       setDispatchResult(result);
       if (result.sent > 0) {
-        toast({ title: t("followupDispatchSentSuccess", { count: result.sent }) });
+        toast({ title: t((result.sent) === 1 ? "followupDispatchSentSuccessOne" : "followupDispatchSentSuccess", { count: result.sent }) });
       } else if (result.total === 0) {
         toast({ title: t("followupNoPendingToday") });
       } else if (result.failed > 0) {
-        toast({ title: t("followupDispatchFailed", { count: result.failed }), description: t("followupEvolutionCheck"), variant: "destructive" });
+        toast({ title: t((result.failed) === 1 ? "followupDispatchFailedOne" : "followupDispatchFailed", { count: result.failed }), description: t("followupEvolutionCheck"), variant: "destructive" });
       }
       await load();
     } catch {
@@ -917,7 +917,7 @@ export default function FollowupCentral() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-orange-500" />
-                        {t("followupAwaitingSend", { count: pendingCount })}
+                        {t((pendingCount) === 1 ? "followupAwaitingSendOne" : "followupAwaitingSend", { count: pendingCount })}
                       </CardTitle>
                       <CardDescription className="text-xs">
                         {t("followupSurgerySendInstructions")}
@@ -944,7 +944,7 @@ export default function FollowupCentral() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-blue-500" />
-                        {t("followupUpcomingCount", { count: data.upcoming.length })}
+                        {t((data.upcoming.length) === 1 ? "followupUpcomingCountOne" : "followupUpcomingCount", { count: data.upcoming.length })}
                       </CardTitle>
                       <CardDescription className="text-xs">{t("followupScheduledDispatchInstruction")}</CardDescription>
                     </CardHeader>
@@ -992,7 +992,7 @@ export default function FollowupCentral() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        {t("followupSentCount", { count: data.sent.length })}
+                        {t((data.sent.length) === 1 ? "followupSentCountOne" : "followupSentCount", { count: data.sent.length })}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-1 pt-0">

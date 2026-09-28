@@ -1,6 +1,8 @@
 /** Inventário artroscópico: cada estrutura da região como Normal / Lesão / Tratada / N.A. */
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useScopedTranslations } from "@/lib/i18n";
+import { surgeryShoulderMessages } from "@/locales/surgery-shoulder";
 import { ARTHRO_STRUCTURES, type ClinicalMapEntry, type Region } from "@workspace/clinical/web";
 
 const STATUSES: [ClinicalMapEntry["status"], string, string][] = [
@@ -18,6 +20,7 @@ export function ArthroscopicMap({ region, value, onChange, readOnly }: {
   onChange(v: ClinicalMapEntry[]): void;
   readOnly?: boolean;
 }) {
+  const t = useScopedTranslations(surgeryShoulderMessages);
   const names = ARTHRO_STRUCTURES[region];
   const byCode = new Map(value.map((e) => [e.structure_code, e]));
   // Na leitura, só o que foi registrado; na edição, todas as estruturas da região.
@@ -33,11 +36,11 @@ export function ArthroscopicMap({ region, value, onChange, readOnly }: {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        {!readOnly && <span>{pending > 0 ? `${pending} estrutura(s) sem registro — não aparecem no relatório.` : "Todas as estruturas registradas."}</span>}
+        {!readOnly && <span>{pending > 0 ? t(pending === 1 ? "arthroMapPendingOne" : "arthroMapPending", { count: pending }) : t("arthroMapAllRecorded")}</span>}
         {!readOnly && pending > 0 && (
           <button type="button" className="font-medium text-primary hover:underline"
             onClick={() => onChange(order.map((c) => byCode.get(c) ?? { structure_code: c, status: "normal" }))}>
-            Marcar restantes como normais
+            {t("arthroMapMarkRemainingNormal")}
           </button>
         )}
       </div>

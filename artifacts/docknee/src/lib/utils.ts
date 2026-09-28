@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Uppercases only the first character of a display string (locale-aware), so
+ * long dates read "Segunda-feira, 28 de setembro" instead of CSS `capitalize`
+ * title-casing every word ("… 28 De Setembro").
+ */
+export function capitalizeFirst(value: string, locale?: string): string {
+  if (!value) return value;
+  const first = String.fromCodePoint(value.codePointAt(0)!);
+  return first.toLocaleUpperCase(locale) + value.slice(first.length);
+}
+
 /** Returns a calendar date in the user's local timezone, suitable for date inputs and API date fields. */
 export function formatLocalDate(date = new Date()): string {
   const year = date.getFullYear();

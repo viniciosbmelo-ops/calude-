@@ -115,7 +115,7 @@ export default function PatientsList() {
             >
               <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
               <span className="font-semibold text-red-700 text-sm flex-1">
-                {t("overdue", { count: overdueItems.length })}
+                {t((overdueItems.length) === 1 ? "overdueOne" : "overdue", { count: overdueItems.length })}
               </span>
               {overdueOpen ? <ChevronUp className="h-4 w-4 text-red-500" /> : <ChevronDown className="h-4 w-4 text-red-500" />}
             </button>
