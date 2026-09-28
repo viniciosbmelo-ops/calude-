@@ -49,10 +49,11 @@ describe("Spanish regenerative report controlled values", () => {
 
   it("localizes follow-up periods and known scale names only for presentation", () => {
     const persistedPeriod = "30 dias";
-    const persistedScales = ["VAS Dor", "Escala livre", "Escala personalizada"];
+    const persistedScales = ["VAS", "VAS Dor", "Escala livre", "Escala personalizada"];
 
     expect(regenPeriodForLocale(persistedPeriod, "es")).toBe("30 días");
     expect(persistedScales.map(scale => regenScaleForLocale(scale, "es"))).toEqual([
+      "EVA",
       "EVA Dolor",
       "Escala livre",
       "Escala personalizada",
@@ -60,7 +61,7 @@ describe("Spanish regenerative report controlled values", () => {
 
     // Presentation helpers must not mutate identifiers/values destined for persistence.
     expect(persistedPeriod).toBe("30 dias");
-    expect(persistedScales).toEqual(["VAS Dor", "WOMAC", "Escala personalizada"]);
+    expect(persistedScales).toEqual(["VAS", "VAS Dor", "Escala livre", "Escala personalizada"]);
     expect(regenPeriodForLocale("período livre", "es")).toBe("período livre");
   });
 
