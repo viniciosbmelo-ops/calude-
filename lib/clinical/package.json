@@ -9,7 +9,8 @@
     "./ajv-messages": "./src/ajvMessages.ts",
     "./labels": "./src/labels.pt.json",
     "./catalog": "./src/catalog/pathologies.ts",
-    "./validators": "./src/generated/validators.js"
+    "./validators": "./src/generated/validators.js",
+    "./web": "./src/web.ts"
   },
   "scripts": {
     "test": "vitest run",

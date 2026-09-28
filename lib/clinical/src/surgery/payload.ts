@@ -7,7 +7,7 @@
  * Rascunho: `parseClinicalPayload` só garante a FORMA (tipos e limites).
  * Finalização: `validateClinicalPayload` exige tudo válido pelos schemas.
  */
-import { ArthroMapEntry, ReportInput, ReportImplant } from '../report/reportEngine';
+import type { ArthroMapEntry, ReportInput, ReportImplant } from '../report/reportEngine';
 import { ARTHRO_STRUCTURES, PATHOLOGY_BY_CODE, Region } from '../catalog/pathologies';
 import { CASE_TYPE_BY_KEY, intraopSchemaId } from '../catalog/caseTypes';
 import type { SchemaRegistry, ValidationIssue } from '../schemaRegistry';

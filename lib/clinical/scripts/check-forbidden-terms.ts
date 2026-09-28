@@ -15,6 +15,7 @@ const ROOTS = [
   'lib/clinical/src/labels.pt.json',
   'artifacts/docknee/src/components/shoulder',
   'artifacts/docknee/src/pages/surgeries/shoulder',
+  'artifacts/docknee/src/locales/surgery-shoulder.ts',
   'artifacts/api-server/src/routes/shoulder-surgeries.ts'
 ];
 const FORBIDDEN = [/indicad[oa]s?\b/i, /recomend/i, /sugere-se/i, /deve(-se)? realizar/i, /conduta ideal/i, /melhor opção/i];
