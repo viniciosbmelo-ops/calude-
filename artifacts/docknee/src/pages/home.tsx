@@ -120,7 +120,7 @@ export default function Home() {
             style={{ animation: "dk-flowA 18s linear infinite reverse" }} />
         </svg>
 
-        {/* Knee image — direita, difusa */}
+        {/* Imagem decorativa — direita, difusa */}
         <div
           aria-hidden="true"
           className="hidden lg:block"
@@ -1037,7 +1037,7 @@ export default function Home() {
                     "Protocolos de reabilitação pós-operatória",
                     "Agendamento de sessões integrado",
                     "Acompanhamento evolutivo do paciente",
-                    "Escalas funcionais (IKDC, Lysholm, VAS)",
+                    "Escala de dor (VAS)",
                     "Lembretes de sessão pelo WhatsApp",
                     "Relatórios de evolução em PDF",
                     "Conformidade LGPD",

@@ -380,7 +380,7 @@ export default function Dashboard() {
   /* ── Regen outcomes line chart data ── */
   const PERIODO_ORDER = ["preop","30d","90d","180d","1y","2y","5y"];
   const PERIODO_LABEL: Record<string,string> = { preop: tx("preoperativeAbbreviation"), "30d":"30d", "90d":"90d", "180d":"6m", "1y":"1a", "2y":"2a", "5y":"5a" };
-  const SCALE_COLORS: Record<string,string> = { VAS:"#DC2626", KOOS:"#2563EB", WOMAC:"#059669", IKDC:"#7C3AED", LYSHOLM:"#D97706" };
+  const SCALE_COLORS: Record<string,string> = { VAS:"#DC2626" };
   const SCALE_DEFAULT_COLORS = ["#6366F1","#EC4899","#0891B2","#B45309"];
 
   // Build per-scale series and collect all periods that have data

@@ -17,7 +17,8 @@ describe("regenerative core locale catalogue", () => {
 
   it("does not translate persisted product codes or clinical abbreviations", () => {
     expect(regenCoreMessages.es.averageVas).toContain("VAS");
-    expect(regenCoreMessages.es.averageKoos).toContain("KOOS");
+    expect(regenCoreMessages.es).not.toHaveProperty("averageKoos");
+    expect(regenCoreMessages.es).not.toHaveProperty("averageWomac");
   });
 
   it("localizes representative long-form, dialog, and orientation copy", () => {

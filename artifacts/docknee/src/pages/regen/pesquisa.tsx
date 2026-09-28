@@ -17,8 +17,9 @@ function authHeaders() {
 }
 
 const CONDITIONS = [
-  "OSTEOARTRITE_JOELHO","OSTEOARTRITE_QUADRIL","CONDROPATIA","TENDINOPATIA",
-  "LESAO_MENISCAL","LESAO_LIGAMENTAR","FASCITE_PLANTAR","OUTRO",
+  "OA_OMBRO","TENDINOPATIA_OMBRO","BURSITE_OMBRO","LESAO_LABRAL_OMBRO",
+  "OA_COTOVELO","EPICONDILITE","TENDINOPATIA_COTOVELO",
+  "OA_QUADRIL","FASCITE_PLANTAR","TENDINOPATIA","CONDRAL_FOCAL","CUSTOM",
 ];
 const PRODUCTS = ["PRP","LP_PRP","LR_PRP","BMAC","MFAT","AH","COLAGENO","LISADO"];
 
@@ -32,8 +33,6 @@ interface ResearchRow {
   procedure_count: number;
   adverse_events: number;
   avg_vas: number | null;
-  avg_koos: number | null;
-  avg_womac: number | null;
   dm: boolean;
   created_at: string;
 }
@@ -231,7 +230,7 @@ export default function RegenPesquisa() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),t("averageKoos"),t("averageWomac"),"DM",t("registration")].map(h => (
+                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),"DM",t("registration")].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -257,8 +256,6 @@ export default function RegenPesquisa() {
                             : <span className="text-gray-400">0</span>}
                         </td>
                         <td className="px-3 py-2 text-center text-gray-700">{r.avg_vas ?? "—"}</td>
-                        <td className="px-3 py-2 text-center text-gray-700">{r.avg_koos ?? "—"}</td>
-                        <td className="px-3 py-2 text-center text-gray-700">{r.avg_womac ?? "—"}</td>
                          <td className="px-3 py-2 text-center text-gray-700">{r.dm ? t("yes") : t("no")}</td>
                         <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
                            {new Date(r.created_at).toLocaleDateString(locale)}
