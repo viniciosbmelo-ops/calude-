@@ -31,7 +31,6 @@ export type AdminUsageFunnelPeriod = {
 
 export type AdminUsageFunnelCoverage = {
   documentationSources: string[];
-  xraySuccessSource: string;
   clickSource: string;
   documentationLimitations: string[];
   /** @nullable */
@@ -40,20 +39,12 @@ export type AdminUsageFunnelCoverage = {
   unavailableReason?: string;
 };
 
-export type AdminUsageFunnelOverlap = {
-  rxOnlyIncludedInEnteredWithoutDocumentation: boolean;
-  rxOnlyAndDocumentedDoctors: number;
-};
-
 export interface AdminUsageFunnel {
   period: AdminUsageFunnelPeriod;
   coverage: AdminUsageFunnelCoverage;
   activeDoctors: number;
-  rxOnlyDoctors: number;
   enteredWithoutDocumentationDoctors: number;
   documentedDoctors: number;
-  overlap: AdminUsageFunnelOverlap;
-  rxOnlyDoctorList: AdminDoctorIdentity[];
   enteredWithoutDocumentationDoctorList: AdminDoctorIdentity[];
 }
 

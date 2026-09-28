@@ -39,11 +39,10 @@ export function UtilizationFunnel({ funnel }: { funnel: NonNullable<AdminAnalyti
                 <li>{t("overview.utilization.sources")}</li>
                 <li>{t("overview.utilization.limitation.time")}</li>
                 <li>{t("overview.utilization.limitation.physio")}</li>
-                <li>{t("overview.utilization.limitation.xray")}</li>
               </ul>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                <div className="rounded-lg bg-muted/30 px-4 py-3 border border-border/50">
                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("overview.utilization.activeDoctors")}</p>
                  <p className="mt-1 text-2xl font-bold font-mono">{formatNumber(funnel.activeDoctors, locale)}</p>
@@ -62,21 +61,9 @@ export function UtilizationFunnel({ funnel }: { funnel: NonNullable<AdminAnalyti
                    {t("overview.utilization.noDocPct", { pct: String(funnel.activeDoctors > 0 ? Math.round((funnel.enteredWithoutDocumentationDoctors / funnel.activeDoctors) * 100) : 0) })}
                  </p>
                </div>
-               <div className="rounded-lg bg-cyan-50/50 dark:bg-cyan-950/20 px-4 py-3 border border-cyan-200/50 dark:border-cyan-900/50 relative overflow-hidden">
-                 <div className="absolute top-2 right-2 text-[10px] bg-cyan-200/50 text-cyan-800 px-1.5 py-0.5 rounded font-bold">{t("overview.utilization.subgroup")}</div>
-                 <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-800 dark:text-cyan-400 pr-12">{t("overview.utilization.rxOnly")}</p>
-                 <p className="mt-1 text-2xl font-bold font-mono text-cyan-600 dark:text-cyan-500">{formatNumber(funnel.rxOnlyDoctors, locale)}</p>
-                 <p className="text-[10px] text-cyan-700/70 mt-1">
-                   {t("overview.utilization.rxOnlyPct", { pct: String(funnel.enteredWithoutDocumentationDoctors > 0 ? Math.round((funnel.rxOnlyDoctors / funnel.enteredWithoutDocumentationDoctors) * 100) : 0) })}
-                 </p>
-               </div>
             </div>
 
-            <div className="bg-muted/40 rounded-lg p-3 text-[11px] text-muted-foreground border border-border/40">
-              <strong>{t("overview.utilization.noteTitle")}</strong> {funnel.overlap.rxOnlyIncludedInEnteredWithoutDocumentation ? t("overview.utilization.rxOnlyExplanation") : t("overview.utilization.rxOnlyExplanationNoOverlap")}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            <div className="mt-4">
               <div className="border border-border/60 rounded-lg overflow-hidden flex flex-col">
                 <div className="bg-muted/30 px-3 py-2 border-b border-border/50">
                   <h4 className="text-xs font-bold text-foreground">{t("overview.utilization.listNoDoc")}</h4>
@@ -87,26 +74,6 @@ export function UtilizationFunnel({ funnel }: { funnel: NonNullable<AdminAnalyti
                   ) : (
                     <ul className="divide-y divide-border/50 text-xs">
                       {funnel.enteredWithoutDocumentationDoctorList.map((doc, i) => (
-                        <li key={i} className="px-3 py-2 flex flex-col">
-                          <span className="font-semibold">{doc.name}</span>
-                          <span className="text-muted-foreground text-[10px]">{doc.email}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              <div className="border border-border/60 rounded-lg overflow-hidden flex flex-col">
-                <div className="bg-muted/30 px-3 py-2 border-b border-border/50">
-                  <h4 className="text-xs font-bold text-foreground">{t("overview.utilization.listRxOnly")}</h4>
-                </div>
-                <div className="flex-1 overflow-auto max-h-[200px] bg-background">
-                  {funnel.rxOnlyDoctorList.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground">{t("overview.utilization.noDoctors")}</div>
-                  ) : (
-                    <ul className="divide-y divide-border/50 text-xs">
-                      {funnel.rxOnlyDoctorList.map((doc, i) => (
                         <li key={i} className="px-3 py-2 flex flex-col">
                           <span className="font-semibold">{doc.name}</span>
                           <span className="text-muted-foreground text-[10px]">{doc.email}</span>

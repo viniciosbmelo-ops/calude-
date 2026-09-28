@@ -55,17 +55,13 @@ const ALLOWED_EVENTS = new Set([
   "acquisition_visit",
 ]);
 
-// xray_analyzed is intentionally server-only: the /xray/analyze handler emits
-// it after a successful response (including a valid cache hit), so a client
-// cannot manufacture RX usage from a failed request.
-
 const ALLOWED_VITALS = new Set(["LCP", "FID", "CLS", "FCP", "TTFB", "INP", "client_error"]);
 const ALLOWED_ERROR_TYPES = new Set([
   "TypeError", "ReferenceError", "SyntaxError", "NetworkError",
   "ChunkLoadError", "UnhandledRejection", "Unknown",
 ]);
 const ALLOWED_FEATURES = new Set([
-  "surgery", "followup", "patient", "report", "xray", "pdf", "exam",
+  "surgery", "followup", "patient", "report", "pdf", "exam",
   "checkout", "support", "regen", "physio", "agenda", "dashboard", "admin",
   "patients", "surgeries", "profile", "settings", "subscription",
 ]);
@@ -108,7 +104,7 @@ const SAFE_STATIC_PATHS = new Set([
   "/regen", "/regen/caso/novo", "/regen/consentimento", "/regen/orientacoes",
   "/regen/pesquisa", "/register", "/reports", "/secretary/dashboard",
   "/secretary/login", "/service/dashboard", "/service/login", "/sucesso",
-  "/surgeries", "/surgeries/new", "/whatsapp-broadcast", "/xray-planning",
+  "/surgeries", "/surgeries/new", "/whatsapp-broadcast",
 ]);
 
 const SAFE_DYNAMIC_PATHS: ReadonlyArray<readonly [RegExp, string]> = [
@@ -156,7 +152,6 @@ const CANONICAL_NAVIGATION_FEATURE_BY_PATH: Readonly<Record<string, string>> = {
   "/surgeries/new": "surgery",
   "/surgeries/:id": "surgery",
   "/whatsapp-broadcast": "support",
-  "/xray-planning": "xray",
 };
 
 /** Derives the feature exclusively from the already-sanitized destination. */

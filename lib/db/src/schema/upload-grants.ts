@@ -24,7 +24,7 @@ import { surgeriesTable } from "./surgeries";
  *      RETURNING …) — exactly one row can win the race.
  *
  * Columns:
- *  - purpose: "surgery_media" | "patient_attachment" | "pre_consult_attachment" | "whatsapp_broadcast" | "xray"
+ *  - purpose: "surgery_media" | "patient_attachment" | "pre_consult_attachment" | "whatsapp_broadcast"
  *  - doctor_id: always present; the doctor who initiated the grant.
  *  - surgery_id / patient_id: context-specific, nullable for WA broadcast.
  *  - object_path: the trusted GCS path from the server (never the client).
@@ -67,7 +67,7 @@ export const uploadGrantsTable = pgTable(
     index("upload_grants_expires_at_idx").on(t.expiresAt),
     check(
       "upload_grants_purpose_check",
-      sql`${t.purpose} IN ('surgery_media', 'patient_attachment', 'pre_consult_attachment', 'whatsapp_broadcast', 'xray')`,
+      sql`${t.purpose} IN ('surgery_media', 'patient_attachment', 'pre_consult_attachment', 'whatsapp_broadcast')`,
     ),
     check(
       "upload_grants_media_type_check",

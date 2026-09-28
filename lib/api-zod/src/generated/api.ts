@@ -739,7 +739,6 @@ export const GetAdminAnalyticsResponse = zod.object({
 }),
   "coverage": zod.object({
   "documentationSources": zod.array(zod.string()),
-  "xraySuccessSource": zod.string(),
   "clickSource": zod.string(),
   "documentationLimitations": zod.array(zod.string()),
   "start": zod.coerce.date().nullable(),
@@ -747,17 +746,8 @@ export const GetAdminAnalyticsResponse = zod.object({
   "unavailableReason": zod.string().optional()
 }),
   "activeDoctors": zod.number(),
-  "rxOnlyDoctors": zod.number(),
   "enteredWithoutDocumentationDoctors": zod.number(),
   "documentedDoctors": zod.number(),
-  "overlap": zod.object({
-  "rxOnlyIncludedInEnteredWithoutDocumentation": zod.boolean(),
-  "rxOnlyAndDocumentedDoctors": zod.number()
-}),
-  "rxOnlyDoctorList": zod.array(zod.object({
-  "name": zod.string(),
-  "email": zod.string().email()
-})),
   "enteredWithoutDocumentationDoctorList": zod.array(zod.object({
   "name": zod.string(),
   "email": zod.string().email()

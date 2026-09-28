@@ -8,7 +8,6 @@
 
 export type AdminUsageFunnelCoverage = {
   documentationSources: string[];
-  xraySuccessSource: string;
   clickSource: string;
   documentationLimitations: string[];
   /** @nullable */

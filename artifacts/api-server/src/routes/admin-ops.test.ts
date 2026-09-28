@@ -203,7 +203,7 @@ describe("Analytics event allowlist", () => {
   const ALLOWED_EVENTS = new Set([
     "login", "logout", "register", "password_reset", "page_view",
     "surgery_created", "surgery_updated", "followup_created", "followup_updated",
-    "patient_created", "report_viewed", "xray_analyzed", "pdf_exported", "exam_completed",
+    "patient_created", "report_viewed", "pdf_exported", "exam_completed",
     "checkout_started", "subscription_activated", "contact_submitted", "acquisition_visit",
   ]);
 

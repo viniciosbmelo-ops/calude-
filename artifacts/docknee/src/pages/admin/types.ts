@@ -166,29 +166,10 @@ export interface AdminAnalyticsData {
     source: string;
     unavailableReason?: string;
   };
-  standaloneXrayUsage: {
-    source: string;
-    unavailableReason?: string;
-    totalDoctors: number;
-    totalAccesses: number;
-    totalAnalyses: number;
-    doctors: {
-      doctorId: number;
-      doctorName: string;
-      doctorEmail: string;
-      patientCount: number;
-      accessCount: number;
-      analysisCount: number;
-      firstUsedAt: string;
-      lastUsedAt: string;
-      usageDates: string[];
-    }[];
-  };
   usageFunnel?: {
     period: { start: string; end: string; timezone: string };
     coverage: {
       documentationSources: string[];
-      xraySuccessSource: string;
       clickSource: string;
       documentationLimitations: string[];
       start: string | null;
@@ -196,14 +177,8 @@ export interface AdminAnalyticsData {
       unavailableReason?: string;
     };
     activeDoctors: number;
-    rxOnlyDoctors: number;
     enteredWithoutDocumentationDoctors: number;
     documentedDoctors: number;
-    overlap: {
-      rxOnlyIncludedInEnteredWithoutDocumentation: boolean;
-      rxOnlyAndDocumentedDoctors: number;
-    };
-    rxOnlyDoctorList: { name: string; email: string }[];
     enteredWithoutDocumentationDoctorList: { name: string; email: string }[];
   };
   navigationClickRanking?: {

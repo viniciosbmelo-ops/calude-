@@ -23,6 +23,7 @@ import {
 } from "@workspace/db";
 import {
   computeNavigationClickRanking,
+  computeTopFeaturesAndPages,
   computeUsageFunnel,
   type DateRange,
 } from "./admin-analytics";
@@ -50,7 +51,7 @@ describe.skipIf(!canUseTestDatabase).sequential("admin utilization SQL regressio
 
     try {
       await db.transaction(async (tx) => {
-        const [owner, regenOnly, rxOnly, entered, sessionOnly, lastLoginOnly, admin, physioActor] =
+        const [owner, regenOnly, clickOnly, entered, sessionOnly, lastLoginOnly, admin, physioActor] =
           await tx.insert(doctorsTable).values([
             {
               nome: "Analytics Fixture Owner",
@@ -63,8 +64,8 @@ describe.skipIf(!canUseTestDatabase).sequential("admin utilization SQL regressio
               senhaHash: "fixture-password-hash",
             },
             {
-              nome: "Analytics Fixture RX",
-              email: `analytics-rx-${suffix}@example.test`,
+              nome: "Analytics Fixture Click",
+              email: `analytics-click-${suffix}@example.test`,
               senhaHash: "fixture-password-hash",
             },
             {
@@ -97,10 +98,10 @@ describe.skipIf(!canUseTestDatabase).sequential("admin utilization SQL regressio
             },
           ]).returning();
 
-        // This old patient proves that an RX user with records outside the
-        // selected period is still RX-only for the selected period.
+        // This old patient proves that a doctor with records outside the
+        // selected period is still undocumented for the selected period.
         await tx.insert(patientsTable).values({
-          doctorId: rxOnly!.id,
+          doctorId: clickOnly!.id,
           nome: "SYNTHETIC ANALYTICS PATIENT",
           createdAt: outside,
           updatedAt: outside,
@@ -209,17 +210,13 @@ describe.skipIf(!canUseTestDatabase).sequential("admin utilization SQL regressio
           event(entered!.id, "navigation_click", inside, "/surgeries", "surgeries"),
           // This page view must not inflate the click count.
           event(entered!.id, "page_view", inside, "/surgeries", "surgery"),
-          event(rxOnly!.id, "navigation_click", inside, "/surgeries", "surgeries"),
-          // Only an explicitly contextualized standalone planning event
-          // qualifies as RX-only; surgery analysis is excluded.
-          event(rxOnly!.id, "xray_analyzed", inside, "/xray-planning", "xray_standalone"),
-          event(rxOnly!.id, "xray_analyzed", inside, "/surgeries/new", "xray_surgery"),
-          // Legacy path/feature data has no bounded context and is not
-          // retroactively classified as standalone.
-          event(rxOnly!.id, "xray_analyzed", inside, "/xray-planning", "xray"),
+          event(clickOnly!.id, "navigation_click", inside, "/surgeries", "surgeries"),
           // Admin activity must not enter doctor counts or click rankings.
           event(admin!.id, "navigation_click", inside, "/surgeries", "surgery"),
           event(admin!.id, "page_view", inside, "/surgeries"),
+          // Historical X-ray rows must not surface in top pages/features.
+          event(entered!.id, "page_view", inside, "/xray-planning", "xray"),
+          event(entered!.id, "xray_analyzed", inside, "/xray-planning", "xray_standalone"),
         ]);
 
         const usage = await computeUsageFunnel(period, tx);
@@ -229,27 +226,14 @@ describe.skipIf(!canUseTestDatabase).sequential("admin utilization SQL regressio
         expect(usage.period.bounds).toBe("inclusive [start, end] UTC");
         expect(usage.activeDoctors).toBe(6);
         expect(usage.documentedDoctors).toBe(2);
-        expect(usage.rxOnlyDoctors).toBe(1);
-        // RX-only is itself an authenticated product entry and overlaps this
-        // cohort even when no separate page_view/click was recorded.
         expect(usage.enteredWithoutDocumentationDoctors).toBe(3);
-        expect(usage.overlap.rxOnlyIncludedInEnteredWithoutDocumentation).toBe(true);
-        expect(usage.overlap.rxOnlyAndDocumentedDoctors).toBe(0);
-
-        const rxList = usage.rxOnlyDoctorList;
-        expect(rxList).toEqual([
-          { name: "Analytics Fixture RX", email: `analytics-rx-${suffix}@example.test` },
-        ]);
         expect(usage.enteredWithoutDocumentationDoctorList.map((doctor) => doctor.name).sort())
           .toEqual([
+            "Analytics Fixture Click",
             "Analytics Fixture Entered",
-            "Analytics Fixture RX",
             "Analytics Fixture Session",
           ]);
-        for (const doctor of [
-          ...usage.rxOnlyDoctorList,
-          ...usage.enteredWithoutDocumentationDoctorList,
-        ]) {
+        for (const doctor of usage.enteredWithoutDocumentationDoctorList) {
           expect(Object.keys(doctor).sort()).toEqual(["email", "name"]);
         }
         expect(JSON.stringify(usage)).not.toContain("SYNTHETIC ANALYTICS");
@@ -268,6 +252,12 @@ describe.skipIf(!canUseTestDatabase).sequential("admin utilization SQL regressio
         });
         expect(clicks.items.some((item) => item.route === "/xray-planning")).toBe(false);
         expect(clicks.coverageStart).not.toBeNull();
+
+        const top = await computeTopFeaturesAndPages(period, tx);
+        expect(top.topPages).toEqual([{ pagePath: "/surgeries", count: 3 }]);
+        expect(top.topFeatures.map((f) => f.featureName).sort()).toEqual(["surgeries", "surgery"]);
+        expect(top.topFeatures.find((f) => f.featureName === "surgery")?.count).toBe(3);
+        expect(top.topFeatures.find((f) => f.featureName === "surgeries")?.count).toBe(2);
         expect(clicks.empty).toBe(false);
 
         assertionsCompleted = true;

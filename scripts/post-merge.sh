@@ -6,7 +6,12 @@
 # the DEVELOPMENT database in sync after a merge:
 #
 #   1. Install dependencies with a frozen lockfile.
-#   2. Apply the Drizzle schema to the *development* database via drizzle-kit
+#   2. Run the idempotent SQL files in lib/db/pre-push/ (in name order, each
+#      in its own transaction, stopping on the first error). These fix data
+#      that would otherwise make push fail silently: drizzle-kit push applies
+#      a changed CHECK as DROP then ADD without a transaction and swallows the
+#      ADD error, which can leave a table with no constraint at all.
+#   3. Apply the Drizzle schema to the *development* database via drizzle-kit
 #      push. Uniqueness on populated response tables is represented as unique
 #      indexes, avoiding drizzle-kit's destructive/truncation prompt.
 #
@@ -32,5 +37,11 @@ fi
 # makes both operations deterministic and non-interactive; push is idempotent.
 export CI=true
 pnpm install --frozen-lockfile
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+for f in "$repo_root"/lib/db/pre-push/*.sql; do
+  [[ -e "$f" ]] || continue
+  echo "Applying pre-push SQL: $f"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+done
 pnpm --filter @workspace/db run push-force </dev/null
 echo "Development schema synced via drizzle-kit push. Production uses the Publish diff."

@@ -83,7 +83,6 @@ interface UsageDoctorRow {
   doctor_id: number | string;
   doctor_name: string;
   doctor_email: string;
-  is_rx_only: boolean;
   is_entered_without_documentation: boolean;
   is_documented: boolean;
   coverage_start: Date | string | null;
@@ -98,7 +97,6 @@ interface UsageFunnel {
   };
   coverage: {
     documentationSources: string[];
-    xraySuccessSource: string;
     clickSource: string;
     documentationLimitations: string[];
     start: string | null;
@@ -106,14 +104,8 @@ interface UsageFunnel {
     unavailableReason?: string;
   };
   activeDoctors: number;
-  rxOnlyDoctors: number;
   enteredWithoutDocumentationDoctors: number;
   documentedDoctors: number;
-  overlap: {
-    rxOnlyIncludedInEnteredWithoutDocumentation: boolean;
-    rxOnlyAndDocumentedDoctors: number;
-  };
-  rxOnlyDoctorList: { name: string; email: string }[];
   enteredWithoutDocumentationDoctorList: { name: string; email: string }[];
 }
 
@@ -149,25 +141,17 @@ export async function computeUsageFunnel(
   const base: Omit<UsageFunnel, "period"> = {
     coverage: {
       documentationSources: ["patients", "surgeries", "regen"],
-      xraySuccessSource: "server-emitted xray_analyzed events with featureName=xray_standalone after successful standalone /xray-planning analysis",
       clickSource: "navigation_click events (pagePath=destination, featureName=feature)",
       documentationLimitations: [
         "Current created_at/updated_at timestamps cannot recover overwritten or deleted prior edits.",
         "Physio activity is excluded because a care relation does not prove authenticated doctor authorship.",
-        "Historical xray_analyzed events without explicit context cannot be attributed to standalone planning.",
       ],
       start: null,
       empty: true,
     },
     activeDoctors: 0,
-    rxOnlyDoctors: 0,
     enteredWithoutDocumentationDoctors: 0,
     documentedDoctors: 0,
-    overlap: {
-      rxOnlyIncludedInEnteredWithoutDocumentation: true,
-      rxOnlyAndDocumentedDoctors: 0,
-    },
-    rxOnlyDoctorList: [],
     enteredWithoutDocumentationDoctorList: [],
   };
 
@@ -220,28 +204,11 @@ export async function computeUsageFunnel(
         SELECT DISTINCT doctor_id
         FROM analytics_events
         WHERE doctor_id IS NOT NULL
-          AND (
-            event_name IN ('login', 'page_view', 'navigation_click')
-            OR (
-              event_name = 'xray_analyzed'
-              AND page_path = '/xray-planning'
-              AND feature_name = 'xray_standalone'
-            )
-          )
+          AND event_name IN ('login', 'page_view', 'navigation_click')
           AND created_at >= ${current.start.toISOString()}
           AND created_at <= ${current.end.toISOString()}
         UNION
         SELECT doctor_id FROM session_doctors
-      ),
-      rx_doctors AS (
-        SELECT DISTINCT doctor_id
-        FROM analytics_events
-        WHERE doctor_id IS NOT NULL
-          AND event_name = 'xray_analyzed'
-          AND page_path = '/xray-planning'
-          AND feature_name = 'xray_standalone'
-          AND created_at >= ${current.start.toISOString()}
-          AND created_at <= ${current.end.toISOString()}
       ),
       active_doctors AS (
         SELECT doctor_id FROM all_event_doctors
@@ -272,20 +239,17 @@ export async function computeUsageFunnel(
         d.id AS doctor_id,
         d.nome AS doctor_name,
         d.email AS doctor_email,
-        (rx.doctor_id IS NOT NULL AND doc.doctor_id IS NULL) AS is_rx_only,
         (ent.doctor_id IS NOT NULL AND doc.doctor_id IS NULL) AS is_entered_without_documentation,
         (doc.doctor_id IS NOT NULL) AS is_documented,
         cs.value AS coverage_start
       FROM eligible_doctors d
       JOIN active_doctors active ON active.doctor_id = d.id
-      LEFT JOIN rx_doctors rx ON rx.doctor_id = d.id
       LEFT JOIN entered_doctors ent ON ent.doctor_id = d.id
       LEFT JOIN documented_doctors doc ON doc.doctor_id = d.id
       CROSS JOIN coverage_start cs
     `);
 
     const rows = result.rows as unknown as UsageDoctorRow[];
-    const rxOnly = rows.filter((row) => row.is_rx_only);
     const enteredWithoutDocumentation = rows.filter((row) => row.is_entered_without_documentation);
     const documented = rows.filter((row) => row.is_documented);
     const coverageStart = toIsoOrNull(rows[0]?.coverage_start);
@@ -304,17 +268,8 @@ export async function computeUsageFunnel(
         empty: rows.length === 0,
       },
       activeDoctors: rows.length,
-      rxOnlyDoctors: rxOnly.length,
       enteredWithoutDocumentationDoctors: enteredWithoutDocumentation.length,
       documentedDoctors: documented.length,
-      overlap: {
-        ...base.overlap,
-        rxOnlyAndDocumentedDoctors: rows.filter((row) => row.is_rx_only && row.is_documented).length,
-      },
-      rxOnlyDoctorList: rxOnly.map((row) => ({
-        name: row.doctor_name || "Médico sem nome",
-        email: row.doctor_email,
-      })),
       enteredWithoutDocumentationDoctorList: enteredWithoutDocumentation.map((row) => ({
         name: row.doctor_name || "Médico sem nome",
         email: row.doctor_email,
@@ -368,7 +323,6 @@ export async function computeNavigationClickRanking(
             WHEN '/surgeries/new' THEN 'surgery'
             WHEN '/surgeries/:id' THEN 'surgery'
             WHEN '/whatsapp-broadcast' THEN 'support'
-            WHEN '/xray-planning' THEN 'xray'
           END AS feature,
           e.doctor_id,
           e.created_at
@@ -382,7 +336,7 @@ export async function computeNavigationClickRanking(
             '/profile', '/regen', '/regen/caso/novo', '/regen/caso/:id',
             '/regen/consentimento', '/regen/orientacoes', '/regen/pesquisa',
             '/reports', '/surgeries', '/surgeries/new', '/surgeries/:id',
-            '/whatsapp-broadcast', '/xray-planning'
+            '/whatsapp-broadcast'
           )
           AND d.is_admin = false
           AND d.aprovado = true
@@ -401,7 +355,7 @@ export async function computeNavigationClickRanking(
             '/profile', '/regen', '/regen/caso/novo', '/regen/caso/:id',
             '/regen/consentimento', '/regen/orientacoes', '/regen/pesquisa',
             '/reports', '/surgeries', '/surgeries/new', '/surgeries/:id',
-            '/whatsapp-broadcast', '/xray-planning'
+            '/whatsapp-broadcast'
           )
           AND d.is_admin = false
           AND d.aprovado = true
@@ -455,6 +409,55 @@ export async function computeNavigationClickRanking(
  * recurring.interval: 'day'|'week'|'month'|'year'
  * recurring.interval_count: number of intervals per billing cycle
  */
+/**
+ * Top features and page paths for the admin overview. The X-ray planner was
+ * removed, so historical `/xray-planning` page views and `xray*` feature rows
+ * are excluded rather than shown as live product surface. NULL values are
+ * already excluded by each list's own IS NOT NULL filter.
+ */
+export async function computeTopFeaturesAndPages(
+  current: DateRange,
+  executor: Pick<typeof db, "execute"> = db,
+): Promise<{
+  topFeatures: { featureName: string; count: number }[];
+  topPages: { pagePath: string; count: number }[];
+}> {
+  const featResult = await executor.execute(sql`
+    SELECT feature_name, count(*)::int AS cnt
+    FROM analytics_events
+    WHERE feature_name IS NOT NULL
+      AND feature_name NOT LIKE 'xray%'
+      AND created_at >= ${current.start.toISOString()}
+      AND created_at <= ${current.end.toISOString()}
+    GROUP BY feature_name
+    ORDER BY cnt DESC
+    LIMIT 20
+  `);
+  const pageResult = await executor.execute(sql`
+    SELECT page_path, count(*)::int AS cnt
+    FROM analytics_events
+    WHERE event_name = 'page_view'
+      AND page_path IS NOT NULL
+      AND page_path <> '/xray-planning'
+      AND page_path NOT LIKE '/xray-planning/%'
+      AND created_at >= ${current.start.toISOString()}
+      AND created_at <= ${current.end.toISOString()}
+    GROUP BY page_path
+    ORDER BY cnt DESC
+    LIMIT 20
+  `);
+  return {
+    topFeatures: (featResult.rows as { feature_name: string; cnt: number }[]).map((r) => ({
+      featureName: r.feature_name,
+      count: Number(r.cnt),
+    })),
+    topPages: (pageResult.rows as { page_path: string; cnt: number }[]).map((r) => ({
+      pagePath: r.page_path,
+      count: Number(r.cnt),
+    })),
+  };
+}
+
 function toMonthlyCents(unitAmount: number, interval: string, intervalCount: number): number {
   const cnt = intervalCount || 1;
   switch (interval) {
@@ -706,32 +709,6 @@ router.get("/admin/analytics", requireAdmin, async (req, res): Promise<void> => 
 
   let topFeatures: { featureName: string; count: number }[] = [];
   let topPages: { pagePath: string; count: number }[] = [];
-  let standaloneXrayUsage: {
-    source: "analytics" | "unavailable";
-    unavailableReason?: string;
-    totalDoctors: number;
-    totalAccesses: number;
-    totalAnalyses: number;
-    doctors: {
-      doctorId: number;
-      doctorName: string;
-      doctorEmail: string;
-      patientCount: number;
-      accessCount: number;
-      analysisCount: number;
-      firstUsedAt: string;
-      lastUsedAt: string;
-      usageDates: string[];
-    }[];
-  } = {
-    source: "unavailable",
-    unavailableReason: "A coleta analítica ainda não foi iniciada.",
-    totalDoctors: 0,
-    totalAccesses: 0,
-    totalAnalyses: 0,
-    doctors: [],
-  };
-
   if (analyticsAvailable) {
     const [currSess, priorSess] = await Promise.all([
       db.select({
@@ -799,120 +776,7 @@ router.get("/admin/analytics", requireAdmin, async (req, res): Promise<void> => 
       source: "analytics",
     };
 
-    // Top features (feature_name non-null events)
-    const featResult = await db.execute(sql`
-      SELECT feature_name, count(*)::int AS cnt
-      FROM analytics_events
-      WHERE feature_name IS NOT NULL
-        AND created_at >= ${current.start.toISOString()}
-        AND created_at <= ${current.end.toISOString()}
-      GROUP BY feature_name
-      ORDER BY cnt DESC
-      LIMIT 20
-    `);
-    topFeatures = (featResult.rows as { feature_name: string; cnt: number }[]).map((r) => ({
-      featureName: r.feature_name,
-      count: Number(r.cnt),
-    }));
-
-    // Top pages
-    const pageResult = await db.execute(sql`
-      SELECT page_path, count(*)::int AS cnt
-      FROM analytics_events
-      WHERE event_name = 'page_view'
-        AND page_path IS NOT NULL
-        AND created_at >= ${current.start.toISOString()}
-        AND created_at <= ${current.end.toISOString()}
-      GROUP BY page_path
-      ORDER BY cnt DESC
-      LIMIT 20
-    `);
-    topPages = (pageResult.rows as { page_path: string; cnt: number }[]).map((r) => ({
-      pagePath: r.page_path,
-      count: Number(r.cnt),
-    }));
-
-    // Standalone RX usage: only doctors with no patient currently registered.
-    // The route path is the product boundary; no patient identifiers or clinical
-    // values are included in this aggregate.
-    const xrayUsageResult = await db.execute(sql`
-      WITH patient_totals AS (
-        SELECT doctor_id, count(*)::int AS patient_count
-        FROM patients
-        GROUP BY doctor_id
-      ),
-      usage_events AS (
-        SELECT
-          e.doctor_id,
-          count(*) FILTER (
-            WHERE e.event_name = 'page_view'
-              AND e.page_path = '/xray-planning'
-          )::int AS access_count,
-          count(*) FILTER (
-            WHERE e.event_name = 'xray_analyzed'
-              AND e.page_path = '/xray-planning'
-          )::int AS analysis_count,
-          min(e.created_at) AS first_used_at,
-          max(e.created_at) AS last_used_at,
-          jsonb_agg(
-            DISTINCT to_char(e.created_at AT TIME ZONE ${TZ}, 'YYYY-MM-DD')
-            ORDER BY to_char(e.created_at AT TIME ZONE ${TZ}, 'YYYY-MM-DD')
-          ) AS usage_dates
-        FROM analytics_events e
-        WHERE e.doctor_id IS NOT NULL
-          AND e.page_path = '/xray-planning'
-          AND e.event_name IN ('page_view', 'xray_analyzed')
-          AND e.created_at >= ${current.start}
-          AND e.created_at <= ${current.end}
-        GROUP BY e.doctor_id
-      )
-      SELECT
-        d.id AS doctor_id,
-        d.nome AS doctor_name,
-        d.email AS doctor_email,
-        coalesce(pt.patient_count, 0)::int AS patient_count,
-        u.access_count,
-        u.analysis_count,
-        u.first_used_at,
-        u.last_used_at,
-        u.usage_dates
-      FROM usage_events u
-      JOIN doctors d ON d.id = u.doctor_id
-      LEFT JOIN patient_totals pt ON pt.doctor_id = d.id
-      WHERE d.is_admin = false
-        AND coalesce(pt.patient_count, 0) = 0
-      ORDER BY u.last_used_at DESC
-      LIMIT 200
-    `);
-    const xrayRows = xrayUsageResult.rows as Array<{
-      doctor_id: number | string;
-      doctor_name: string | null;
-      doctor_email: string;
-      patient_count: number | string;
-      access_count: number | string;
-      analysis_count: number | string;
-      first_used_at: Date | string;
-      last_used_at: Date | string;
-      usage_dates: string[] | null;
-    }>;
-    const standaloneDoctors = xrayRows.map((row) => ({
-      doctorId: Number(row.doctor_id),
-      doctorName: row.doctor_name || "Médico sem nome",
-      doctorEmail: row.doctor_email,
-      patientCount: Number(row.patient_count),
-      accessCount: Number(row.access_count),
-      analysisCount: Number(row.analysis_count),
-      firstUsedAt: new Date(row.first_used_at).toISOString(),
-      lastUsedAt: new Date(row.last_used_at).toISOString(),
-      usageDates: Array.isArray(row.usage_dates) ? row.usage_dates.map(String) : [],
-    }));
-    standaloneXrayUsage = {
-      source: "analytics",
-      totalDoctors: standaloneDoctors.length,
-      totalAccesses: standaloneDoctors.reduce((sum, doctor) => sum + doctor.accessCount, 0),
-      totalAnalyses: standaloneDoctors.reduce((sum, doctor) => sum + doctor.analysisCount, 0),
-      doctors: standaloneDoctors,
-    };
+    ({ topFeatures, topPages } = await computeTopFeaturesAndPages(current));
   }
 
   // ── Support ticket KPIs ─────────────────────────────────────────────────────
@@ -1414,8 +1278,6 @@ router.get("/admin/analytics", requireAdmin, async (req, res): Promise<void> => 
     campaigns: campaignPerformance,
 
     webVitals: vitalsMetrics,
-
-    standaloneXrayUsage,
   });
 });
 

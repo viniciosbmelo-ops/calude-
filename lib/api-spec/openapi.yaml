@@ -558,8 +558,6 @@ components:
             documentationSources:
               type: array
               items: { type: string }
-            xraySuccessSource:
-              type: string
             clickSource:
               type: string
             documentationLimitations:
@@ -572,32 +570,18 @@ components:
               type: boolean
             unavailableReason:
               type: string
-          required: [documentationSources, xraySuccessSource, clickSource, documentationLimitations, start, empty]
+          required: [documentationSources, clickSource, documentationLimitations, start, empty]
         activeDoctors:
-          type: integer
-        rxOnlyDoctors:
           type: integer
         enteredWithoutDocumentationDoctors:
           type: integer
         documentedDoctors:
           type: integer
-        overlap:
-          type: object
-          properties:
-            rxOnlyIncludedInEnteredWithoutDocumentation:
-              type: boolean
-            rxOnlyAndDocumentedDoctors:
-              type: integer
-          required: [rxOnlyIncludedInEnteredWithoutDocumentation, rxOnlyAndDocumentedDoctors]
-        rxOnlyDoctorList:
-          type: array
-          items:
-            $ref: "#/components/schemas/AdminDoctorIdentity"
         enteredWithoutDocumentationDoctorList:
           type: array
           items:
             $ref: "#/components/schemas/AdminDoctorIdentity"
-      required: [period, coverage, activeDoctors, rxOnlyDoctors, enteredWithoutDocumentationDoctors, documentedDoctors, overlap, rxOnlyDoctorList, enteredWithoutDocumentationDoctorList]
+      required: [period, coverage, activeDoctors, enteredWithoutDocumentationDoctors, documentedDoctors, enteredWithoutDocumentationDoctorList]
 
     AdminDoctorIdentity:
       type: object

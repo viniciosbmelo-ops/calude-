@@ -7,17 +7,13 @@
  */
 import type { AdminDoctorIdentity } from './adminDoctorIdentity';
 import type { AdminUsageFunnelCoverage } from './adminUsageFunnelCoverage';
-import type { AdminUsageFunnelOverlap } from './adminUsageFunnelOverlap';
 import type { AdminUsageFunnelPeriod } from './adminUsageFunnelPeriod';
 
 export interface AdminUsageFunnel {
   period: AdminUsageFunnelPeriod;
   coverage: AdminUsageFunnelCoverage;
   activeDoctors: number;
-  rxOnlyDoctors: number;
   enteredWithoutDocumentationDoctors: number;
   documentedDoctors: number;
-  overlap: AdminUsageFunnelOverlap;
-  rxOnlyDoctorList: AdminDoctorIdentity[];
   enteredWithoutDocumentationDoctorList: AdminDoctorIdentity[];
 }
