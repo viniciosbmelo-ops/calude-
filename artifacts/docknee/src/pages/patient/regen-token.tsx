@@ -22,18 +22,18 @@ import { publicRegenFallbackLocale, publicRegenServerError } from "./regen-publi
  * scale name, question id and option value deliberately remain unchanged,
  * because they are persisted in the response payload.
  */
-/*
-const SCALES: Record<string, ScaleDef> = {
-  "VAS Dor": {
-    id: "VAS Dor",
-    title: "Escala de Dor (VAS)",
-    description: "Avalie a dor na região tratada. Mova o controle deslizante para indicar o nível de dor.",
-    maxScore: 10,
-    questions: [
-      { id: "vas", label: "Como você avalia hoje a dor na região tratada? (0 = sem dor, 10 = pior dor imaginável)", type: "slider", min: 0, max: 10, step: 1 },
-    ],
-    calcScore: (a) => a["vas"] ?? 0,
-  },
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
+
+type PatientInfo = {
+  periodo: string;
+  scales: string[];
+  completedScales: string[];
+  scheduledDate?: string;
+  doctorLocale?: "pt-BR" | "es";
+  /** Presentation-only label; periodo remains the canonical persisted value. */
+  periodoLabel?: string;
+  noScales?: boolean;
 };
 
 async function readJsonSafely(response: Response): Promise<Record<string, unknown>> {
