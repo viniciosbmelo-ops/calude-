@@ -44,41 +44,110 @@ The admin account credentials are **not stored in this file**. Set credentials v
 - `pnpm --filter @workspace/db run push-force` — apply schema to the development database only
 - `pnpm --filter @workspace/api-server run dev` — run API server
 - `pnpm --filter @workspace/docknee run dev` — run frontend
-- `pnpm --filter @workspace/docregen run dev` — run DocRegen frontend (needs `PORT` and `BASE_PATH`; set `API_PROXY_TARGET=http://localhost:8080` to proxy `/api` when running outside the Replit router)
+- DocRegen (independent app) commands: see "DocRegen" below
 
-## DocRegen (artifacts/docregen)
+## DocRegen (independent app)
 
-Standalone app with only the regenerative-medicine and pain module of the platform
-(previewPath `/docregen/`, port 20452). It reuses the same API server, database and
-`@workspace/api-client-react`/`@workspace/clinical` libs. Includes: login/registration,
-a regenerative/pain home dashboard (`/dashboard`: regen cases, pending PROM follow-ups,
-upcoming appointments, pre-consultations), patients and their record (pre-consultation,
-anamnesis, evolutions, prescriptions, reports, certificates, files), pre-consultation
-invites with exam uploads (RX/MRI/CT/US, public page `/pre-consulta/:token`), the
-appointments agenda (`/agenda`, consultations and regenerative-procedure sessions), the
-secretary portal (`/secretary/login`, agenda + patients + pre-consultation invites +
-regenerative cases + regenerative follow-up alerts; managed from the profile page), regenerative cases (`/regen`), consent, patient guidance, research
-export, regenerative follow-ups and reports, and the public patient questionnaire and
-guidance links. Surgical procedures, the surgical schedule, pre-operative assessment,
-surgical follow-ups, physio/institutional portals, the AI assistant and the admin console
-are not part of DocRegen.
+DocRegen (regenerative medicine and pain) started from DocKnee's codebase but is a
+**fully independent product**: its own backend, its own PostgreSQL database, its own
+secrets, cookies, storage and messaging credentials. Accounts, patients and clinical
+data are never shared with DocKnee, and each app evolves on its own. DocRegen started
+with an empty database (no data was migrated from DocKnee).
 
-App-aware links: DocRegen tags every same-origin `/api` request with `X-App: docregen`
-(`artifacts/docregen/src/lib/app-header.ts`). The API maps that header through a fixed
-allowlist (`artifacts/api-server/src/lib/app-links.ts`) so patient-facing links it builds
-(pre-consultation, regenerative follow-up, patient orientations, password reset, Stripe
-checkout return) point to `/docregen/...` and use DocRegen branding. Missing/unknown values
-keep the DocKnee root links; pages DocRegen does not have (e.g. the surgical questionnaire
-`/patient/:token`) always stay at the root. Scheduled jobs have no calling app and keep
-DocKnee links (they only cover surgical follow-ups).
+### Packages
 
-DocRegen-specific endpoints on the shared API: `GET /api/pre-consults/summary` (exact
-per-doctor pre-consultation counts for the dashboard), `GET /api/secretary/regen-cases`
-(read-only regenerative case summary for the secretary, scoped to her doctor; sessions are
-scheduled through `/api/appointments`) and `GET /api/secretary/followup-alerts?type=regen`
-(pending regenerative follow-ups; without `type` the endpoint keeps returning the surgical
-alerts used by DocKnee). The DocRegen secretary portal has Agenda, Pacientes, Regenerativa
-and Alertas tabs.
+| Package | Role |
+|---------|------|
+| `artifacts/docregen` | Frontend (React + Vite), previewPath `/docregen/`, port 20452 |
+| `artifacts/docregen-api` | Backend (Express 5), mounted at `/regen-api`, port 8082 |
+| `lib/docregen-db` | DocRegen Drizzle schema + pool (reads only `DOCREGEN_DATABASE_URL`) |
+| `lib/docregen-api-spec` | DocRegen OpenAPI spec (health, auth, doctor profile, patients) + Orval config |
+| `lib/docregen-api-client-react` | Generated React Query client (base URL `/regen-api`) — do not hand-edit `src/generated` |
+| `lib/docregen-api-zod` | Generated zod schemas used by the DocRegen API — do not hand-edit `src/generated` |
+
+Shared, app-neutral libs: `lib/clinical` (scoring/PROM instruments and report
+engine) and the Replit AI integration libs (`lib/integrations-*`). They hold no app
+state and no app-specific knowledge. Everything else (spec, client, zod, db schema)
+is a DocRegen-owned copy so the two contracts and schemas can diverge freely.
+
+Why `/regen-api`: the Replit path router sends each request to the service whose
+`paths` entry is the longest matching prefix. DocKnee's `artifacts/api-server` owns
+`/api` (port 8080); `/regen-api` shares no prefix with `/api`, `/docregen` (the
+DocRegen frontend) or `/__mockup`, so the two backends can never receive each
+other's traffic, and DocRegen's session cookies (path `/regen-api`) are never sent
+to DocKnee's API. The DocKnee api-server, `lib/api-spec`, `lib/api-client-react`,
+`lib/api-zod` and `lib/db` contain no DocRegen code.
+
+What the DocRegen API contains: auth (doctor + secretary), subscription/Stripe,
+patients and their record (attachments, orientations), regenerative cases/procedures/
+PROMs/reports/consent/research export, pre-consultation (invites, public page, exam
+uploads, `GET /regen-api/pre-consults/summary` for the dashboard), appointments
+agenda, secretary portal (agenda, patients, pre-consultation invites,
+`GET /regen-api/secretary/regen-cases` scoped to the secretary's doctor, and
+`GET /regen-api/secretary/followup-alerts` with regenerative follow-up alerts), LGPD,
+analytics, notifications/WhatsApp outbox and the public patient pages
+(`/regen-api/patient/regen/:token`, `/regen-api/pre-consult/:token`,
+`/regen-api/patient-orientations/:token`). Surgical procedures and follow-ups,
+surgical schedule and pre-operative assessment, RX/surgical AI, admin console,
+physiotherapy/institutional portals and decision support exist only in DocKnee.
+
+Every link and message the DocRegen API builds (pre-consultation, regenerative
+follow-up, patient orientations, password reset, Stripe checkout return) points to the
+DocRegen frontend (`<DOCREGEN_APP_URL><DOCREGEN_FRONTEND_BASE_PATH>/...`, default base
+path `/docregen`) and uses DocRegen branding. There is no calling-app flag.
+
+### Environment variables (DocRegen API)
+
+The API **refuses to start** without its own database and session secret and never
+falls back to DocKnee's variables; it also refuses values equal to DocKnee's.
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `DOCREGEN_DATABASE_URL` | yes | DocRegen's own PostgreSQL database (must differ from `DATABASE_URL`) |
+| `DOCREGEN_SESSION_SECRET` | yes | JWT/cookie signing secret, ≥ 32 chars (must differ from `SESSION_SECRET`) |
+| `DOCREGEN_APP_URL` | production | Canonical public origin used in links, CORS and the Stripe webhook |
+| `DOCREGEN_FRONTEND_BASE_PATH` | no | Frontend base path in links (default `/docregen`; empty when served at a domain root) |
+| `DOCREGEN_PRIVATE_OBJECT_DIR` | uploads | Private object-storage dir `/<bucket>/<prefix>` (must differ from `PRIVATE_OBJECT_DIR`) |
+| `DOCREGEN_PUBLIC_OBJECT_SEARCH_PATHS` | no | Public object-storage paths |
+| `DOCREGEN_STRIPE_SECRET_KEY`, `DOCREGEN_STRIPE_WEBHOOK_SECRET`, `DOCREGEN_STRIPE_WEBHOOK_URL` | production billing | DocRegen Stripe account (live keys only in the published deployment) |
+| `DOCREGEN_GMAIL_USER`, `DOCREGEN_GMAIL_APP_PASSWORD`, `DOCREGEN_CONTACT_EMAIL` | email | Outgoing email and support contact |
+| `DOCREGEN_EVOLUTION_API_URL`, `DOCREGEN_EVOLUTION_API_KEY`, `DOCREGEN_EVOLUTION_INSTANCE` | WhatsApp | Evolution API instance for DocRegen |
+| `DOCREGEN_WHATSAPP_ACCESS_TOKEN`, `DOCREGEN_WHATSAPP_PHONE_NUMBER_ID` | WhatsApp fallback | Meta WhatsApp Business API |
+| `AI_INTEGRATIONS_GEMINI_BASE_URL`, `AI_INTEGRATIONS_GEMINI_API_KEY` | yes (regen AI) | Replit-managed Gemini integration (provider credentials, no app data) |
+
+Cookies: `docregen_session`, `docregen_secretary_session`, `docregen_patient_session`
+(path `/regen-api`). JWT issuer/audience `docregen-api` / `docregen-web`.
+
+### Running DocRegen
+
+- `pnpm --filter @workspace/docregen-db run push-force` — apply DocRegen's schema to
+  `DOCREGEN_DATABASE_URL` (development only; `scripts/post-merge.sh` does it
+  automatically when `DOCREGEN_DATABASE_URL` is set)
+- `pnpm --filter @workspace/docregen-api run dev` — run the DocRegen API (`PORT=8082`)
+- `pnpm --filter @workspace/docregen run dev` — run the DocRegen frontend (needs `PORT`
+  and `BASE_PATH=/docregen/`; outside the Replit router set
+  `API_PROXY_TARGET=http://localhost:8082` to proxy `/regen-api`)
+- `pnpm --filter @workspace/docregen-api-spec run codegen` — regenerate the DocRegen
+  client and zod schemas after editing `lib/docregen-api-spec/openapi.yaml`
+- `pnpm run test:docregen-api` — DocRegen API tests (need `DOCREGEN_DATABASE_URL` pointing
+  at a disposable database with the schema applied, `DOCREGEN_SESSION_SECRET`, the Gemini
+  integration variables; the pre-consultation upload test also needs object storage and
+  `DOCREGEN_PRIVATE_OBJECT_DIR`). `pnpm test` runs web, DocKnee API and DocRegen API suites.
+
+### Deploying DocRegen (manual steps for the owner)
+
+1. Provision a **separate** PostgreSQL database for DocRegen (development and production)
+   and set `DOCREGEN_DATABASE_URL` in Replit Secrets for each environment. Replit's
+   Publish schema diff only covers the built-in `DATABASE_URL` database, so apply
+   DocRegen's schema to the production database yourself (review first):
+   `DOCREGEN_DATABASE_URL=<prod url> pnpm --filter @workspace/docregen-db run push`.
+2. Set `DOCREGEN_SESSION_SECRET` (new random value, ≥ 32 chars) and `DOCREGEN_APP_URL`.
+3. Create a separate object-storage bucket or prefix and set `DOCREGEN_PRIVATE_OBJECT_DIR`.
+4. Configure DocRegen's own Stripe account/products (`DOCREGEN_STRIPE_*`), email
+   (`DOCREGEN_GMAIL_*`, `DOCREGEN_CONTACT_EMAIL`) and WhatsApp (`DOCREGEN_EVOLUTION_*`,
+   `DOCREGEN_WHATSAPP_*`) credentials.
+5. Publish: the `artifacts/docregen-api` artifact builds and serves `/regen-api`
+   (health check `/regen-api/healthz`) next to DocKnee's `/api`.
 
 ## DB Schema
 
