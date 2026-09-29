@@ -129,7 +129,10 @@ export function performancePoints(rows: readonly PerformanceTestRow[]): Performa
       speedMps: row.details?.speed_mps,
     });
   }
-  return out.sort((a, b) => a.order - b.order || time(a.date) - time(b.date) || a.id.localeCompare(b.id));
+  // Ties (same timepoint and date) keep insertion order: numeric ids compare numerically.
+  const byId = (a: PerformancePoint, b: PerformancePoint) =>
+    (Number(a.id) - Number(b.id)) || a.id.localeCompare(b.id, undefined, { numeric: true });
+  return out.sort((a, b) => a.order - b.order || time(a.date) - time(b.date) || byId(a, b));
 }
 
 /**

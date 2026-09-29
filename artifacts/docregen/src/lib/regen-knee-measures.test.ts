@@ -9,6 +9,7 @@ import {
   performanceChartRows,
   performanceGroups,
   performanceInputError,
+  performancePoints,
   promDirection,
 } from "./regen-knee-measures";
 import { REGEN_CONDITION_CATALOG } from "./regen-conditions";
@@ -114,6 +115,14 @@ describe("performance test series", () => {
     ]);
     const walk = performanceGroups(rows).find((g) => g.def.code === "WALK_40M")!;
     expect(walk.series[0]!.points[0]!.speedMps).toBe(1.6);
+  });
+
+  it("keeps insertion order for ties (id 9 before id 10)", () => {
+    const tie = [
+      { id: 10, measure: "TUG", timepoint: "3 meses", value: 9, unit: "s", measured_at: "2026-04-10T15:00:00Z" },
+      { id: 9, measure: "CHAIR_STAND_30S", timepoint: "3 meses", value: 12, unit: "rep", measured_at: "2026-04-10T15:00:00Z" },
+    ];
+    expect(performancePoints(tie).map((p) => p.id)).toEqual(["9", "10"]);
   });
 
   it("validates form input like the API", () => {
