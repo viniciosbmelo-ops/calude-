@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countAppointmentsWithin,
   formatAppointmentDay,
-  pickPreConsultCandidates,
-  summarizePreConsults,
+  preConsultGroups,
   upcomingAppointments,
   type DashboardAppointment,
 } from "./dashboard-metrics";
@@ -46,26 +45,23 @@ describe("dashboard upcoming appointments", () => {
 });
 
 describe("dashboard pre-consultation summary", () => {
-  it("checks patients with upcoming appointments before recent registrations, without duplicates", () => {
-    const patients = [
-      { id: 1, nome: "A", createdAt: "2025-01-01T00:00:00Z" },
-      { id: 2, nome: "B", createdAt: "2025-01-10T00:00:00Z" },
-      { id: 3, nome: "C", createdAt: "2025-01-05T00:00:00Z" },
-    ];
-    const appointments = [appt({ id: 9, patientId: 1, data: "2025-01-20" })];
-    expect(pickPreConsultCandidates(patients, appointments, "2025-01-14").map(p => p.id)).toEqual([1, 2, 3]);
-    expect(pickPreConsultCandidates(patients, appointments, "2025-01-14", 2).map(p => p.id)).toEqual([1, 2]);
+  it("uses the exact totals and hides empty groups", () => {
+    const groups = preConsultGroups({
+      counts: { awaiting: 42, answered: 0 },
+      awaiting: [{ patientId: 1, patientNome: "Ana", date: "2025-01-20T00:00:00Z" }],
+      answered: [],
+    });
+    expect(groups).toEqual([
+      { key: "awaiting", total: 42, rows: [{ patientId: 1, patientNome: "Ana", date: "2025-01-20T00:00:00Z" }] },
+    ]);
   });
 
-  it("separates invites awaiting the patient from answered questionnaires", () => {
-    const summary = summarizePreConsults([
-      { patient: { id: 1, nome: "Ana" }, snapshot: { invite: { status: "active", expiresAt: "2025-01-20", createdAt: "2025-01-13" }, questionnaire: { status: "draft", submittedAt: null } } },
-      { patient: { id: 2, nome: "Bia" }, snapshot: { invite: { status: "submitted", expiresAt: "2025-01-20", createdAt: "2025-01-10" }, questionnaire: { status: "submitted", submittedAt: "2025-01-12T10:00:00Z" } } },
-      { patient: { id: 3, nome: "Caio" }, snapshot: { invite: { status: "expired", expiresAt: "2025-01-01", createdAt: "2024-12-25" }, questionnaire: null } },
-      { patient: { id: 4, nome: "Duda" }, snapshot: { invite: null, questionnaire: null } },
-      { patient: { id: 5, nome: "Edu" }, snapshot: undefined },
-    ]);
-    expect(summary.awaiting.map(r => r.patientId)).toEqual([1]);
-    expect(summary.answered.map(r => r.patientId)).toEqual([2]);
+  it("keeps awaiting before answered", () => {
+    const groups = preConsultGroups({
+      counts: { awaiting: 1, answered: 3 },
+      awaiting: [{ patientId: 1, patientNome: "Ana", date: null }],
+      answered: [{ patientId: 2, patientNome: "Bia", date: "2025-01-12T10:00:00Z" }],
+    });
+    expect(groups.map(g => [g.key, g.total])).toEqual([["awaiting", 1], ["answered", 3]]);
   });
 });

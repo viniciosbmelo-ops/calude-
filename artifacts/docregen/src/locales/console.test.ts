@@ -26,4 +26,14 @@ describe("console localization catalog", () => {
     }
     expect(consoleMessages["pt-BR"].regenProcedure).toBe("procedimento regenerativo");
   });
+
+  it("offers the regenerative cases and alerts tabs with DocRegen reminders", () => {
+    expect(consoleMessages["pt-BR"].regenTab).toBe("Regenerativa");
+    expect(consoleMessages["pt-BR"].alertsTab).toBe("Alertas");
+    for (const messages of [consoleMessages["pt-BR"], consoleMessages.es]) {
+      expect(messages.regenAlertWhatsappMessage).toContain("{name}");
+      expect(messages.regenAlertWhatsappMessage).toContain("{period}");
+      expect(messages.regenAlertWhatsappMessage).toContain("DocRegen");
+    }
+  });
 });

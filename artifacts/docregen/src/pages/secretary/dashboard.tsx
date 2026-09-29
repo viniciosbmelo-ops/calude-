@@ -10,11 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, Users, LogOut, Plus, Pencil, Trash2, Phone, Sun, Moon, AlertTriangle, Send, ClipboardList } from "lucide-react";
+import { CalendarDays, Users, LogOut, Plus, Pencil, Trash2, Phone, Sun, Moon, AlertTriangle, Send, ClipboardList, FlaskConical, Bell, Clock, CheckCircle2 } from "lucide-react";
 import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
 import { APPOINTMENT_STATUSES, selectableAppointmentTypes } from "@/lib/appointment-types";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { consoleMessages } from "@/locales/console";
+import { conditionCodeLabel } from "@/lib/dashboard-metrics";
+import {
+  REGEN_SESSION_TYPE,
+  daysUntil,
+  urgentRegenAlerts,
+  type SecretaryRegenAlert,
+  type SecretaryRegenCase,
+} from "@/lib/secretary-regen";
 
 type Patient = { id: number; nome: string; telefone: string | null; email: string | null; dataNascimento: string | null };
 type Appointment = {
@@ -66,14 +74,18 @@ export default function SecretaryDashboard() {
   const t = useScopedTranslations(consoleMessages);
 
   // DocRegen secretary portal: agenda (consultations / regenerative sessions),
-  // patients and pre-consultation invites. The surgical agenda and the
-  // post-operative follow-up alerts stay in DocKnee.
-  const [tab, setTab] = useState<"agenda" | "patients">("agenda");
+  // patients and pre-consultation invites, a read-only view of the doctor's
+  // regenerative cases (to schedule procedure sessions) and the pending
+  // regenerative follow-up alerts. The surgical agenda and the post-operative
+  // follow-up alerts stay in DocKnee.
+  const [tab, setTab] = useState<"agenda" | "patients" | "regen" | "alerts">("agenda");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [regenCases, setRegenCases] = useState<SecretaryRegenCase[]>([]);
+  const [alerts, setAlerts] = useState<SecretaryRegenAlert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadErrors, setLoadErrors] = useState<Record<"patients" | "appointments", string | null>>({
-    patients: null, appointments: null,
+  const [loadErrors, setLoadErrors] = useState<Record<"patients" | "appointments" | "regen" | "alerts", string | null>>({
+    patients: null, appointments: null, regen: null, alerts: null,
   });
 
   const [newAppt, setNewAppt] = useState({ patientId: "", data: "", hora: "", tipo: "consulta", observacoes: "", status: "agendado" });
@@ -148,11 +160,33 @@ export default function SecretaryDashboard() {
     }
   }, [t]);
 
+  const loadRegenCases = useCallback(async () => {
+    try {
+      const response = await secretaryFetch("/api/secretary/regen-cases");
+      if (!response.ok) throw new Error(await responseError(response));
+      setRegenCases(await response.json());
+      setLoadErrors(errors => ({ ...errors, regen: null }));
+    } catch (error) {
+      setLoadErrors(errors => ({ ...errors, regen: error instanceof Error ? error.message : t("verifyConnection") }));
+    }
+  }, [t]);
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      const response = await secretaryFetch("/api/secretary/followup-alerts?type=regen");
+      if (!response.ok) throw new Error(await responseError(response));
+      setAlerts(await response.json());
+      setLoadErrors(errors => ({ ...errors, alerts: null }));
+    } catch (error) {
+      setLoadErrors(errors => ({ ...errors, alerts: error instanceof Error ? error.message : t("verifyConnection") }));
+    }
+  }, [t]);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadPatients(), loadAppointments()]);
+    await Promise.all([loadPatients(), loadAppointments(), loadRegenCases(), loadAlerts()]);
     setLoading(false);
-  }, [loadAppointments, loadPatients]);
+  }, [loadAlerts, loadAppointments, loadPatients, loadRegenCases]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -209,7 +243,7 @@ export default function SecretaryDashboard() {
         return;
       }
       toast({ title: t("appointmentRemoved") });
-      await loadAppointments();
+      await Promise.all([loadAppointments(), loadRegenCases()]);
     } catch (error) {
       toast({ title: t("operationError"), description: error instanceof Error ? error.message : t("verifyConnection"), variant: "destructive" });
     } finally {
@@ -218,6 +252,21 @@ export default function SecretaryDashboard() {
   };
 
   const resetAppt = () => setNewAppt({ patientId: "", data: "", hora: "", tipo: "consulta", observacoes: "", status: "agendado" });
+
+  const openScheduleSession = (regenCase: SecretaryRegenCase) => {
+    if (regenCase.patientId === null) return;
+    const condition = conditionCodeLabel(regenCase.conditionCode);
+    setEditingAppt(null);
+    setNewAppt({
+      patientId: String(regenCase.patientId),
+      data: "",
+      hora: "",
+      tipo: REGEN_SESSION_TYPE,
+      observacoes: condition ? `${t("regenSessionNote")} — ${condition}` : t("regenSessionNote"),
+      status: "agendado",
+    });
+    setShowApptDialog(true);
+  };
 
   const openEditAppt = (a: Appointment) => {
     setEditingAppt(a);
@@ -277,6 +326,15 @@ export default function SecretaryDashboard() {
     (acc[a.data] = acc[a.data] ?? []).push(a);
     return acc;
   }, {} as Record<string, typeof upcomingAppts>);
+  const urgentAlertCount = urgentRegenAlerts(alerts, todayStr).length;
+  const caseStatusLabel = (status: string | null) => {
+    if (status === "active") return t("caseActive");
+    if (status === "draft") return t("caseDraft");
+    if (status === "closed") return t("caseClosed");
+    return status ?? "";
+  };
+  const alertKindLabel = (kind: SecretaryRegenAlert["kind"]) =>
+    kind === "overdue" ? t("alertOverdue") : kind === "awaiting" ? t("alertAwaiting") : t("alertScheduled");
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">{t("loading")}</div>;
@@ -310,15 +368,22 @@ export default function SecretaryDashboard() {
       {/* Tab bar */}
       <div className="flex overflow-x-auto border-b border-border bg-background sticky top-[56px] z-30">
         {([
-          { key: "agenda", label: t("agenda"), Icon: CalendarDays },
-          { key: "patients", label: t("patients"), Icon: Users },
-        ] as const).map(({ key, label, Icon }) => (
+          { key: "agenda", label: t("agenda"), Icon: CalendarDays, count: 0 },
+          { key: "patients", label: t("patients"), Icon: Users, count: 0 },
+          { key: "regen", label: t("regenTab"), Icon: FlaskConical, count: 0 },
+          { key: "alerts", label: t("alertsTab"), Icon: Bell, count: urgentAlertCount },
+        ] as const).map(({ key, label, Icon, count }) => (
           <button key={key} onClick={() => setTab(key)}
             className={cn("min-w-max flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium border-b-2 transition-colors relative",
               tab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             )}>
             <Icon className="h-4 w-4" />
             {label}
+            {count > 0 && (
+              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -447,6 +512,145 @@ export default function SecretaryDashboard() {
                       </CardContent>
                     </Card>
                   ))
+                )}
+              </div>
+            )}
+
+            {/* REGENERATIVE CASES (read-only) */}
+            {tab === "regen" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">{t("regenTitle")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("regenIntro")}</p>
+                </div>
+                {loadErrors.regen ? (
+                  <SectionError message={loadErrors.regen} onRetry={loadRegenCases} retryLabel={t("tryAgain")} />
+                ) : regenCases.length === 0 ? (
+                  <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">{t("noRegenCases")}</CardContent></Card>
+                ) : (
+                  regenCases.map(c => (
+                    <Card key={c.id} className="shadow-sm">
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-foreground truncate">{c.patientNome ?? t("patient")}</span>
+                              {c.status && (
+                                <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-200 dark:border-teal-900">
+                                  {caseStatusLabel(c.status)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+                              {conditionCodeLabel(c.conditionCode)}{c.ladoArticulacao ? ` · ${c.ladoArticulacao}` : ""}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{t("regenSessions", { count: c.procedureCount })}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {c.nextSessionDate
+                                ? t("regenNextSession", { date: formatDate(`${c.nextSessionDate}T12:00:00`, { day: "2-digit", month: "2-digit", year: "numeric" }), time: c.nextSessionTime ?? "" })
+                                : t("regenNoSession")}
+                            </p>
+                            {c.nextFollowupDate && (
+                              <p className="text-xs text-muted-foreground">
+                                {t("regenNextFollowup", { date: formatDate(`${c.nextFollowupDate}T12:00:00`, { day: "2-digit", month: "2-digit", year: "numeric" }) })}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            {c.patientTelefone && (
+                              <button
+                                onClick={() => setWaDialog({ phone: cleanPhone(c.patientTelefone!), msg: t("greetingWhatsappMessage", { name: c.patientNome ?? "" }), label: c.patientNome ?? t("patient") })}
+                                className="w-8 h-8 rounded-full flex items-center justify-center bg-green-100 text-green-700 hover:bg-green-200"
+                                title={t("whatsappMessageTitle")}
+                              >
+                                <Phone className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              disabled={c.patientId === null}
+                              title={c.patientId === null ? t("regenNoPatientLink") : t("scheduleSession")}
+                              onClick={() => openScheduleSession(c)}
+                            >
+                              <CalendarDays className="h-3.5 w-3.5" /> {t("scheduleSession")}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* REGENERATIVE FOLLOW-UP ALERTS */}
+            {tab === "alerts" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">{t("alertsTitle")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("alertsIntro")}</p>
+                </div>
+                {loadErrors.alerts ? (
+                  <SectionError message={loadErrors.alerts} onRetry={loadAlerts} retryLabel={t("tryAgain")} />
+                ) : alerts.length === 0 ? (
+                  <Card><CardContent className="py-10 text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
+                    <CheckCircle2 className="h-8 w-8 text-green-500" />
+                    <span>{t("noAlerts")}</span>
+                  </CardContent></Card>
+                ) : (
+                  alerts.map(a => {
+                    const days = daysUntil(a.scheduledDate, todayStr);
+                    const isOverdue = a.kind === "overdue";
+                    const isAwaiting = a.kind === "awaiting";
+                    return (
+                      <Card key={a.id} className={cn("shadow-sm border", isOverdue ? "border-red-300" : isAwaiting ? "border-amber-300" : "border-border")}>
+                        <CardContent className="py-3 px-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                {isOverdue
+                                  ? <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                                  : isAwaiting
+                                    ? <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                                    : <Bell className="h-4 w-4 text-blue-500 shrink-0" />}
+                                <span className="font-semibold text-sm text-foreground truncate">{a.patientNome ?? t("patient")}</span>
+                                <span className={cn("text-[10px] font-bold uppercase tracking-wide", isOverdue ? "text-red-600" : isAwaiting ? "text-amber-600" : "text-blue-600")}>
+                                  {alertKindLabel(a.kind)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {t("followupPeriod")}: <span className="font-medium text-foreground">{a.periodo}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {t("estimatedDate")} {a.scheduledDate ? formatDate(`${a.scheduledDate}T12:00:00`) : "—"}
+                                {days !== null && days !== 0 && (
+                                  <span className={cn("ml-2 font-semibold", days < 0 ? "text-red-500" : "text-blue-600")}>
+                                    {days < 0 ? t("overdueDays", { days: Math.abs(days) }) : t("inDays", { days })}
+                                  </span>
+                                )}
+                                {days === 0 && <span className="ml-2 font-semibold text-amber-600">{t("today")}</span>}
+                              </p>
+                            </div>
+                            {a.patientTelefone && (
+                              <button
+                                onClick={() => setWaDialog({
+                                  phone: cleanPhone(a.patientTelefone!),
+                                  msg: t("regenAlertWhatsappMessage", { name: a.patientNome ?? "", period: a.periodo }),
+                                  label: a.patientNome ?? t("patient"),
+                                })}
+                                className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full shrink-0"
+                              >
+                                <Phone className="h-3 w-3" />
+                                WhatsApp
+                              </button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 )}
               </div>
             )}

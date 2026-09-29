@@ -3,8 +3,7 @@
  * Regenerative medicine & pain focus: regenerative cases, pending PROM
  * follow-ups, upcoming appointments and pre-consultations.
  */
-import { useQuery, useQueries } from "@tanstack/react-query";
-import { useListPatients } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   FlaskConical, BellRing, CalendarDays, ClipboardList, Plus, UserPlus, ChevronRight,
@@ -22,16 +21,16 @@ import {
   conditionCodeLabel,
   countAppointmentsWithin,
   formatAppointmentDay,
-  pickPreConsultCandidates,
-  summarizePreConsults,
+  EMPTY_PRE_CONSULT_SUMMARY,
+  preConsultGroups,
   upcomingAppointments,
   type DashboardAppointment,
-  type DashboardPatient,
+  type PreConsultSummary,
 } from "@/lib/dashboard-metrics";
-import { fetchPhysicianPreConsult, physicianPreConsultQueryKey } from "@/hooks/use-pre-consult";
 
 const BRAND_TEAL = "#0E9AA7";
 const BRAND_NAVY = "#0B1F4B";
+const PRE_CONSULT_COLORS = { awaiting: "#D97706", answered: "#16A34A" } as const;
 
 type RegenStats = {
   total_cases: number;
@@ -126,25 +125,16 @@ export default function Dashboard() {
     queryFn: () => getJson<DashboardAppointment[]>("/api/appointments"),
     staleTime: 30_000,
   });
-  const patientsQuery = useListPatients();
+  // Exact, doctor-wide pre-consultation counts from the aggregate endpoint.
+  const preConsultQuery = useQuery<PreConsultSummary>({
+    queryKey: ["pre-consults-summary"],
+    queryFn: () => getJson<PreConsultSummary>("/api/pre-consults/summary"),
+    staleTime: 60_000,
+  });
 
   const appointments = appointmentsQuery.data ?? [];
-  const patients = (patientsQuery.data ?? []) as unknown as DashboardPatient[];
-  const candidates = patientsQuery.data && appointmentsQuery.data
-    ? pickPreConsultCandidates(patients, appointments, today)
-    : [];
-  const preConsultQueries = useQueries({
-    queries: candidates.map(p => ({
-      queryKey: physicianPreConsultQueryKey(p.id),
-      queryFn: () => fetchPhysicianPreConsult(p.id),
-      staleTime: 60_000,
-    })),
-  });
-  const preConsults = summarizePreConsults(
-    candidates.map((patient, i) => ({ patient, snapshot: preConsultQueries[i]?.data })),
-  );
-  const preConsultLoading = patientsQuery.isLoading || appointmentsQuery.isLoading
-    || preConsultQueries.some(q => q.isLoading);
+  const preConsults = preConsultQuery.data ?? EMPTY_PRE_CONSULT_SUMMARY;
+  const preConsultLoading = preConsultQuery.isLoading;
 
   const hour = new Date().getHours();
   const greeting = hour < 12
@@ -167,12 +157,12 @@ export default function Dashboard() {
     "procedimento regenerativo": t("typeRegen"), outro: t("typeOutro"),
   };
   const dayLabels = { today: t("today"), tomorrow: t("tomorrow") };
-  const hasError = statsQuery.isError || followupQuery.isError || appointmentsQuery.isError || patientsQuery.isError;
+  const hasError = statsQuery.isError || followupQuery.isError || appointmentsQuery.isError || preConsultQuery.isError;
   const retryAll = () => {
     void statsQuery.refetch();
     void followupQuery.refetch();
     void appointmentsQuery.refetch();
-    void patientsQuery.refetch();
+    void preConsultQuery.refetch();
   };
 
   const kpisLoading = statsQuery.isLoading || followupQuery.isLoading || appointmentsQuery.isLoading;
@@ -240,8 +230,8 @@ export default function Dashboard() {
               hint={t("kpiUpcomingHint", { total: upcoming.length })}
             />
             <KpiCard
-              label={t("kpiPreConsults")} value={preConsultLoading ? "…" : preConsults.awaiting.length} Icon={ClipboardList} href="/patients" accent="#D97706"
-              hint={t("kpiPreConsultsHint", { answered: preConsults.answered.length })}
+              label={t("kpiPreConsults")} value={preConsultLoading ? "…" : preConsults.counts.awaiting} Icon={ClipboardList} href="/patients" accent="#D97706"
+              hint={t("kpiPreConsultsHint", { answered: preConsults.counts.answered })}
             />
           </div>
         )}
@@ -332,22 +322,19 @@ export default function Dashboard() {
           <Panel title={t("preConsultTitle")}>
             {preConsultLoading ? (
               <Skeleton className="h-24 rounded-xl" />
-            ) : preConsults.awaiting.length === 0 && preConsults.answered.length === 0 ? (
+            ) : preConsults.counts.awaiting === 0 && preConsults.counts.answered === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">{t("preConsultEmpty")}</p>
             ) : (
               <div className="space-y-4">
-                {[
-                  { key: "awaiting", title: t("preConsultAwaiting"), rows: preConsults.awaiting, color: "#D97706" },
-                  { key: "answered", title: t("preConsultAnswered"), rows: preConsults.answered.slice(0, 5), color: "#16A34A" },
-                ].filter(group => group.rows.length > 0).map(group => (
+                {preConsultGroups(preConsults).map(group => (
                   <div key={group.key} className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: group.color }}>
-                      {group.title} ({group.rows.length})
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRE_CONSULT_COLORS[group.key] }}>
+                      {group.key === "awaiting" ? t("preConsultAwaiting") : t("preConsultAnswered")} ({group.total})
                     </p>
                     {group.rows.map(row => (
                       <Link key={`${group.key}-${row.patientId}`} href={`/patients/${row.patientId}?aba=pre-consulta`}>
                         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors">
-                          <ClipboardList className="h-4 w-4 shrink-0" style={{ color: group.color }} />
+                          <ClipboardList className="h-4 w-4 shrink-0" style={{ color: PRE_CONSULT_COLORS[group.key] }} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">{toTitleCase(row.patientNome)}</p>
                             {row.date && (
@@ -366,7 +353,6 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground mt-3">{t("preConsultScope")}</p>
           </Panel>
 
           {/* Regenerative indicators */}

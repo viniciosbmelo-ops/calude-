@@ -17,13 +17,6 @@ export type DashboardAppointment = {
   patientTelefone: string | null;
 };
 
-export type DashboardPatient = { id: number; nome: string; createdAt?: string | null };
-
-export type PreConsultSnapshot = {
-  invite: { status: "active" | "revoked" | "submitted" | "expired"; expiresAt: string; createdAt: string } | null;
-  questionnaire: { status: "draft" | "submitted"; submittedAt: string | null } | null;
-};
-
 export type PreConsultDashboardRow = {
   patientId: number;
   patientNome: string;
@@ -76,54 +69,26 @@ export function countAppointmentsWithin(appointments: readonly DashboardAppointm
   return upcomingAppointments(appointments, today).filter(a => a.data <= limit).length;
 }
 
-/**
- * There is no aggregate pre-consultation endpoint, so the dashboard checks a
- * bounded set of patients: those with upcoming appointments first (the ones
- * a pre-consultation matters for), then the most recently registered.
- */
-export function pickPreConsultCandidates(
-  patients: readonly DashboardPatient[],
-  appointments: readonly DashboardAppointment[],
-  today: string,
-  limit = 30,
-): DashboardPatient[] {
-  const byId = new Map(patients.map(p => [p.id, p]));
-  const picked: DashboardPatient[] = [];
-  const seen = new Set<number>();
-  const push = (p: DashboardPatient | undefined) => {
-    if (!p || seen.has(p.id) || picked.length >= limit) return;
-    seen.add(p.id);
-    picked.push(p);
-  };
-  for (const a of upcomingAppointments(appointments, today)) push(byId.get(a.patientId));
-  const recent = [...patients].sort((a, b) => {
-    const ca = a.createdAt ?? "";
-    const cb = b.createdAt ?? "";
-    if (ca !== cb) return cb.localeCompare(ca);
-    return b.id - a.id;
-  });
-  for (const p of recent) push(p);
-  return picked;
-}
+/** Response of GET /api/pre-consults/summary (exact, doctor-wide). */
+export type PreConsultSummary = {
+  counts: { awaiting: number; answered: number };
+  /** Soonest invite expiry first. */
+  awaiting: PreConsultDashboardRow[];
+  /** Most recent submission first. */
+  answered: PreConsultDashboardRow[];
+};
 
-/** Splits pre-consultation snapshots into "awaiting patient" and "answered". */
-export function summarizePreConsults(
-  entries: ReadonlyArray<{ patient: DashboardPatient; snapshot: PreConsultSnapshot | undefined }>,
-) {
-  const awaiting: PreConsultDashboardRow[] = [];
-  const answered: PreConsultDashboardRow[] = [];
-  for (const { patient, snapshot } of entries) {
-    if (!snapshot) continue;
-    const { invite, questionnaire } = snapshot;
-    if (questionnaire?.status === "submitted") {
-      answered.push({ patientId: patient.id, patientNome: patient.nome, date: questionnaire.submittedAt });
-    } else if (invite?.status === "active") {
-      awaiting.push({ patientId: patient.id, patientNome: patient.nome, date: invite.expiresAt });
-    }
-  }
-  answered.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-  awaiting.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
-  return { awaiting, answered };
+export const EMPTY_PRE_CONSULT_SUMMARY: PreConsultSummary = {
+  counts: { awaiting: 0, answered: 0 },
+  awaiting: [],
+  answered: [],
+};
+
+/** Non-empty dashboard groups; `total` is the exact count, `rows` a short preview. */
+export function preConsultGroups(summary: PreConsultSummary) {
+  return (["awaiting", "answered"] as const)
+    .map(key => ({ key, total: summary.counts[key], rows: summary[key] }))
+    .filter(group => group.total > 0);
 }
 
 /** Human label for a regenerative condition code (e.g. "knee_oa" → "knee oa"). */

@@ -22,6 +22,7 @@ import {
 } from "../lib/surgery-schedule-sync";
 import { sendWhatsAppText, buildFollowupMessage } from "../lib/whatsapp";
 import { getBaseUrl } from "../lib/base-url";
+import { buildRequestAppLink } from "../lib/app-links";
 import { randomUUID } from "crypto";
 import { z } from "zod/v4";
 import { resolveDoctorLocale } from "../lib/locale";
@@ -495,7 +496,7 @@ router.post("/surgeries/:id/schedule/:notifId/prepare-whatsapp", requireAuth, as
     return;
   }
 
-  const link = `${getBaseUrl(req)}/patient/${followup.token}`;
+  const link = buildRequestAppLink(req, getBaseUrl(req), `/patient/${followup.token}`);
 
   const message = buildFollowupMessage({
     patientName: row.patient.nome,
@@ -594,7 +595,7 @@ router.post("/surgeries/:id/schedule/:notifId/whatsapp", requireAuth, async (req
     }
     if (!locked.patient.telefone) return { kind: "no_phone" as const };
 
-    const link = `${getBaseUrl(req)}/patient/${existingF.token}`;
+    const link = buildRequestAppLink(req, getBaseUrl(req), `/patient/${existingF.token}`);
     const text = customMessage ?? buildFollowupMessage({
       patientName: locked.patient.nome,
       periodo: locked.notif.periodo,

@@ -1,3 +1,5 @@
+// Tag every same-origin /api call so the shared API builds DocRegen links.
+import "./lib/app-header-install";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";

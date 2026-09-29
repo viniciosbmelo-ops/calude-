@@ -56,12 +56,29 @@ upcoming appointments, pre-consultations), patients and their record (pre-consul
 anamnesis, evolutions, prescriptions, reports, certificates, files), pre-consultation
 invites with exam uploads (RX/MRI/CT/US, public page `/pre-consulta/:token`), the
 appointments agenda (`/agenda`, consultations and regenerative-procedure sessions), the
-secretary portal (`/secretary/login`, agenda + patients + pre-consultation invites; managed
-from the profile page), regenerative cases (`/regen`), consent, patient guidance, research
+secretary portal (`/secretary/login`, agenda + patients + pre-consultation invites +
+regenerative cases + regenerative follow-up alerts; managed from the profile page), regenerative cases (`/regen`), consent, patient guidance, research
 export, regenerative follow-ups and reports, and the public patient questionnaire and
 guidance links. Surgical procedures, the surgical schedule, pre-operative assessment,
 surgical follow-ups, physio/institutional portals, the AI assistant and the admin console
 are not part of DocRegen.
+
+App-aware links: DocRegen tags every same-origin `/api` request with `X-App: docregen`
+(`artifacts/docregen/src/lib/app-header.ts`). The API maps that header through a fixed
+allowlist (`artifacts/api-server/src/lib/app-links.ts`) so patient-facing links it builds
+(pre-consultation, regenerative follow-up, patient orientations, password reset, Stripe
+checkout return) point to `/docregen/...` and use DocRegen branding. Missing/unknown values
+keep the DocKnee root links; pages DocRegen does not have (e.g. the surgical questionnaire
+`/patient/:token`) always stay at the root. Scheduled jobs have no calling app and keep
+DocKnee links (they only cover surgical follow-ups).
+
+DocRegen-specific endpoints on the shared API: `GET /api/pre-consults/summary` (exact
+per-doctor pre-consultation counts for the dashboard), `GET /api/secretary/regen-cases`
+(read-only regenerative case summary for the secretary, scoped to her doctor; sessions are
+scheduled through `/api/appointments`) and `GET /api/secretary/followup-alerts?type=regen`
+(pending regenerative follow-ups; without `type` the endpoint keeps returning the surgical
+alerts used by DocKnee). The DocRegen secretary portal has Agenda, Pacientes, Regenerativa
+and Alertas tabs.
 
 ## DB Schema
 

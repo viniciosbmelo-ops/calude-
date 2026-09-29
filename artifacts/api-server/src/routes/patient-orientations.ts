@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { localeForDoctorId, resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
+import { buildAppLink, resolveClientApp, type ClientApp } from "../lib/app-links";
 
 const router: IRouter = Router();
 
@@ -119,8 +120,8 @@ function verifyOrientationToken(token: string): (JwtPayload & {
   }
 }
 
-function patientUrl(baseUrl: string, token: string): string {
-  return `${baseUrl}/orientacoes-paciente?token=${encodeURIComponent(token)}`;
+function patientUrl(baseUrl: string, token: string, app: ClientApp): string {
+  return buildAppLink(baseUrl, `/orientacoes-paciente?token=${encodeURIComponent(token)}`, app);
 }
 
 function getCanonicalPatientBaseUrl(): string {
@@ -152,12 +153,13 @@ router.post("/patient-orientations/token", requireAuth, async (req, res): Promis
 
   try {
     const baseUrl = getCanonicalPatientBaseUrl();
+    const app = resolveClientApp(req);
     const preToken = signOrientationToken(req.doctorId!, parsed.data.procKey, "pre");
     const posToken = signOrientationToken(req.doctorId!, parsed.data.procKey, "pos");
     res.setHeader("Cache-Control", "no-store");
     res.status(201).json({
-      preUrl: patientUrl(baseUrl, preToken),
-      posUrl: patientUrl(baseUrl, posToken),
+      preUrl: patientUrl(baseUrl, preToken, app),
+      posUrl: patientUrl(baseUrl, posToken, app),
     });
   } catch {
     res.status(503).json({ error: message(await localeForDoctorId(req.doctorId), "orientationsGenerationFailed") });

@@ -20,6 +20,7 @@ import {
   recordFailedAttempt,
 } from "../lib/patient-session";
 import { getBaseUrl } from "../lib/base-url";
+import { buildRequestAppLink } from "../lib/app-links";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
   abandonGrantAndEnqueueCleanup,
@@ -341,6 +342,91 @@ router.get("/patients/:id/pre-consult", requireAuth, async (req, res): Promise<v
   });
 });
 
+const PRE_CONSULT_SUMMARY_RECENT_LIMIT = 5;
+
+type PreConsultSummaryRow = {
+  patient_id: number;
+  patient_nome: string;
+  state: "answered" | "awaiting";
+  event_at: Date | string | null;
+};
+
+function isoOrNull(value: Date | string | null): string | null {
+  if (value === null) return null;
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+/**
+ * Aggregate pre-consultation status across ALL of the authenticated doctor's
+ * patients, with the same rules as GET /patients/:id/pre-consult:
+ *   - answered: the questionnaire was submitted by the patient;
+ *   - awaiting: not submitted and the doctor's latest invite is still active
+ *     and not expired.
+ * Returns exact counts plus a short list of the most relevant rows (awaiting:
+ * soonest expiry first; answered: most recent submission first).
+ */
+router.get("/pre-consults/summary", requireAuth, async (req, res): Promise<void> => {
+  const doctorId = req.doctorId!;
+  const result = await db.execute(sql`
+    WITH latest_invite AS (
+      SELECT DISTINCT ON (i.patient_id) i.patient_id, i.status, i.expires_at
+      FROM pre_consult_invites i
+      WHERE i.doctor_id = ${doctorId}
+      ORDER BY i.patient_id, i.created_at DESC, i.id DESC
+    ),
+    classified AS (
+      SELECT
+        p.id AS patient_id,
+        p.nome AS patient_nome,
+        CASE
+          WHEN q.status = 'submitted' THEN 'answered'
+          WHEN li.status = 'active' AND li.expires_at > now() THEN 'awaiting'
+        END AS state,
+        CASE WHEN q.status = 'submitted' THEN q.submitted_at ELSE li.expires_at END AS event_at
+      FROM patients p
+      LEFT JOIN pre_consult_questionnaires q ON q.patient_id = p.id
+      LEFT JOIN latest_invite li ON li.patient_id = p.id
+      WHERE p.doctor_id = ${doctorId}
+    ),
+    ranked AS (
+      SELECT
+        c.*,
+        COUNT(*) OVER (PARTITION BY c.state) AS state_total,
+        ROW_NUMBER() OVER (
+          PARTITION BY c.state
+          ORDER BY
+            CASE WHEN c.state = 'awaiting' THEN c.event_at END ASC NULLS LAST,
+            CASE WHEN c.state = 'answered' THEN c.event_at END DESC NULLS LAST,
+            c.patient_id DESC
+        ) AS rn
+      FROM classified c
+      WHERE c.state IS NOT NULL
+    )
+    SELECT patient_id, patient_nome, state, event_at, state_total::int AS state_total, rn::int AS rn
+    FROM ranked
+    WHERE rn <= ${PRE_CONSULT_SUMMARY_RECENT_LIMIT}
+    ORDER BY state, rn
+  `);
+
+  const rows = result.rows as Array<PreConsultSummaryRow & { state_total: number; rn: number }>;
+  const counts = { awaiting: 0, answered: 0 };
+  const recent: Record<"awaiting" | "answered", Array<{ patientId: number; patientNome: string; date: string | null }>> = {
+    awaiting: [],
+    answered: [],
+  };
+  for (const row of rows) {
+    counts[row.state] = Number(row.state_total);
+    recent[row.state].push({
+      patientId: Number(row.patient_id),
+      patientNome: row.patient_nome,
+      date: isoOrNull(row.event_at),
+    });
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ counts, awaiting: recent.awaiting, answered: recent.answered });
+});
+
 router.post("/patients/:id/pre-consult/invite", requireDoctorOrSecretary, async (req, res): Promise<void> => {
   const locale = await localeForDoctorId(req.doctorId);
   const patientId = parsePositiveId(req.params.id);
@@ -429,7 +515,7 @@ router.post("/patients/:id/pre-consult/invite", requireDoctorOrSecretary, async 
   }
 
   const baseUrl = getBaseUrl(req).replace(/\/$/, "");
-  const link = `${baseUrl}/pre-consulta/${outcome.rawToken}`;
+  const link = buildRequestAppLink(req, baseUrl, `/pre-consulta/${outcome.rawToken}`);
   const whatsappMessage = message(outcome.locale, "preConsultInvite", { link });
 
   res.status(201).json({
