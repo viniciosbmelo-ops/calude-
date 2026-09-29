@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/docregen/"
+title = "DocRegen - Medicina Regenerativa e Dor"
+version = "1.0.0"
+id = "artifacts/docregen"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/docregen" ]
+localPort = 20452
+
+[services.development]
+run = "pnpm --filter @workspace/docregen run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/docregen", "run", "build" ]
+publicDir = "artifacts/docregen/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/docregen/*"
+to = "/docregen/index.html"
+
+[services.env]
+PORT = "20452"
+BASE_PATH = "/docregen/"

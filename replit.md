@@ -44,6 +44,19 @@ The admin account credentials are **not stored in this file**. Set credentials v
 - `pnpm --filter @workspace/db run push-force` — apply schema to the development database only
 - `pnpm --filter @workspace/api-server run dev` — run API server
 - `pnpm --filter @workspace/docknee run dev` — run frontend
+- `pnpm --filter @workspace/docregen run dev` — run DocRegen frontend (needs `PORT` and `BASE_PATH`; set `API_PROXY_TARGET=http://localhost:8080` to proxy `/api` when running outside the Replit router)
+
+## DocRegen (artifacts/docregen)
+
+Standalone app with only the regenerative-medicine and pain module of the platform
+(previewPath `/docregen/`, port 20452). It reuses the same API server, database and
+`@workspace/api-client-react`/`@workspace/clinical` libs. Kept: login/registration,
+patients and their record (anamnesis, evolutions, prescriptions, reports, certificates,
+files), regenerative cases (`/regen`), consent, patient guidance, research export,
+regenerative follow-ups and reports, and the public patient questionnaire and guidance
+links. Surgical procedures, surgical schedule, pre-operative assessment, pre-consultation
+(with imaging/RX uploads), secretary/physio/institutional portals and the admin console
+are not part of DocRegen.
 
 ## DB Schema
 

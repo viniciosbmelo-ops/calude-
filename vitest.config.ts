@@ -3,8 +3,32 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    include: ['artifacts/docknee/src/lib/**/*.test.ts'],
-    environment: 'node',
+    projects: [
+      {
+        test: {
+          name: 'docknee',
+          include: ['artifacts/docknee/src/lib/**/*.test.ts'],
+          environment: 'node',
+        },
+        resolve: {
+          alias: {
+            '@': path.resolve(__dirname, 'artifacts/docknee/src'),
+          },
+        },
+      },
+      {
+        test: {
+          name: 'docregen',
+          include: ['artifacts/docregen/src/**/*.test.ts'],
+          environment: 'node',
+        },
+        resolve: {
+          alias: {
+            '@': path.resolve(__dirname, 'artifacts/docregen/src'),
+          },
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       include: [
@@ -16,11 +40,6 @@ export default defineConfig({
         functions: 100,
         lines: 90,
       },
-    },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'artifacts/docknee/src'),
     },
   },
 });
