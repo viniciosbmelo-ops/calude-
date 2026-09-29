@@ -18,7 +18,8 @@ import { operationalPatientRecordMessages } from "@/locales/operational-patient-
 import { useAuth } from "@/lib/auth";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInYears } from "date-fns";
-import { toDisplayDate } from "@/lib/utils";
+import { formatCalendarDate, formatPersonName, parseCalendarDate } from "@/lib/utils";
+import { regenConditionLabel } from "@/lib/regen-conditions";
 import { es, ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Save, Pencil, ClipboardList, Phone, FileDown, Building2, Paperclip, Upload, FileText, FileImage, Film, File, X, Download, AlertCircle, ExternalLink } from "lucide-react";
@@ -487,9 +488,8 @@ export default function PatientDetail() {
     return <div className="p-8 text-center text-destructive">{tr("patientLoadError")}</div>;
   }
 
-  const idade = patient.dataNascimento
-    ? differenceInYears(new Date(), toDisplayDate(patient.dataNascimento))
-    : null;
+  const birthDate = parseCalendarDate(patient.dataNascimento);
+  const idade = birthDate ? differenceInYears(new Date(), birthDate) : null;
 
   const docsDaAba = ABA_DOC_TIPO[abaAtiva]
     ? documentos.filter(d => d.tipo === ABA_DOC_TIPO[abaAtiva])
@@ -531,9 +531,9 @@ export default function PatientDetail() {
               {patient.nome.split(" ").slice(0, 2).map((n: string) => n[0]).join("").toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold text-white truncate" style={{ margin: 0 }}>{patient.nome}</h1>
+              <h1 className="text-base font-bold text-white truncate" style={{ margin: 0 }}>{formatPersonName(patient.nome)}</h1>
               <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.55)", margin: 0 }}>
-                {patient.dataNascimento ? format(toDisplayDate(patient.dataNascimento), 'dd/MM/yyyy') : ''}
+                {birthDate ? formatCalendarDate(birthDate, locale) : ''}
                 {idade !== null ? ` · ${idade} ${tr("years")}` : ''}
                 {patient.sexo === 'M' ? ` · ${tr("male")}` : patient.sexo === 'F' ? ` · ${tr("female")}` : ''}
               </p>
@@ -617,11 +617,11 @@ export default function PatientDetail() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg font-bold text-foreground truncate">{patient.nome}</h1>
+                  <h1 className="text-lg font-bold text-foreground truncate">{formatPersonName(patient.nome)}</h1>
                   <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 dark:bg-green-950/30 dark:text-green-400 text-xs">{tr("active")}</Badge>
                 </div>
                 <p className="text-muted-foreground text-sm mt-0.5">
-                  {patient.dataNascimento ? format(toDisplayDate(patient.dataNascimento), 'dd/MM/yyyy') : ''}
+                  {birthDate ? formatCalendarDate(birthDate, locale) : ''}
                   {idade !== null ? ` · ${idade} ${tr("years")}` : ''}
                   {patient.sexo === 'M' ? ` · ${tr("male")}` : patient.sexo === 'F' ? ` · ${tr("female")}` : ''}
                 </p>
@@ -736,7 +736,7 @@ export default function PatientDetail() {
                           <div className="flex flex-col gap-1 min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-foreground">
-                                {rc.condition_custom || rc.condition_code.replace(/_/g, " ")}
+                                {regenConditionLabel(rc.condition_code, locale, rc.condition_custom)}
                               </span>
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                                 style={{ background: STATUS_BG[rc.status] ?? "#F3F4F6", color: STATUS_COLOR[rc.status] ?? "#6B7280" }}>
@@ -744,7 +744,7 @@ export default function PatientDetail() {
                               </span>
                             </div>
                             {rc.data_caso && (
-                              <span className="text-xs text-muted-foreground">{rc.data_caso.slice(0, 10)}</span>
+                              <span className="text-xs text-muted-foreground">{formatCalendarDate(rc.data_caso, locale)}</span>
                             )}
                             {(rc.planned_products ?? []).length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-0.5">

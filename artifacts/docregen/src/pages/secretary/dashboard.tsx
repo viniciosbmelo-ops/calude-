@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays, Users, LogOut, Plus, Pencil, Trash2, Phone, Sun, Moon, AlertTriangle, Send, ClipboardList, FlaskConical, Bell, Clock, CheckCircle2 } from "lucide-react";
-import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
-import { APPOINTMENT_STATUSES, selectableAppointmentTypes } from "@/lib/appointment-types";
+import { cn, formatLocalDate, formatPersonName, sortByPtBrName } from "@/lib/utils";
+import { APPOINTMENT_STATUSES, appointmentStatusLabel, appointmentTypeLabel, selectableAppointmentTypes } from "@/lib/appointment-types";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { consoleMessages } from "@/locales/console";
 import { conditionCodeLabel } from "@/lib/dashboard-metrics";
@@ -70,7 +70,7 @@ export default function SecretaryDashboard() {
   const [, navigate] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
-  const { formatDate, setLanguage } = useLanguage();
+  const { formatDate, formatCalendarDate, setLanguage, locale } = useLanguage();
   const t = useScopedTranslations(consoleMessages);
 
   // DocRegen secretary portal: agenda (consultations / regenerative sessions),
@@ -97,8 +97,8 @@ export default function SecretaryDashboard() {
   const [preConsultPatientId, setPreConsultPatientId] = useState<number | null>(null);
 
   const openWaConfirm = (phone: string, nome: string, data: string, hora: string, tipo: string) => {
-    const dataFormatada = formatDate(`${data}T12:00:00`, { weekday: "long", day: "numeric", month: "long" });
-    const msg = t("appointmentWhatsappMessage", { name: nome, type: appointmentLabel(tipo), date: dataFormatada, time: hora });
+    const dataFormatada = formatCalendarDate(data, { weekday: "long", day: "numeric", month: "long" });
+    const msg = t("appointmentWhatsappMessage", { name: nome, type: appointmentTypeLabel(tipo, locale).toLocaleLowerCase(locale), date: dataFormatada, time: hora });
     setWaDialog({ phone: cleanPhone(phone), msg, label: nome });
   };
 
@@ -255,7 +255,7 @@ export default function SecretaryDashboard() {
 
   const openScheduleSession = (regenCase: SecretaryRegenCase) => {
     if (regenCase.patientId === null) return;
-    const condition = conditionCodeLabel(regenCase.conditionCode);
+    const condition = conditionCodeLabel(regenCase.conditionCode, locale);
     setEditingAppt(null);
     setNewAppt({
       patientId: String(regenCase.patientId),
@@ -304,10 +304,10 @@ export default function SecretaryDashboard() {
 
   const sortedPatients = sortByPtBrName(patients, (patient) => patient.nome, (patient) => patient.id);
   const filteredPatients = sortedPatients.filter(p => p.nome.toLowerCase().includes(patientSearch.toLowerCase()));
-  const appointmentLabelMap = { consulta: "consultation", retorno: "return", "procedimento regenerativo": "regenProcedure", "avaliação pré-op": "preOp", "avaliação pós-op": "postOp", curativo: "dressing", outro: "other", agendado: "scheduled", confirmado: "confirmed", cancelado: "cancelled", realizado: "completed", faltou: "noShow" } as const;
+  // Same labels as the doctor's agenda (lib/appointment-types).
   const appointmentLabel = (value: string) => {
-    const key = appointmentLabelMap[value as keyof typeof appointmentLabelMap];
-    return key ? t(key) : value;
+    const status = appointmentStatusLabel(value, locale);
+    return status !== value ? status : appointmentTypeLabel(value, locale);
   };
 
   const todayStr = formatLocalDate();
@@ -319,7 +319,7 @@ export default function SecretaryDashboard() {
   function formatDayHeader(dateStr: string) {
     if (dateStr === todayStr) return t("today");
     if (dateStr === tomorrowStr) return t("tomorrow");
-    return formatDate(`${dateStr}T12:00:00`, { weekday: "long", day: "numeric", month: "short" });
+    return formatCalendarDate(dateStr, { weekday: "long", day: "numeric", month: "short" });
   }
 
   const apptsByDay = upcomingAppts.reduce((acc, a) => {
@@ -426,7 +426,7 @@ export default function SecretaryDashboard() {
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-sm text-foreground truncate">{a.patientNome ?? t("patient")}</span>
+                                  <span className="font-semibold text-sm text-foreground truncate">{a.patientNome ? formatPersonName(a.patientNome) : t("patient")}</span>
                                   <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", statusColor(a.status))}>{appointmentLabel(a.status)}</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -480,7 +480,7 @@ export default function SecretaryDashboard() {
                     <Card key={p.id} className="shadow-sm">
                       <CardContent className="py-3 px-4 flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-semibold text-sm text-foreground truncate">{p.nome}</p>
+                          <p className="font-semibold text-sm text-foreground truncate">{formatPersonName(p.nome)}</p>
                           <p className="text-xs text-muted-foreground">{p.telefone || p.email || t("noContact")}</p>
                         </div>
                         <div className="flex gap-1 shrink-0">
@@ -534,7 +534,7 @@ export default function SecretaryDashboard() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm text-foreground truncate">{c.patientNome ?? t("patient")}</span>
+                              <span className="font-semibold text-sm text-foreground truncate">{c.patientNome ? formatPersonName(c.patientNome) : t("patient")}</span>
                               {c.status && (
                                 <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-200 dark:border-teal-900">
                                   {caseStatusLabel(c.status)}
@@ -542,17 +542,17 @@ export default function SecretaryDashboard() {
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5 capitalize">
-                              {conditionCodeLabel(c.conditionCode)}{c.ladoArticulacao ? ` · ${c.ladoArticulacao}` : ""}
+                              {conditionCodeLabel(c.conditionCode, locale)}{c.ladoArticulacao ? ` · ${c.ladoArticulacao}` : ""}
                             </p>
                             <p className="text-xs text-muted-foreground">{t("regenSessions", { count: c.procedureCount })}</p>
                             <p className="text-xs text-muted-foreground">
                               {c.nextSessionDate
-                                ? t("regenNextSession", { date: formatDate(`${c.nextSessionDate}T12:00:00`, { day: "2-digit", month: "2-digit", year: "numeric" }), time: c.nextSessionTime ?? "" })
+                                ? t("regenNextSession", { date: formatCalendarDate(c.nextSessionDate), time: c.nextSessionTime ?? "" })
                                 : t("regenNoSession")}
                             </p>
                             {c.nextFollowupDate && (
                               <p className="text-xs text-muted-foreground">
-                                {t("regenNextFollowup", { date: formatDate(`${c.nextFollowupDate}T12:00:00`, { day: "2-digit", month: "2-digit", year: "numeric" }) })}
+                                {t("regenNextFollowup", { date: formatCalendarDate(c.nextFollowupDate) })}
                               </p>
                             )}
                           </div>
@@ -615,7 +615,7 @@ export default function SecretaryDashboard() {
                                   : isAwaiting
                                     ? <Clock className="h-4 w-4 text-amber-500 shrink-0" />
                                     : <Bell className="h-4 w-4 text-blue-500 shrink-0" />}
-                                <span className="font-semibold text-sm text-foreground truncate">{a.patientNome ?? t("patient")}</span>
+                                <span className="font-semibold text-sm text-foreground truncate">{a.patientNome ? formatPersonName(a.patientNome) : t("patient")}</span>
                                 <span className={cn("text-[10px] font-bold uppercase tracking-wide", isOverdue ? "text-red-600" : isAwaiting ? "text-amber-600" : "text-blue-600")}>
                                   {alertKindLabel(a.kind)}
                                 </span>
@@ -624,7 +624,7 @@ export default function SecretaryDashboard() {
                                 {t("followupPeriod")}: <span className="font-medium text-foreground">{a.periodo}</span>
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {t("estimatedDate")} {a.scheduledDate ? formatDate(`${a.scheduledDate}T12:00:00`) : "—"}
+                                {t("estimatedDate")} {formatCalendarDate(a.scheduledDate)}
                                 {days !== null && days !== 0 && (
                                   <span className={cn("ml-2 font-semibold", days < 0 ? "text-red-500" : "text-blue-600")}>
                                     {days < 0 ? t("overdueDays", { days: Math.abs(days) }) : t("inDays", { days })}

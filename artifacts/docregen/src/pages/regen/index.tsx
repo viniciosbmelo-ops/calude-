@@ -7,6 +7,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
+import { formatPersonName, parseCalendarDate } from "@/lib/utils";
+import { regenConditionLabel } from "@/lib/regen-conditions";
 import {
   Plus, FlaskConical, AlertCircle, CheckCircle2, Clock,
   Activity, ChevronRight, FileText, ClipboardList,
@@ -188,9 +190,11 @@ export default function RegenDashboard() {
   const notAccepted = !termsStatus?.accepted;
 
   const filteredCases = cases.filter(c => {
+    const q = search.toLowerCase();
     const matchSearch = !search ||
-      c.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.condition_code?.toLowerCase().includes(search.toLowerCase());
+      c.patient_name?.toLowerCase().includes(q) ||
+      c.condition_code?.toLowerCase().includes(q) ||
+      regenConditionLabel(c.condition_code, locale, c.condition_custom).toLowerCase().includes(q);
     const matchStatus = !statusFilter || c.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -334,7 +338,8 @@ export default function RegenDashboard() {
         ) : (
           <div className="space-y-2">
             {filteredCases.map((c) => {
-              const date = new Date(c.created_at);
+              // Case date (data_caso) is the clinical date; created_at only as fallback.
+              const date = parseCalendarDate(c.data_caso) ?? new Date(c.created_at);
               const isDraft = c.status === "draft";
               return (
                 <Link key={c.id} href={`/regen/caso/${c.id}`}>
@@ -354,7 +359,7 @@ export default function RegenDashboard() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-gray-900 truncate">{c.patient_name}</p>
+                        <p className="font-semibold text-gray-900 truncate">{formatPersonName(c.patient_name)}</p>
                         {isDraft && (
                           <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
                             {t("statusDraft")}
@@ -362,7 +367,7 @@ export default function RegenDashboard() {
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 truncate">
-                        {c.condition_code.replace(/_/g, " ")}
+                        {regenConditionLabel(c.condition_code, locale, c.condition_custom)}
                          {c.procedure_count > 0 && ` · ${t("procedureCount", { count: c.procedure_count, suffix: c.procedure_count !== 1 ? "s" : "" })}`}
                       </p>
                     </div>

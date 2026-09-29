@@ -18,6 +18,7 @@ export const APPLICATION_SITE_LOCATIONS = [
   "Intra-articular",
   "Subcondroplastia",
   "Tecido periarticular",
+  "Tendão patelar",
   "Ligamento",
   "Outro",
 ] as const;

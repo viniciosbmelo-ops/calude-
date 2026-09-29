@@ -9,6 +9,7 @@ import {
   Users, AlertCircle, Loader2, X,
 } from "lucide-react";
 import { sortByPtBrName } from "@/lib/utils";
+import { REGEN_CONDITION_CATALOG, regenConditionLabel } from "@/lib/regen-conditions";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 
@@ -16,11 +17,7 @@ function authHeaders() {
   return {};
 }
 
-const CONDITIONS = [
-  "OA_OMBRO","TENDINOPATIA_OMBRO","BURSITE_OMBRO","LESAO_LABRAL_OMBRO",
-  "OA_COTOVELO","EPICONDILITE","TENDINOPATIA_COTOVELO",
-  "OA_QUADRIL","FASCITE_PLANTAR","TENDINOPATIA","CONDRAL_FOCAL","CUSTOM",
-];
+const CONDITIONS = REGEN_CONDITION_CATALOG.map(condition => condition.code);
 const PRODUCTS = ["PRP","LP_PRP","LR_PRP","BMAC","MFAT","AH","COLAGENO","LISADO"];
 
 interface ResearchRow {
@@ -158,7 +155,7 @@ export default function RegenPesquisa() {
               <select value={condition} onChange={e => setCondition(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-blue-400">
                 <option value="">{t("all")}</option>
-                {CONDITIONS.map(c => <option key={c} value={c}>{c.replace(/_/g, " ")}</option>)}
+                {CONDITIONS.map(c => <option key={c} value={c}>{regenConditionLabel(c, locale)}</option>)}
               </select>
             </div>
 
@@ -241,7 +238,7 @@ export default function RegenPesquisa() {
                         <td className="px-3 py-2 text-gray-700">{r.age ?? "—"}</td>
                         <td className="px-3 py-2 text-gray-700">{r.sex === "M" ? "M" : r.sex === "F" ? "F" : "—"}</td>
                         <td className="px-3 py-2 text-gray-700">{r.imc ?? "—"}</td>
-                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.condition.replace(/_/g," ")}</td>
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{regenConditionLabel(r.condition, locale)}</td>
                         <td className="px-3 py-2">
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             r.status === "active" ? "bg-green-50 text-green-700" :

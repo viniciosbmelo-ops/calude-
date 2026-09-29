@@ -57,6 +57,93 @@ export function toDisplayDate(value: Date | string | number): Date {
   return new Date(value);
 }
 
+const CALENDAR_PREFIX_RE = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/;
+
+/**
+ * Parses a value that is KNOWN to be a calendar date (birth date, case date,
+ * follow-up scheduled date, lab collection date…) into a local Date for that
+ * same calendar day. Accepts "YYYY-MM-DD" and serialised timestamps of a
+ * date-only column ("2026-09-29T00:00:00.000Z"), always using the Y/M/D parts
+ * and never `new Date(iso)` (which shifts the day west of UTC). Date objects
+ * keep their local calendar day. Returns null for empty or invalid input.
+ */
+export function parseCalendarDate(value: Date | string | null | undefined): Date | null {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+  if (typeof value !== "string") return null;
+  const match = CALENDAR_PREFIX_RE.exec(value.trim());
+  if (!match) return null;
+  return parseDateOnly(`${match[1]}-${match[2]}-${match[3]}`);
+}
+
+/** "YYYY-MM-DD" key of a calendar-date value (either serialisation), or null. */
+export function toCalendarDateKey(value: Date | string | null | undefined): string | null {
+  const date = parseCalendarDate(value);
+  return date ? formatLocalDate(date) : null;
+}
+
+/**
+ * The one formatter for calendar dates in DocRegen: dd/mm/yyyy in pt-BR/es by
+ * default, never shifted by the browser timezone, never throws — returns
+ * `fallback` ("—" by default) for empty or invalid input.
+ */
+export function formatCalendarDate(
+  value: Date | string | null | undefined,
+  locale = "pt-BR",
+  options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", year: "numeric" },
+  fallback = "—",
+): string {
+  const date = parseCalendarDate(value);
+  if (!date) return fallback;
+  try {
+    return new Intl.DateTimeFormat(locale, options).format(date);
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Formats an instant (timestamp) or date for display without ever throwing.
+ * Date-only strings are treated as calendar dates (see toDisplayDate).
+ */
+export function safeFormatDate(
+  value: Date | string | number | null | undefined,
+  locale = "pt-BR",
+  options?: Intl.DateTimeFormatOptions,
+  fallback = "—",
+): string {
+  if (value === null || value === undefined || value === "") return fallback;
+  try {
+    const date = toDisplayDate(value);
+    if (Number.isNaN(date.getTime())) return fallback;
+    return new Intl.DateTimeFormat(locale, options).format(date);
+  } catch {
+    return fallback;
+  }
+}
+
+const NAME_PARTICLES = new Set(["de", "da", "do", "das", "dos", "e", "di", "du", "del", "la", "y"]);
+
+/**
+ * Display casing for person names typed in any case ("MARIA DA SILVA" →
+ * "Maria da Silva"), keeping Portuguese/Spanish particles lowercase except
+ * as the first word. Hyphenated and apostrophe parts are capitalised too.
+ */
+export function formatPersonName(name: string | null | undefined): string {
+  const trimmed = String(name ?? "").trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+  return trimmed
+    .toLocaleLowerCase("pt-BR")
+    .split(" ")
+    .map((word, index) => {
+      if (index > 0 && NAME_PARTICLES.has(word)) return word;
+      return word.replace(/(^|[-'’])(\p{L})/gu, (_, sep: string, letter: string) => sep + letter.toLocaleUpperCase("pt-BR"));
+    })
+    .join(" ");
+}
+
 /**
  * Formats a date-only value ("YYYY-MM-DD") for display without timezone
  * shifting. Defaults to dd/mm/yyyy in pt-BR and es. Returns `fallback` for

@@ -16,7 +16,7 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { dashboardMessages } from "@/locales/dashboard";
 import { reportFollowupPeriodLabel } from "@/locales/reporting-catalogs";
-import { cn, formatDateOnly, formatLocalDate } from "@/lib/utils";
+import { cn, formatCalendarDate, formatLocalDate, formatPersonName } from "@/lib/utils";
 import {
   conditionCodeLabel,
   countAppointmentsWithin,
@@ -60,12 +60,7 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function toTitleCase(str: string) {
-  const skip = new Set(["de", "da", "do", "das", "dos", "e"]);
-  return str.toLowerCase().split(" ")
-    .map((w, i) => (i === 0 || !skip.has(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w))
-    .join(" ");
-}
+const toTitleCase = formatPersonName;
 
 function doctorFirstName(nome: string | undefined) {
   if (!nome) return "";
@@ -304,8 +299,8 @@ export default function Dashboard() {
                         <p className="text-sm font-semibold text-foreground truncate">{toTitleCase(row.patient_name)}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           {reportFollowupPeriodLabel(locale, row.periodo)}
-                          {row.scheduled_date ? ` · ${formatDateOnly(row.scheduled_date, locale, undefined, row.scheduled_date)}` : ""}
-                          {row.condition_code ? ` · ${conditionCodeLabel(row.condition_code)}` : ""}
+                          {row.scheduled_date ? ` · ${formatCalendarDate(row.scheduled_date, locale)}` : ""}
+                          {row.condition_code ? ` · ${conditionCodeLabel(row.condition_code, locale)}` : ""}
                         </p>
                       </div>
                       <span className={cn("text-[10px] font-bold uppercase tracking-wide shrink-0", row.kind === "overdue" ? "text-red-600" : "text-blue-600")}>

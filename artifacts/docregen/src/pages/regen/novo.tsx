@@ -38,7 +38,8 @@ import {
   getRegenPlanningPayload,
   removeProductFromPlanning,
 } from "@/lib/regen-case-payload";
-import { cn, formatDateOnly, sortByPtBrName } from "@/lib/utils";
+import { cn, formatCalendarDate, formatLocalDate, formatPersonName, sortByPtBrName, toCalendarDateKey } from "@/lib/utils";
+import { REGEN_CONDITION_REGIONS, regenConditionLabel, regenConditionRegion } from "@/lib/regen-conditions";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import OrientacoesInline from "@/components/OrientacoesInline";
@@ -79,41 +80,7 @@ type RegenCondition = {
   name: string;
 };
 
-const CONDITION_GROUPS = [
-  { id: "ombro" }, { id: "cotovelo" }, { id: "quadril" },
-  { id: "pe_tornozelo" }, { id: "punho_mao" }, { id: "coluna_cervical" },
-  { id: "coluna_toracica" }, { id: "coluna_lombar" }, { id: "outras" },
-] as const;
-
-const CONDITION_GROUP_BY_CODE: Record<string, (typeof CONDITION_GROUPS)[number]["id"]> = {
-  CONDRAL_FOCAL: "outras",
-  OSTEOCONDRAL: "outras",
-  SINOVITE: "outras",
-  OA_QUADRIL: "quadril",
-  OA_OMBRO: "ombro",
-  TENDINOPATIA_OMBRO: "ombro",
-  BURSITE_OMBRO: "ombro",
-  LESAO_LABRAL_OMBRO: "ombro",
-  OA_COTOVELO: "cotovelo",
-  EPICONDILITE: "cotovelo",
-  TENDINOPATIA_COTOVELO: "cotovelo",
-  FASCITE_PLANTAR: "pe_tornozelo",
-  OA_TORNOZELO: "pe_tornozelo",
-  OA_PUNHO: "punho_mao",
-  TENDINOPATIA_PUNHO: "punho_mao",
-  SINDROME_TUNEL_CARPO: "punho_mao",
-  OA_COLUNA_CERVICAL: "coluna_cervical",
-  HERNIA_DISCAL_CERVICAL: "coluna_cervical",
-  OA_COLUNA_TORACICA: "coluna_toracica",
-  HERNIA_DISCAL_TORACICA: "coluna_toracica",
-  OA_COLUNA_LOMBAR: "coluna_lombar",
-  HERNIA_DISCAL_LOMBAR: "coluna_lombar",
-  BURSITE: "outras",
-  CUSTOM: "outras",
-  FRATURA_FADIGA: "outras",
-  POS_OPERATORIO: "outras",
-  TENDINOPATIA: "outras",
-};
+const CONDITION_GROUPS = REGEN_CONDITION_REGIONS.map(id => ({ id }));
 
 /* ── Sistemas comuns de processamento ── */
 const SISTEMA_OPTIONS: string[] = [];
@@ -276,7 +243,7 @@ const GOAL_MESSAGE_KEYS: Record<string, RegenMessageKey> = {
 };
 
 const REGION_MESSAGE_KEYS: Record<string, RegenMessageKey> = {
-  quadril: "regionHip", ombro: "regionShoulder", cotovelo: "regionElbow",
+  joelho: "regionKnee", quadril: "regionHip", ombro: "regionShoulder", cotovelo: "regionElbow",
   pe_tornozelo: "regionFootAnkle", punho_mao: "regionWristHand", coluna_cervical: "regionCervical",
   coluna_toracica: "regionThoracic", coluna_lombar: "regionLumbar", outras: "regionOther",
 };
@@ -318,6 +285,7 @@ const ES_DISPLAY_LABELS: Record<string, string> = {
   "Tipo de colágeno": "Tipo de colágeno", "Volume / Quantidade": "Volumen / Cantidad",
   "Descrição do produto": "Descripción del producto", "Intra-articular": "Intraarticular",
   "Tecido periarticular": "Tejido periarticular",
+  "Tendão patelar": "Tendón rotuliano",
   "Ligamento": "Ligamento",
   "Ultrassom": "Ecografía", "Fluoroscopia": "Fluoroscopia", "Artroscopia": "Artroscopia",
   "Referência anatômica (às cegas)": "Referencia anatómica (a ciegas)",
@@ -342,22 +310,6 @@ const ES_DISPLAY_LABELS: Record<string, string> = {
   "Ex: metformina, colchicina, losartana…": "Ej.: metformina, colchicina, losartán…",
 };
 
-const CONDITION_ES: Record<string, string> = {
-  OA_QUADRIL: "Osteoartritis de cadera", OA_OMBRO: "Osteoartrosis de hombro",
-  TENDINOPATIA_OMBRO: "Tendinopatía del manguito rotador", BURSITE_OMBRO: "Bursitis de hombro",
-  LESAO_LABRAL_OMBRO: "Lesión labral de hombro", OA_COTOVELO: "Osteoartrosis de codo",
-  TENDINOPATIA_COTOVELO: "Tendinopatía de codo", OA_TORNOZELO: "Osteoartritis de tobillo",
-  OA_PUNHO: "Osteoartrosis de muñeca", TENDINOPATIA_PUNHO: "Tendinopatía de muñeca y mano",
-  SINDROME_TUNEL_CARPO: "Síndrome del túnel carpiano", OA_COLUNA_CERVICAL: "Osteoartrosis cervical",
-  HERNIA_DISCAL_CERVICAL: "Hernia discal cervical", OA_COLUNA_TORACICA: "Osteoartrosis torácica",
-  HERNIA_DISCAL_TORACICA: "Hernia discal torácica", OA_COLUNA_LOMBAR: "Osteoartrosis lumbar",
-  HERNIA_DISCAL_LOMBAR: "Hernia discal lumbar",
-  CONDRAL_FOCAL: "Lesión condral focal", OSTEOCONDRAL: "Lesión osteocondral", TENDINOPATIA: "Tendinopatía",
-  SINOVITE: "Sinovitis / Sinovitis villonodular",
-  BURSITE: "Bursitis", FRATURA_FADIGA: "Fractura por fatiga / estrés",
-  POS_OPERATORIO: "Posoperatorio / Bioestimulación", EPICONDILITE: "Epicondilitis lateral / medial",
-  FASCITE_PLANTAR: "Fascitis plantar", CUSTOM: "Otra condición (especificar)",
-};
 
 const BIOREADY_FACTOR_ES: Record<string, { label: string; detail: string; recommendation: string }> = {
   contraindications: { label: "Contraindicaciones absolutas", detail: "Verifique la ausencia de infección activa y neoplasia.", recommendation: "Confirme la ausencia de contraindicaciones absolutas antes de continuar." },
@@ -628,9 +580,9 @@ function PatientSelector({
           <User className="h-5 w-5 text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm">{selected.nome}</p>
+          <p className="font-semibold text-gray-900 text-sm">{formatPersonName(selected.nome)}</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            {selected.data_nascimento ? t("bornAbbreviation", { date: selected.data_nascimento }) : ""}
+            {selected.data_nascimento ? t("bornAbbreviation", { date: formatCalendarDate(selected.data_nascimento, locale, undefined, selected.data_nascimento) }) : ""}
             {selected.sexo ? ` · ${selected.sexo === "M" ? t("masculine") : selected.sexo === "F" ? t("feminine") : selected.sexo}` : ""}
           </p>
         </div>
@@ -665,7 +617,7 @@ function PatientSelector({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
-                <p className="text-xs text-gray-500">{formatDateOnly(p.data_nascimento, locale, undefined, p.data_nascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
+                <p className="text-xs text-gray-500">{formatCalendarDate(p.data_nascimento, locale, undefined, p.data_nascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
               </div>
             </button>
           ))}
@@ -711,7 +663,7 @@ export default function RegenNovo() {
     return key ? t(key) : goal;
   }, [t]);
   const conditionLabel = useCallback((condition: RegenCondition) =>
-    locale === "es" ? (CONDITION_ES[condition.code] ?? condition.name) : condition.name, [locale]);
+    regenConditionLabel(condition.code, locale) || condition.name, [locale]);
   const [, navigate] = useLocation();
   const { canWrite, loading: subLoading } = useSubscriptionStatus();
 
@@ -726,7 +678,7 @@ export default function RegenNovo() {
 
   /* ── Step 1: Dados Básicos ── */
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
-  const [dataCaso,        setDataCaso]        = useState(new Date().toISOString().slice(0, 10));
+  const [dataCaso,        setDataCaso]        = useState(() => formatLocalDate());
   const [lado,            setLado]            = useState("");
   const [hospital,        setHospital]        = useState("");
   const [weightKg,        setWeightKg]        = useState("");
@@ -740,7 +692,7 @@ export default function RegenNovo() {
   const groupedConditions = useMemo(() => CONDITION_GROUPS.map(group => ({
     ...group,
     conditions: sortByPtBrName(
-      conditions.filter(condition => (CONDITION_GROUP_BY_CODE[condition.code] ?? "outras") === group.id),
+      conditions.filter(condition => regenConditionRegion(condition.code) === group.id),
       (condition) => conditionLabel(condition),
       (condition) => condition.code,
     ),
@@ -836,7 +788,7 @@ export default function RegenNovo() {
 
       if (draft && draftId) {
         setCaseId(draftId);
-        setDataCaso(draft.data_caso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+        setDataCaso(toCalendarDateKey(draft.data_caso) ?? formatLocalDate());
         setLado(draft.lado_articulacao ?? "");
         setHospital(draft.hospital_local ?? "");
         setWeightKg(draft.weight_kg != null ? String(draft.weight_kg) : "");

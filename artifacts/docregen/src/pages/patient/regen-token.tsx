@@ -92,10 +92,12 @@ function CpfGate({ token, onVerified }: { token: string; onVerified: (info: Pati
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-2">
-            <ClipboardList className="h-7 w-7 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">DocRegen</h1>
+          <img
+            src={`${import.meta.env.BASE_URL}logo-docregen.png`}
+            alt="DocRegen"
+            className="h-12 w-auto mx-auto object-contain"
+            data-testid="docregen-logo"
+          />
           <p className="text-muted-foreground text-sm">{t("orthobiologicQuestionnaires")}</p>
         </div>
 
@@ -216,7 +218,7 @@ function ScaleForm({
 export default function RegenPatientPage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
-  const { beginTemporaryDisplayLanguage, formatDate, locale } = useLanguage();
+  const { beginTemporaryDisplayLanguage, formatDate, formatCalendarDate, locale } = useLanguage();
   const t = useScopedTranslations(publicPatientFlowMessages);
 
   const [info, setInfo] = useState<PatientInfo | null>(null);
@@ -432,10 +434,15 @@ export default function RegenPatientPage() {
       <div className="max-w-2xl mx-auto p-4 space-y-4 pb-16">
         {/* Header */}
         <div className="pt-6 text-center space-y-1">
-          <h1 className="text-xl font-bold text-foreground">DocRegen</h1>
+          <img
+            src={`${import.meta.env.BASE_URL}logo-docregen.png`}
+            alt="DocRegen"
+            className="h-10 w-auto mx-auto object-contain"
+            data-testid="docregen-logo"
+          />
           <p className="text-xs text-muted-foreground">
              {t("assessment", { period: info.periodoLabel ?? info.periodo })}
-            {info.scheduledDate && ` · ${formatDate(info.scheduledDate, { dateStyle: "short" })}`}
+            {info.scheduledDate && ` · ${formatCalendarDate(info.scheduledDate)}`}
           </p>
         </div>
 

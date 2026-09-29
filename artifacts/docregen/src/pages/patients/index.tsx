@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { Search, Plus, ChevronRight, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { sortByPtBrName } from "@/lib/utils";
+import { formatPersonName, sortByPtBrName } from "@/lib/utils";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalPatientsListMessages } from "@/locales/operational-patients-list";
 
@@ -19,18 +19,13 @@ const AVATAR_COLORS = [
   "linear-gradient(135deg,#0B1F4B,#0E9AA7)",
 ];
 
-function toTitleCase(str: string) {
-  const skip = new Set(["de", "da", "do", "das", "dos", "e"]);
-  return str.toLowerCase().split(" ").map((w, i) => (i === 0 || !skip.has(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(" ");
-}
-
 function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((n: string) => n?.[0] ?? "").join("").toUpperCase();
 }
 
 export default function PatientsList() {
   const { data: patients, isLoading } = useListPatients();
-  const { formatDate } = useLanguage();
+  const { formatDate, formatCalendarDate } = useLanguage();
   const t = useScopedTranslations(operationalPatientsListMessages);
   const sideLabel = (side: string) =>
     side === "Direito" ? t("right") : side === "Esquerdo" ? t("left") : side === "Bilateral" ? t("bilateral") : side;
@@ -122,11 +117,11 @@ export default function PatientsList() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground truncate">{toTitleCase(patient.nome)}</p>
+                        <p className="font-semibold text-foreground truncate">{formatPersonName(patient.nome)}</p>
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         {patient.dataNascimento && (
-                          <span className="text-xs text-muted-foreground">{formatDate(patient.dataNascimento, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+                          <span className="text-xs text-muted-foreground">{formatCalendarDate(patient.dataNascimento)}</span>
                         )}
                         <span className="text-xs text-muted-foreground/70">
                           {t("registration")}: {formatDate(patient.createdAt)}
@@ -193,10 +188,10 @@ export default function PatientsList() {
                           >
                             {getInitials(patient.nome)}
                           </div>
-                          {patient.nome}
+                          {formatPersonName(patient.nome)}
                         </div>
                       </TableCell>
-                      <TableCell>{patient.dataNascimento || '-'}</TableCell>
+                      <TableCell>{patient.dataNascimento ? formatCalendarDate(patient.dataNascimento) : '-'}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{formatDate(patient.createdAt)}</TableCell>
                       <TableCell>{patient.telefone || '-'}</TableCell>
                       <TableCell>

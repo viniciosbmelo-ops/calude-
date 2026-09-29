@@ -1,6 +1,6 @@
 /**
  * DocRegen — Detalhe do Caso
- * Tabs: Visão Geral | Procedimentos | PROMs
+ * Tabs: Visão geral | Procedimentos | PROMs | Exames laboratoriais | IA e laudos
  * Tema claro — igual ao Dashboard principal
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -24,7 +24,18 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { cn, sortByPtBrName, toDisplayDate } from "@/lib/utils";
+import { cn, formatCalendarDate, formatLocalDate as formatLocalDateInput, sortByPtBrName } from "@/lib/utils";
+import { regenConditionLabel } from "@/lib/regen-conditions";
+import {
+  biologicDetailEntries,
+  buildPromTimeline,
+  calendarDateToNoonIso,
+  formatPromTrend,
+  promSeries,
+  scheduleRowsForCase,
+  type FollowupNotificationLike,
+  type PromPoint,
+} from "@/lib/regen-case-detail";
 import OrientacoesInline from "@/components/OrientacoesInline";
 import {
   evaluateCompliance,
@@ -55,6 +66,18 @@ function useCaseTranslations() {
 
 function authHeaders() {
   return { "Content-Type": "application/json" };
+}
+
+/** API error text: the JSON `error` field when present, else the raw body/status. */
+async function responseErrorMessage(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "");
+  try {
+    const parsed = JSON.parse(text) as { error?: unknown };
+    if (typeof parsed?.error === "string" && parsed.error) return parsed.error;
+  } catch {
+    // not JSON
+  }
+  return text || res.statusText || String(res.status);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -158,6 +181,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "", unit =
       <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</label>
       <div className="relative">
         <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+          lang={type === "date" && typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined}
           className="w-full px-3 py-2 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none border border-gray-200 bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-50" />
         {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{unit}</span>}
       </div>
@@ -441,7 +465,7 @@ function LabValueBadge({ value, flag, unit, date, small }: {
       <Icon className={small ? "h-2.5 w-2.5" : "h-3 w-3"} style={{ color }} />
       <span className="font-bold" style={{ color }}>{value}</span>
       {unit && <span style={{ color, opacity: 0.7 }}>{unit}</span>}
-      {date && <span className="text-gray-400 ml-1">{toDisplayDate(date).toLocaleDateString(locale)}</span>}
+      {date && <span className="text-gray-400 ml-1">{formatCalendarDate(date, locale, undefined, "")}</span>}
     </div>
   );
 }
@@ -696,6 +720,7 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
   const [adverseEventDesc, setAdverseEventDesc] = useState("");
   const [notes, setNotes]                       = useState("");
   const [biologicDetails, setBiologicDetails]   = useState<Record<string, string>>({});
+  const [performedOn, setPerformedOn]           = useState(() => formatLocalDateInput());
 
   const handleBiologicChange = (key: string, val: string) => {
     setBiologicDetails(prev => ({ ...prev, [key]: val }));
@@ -706,6 +731,7 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
     setLocalAnesthesia(false); setAnesthesiaAgent("");
     setAdverseEvent(false); setAdverseEventDesc(""); setNotes("");
     setBiologicDetails({});
+    setPerformedOn(formatLocalDateInput());
   };
 
   const handleSave = async () => {
@@ -721,10 +747,11 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
           localAnesthesia, anesthesiaAgent: anesthesiaAgent || undefined,
           adverseEvent, adverseEventDesc: adverseEventDesc || undefined,
           notes: notes || undefined,
+          performedAt: calendarDateToNoonIso(performedOn),
           biologicDetails: Object.keys(biologicDetails).length > 0 ? biologicDetails : undefined,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await responseErrorMessage(res));
       setOpen(false);
       reset();
       onSaved();
@@ -748,6 +775,7 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
 
       {open && (
         <div className="mt-3 rounded-xl p-4 space-y-4 bg-white border border-gray-200 shadow-sm">
+          <Field label={t("procedureDateLabel")} value={performedOn} onChange={setPerformedOn} type="date" />
           {/* Product */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("orthobiologicProduct")}</label>
@@ -874,9 +902,10 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
   const tr = useCaseTranslations();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [instrument, setInstrument] = useState("");
+  const [instrument, setInstrument] = useState("VAS");
   const [timepoint, setTimepoint]   = useState("");
   const [score, setScore]           = useState("");
+  const [answeredOn, setAnsweredOn] = useState(() => formatLocalDateInput());
 
   const handleSave = async () => {
     if (!instrument || !timepoint) return alert(t("selectPromFields"));
@@ -886,10 +915,15 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
         method: "POST",
         credentials: "same-origin",
         headers: authHeaders(),
-        body: JSON.stringify({ instrument, timepoint, score: parseFloat(score) || undefined }),
+        body: JSON.stringify({
+          instrument,
+          timepoint,
+          score: score.trim() === "" ? undefined : Number(score),
+          answeredAt: calendarDateToNoonIso(answeredOn),
+        }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      setOpen(false); setInstrument(""); setTimepoint(""); setScore("");
+      if (!res.ok) throw new Error(await responseErrorMessage(res));
+      setOpen(false); setInstrument("VAS"); setTimepoint(""); setScore(""); setAnsweredOn(formatLocalDateInput());
       onSaved();
     } catch (e: any) {
       alert(t("errorWithMessage", { message: e.message }));
@@ -939,7 +973,8 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
               ))}
             </div>
           </div>
-          <Field label={t("totalScore")} value={score} onChange={setScore} type="number" placeholder="0–100" />
+          <Field label={t("totalScore")} value={score} onChange={setScore} type="number" placeholder={instrument === "VAS" ? "0–10" : "0–100"} />
+          <Field label={t("promDateLabel")} value={answeredOn} onChange={setAnsweredOn} type="date" />
           <div className="flex gap-2">
             <button type="button" onClick={() => setOpen(false)}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
@@ -1000,16 +1035,6 @@ function PatientPhoneField({ caseId, initial }: { caseId: string; initial: strin
 }
 
 // ─── Regen Follow-up Timeline ─────────────────────────────────────────────────
-const REGEN_SCHEDULE_META = [
-  { periodo: "Pré-op (Baseline)", scales: ["VAS Dor"] },
-  { periodo: "1 mês",             scales: ["VAS Dor"] },
-  { periodo: "6 semanas (HA)",    scales: ["VAS Dor"] },
-  { periodo: "3 meses",           scales: ["VAS Dor"] },
-  { periodo: "6 meses ★",         scales: ["VAS Dor"] },
-  { periodo: "12 meses",          scales: ["VAS Dor"] },
-  { periodo: "24 meses",          scales: ["VAS Dor"] },
-  { periodo: "4 anos",            scales: ["VAS Dor"] },
-];
 const ALL_SCALES = ["VAS Dor"];
 type PreparedRegenFollowup = { link: string; message: string };
 
@@ -1023,7 +1048,7 @@ function showPopupStatus(popup: Window, message: string) {
   }
 }
 
-function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patientPhone?: string }) {
+function RegenFollowupTimeline({ caseId, patientPhone, productCodes }: { caseId: string; patientPhone?: string; productCodes: string[] }) {
   const t = useScopedTranslations(regenCoreMessages);
   const tr = useCaseTranslations();
   const { locale } = useLanguage();
@@ -1196,7 +1221,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
               </tr>
             </thead>
             <tbody>
-              {REGEN_SCHEDULE_META.map((row, i) => {
+              {scheduleRowsForCase(productCodes, notifs.map(n => String(n.periodo))).map((row, i) => {
                 const notif = notifs.find(n => n.periodo === row.periodo);
                 return (
                   <tr key={row.periodo} className={i % 2 === 0 ? "bg-white" : "bg-amber-50/30"}>
@@ -1267,7 +1292,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
                     <div className="min-w-0">
                       {n.scheduled_date && (
                         <p className="text-[10px] font-mono text-gray-400 mb-0.5">
-                           {toDisplayDate(n.scheduled_date).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" })}
+                           {formatCalendarDate(n.scheduled_date, locale, { day: "2-digit", month: "short", year: "numeric" })}
                         </p>
                       )}
                       <p className={`break-words text-sm font-semibold ${isCritical ? "text-amber-700" : "text-gray-900"}`}>
@@ -1797,7 +1822,7 @@ function AnamneseRegenTab({
   );
 }
 
-function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
+function IaTab({ caseId }: { caseId: string }) {
   const t = useScopedTranslations(regenCoreMessages);
   const tr = useCaseTranslations();
   const [summary,        setSummary]      = useState<string | null>(null);
@@ -1868,7 +1893,11 @@ function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
         credentials: "same-origin",
         headers: authHeaders(),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (res.status === 503) {
+        setErr(t("aiNotConfiguredHelp"));
+        return;
+      }
+      if (!res.ok) throw new Error(await responseErrorMessage(res));
       const data = await res.json();
       setSummary(data.summary);
     } catch (e: any) {
@@ -1877,32 +1906,6 @@ function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
       setGenerating(false);
     }
   };
-
-  // Build chart data: group proms by timepoint, each instrument as a series
-  const instruments = useMemo(() => [...new Set(proms.map(p => p.instrument))], [proms]);
-  const timepoints  = useMemo(() => {
-    const ORDER = ["Pré-operatório / Basal","1 mês","3 meses","6 meses","12 meses","24 meses"];
-    const seen = [...new Set(proms.map(p => p.timepoint))];
-    return seen.sort((a, b) => {
-      const ai = ORDER.indexOf(a), bi = ORDER.indexOf(b);
-      if (ai === -1 && bi === -1) return a.localeCompare(b);
-      if (ai === -1) return 1; if (bi === -1) return -1;
-      return ai - bi;
-    });
-  }, [proms]);
-
-  const chartData = useMemo(() => timepoints.map(tp => {
-    const row: Record<string, any> = { tp: tr(tp) };
-    for (const inst of instruments) {
-      const found = proms.filter(p => p.instrument === inst && p.timepoint === tp);
-      if (found.length) {
-        row[inst] = found[found.length - 1].score ?? null;
-      }
-    }
-    return row;
-  }), [timepoints, instruments, proms, tr]);
-
-  const COLORS = ["#2563EB","#059669","#D97706","#DC2626","#7C3AED","#0891B2"];
 
   return (
     <div className="space-y-4">
@@ -1956,51 +1959,6 @@ function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
           </div>
         )}
       </div>
-
-      {/* Evolution chart */}
-      {proms.length > 0 && (
-        <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-            <BarChart2 className="h-4 w-4 text-blue-500" />
-            <p className="text-sm font-bold text-gray-900">{t("promEvolution")}</p>
-          </div>
-          <div className="p-4">
-            {chartData.length < 2 ? (
-              <p className="text-xs text-gray-400 text-center py-6">
-                {t("promTwoPoints")}
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="tp" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E5E7EB" }}
-                    labelStyle={{ fontWeight: 700, color: "#374151" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  {instruments.map((inst, i) => (
-                    <Line
-                      key={inst} type="monotone" dataKey={inst}
-                      stroke={COLORS[i % COLORS.length]}
-                      strokeWidth={2} dot={{ r: 4 }}
-                      connectNulls
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      )}
-
-      {proms.length === 0 && (
-        <div className="rounded-xl bg-white border border-gray-200 shadow-sm p-6 text-center text-gray-400">
-          <BarChart2 className="h-8 w-8 mx-auto mb-2" />
-          <p className="text-sm">{t("promEmptyChart")}</p>
-        </div>
-      )}
 
       {/* Laudo Clínico PDF */}
       <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
@@ -2529,8 +2487,201 @@ function BioReadyScorePanel({
   );
 }
 
+// ─── Procedures tab ───────────────────────────────────────────────────────────
+function ProceduresTab({ caseId, procedures, onRefresh }: { caseId: string; procedures: Procedure[]; onRefresh: () => void }) {
+  const t = useScopedTranslations(regenCoreMessages);
+  const tr = useCaseTranslations();
+  const { formatDate } = useLanguage();
+  const sorted = useMemo(
+    () => [...procedures].sort((a, b) => new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime()),
+    [procedures],
+  );
+  const fieldLabel = (productCode: string, key: string) => {
+    const field = BIOLOGIC_FIELDS[productCode]?.find(f => f.key === key);
+    return field ? `${tr(field.label)}${field.unit ? ` (${field.unit})` : ""}` : key;
+  };
+
+  return (
+    <div className="space-y-3">
+      <ProcedureForm caseId={caseId} onSaved={onRefresh} />
+      {sorted.length === 0 ? (
+        <div className="rounded-xl bg-white border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+          <Activity className="h-6 w-6 mx-auto mb-2" />
+          {t("proceduresEmpty")}
+        </div>
+      ) : sorted.map(p => {
+        const details = biologicDetailEntries(p.biologic_details);
+        return (
+          <div key={p.id} className="rounded-xl bg-white border border-gray-200 shadow-sm p-4 space-y-2" data-testid="regen-procedure">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-gray-900">{tr(PRODUCTS[p.product_code] ?? p.product_code)}</p>
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> {formatDate(p.performed_at, { day: "2-digit", month: "2-digit", year: "numeric" })}
+                </p>
+              </div>
+              {p.adverse_event && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                  <AlertTriangle className="h-3 w-3" /> {t("adverseEvent")}
+                </span>
+              )}
+            </div>
+            <div className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+              {p.guidance_mode && (
+                <p><span className="text-gray-400">{t("imageGuidance")}: </span><span className="text-gray-700">{tr(p.guidance_mode.charAt(0).toUpperCase() + p.guidance_mode.slice(1))}</span></p>
+              )}
+              {p.access_route && (
+                <p><span className="text-gray-400">{t("accessRoute")}: </span><span className="text-gray-700">{tr(p.access_route)}</span></p>
+              )}
+              {p.local_anesthesia && (
+                <p><span className="text-gray-700">{t("localAnesthesia")}</span>{p.anesthesia_agent ? <span className="text-gray-500"> · {p.anesthesia_agent}</span> : null}</p>
+              )}
+            </div>
+            {details.length > 0 && (
+              <div className="rounded-lg bg-blue-50/60 border border-blue-100 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 mb-1">{t("procedureTechnicalDetails")}</p>
+                <div className="grid gap-x-4 gap-y-0.5 text-xs sm:grid-cols-2">
+                  {details.map(([key, value]) => (
+                    <p key={key}><span className="text-gray-500">{fieldLabel(p.product_code, key)}: </span><span className="font-medium text-gray-800">{tr(value)}</span></p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {p.adverse_event && p.adverse_event_desc && (
+              <p className="text-xs text-red-700">{p.adverse_event_desc}</p>
+            )}
+            {p.notes && <p className="text-xs text-gray-600 whitespace-pre-wrap">{p.notes}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── PROMs tab ────────────────────────────────────────────────────────────────
+const PROM_COLORS = ["#2563EB", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0891B2"];
+
+function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromResponse[]; onRefresh: () => void }) {
+  const t = useScopedTranslations(regenCoreMessages);
+  const tr = useCaseTranslations();
+  const { locale, formatDate } = useLanguage();
+  const [notifications, setNotifications] = useState<FollowupNotificationLike[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/regen-api/regen/cases/${caseId}/notifications`, { credentials: "same-origin", headers: authHeaders() })
+      .then(r => (r.ok ? r.json() : []))
+      .then(data => { if (!cancelled && Array.isArray(data)) setNotifications(data); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [caseId, proms]);
+
+  const points = useMemo(() => buildPromTimeline(proms, notifications), [proms, notifications]);
+  const series = useMemo(() => promSeries(points), [points]);
+  const timepointLabel = useCallback((point: PromPoint) => {
+    const base = tr(point.timepoint.replace(" ★", ""));
+    return point.timepoint.includes("★") ? `${base} ★` : base;
+  }, [tr]);
+  const chartData = useMemo(
+    () => points.map(point => ({ label: timepointLabel(point), [point.instrument]: point.score })),
+    [points, timepointLabel],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PromForm caseId={caseId} onSaved={onRefresh} />
+
+      {series.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {series.map(item => (
+            <div key={item.instrument} className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" data-testid="prom-trend">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("promTrendLabel")} · {item.instrument}</p>
+              <p className="text-lg font-bold text-gray-900">{formatPromTrend(item.values, locale)}</p>
+              {item.values.length > 1 && (
+                <p className={cn("text-xs font-semibold", item.delta < 0 ? "text-green-600" : item.delta > 0 ? "text-red-600" : "text-gray-500")}>
+                  {item.delta > 0 ? "+" : ""}{new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(item.delta)}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+          <BarChart2 className="h-4 w-4 text-blue-500" />
+          <p className="text-sm font-bold text-gray-900">{t("promEvolution")}</p>
+        </div>
+        <div className="p-4">
+          {points.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-6">{t("promEmptyChart")}</p>
+          ) : points.length < 2 ? (
+            <p className="text-xs text-gray-400 text-center py-6">{t("promTwoPoints")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} domain={[0, "auto"]} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E5E7EB" }}
+                  labelStyle={{ fontWeight: 700, color: "#374151" }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {series.map((item, i) => (
+                  <Line
+                    key={item.instrument} type="monotone" dataKey={item.instrument}
+                    stroke={PROM_COLORS[i % PROM_COLORS.length]}
+                    strokeWidth={2} dot={{ r: 4 }} connectNulls isAnimationActive={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+          <LayoutList className="h-4 w-4 text-blue-500" />
+          <p className="text-sm font-bold text-gray-900">{t("promHistory")}</p>
+        </div>
+        {points.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-6">{t("promEmptyList")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs" data-testid="prom-table">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500">
+                  <th className="text-left px-4 py-2 font-semibold">{t("promColDate")}</th>
+                  <th className="text-left px-3 py-2 font-semibold">{t("promColTimepoint")}</th>
+                  <th className="text-left px-3 py-2 font-semibold">{t("promColScale")}</th>
+                  <th className="text-right px-3 py-2 font-semibold">{t("promColScore")}</th>
+                  <th className="text-left px-4 py-2 font-semibold">{t("promColSource")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {points.map((point, i) => (
+                  <tr key={point.key} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{formatDate(point.date, { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
+                    <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{timepointLabel(point)}</td>
+                    <td className="px-3 py-2 text-gray-800">{point.instrument}</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">{new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(point.score)}</td>
+                    <td className="px-4 py-2 text-gray-500">{point.source === "manual" ? t("promSourceManual") : t("promSourceFollowup")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
-type Tab = "overview" | "anamnese" | "procedures" | "proms" | "ia";
+type Tab = "overview" | "procedures" | "proms" | "labs" | "ia";
+const CASE_TABS: readonly Tab[] = ["overview", "procedures", "proms", "labs", "ia"];
 
 export default function RegenCaso() {
   const t = useScopedTranslations(regenCoreMessages);
@@ -2540,7 +2691,10 @@ export default function RegenCaso() {
   const [, navigate] = useLocation();
   const caseId = params.id;
 
-  const [tab, setTab]               = useState<Tab>("overview");
+  const [tab, setTab]               = useState<Tab>(() => {
+    const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("tab");
+    return CASE_TABS.includes(requested as Tab) ? (requested as Tab) : "overview";
+  });
   const [c, setC]                   = useState<RegenCase | null>(null);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [proms, setProms]           = useState<PromResponse[]>([]);
@@ -2682,6 +2836,14 @@ export default function RegenCaso() {
   }
 
   const hasBlock = compliance.flags.some(f => f.severity === "block");
+  const conditionText = regenConditionLabel(c.condition_code, locale, c.condition_custom);
+  const tabLabels: Record<Tab, string> = {
+    overview: t("caseTabOverview"),
+    procedures: `${t("caseTabProcedures")}${procedures.length ? ` (${procedures.length})` : ""}`,
+    proms: t("caseTabProms"),
+    labs: t("caseTabLabs"),
+    ia: t("caseTabAi"),
+  };
 
   return (
     <div className="max-w-5xl mx-auto w-full overflow-x-hidden sm:overflow-visible">
@@ -2699,7 +2861,7 @@ export default function RegenCaso() {
            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: 0 }}>{t("regenerativeCase")}</h1>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", margin: "3px 0 0" }}>
             <span style={{ color: "#fff", fontWeight: 500 }}>{c.patient_name}</span>
-            {" · "}{c.condition_code.replace(/_/g, " ")}
+            {" · "}{conditionText}
           </p>
         </div>
         <div className="px-4 pb-4 flex gap-2 flex-wrap">
@@ -2730,7 +2892,7 @@ export default function RegenCaso() {
              <h1 className="text-2xl font-bold tracking-tight text-gray-900">{t("regenerativeCase")}</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               <span className="font-medium text-gray-800">{c.patient_name}</span>
-              {" · "}{c.condition_code.replace(/_/g, " ")}
+              {" · "}{conditionText}
             </p>
           </div>
         </div>
@@ -2774,8 +2936,19 @@ export default function RegenCaso() {
         </div>
       </div>
 
-      {/* ── Conteúdo simplificado: Status + Follow-up ── */}
-      <div className="px-4 md:px-6 py-4 md:py-6 space-y-4">
+      <Tabs value={tab} onValueChange={value => setTab(value as Tab)} className="px-4 md:px-6 pt-4 md:pt-6">
+        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+          <TabsList className="w-max md:w-auto">
+            {CASE_TABS.map(value => (
+              <TabsTrigger key={value} value={value} data-testid={`case-tab-${value}`} className="text-xs sm:text-sm">
+                {tabLabels[value]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+      <TabsContent value="overview">
+      <div className="py-4 md:py-6 space-y-4">
 
         {/* BioReady Score + regenerative anamnesis access */}
         {bioReady && (
@@ -2805,18 +2978,17 @@ export default function RegenCaso() {
              SUBCONDROPLASTIA: "Subcondroplastia", HIDROGEL: "Hidrogel", OUTRO: t("other"),
           };
           const rows: [string, string | null][] = [
-             [t("condition"), c.condition_custom || c.condition_code.replace(/_/g, " ")],
+             [t("condition"), conditionText],
              [t("side"), c.lado_articulacao ? ({
                direito: t("right"), Direito: t("right"),
                esquerdo: t("left"), Esquerdo: t("left"),
                bilateral: t("bilateral"), Bilateral: t("bilateral"),
              } as Record<string, string>)[c.lado_articulacao] ?? c.lado_articulacao : null],
              [t("hospital"), c.hospital_local ?? null],
-             [t("date"), c.data_caso
-               ? new Date(`${c.data_caso.slice(0, 10)}T12:00:00`).toLocaleDateString(locale)
-               : null],
+             [t("date"), c.data_caso ? formatCalendarDate(c.data_caso, locale) : null],
           ];
           const regionLabels: Record<string, string> = {
+             joelho: t("knee"),
              quadril: t("hip"),
              pe_tornozelo: t("footAnkle"),
              punho_mao: t("wristHand"),
@@ -2990,10 +3162,32 @@ export default function RegenCaso() {
             <Send className="h-4 w-4 text-blue-500" />
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{t("followup")}</p>
           </div>
-          <RegenFollowupTimeline caseId={caseId} patientPhone={c?.patient_phone ?? undefined} />
+          <RegenFollowupTimeline
+            caseId={caseId}
+            patientPhone={c?.patient_phone ?? undefined}
+            productCodes={[...(c.planned_products ?? []), ...procedures.map(p => p.product_code)]}
+          />
         </div>
 
       </div>
+      </TabsContent>
+
+      <TabsContent value="procedures" className="py-4 md:py-6">
+        <ProceduresTab caseId={caseId} procedures={procedures} onRefresh={fetchProcedures} />
+      </TabsContent>
+
+      <TabsContent value="proms" className="py-4 md:py-6">
+        <PromsTab caseId={caseId} proms={proms} onRefresh={fetchProms} />
+      </TabsContent>
+
+      <TabsContent value="labs" className="py-4 md:py-6">
+        <LabsTab caseId={caseId} labs={labs} onRefresh={fetchLabs} />
+      </TabsContent>
+
+      <TabsContent value="ia" className="py-4 md:py-6">
+        <IaTab caseId={caseId} />
+      </TabsContent>
+      </Tabs>
 
       {anamneseOpen && (
         <div

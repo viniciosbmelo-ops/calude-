@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { regenConditionLabel } from "./regen-conditions";
 
 /**
  * Pure helpers behind the DocRegen home dashboard. Kept free of React so the
@@ -91,7 +92,10 @@ export function preConsultGroups(summary: PreConsultSummary) {
     .filter(group => group.total > 0);
 }
 
-/** Human label for a regenerative condition code (e.g. "knee_oa" → "knee oa"). */
-export function conditionCodeLabel(code: string | null | undefined): string {
-  return code ? code.replace(/_/g, " ") : "";
+/**
+ * Human label for a regenerative condition code ("OA_QUADRIL" → "Osteoartrite
+ * de Quadril"). Delegates to the single catalog helper in regen-conditions.
+ */
+export function conditionCodeLabel(code: string | null | undefined, locale = "pt-BR"): string {
+  return regenConditionLabel(code, locale);
 }

@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, RefreshCw, CheckCircle2, Clock, Calendar, Phone, AlertTriangle, Zap, FlaskConical, MessageSquare, Bot, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
-import { cn } from "@/lib/utils";
+import { cn, formatLocalDate, toCalendarDateKey } from "@/lib/utils";
+import { regenConditionLabel } from "@/lib/regen-conditions";
+import { ErrorBoundary } from "@/components/route-error-boundary";
 import { reportFollowupPeriodLabel } from "@/locales/reporting-catalogs";
 
 // ─── Regen follow-up types ────────────────────────────────────────────────────
@@ -48,12 +50,15 @@ function RegenNotifCard({
   onSent: (caseId: string, notifId: string) => void;
 }) {
   const t = useScopedTranslations(operationalCoreMessages);
-  const { formatDate, locale } = useLanguage();
+  const { formatDate, formatCalendarDate, locale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
-  const isOverdue = row.scheduled_date && row.scheduled_date <= today && row.status === "pending";
-  const isToday   = row.scheduled_date === today;
+  const today = formatLocalDate();
+  // scheduled_date is a calendar date; accept both "YYYY-MM-DD" and a
+  // serialised timestamp so an API format change can never break this card.
+  const scheduledKey = toCalendarDateKey(row.scheduled_date);
+  const isOverdue = !!scheduledKey && scheduledKey <= today && row.status === "pending";
+  const isToday   = scheduledKey === today;
 
   // Send via DocRegen number (Evolution API) — primary
   const handleSendDocRegen = async () => {
@@ -175,10 +180,10 @@ function RegenNotifCard({
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {row.scheduled_date ? formatDate(row.scheduled_date + "T00:00:00") : "—"}
+            {formatCalendarDate(row.scheduled_date)}
           </span>
           <span className="font-medium text-foreground/70">{reportFollowupPeriodLabel(locale, row.periodo)}</span>
-          {row.condition_code && <span className="truncate max-w-28 text-violet-600">{row.condition_code}</span>}
+          {row.condition_code && <span className="truncate max-w-48 text-violet-600">{regenConditionLabel(row.condition_code, locale)}</span>}
           {!row.patient_phone && <span className="text-red-500 flex items-center gap-1"><Phone className="h-3 w-3" /> {t("followupNoPhone")}</span>}
         </div>
         {row.response_count > 0 && (
@@ -452,12 +457,13 @@ function RegenFollowupTab({ doctorNome }: { doctorNome: string }) {
               </CardHeader>
               <CardContent className="space-y-1 pt-0">
                 {selectedCat.rows.map(row => (
-                  <RegenNotifCard
-                    key={row.notif_id}
-                    row={row}
-                    doctorNome={doctorNome}
-                    onSent={handleSent}
-                  />
+                  <ErrorBoundary key={row.notif_id} inline>
+                    <RegenNotifCard
+                      row={row}
+                      doctorNome={doctorNome}
+                      onSent={handleSent}
+                    />
+                  </ErrorBoundary>
                 ))}
               </CardContent>
             </Card>

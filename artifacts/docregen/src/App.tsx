@@ -39,6 +39,7 @@ import SecretaryDashboard from "@/pages/secretary/dashboard";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { ProductAnalytics } from "@/components/ProductAnalytics";
 import { PdfViewerOverlay } from "@/components/pdf-viewer-overlay";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -94,7 +95,9 @@ function ProtectedRoute({ component: Component, allowPending = false }: { compon
 
   return (
     <AppLayout>
-      <Component />
+      <RouteErrorBoundary>
+        <Component />
+      </RouteErrorBoundary>
     </AppLayout>
   );
 }
@@ -173,7 +176,9 @@ function App() {
               <SecretaryAuthProvider>
                 <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                   <ProductAnalytics />
-                  <Router />
+                  <RouteErrorBoundary>
+                    <Router />
+                  </RouteErrorBoundary>
                 </WouterRouter>
               </SecretaryAuthProvider>
             </LanguageProvider>

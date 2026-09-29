@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { useScopedTranslations } from "@/lib/i18n";
+import { useLanguage, useScopedTranslations } from "@/lib/i18n";
+import { regenConditionLabel } from "@/lib/regen-conditions";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { reportingDashboardMessages } from "@/locales/reporting-dashboard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +31,7 @@ interface RegenReport {
   byCondition: Record<string, number>;
 }
 
-function CountList({ entries, sort = false, truncate = false }: { entries: Record<string, number>; sort?: boolean; truncate?: boolean }) {
+function CountList({ entries, sort = false, truncate = false, labelFor = (label: string) => label }: { entries: Record<string, number>; sort?: boolean; truncate?: boolean; labelFor?: (label: string) => string }) {
   const rows = Object.entries(entries);
   if (rows.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
   if (sort) rows.sort((a, b) => b[1] - a[1]);
@@ -38,7 +39,7 @@ function CountList({ entries, sort = false, truncate = false }: { entries: Recor
     <>
       {rows.map(([label, n]) => (
         <div key={label} className="flex items-center justify-between gap-2">
-          <span className={`text-xs text-foreground${truncate ? " truncate" : ""}`}>{label.replace(/_/g, "-")}</span>
+          <span className={`text-xs text-foreground${truncate ? " truncate" : ""}`}>{labelFor(label)}</span>
           <span className="text-xs font-bold" style={{ color: "#0E8A96" }}>{n}</span>
         </div>
       ))}
@@ -49,6 +50,7 @@ function CountList({ entries, sort = false, truncate = false }: { entries: Recor
 export default function Reports() {
   const t = useScopedTranslations(operationalCoreMessages);
   const tx = useScopedTranslations(reportingDashboardMessages);
+  const { locale } = useLanguage();
 
   const [regenFilters, setRegenFilters] = useState<RegenFilters>(EMPTY_REGEN_FILTERS);
   const [appliedRegen, setAppliedRegen] = useState<RegenFilters>(EMPTY_REGEN_FILTERS);
@@ -180,17 +182,17 @@ export default function Reports() {
                 </div>
                 <div className="bg-card rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground mb-1">{tx("byProduct")}</div>
-                  <div className="space-y-0.5 max-h-24 overflow-y-auto"><CountList entries={regenData.byProduct} sort /></div>
+                  <div className="space-y-0.5 max-h-24 overflow-y-auto"><CountList entries={regenData.byProduct} sort labelFor={code => PROD_LABELS[code] ?? code} /></div>
                 </div>
                 <div className="bg-card rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground mb-1">{tx("byStatus")}</div>
                   <div className="space-y-0.5">
-                    <CountList entries={Object.fromEntries(Object.entries(regenData.byStatus).map(([s, n]) => [statusLabel(s), n]))} />
+                    <CountList entries={regenData.byStatus} labelFor={statusLabel} />
                   </div>
                 </div>
                 <div className="bg-card rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground mb-1">{tx("byCondition")}</div>
-                  <div className="space-y-0.5 max-h-24 overflow-y-auto"><CountList entries={regenData.byCondition} sort truncate /></div>
+                  <div className="space-y-0.5 max-h-24 overflow-y-auto"><CountList entries={regenData.byCondition} sort truncate labelFor={code => regenConditionLabel(code, locale)} /></div>
                 </div>
               </div>
             </CardContent>

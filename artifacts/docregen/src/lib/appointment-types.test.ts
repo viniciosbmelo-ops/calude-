@@ -21,3 +21,16 @@ describe("DocRegen appointment types", () => {
     expect(selectableAppointmentTypes("avaliação pré-op")).toEqual([...APPOINTMENT_TYPES, "avaliação pré-op"]);
   });
 });
+
+describe("shared appointment labels (agenda + secretary portal)", () => {
+  it("labels persisted types and statuses instead of showing raw values", async () => {
+    const { appointmentStatusLabel, appointmentTypeLabel } = await import("./appointment-types");
+    expect(appointmentStatusLabel("agendado")).toBe("Agendado");
+    expect(appointmentTypeLabel("retorno")).toBe("Retorno");
+    expect(appointmentTypeLabel("procedimento regenerativo")).toBe("Procedimento regenerativo");
+    expect(appointmentTypeLabel("retorno", "es")).toBe("Control");
+    expect(appointmentStatusLabel("agendado", "es")).toBe("Agendada");
+    expect(appointmentTypeLabel("desconhecido")).toBe("desconhecido");
+    expect(appointmentStatusLabel(null)).toBe("");
+  });
+});

@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarDays, Plus, Phone, Pencil, Trash2, User } from "lucide-react";
-import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
+import { cn, formatLocalDate, parseCalendarDate, sortByPtBrName } from "@/lib/utils";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalAgendaMessages } from "@/locales/operational-agenda";
-import { APPOINTMENT_STATUSES, selectableAppointmentTypes } from "@/lib/appointment-types";
+import { APPOINTMENT_STATUSES, appointmentStatusLabel, appointmentTypeLabel, selectableAppointmentTypes } from "@/lib/appointment-types";
 
 type Appointment = {
   id: number; patientId: number; data: string; hora: string; tipo: string;
@@ -68,14 +68,8 @@ export default function AgendaPage() {
   const qc = useQueryClient();
   const { locale } = useLanguage();
   const t = useScopedTranslations(operationalAgendaMessages);
-  const appointmentTypeLabel: Record<string, string> = {
-    consulta: t("typeConsulta"), retorno: t("typeRetorno"), "procedimento regenerativo": t("typeRegen"), "avaliação pré-op": t("typePreop"),
-    "avaliação pós-op": t("typePostop"), curativo: t("typeCurativo"), outro: t("typeOutro"),
-  };
-  const appointmentStatusLabel: Record<string, string> = {
-    agendado: t("statusAgendado"), confirmado: t("statusConfirmado"), cancelado: t("statusCancelado"),
-    realizado: t("statusRealizado"), faltou: t("statusFaltou"),
-  };
+  const typeLabel = (value: string) => appointmentTypeLabel(value, locale);
+  const statusLabel = (value: string) => appointmentStatusLabel(value, locale);
 
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<Appointment | null>(null);
@@ -246,11 +240,11 @@ export default function AgendaPage() {
                     day === todayStr ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                   )}>
                     <span className="text-[10px] font-bold uppercase tracking-wide leading-tight">
-                      {day === todayStr ? t("today").toUpperCase() : day === tomorrowStr ? t("tomorrow").toUpperCase() : new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(day + "T12:00:00")).toUpperCase().replace(".", "")}
+                      {day === todayStr ? t("today").toUpperCase() : day === tomorrowStr ? t("tomorrow").toUpperCase() : new Intl.DateTimeFormat(locale, { weekday: "short" }).format((parseCalendarDate(day) ?? new Date())).toUpperCase().replace(".", "")}
                     </span>
                     <span className="text-lg font-bold leading-tight">{day.split("-")[2]}</span>
                     <span className="text-[10px] leading-tight opacity-80">
-                      {new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(day + "T12:00:00")).replace(".", "")}
+                      {new Intl.DateTimeFormat(locale, { month: "short" }).format((parseCalendarDate(day) ?? new Date())).replace(".", "")}
                     </span>
                   </div>
                   <div className="flex-1">
@@ -270,11 +264,11 @@ export default function AgendaPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-sm text-foreground">{a.patientNome ?? t("patient")}</span>
                               <Badge variant="outline" className={cn("text-xs border font-medium", statusColor(a.status))}>
-                                {appointmentStatusLabel[a.status] ?? a.status}
+                                {statusLabel(a.status)}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              <span className="font-medium">{a.hora}</span> · <span>{appointmentTypeLabel[a.tipo] ?? a.tipo}</span>
+                              <span className="font-medium">{a.hora}</span> · <span>{typeLabel(a.tipo)}</span>
                             </p>
                             {a.observacoes && (
                               <p className="text-xs text-muted-foreground mt-0.5 italic truncate max-w-xs">{a.observacoes}</p>
@@ -349,7 +343,7 @@ export default function AgendaPage() {
               <Select value={form.tipo} onValueChange={v => setForm(f => ({ ...f, tipo: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {selectableAppointmentTypes(editing?.tipo).map(tipo => <SelectItem key={tipo} value={tipo}>{appointmentTypeLabel[tipo] ?? tipo}</SelectItem>)}
+                  {selectableAppointmentTypes(editing?.tipo).map(tipo => <SelectItem key={tipo} value={tipo}>{typeLabel(tipo)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -358,7 +352,7 @@ export default function AgendaPage() {
               <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {APPOINTMENT_STATUSES.map(status => <SelectItem key={status} value={status}>{appointmentStatusLabel[status]}</SelectItem>)}
+                  {APPOINTMENT_STATUSES.map(status => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
