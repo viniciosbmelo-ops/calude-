@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -18,17 +19,24 @@ import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { operationalPatientRecordMessages } from "@/locales/operational-patient-record";
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  Copy,
+  FileText,
   FlaskConical,
   Heart,
+  Loader2,
   MapPin,
+  MessageCircle,
   Save,
   User,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
+import { useCreatePreConsultInvite } from "@/hooks/use-pre-consult";
+import { isValidCpf, normalizeCpf } from "../../../../../lib/api-zod/src/cpf";
 
 const ESTADOS_BR = [
   { uf: "AC", nome: "Acre" },
@@ -68,6 +76,8 @@ export default function NewPatient() {
   const createPatientMutation = useCreatePatient();
   const { canWrite, loading: subLoading } = useSubscriptionStatus();
   const [createdPatient, setCreatedPatient] = useState<{ id: number; nome: string } | null>(null);
+  const [generatedInvite, setGeneratedInvite] = useState<{ link: string; whatsappMessage: string } | null>(null);
+  const createInviteMutation = useCreatePreConsultInvite(createdPatient?.id ?? 0);
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -118,6 +128,54 @@ export default function NewPatient() {
 
   const goToPatient = () => {
     if (createdPatient) setLocation(`/patients/${createdPatient.id}`);
+  };
+
+  const cpfAusente = normalizeCpf(formData.cpf).length === 0;
+  const cpfValido = isValidCpf(formData.cpf);
+
+  const handleGenerateInvite = () => {
+    if (!createdPatient || !cpfValido) return;
+
+    createInviteMutation.mutate(undefined, {
+      onSuccess: (invite) => {
+        setGeneratedInvite(invite);
+        toast({ title: tr("inviteCreated") });
+      },
+      onError: (error) => {
+        toast({
+          title: tr("inviteError"),
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: tr("copied", { label }) });
+    } catch {
+      toast({
+        title: tr("copyError"),
+        description: tr("copyManually"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openWhatsApp = () => {
+    if (!generatedInvite) return;
+    const digits = formData.telefone.replace(/\D/g, "");
+    const phone = digits
+      ? digits.startsWith("55") && digits.length >= 12
+        ? digits
+        : `55${digits}`
+      : "";
+    const whatsappUrl = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(generatedInvite.whatsappMessage)}`
+      : `https://wa.me/?text=${encodeURIComponent(generatedInvite.whatsappMessage)}`;
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
   if (!subLoading && !canWrite) return <SubscriptionGate />;
@@ -310,13 +368,93 @@ export default function NewPatient() {
             </DialogDescription>
           </DialogHeader>
 
+          {!cpfValido ? (
+            <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertTitle>{cpfAusente ? tr("addCpf") : tr("fixCpf")}</AlertTitle>
+              <AlertDescription className="text-amber-800">
+                {cpfAusente
+                  ? tr("addCpfDescription")
+                  : tr("fixCpfDescription")}
+              </AlertDescription>
+            </Alert>
+          ) : !generatedInvite ? (
+            <div className="rounded-xl border border-border bg-muted/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{tr("preConsult")}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {tr("preConsultDescription")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 rounded-xl border border-teal-200 bg-teal-50 p-4 dark:border-teal-900 dark:bg-teal-950/30">
+              <div>
+                <p className="text-sm font-semibold text-teal-950 dark:text-teal-100">{tr("inviteReady")}</p>
+                <p className="mt-1 text-xs text-teal-800 dark:text-teal-300">{tr("inviteReadyDescription")}</p>
+              </div>
+              <div className="break-all rounded-lg border bg-background p-3 text-xs text-muted-foreground">
+                {generatedInvite.link}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => copyToClipboard(generatedInvite.link, tr("link"))}
+                >
+                  <Copy className="h-4 w-4" />
+                  {tr("copyLink")}
+                </Button>
+                <Button
+                  type="button"
+                  className="w-full gap-2 bg-green-600 text-white hover:bg-green-700"
+                  onClick={openWhatsApp}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {tr("openWhatsapp")}
+                </Button>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full gap-2"
+                onClick={() => copyToClipboard(generatedInvite.whatsappMessage, tr("message"))}
+              >
+                <Copy className="h-4 w-4" />
+                {tr("copyMessage")}
+              </Button>
+            </div>
+          )}
+
           <div className="grid gap-2 pt-1 sm:grid-cols-2">
             <Button type="button" variant="outline" className="w-full" onClick={goToPatient}>
               {tr("goToRecord")}
             </Button>
+            {cpfValido && !generatedInvite && (
+              <Button
+                type="button"
+                className="w-full gap-2"
+                style={{ background: "#0E9AA7" }}
+                onClick={handleGenerateInvite}
+                disabled={createInviteMutation.isPending}
+              >
+                {createInviteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-4 w-4" />
+                )}
+                {createInviteMutation.isPending ? tr("generatingInvite") : tr("forwardPreConsult")}
+              </Button>
+            )}
             <Button
               type="button"
-              className="w-full gap-2"
+              className="w-full gap-2 sm:col-span-2"
               style={{ background: "#0B1F4B" }}
               onClick={() => setLocation("/regen/caso/novo")}
             >

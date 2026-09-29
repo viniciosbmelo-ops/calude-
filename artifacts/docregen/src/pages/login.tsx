@@ -131,7 +131,7 @@ export default function Login() {
     const basePath = import.meta.env.BASE_URL.endsWith("/")
       ? import.meta.env.BASE_URL
       : `${import.meta.env.BASE_URL}/`;
-    const destination = "regen";
+    const destination = "dashboard";
     window.location.replace(`${basePath}${destination}`);
   };
 

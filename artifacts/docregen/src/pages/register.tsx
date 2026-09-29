@@ -208,13 +208,13 @@ export default function Register() {
                  description: copy.accountPaymentHelp,
                 variant: "destructive",
               });
-              setLocation("/regen");
+              setLocation("/dashboard");
             }
             return;
           }
 
            toast({ title: copy.registrationSuccess });
-          setLocation("/regen");
+          setLocation("/dashboard");
         },
          onError: () => {
           toast({

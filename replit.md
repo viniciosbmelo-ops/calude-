@@ -50,12 +50,17 @@ The admin account credentials are **not stored in this file**. Set credentials v
 
 Standalone app with only the regenerative-medicine and pain module of the platform
 (previewPath `/docregen/`, port 20452). It reuses the same API server, database and
-`@workspace/api-client-react`/`@workspace/clinical` libs. Kept: login/registration,
-patients and their record (anamnesis, evolutions, prescriptions, reports, certificates,
-files), regenerative cases (`/regen`), consent, patient guidance, research export,
-regenerative follow-ups and reports, and the public patient questionnaire and guidance
-links. Surgical procedures, surgical schedule, pre-operative assessment, pre-consultation
-(with imaging/RX uploads), secretary/physio/institutional portals and the admin console
+`@workspace/api-client-react`/`@workspace/clinical` libs. Includes: login/registration,
+a regenerative/pain home dashboard (`/dashboard`: regen cases, pending PROM follow-ups,
+upcoming appointments, pre-consultations), patients and their record (pre-consultation,
+anamnesis, evolutions, prescriptions, reports, certificates, files), pre-consultation
+invites with exam uploads (RX/MRI/CT/US, public page `/pre-consulta/:token`), the
+appointments agenda (`/agenda`, consultations and regenerative-procedure sessions), the
+secretary portal (`/secretary/login`, agenda + patients + pre-consultation invites; managed
+from the profile page), regenerative cases (`/regen`), consent, patient guidance, research
+export, regenerative follow-ups and reports, and the public patient questionnaire and
+guidance links. Surgical procedures, the surgical schedule, pre-operative assessment,
+surgical follow-ups, physio/institutional portals, the AI assistant and the admin console
 are not part of DocRegen.
 
 ## DB Schema

@@ -35,7 +35,7 @@ export default function Sucesso() {
           <p className="text-sm text-muted-foreground">
             {copy.trialEnjoy}
           </p>
-          <Link href="/regen">
+          <Link href="/dashboard">
             <Button className="w-full" size="lg">
               {copy.accessPlatform}
             </Button>

@@ -1,7 +1,7 @@
 import { Sidebar } from "./sidebar";
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { FlaskConical, Users, BellRing, Plus, Sun, Moon, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, FlaskConical, Users, Plus, Sun, Moon, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -11,13 +11,15 @@ const BRAND_TEAL = "#0E9AA7";
 const BRAND_NAVY = "#0B1F4B";
 
 const NAV_ITEMS = [
-  { href: "/regen", key: "nav.regenerative", Icon: FlaskConical },
+  { href: "/dashboard", key: "nav.home", Icon: LayoutDashboard },
   { href: "/patients", key: "nav.patients", Icon: Users },
-  { href: "/followup-central", key: "nav.followups", Icon: BellRing },
+  { href: "/regen", key: "nav.regenerative", Icon: FlaskConical },
 ] as const;
 
 const PAGE_TITLE_KEYS = {
+  "/dashboard": "nav.home",
   "/regen": "nav.regenerative",
+  "/agenda": "nav.appointments",
   "/patients": "nav.patients",
   "/followup-central": "nav.followups",
   "/reports": "nav.reports",
@@ -28,8 +30,8 @@ const PAGE_TITLE_KEYS = {
 function getBackPath(location: string): string | null {
   if (location.startsWith("/patients/")) return "/patients";
   if (location.startsWith("/regen/")) return "/regen";
-  const secondary = ["/followup-central", "/reports", "/profile"];
-  if (secondary.some(p => location === p || location.startsWith(p + "/"))) return "/regen";
+  const secondary = ["/agenda", "/followup-central", "/reports", "/profile"];
+  if (secondary.some(p => location === p || location.startsWith(p + "/"))) return "/dashboard";
   return null;
 }
 

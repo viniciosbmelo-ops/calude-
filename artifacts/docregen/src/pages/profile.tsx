@@ -8,13 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, User, Lock, Stethoscope, MapPin, Sun, Moon, MessageCircle, CheckCircle2, ExternalLink, Zap, Eye, EyeOff, CreditCard, AlertCircle, XCircle, RefreshCw, Mail, Globe2 } from "lucide-react";
+import { Save, User, Lock, Stethoscope, MapPin, Sun, Moon, MessageCircle, CheckCircle2, ExternalLink, Zap, Users, Plus, Pencil, Trash2, Eye, EyeOff, ToggleLeft, ToggleRight, CreditCard, AlertCircle, XCircle, RefreshCw, Mail, Globe2 } from "lucide-react";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { useTheme } from "@/lib/theme";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
 import { useLanguage, useScopedTranslations, type Locale } from "@/lib/i18n";
 import { profileMessages } from "@/locales/profile";
+import { sortByPtBrName } from "@/lib/utils";
 
 function ContactSupportCard() {
   const { t } = useLanguage();
@@ -239,6 +240,203 @@ function ChangePasswordCard() {
         </div>
       </form>
     </SectionCard>
+  );
+}
+
+type SecretaryRow = { id: number; nome: string; email: string; ativo: boolean };
+
+function SecretariesSection({ doctorId }: { doctorId: number }) {
+  const { toast } = useToast();
+  const p = useScopedTranslations(profileMessages);
+  const [list, setList] = useState<SecretaryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editing, setEditing] = useState<SecretaryRow | null>(null);
+  const [form, setForm] = useState({ nome: "", email: "", senha: "" });
+  const [showPwd, setShowPwd] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const res = await fetch("/api/secretaries", { credentials: "same-origin" });
+    if (res.ok) {
+      const rows = await res.json();
+      setList(sortByPtBrName(rows, (secretary) => secretary.nome, (secretary) => secretary.id));
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openNew = () => { setEditing(null); setForm({ nome: "", email: "", senha: "" }); setShowDialog(true); };
+  const openEdit = (s: SecretaryRow) => { setEditing(s); setForm({ nome: s.nome, email: s.email, senha: "" }); setShowDialog(true); };
+
+  const save = async () => {
+    const nome = form.nome.trim();
+    const email = form.email.trim();
+    if (!nome || !email || (!editing && !form.senha)) {
+      toast({ title: p("secretaryRequired"), variant: "destructive" }); return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: p("secretaryEmailInvalid"), variant: "destructive" }); return;
+    }
+    if ((!editing && form.senha.length < 6) || (Boolean(editing) && form.senha.length > 0 && form.senha.length < 6)) {
+      toast({ title: p("secretaryPasswordMin6"), variant: "destructive" }); return;
+    }
+    setSaving(true);
+    const body: Record<string, string> = { nome, email };
+    if (form.senha) body["senha"] = form.senha;
+
+    const res = editing
+      ? await fetch(`/api/secretaries/${editing.id}`, { method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      : await fetch("/api/secretaries", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+    const data = await res.json();
+    if (!res.ok) { toast({ title: data.error, variant: "destructive" }); setSaving(false); return; }
+    toast({ title: editing ? p("secretaryUpdated") : p("secretaryCreated") });
+    setShowDialog(false);
+    load();
+    setSaving(false);
+  };
+
+  const toggleAtivo = async (s: SecretaryRow) => {
+    try {
+      const res = await fetch(`/api/secretaries/${s.id}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ativo: !s.ativo }),
+      });
+      const data = await res.json().catch(() => null) as { error?: string } | null;
+      if (!res.ok) {
+        toast({ title: data?.error ?? p("secretaryActionError"), variant: "destructive" });
+        return;
+      }
+      toast({ title: s.ativo ? p("accessDisabled") : p("accessEnabled") });
+      await load();
+    } catch {
+      toast({ title: p("connectionError"), description: p("tryAgain"), variant: "destructive" });
+    }
+  };
+
+  const remove = async (s: SecretaryRow) => {
+    if (!window.confirm(p("removeSecretary", { name: s.nome }))) return;
+    try {
+      const res = await fetch(`/api/secretaries/${s.id}`, { method: "DELETE", credentials: "same-origin" });
+      const data = await res.json().catch(() => null) as { error?: string } | null;
+      if (!res.ok) {
+        toast({ title: data?.error ?? p("secretaryActionError"), variant: "destructive" });
+        return;
+      }
+      toast({ title: p("secretaryRemoved") });
+      await load();
+    } catch {
+      toast({ title: p("connectionError"), description: p("tryAgain"), variant: "destructive" });
+    }
+  };
+
+  return (
+    <>
+      <Card className="shadow-sm border-border mb-5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                {p("secretaryAccess")}
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                {p("secretaryDescription")}{" "}
+                <a href={`${import.meta.env.BASE_URL}secretary/login`} target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">{`${import.meta.env.BASE_URL}secretary/login`}</a>
+              </CardDescription>
+            </div>
+            <Button size="sm" variant="outline" onClick={openNew} className="gap-1.5 shrink-0">
+              <Plus className="h-3.5 w-3.5" /> {p("new")}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">{p("loading")}</p>
+          ) : list.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border py-8 flex flex-col items-center gap-2 text-muted-foreground">
+              <Users className="h-8 w-8 opacity-30" />
+              <p className="text-sm">{p("noSecretary")}</p>
+              <Button size="sm" variant="outline" onClick={openNew} className="mt-1 gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> {p("createAccess")}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {list.map(s => (
+                <div key={s.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border bg-muted/20">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{s.nome}</p>
+                    <p className="text-xs text-muted-foreground truncate">{s.email}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Badge variant={s.ativo ? "default" : "secondary"} className="text-xs">
+                      {s.ativo ? p("active") : p("inactive")}
+                    </Badge>
+                    <button onClick={() => toggleAtivo(s)} title={s.ativo ? p("disable") : p("enable")}
+                      className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted">
+                      {s.ativo
+                        ? <ToggleRight className="h-4 w-4 text-green-600" />
+                        : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                    <button onClick={() => openEdit(s)} title={p("editSecretary")} aria-label={p("editSecretary")} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted">
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <button onClick={() => remove(s)} title={p("remove")} aria-label={p("remove")} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 text-red-400">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog */}
+      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-opacity ${showDialog ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
+        <div className="bg-background rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4">
+          <h3 className="font-bold text-lg">{editing ? p("editSecretary") : p("newSecretary")}</h3>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>{p("fullName")}</Label>
+              <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder={p("secretaryNamePlaceholder")} required />
+            </div>
+            <div className="space-y-1">
+              <Label>{p("emailRequired")}</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="maria@clinica.com.br" required />
+            </div>
+            <div className="space-y-1">
+              <Label>{editing ? p("newPasswordOptional") : p("password")}</Label>
+              <div className="relative">
+                <Input type={showPwd ? "text" : "password"} value={form.senha}
+                  onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
+                  placeholder={editing ? "••••••" : p("min6")}
+                  minLength={editing ? undefined : 6}
+                  required={!editing}
+                  className="pr-10"
+                />
+                <button type="button" onClick={() => setShowPwd(v => !v)}
+                  title={showPwd ? p("hidePassword") : p("showPassword")}
+                  aria-label={showPwd ? p("hidePassword") : p("showPassword")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowDialog(false)}>{p("cancel")}</Button>
+            <Button onClick={save} disabled={saving}>{saving ? p("saving") : p("save")}</Button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -865,6 +1063,11 @@ function ProfileInner({ user }: { user: any }) {
       </form>
 
       <ChangePasswordCard />
+
+      {/* ── Secretárias ───────────────────────────────────────────────── */}
+      <div className="px-4 md:px-8">
+        <SecretariesSection doctorId={(user as any).id} />
+      </div>
 
       {/* ── Assinatura ─────────────────────────────────────────────────── */}
       {!(user as any).isAdmin && (

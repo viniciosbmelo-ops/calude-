@@ -32,7 +32,7 @@ export default function AssinaturaCancelada() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Link href="/regen">
+          <Link href="/dashboard">
             <Button className="w-full" size="lg">
               {copy.goToAccount}
             </Button>

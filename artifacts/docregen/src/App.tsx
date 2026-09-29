@@ -7,10 +7,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { LanguageProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
+import { SecretaryAuthProvider } from "@/lib/secretary-auth";
 import { AppLayout } from "@/components/layout/app-layout";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import Dashboard from "@/pages/dashboard";
 import PatientsList from "@/pages/patients";
 import NewPatient from "@/pages/patients/new";
 import PatientDetail from "@/pages/patients/[id]";
@@ -18,6 +20,7 @@ import PendingApproval from "@/pages/pending-approval";
 import Profile from "@/pages/profile";
 import RegenPatientPage from "@/pages/patient/regen-token";
 import OrientacoesPaciente from "@/pages/patient/orientacoes-paciente";
+import PreConsultPatientFlow from "@/pages/pre-consulta/[token]";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPasswordToken from "@/pages/reset-password-token";
 import Sucesso from "@/pages/sucesso";
@@ -30,6 +33,9 @@ import RegenConsentimento from "@/pages/regen/consentimento";
 import RegenOrientacoes from "@/pages/regen/orientacoes";
 import FollowupCentral from "@/pages/followup-central";
 import Reports from "@/pages/reports";
+import AgendaPage from "@/pages/agenda";
+import SecretaryLogin from "@/pages/secretary/login";
+import SecretaryDashboard from "@/pages/secretary/dashboard";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { ProductAnalytics } from "@/components/ProductAnalytics";
 import { PdfViewerOverlay } from "@/components/pdf-viewer-overlay";
@@ -98,7 +104,7 @@ function RootRedirect() {
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
-  return <Redirect to={user ? "/regen" : "/login"} />;
+  return <Redirect to={user ? "/dashboard" : "/login"} />;
 }
 
 function Router() {
@@ -107,7 +113,7 @@ function Router() {
       <Route path="/" component={RootRedirect} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
-      <Route path="/dashboard"><Redirect to="/regen" /></Route>
+      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
 
       <Route path="/regen" component={() => <ProtectedRoute component={RegenDashboard} />} />
       <Route path="/regen/caso/novo" component={() => <ProtectedRoute component={RegenNovo} />} />
@@ -120,6 +126,7 @@ function Router() {
       <Route path="/patients/new" component={() => <ProtectedRoute component={NewPatient} />} />
       <Route path="/patients/:id" component={() => <ProtectedRoute component={PatientDetail} />} />
 
+      <Route path="/agenda" component={() => <ProtectedRoute component={AgendaPage} />} />
       <Route path="/followup-central" component={() => <ProtectedRoute component={FollowupCentral} />} />
       <Route path="/followup" component={() => <ProtectedRoute component={FollowupCentral} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
@@ -133,6 +140,11 @@ function Router() {
       <Route path="/assinatura-cancelada" component={AssinaturaCancelada} />
       <Route path="/patient/regen/:token" component={RegenPatientPage} />
       <Route path="/orientacoes-paciente" component={OrientacoesPaciente} />
+      <Route path="/pre-consulta/:token" component={PreConsultPatientFlow} />
+
+      {/* Secretary routes — independent auth */}
+      <Route path="/secretary/login" component={SecretaryLogin} />
+      <Route path="/secretary/dashboard" component={SecretaryDashboard} />
 
       <Route component={NotFound} />
     </Switch>
@@ -158,10 +170,12 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <LanguageProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <ProductAnalytics />
-                <Router />
-              </WouterRouter>
+              <SecretaryAuthProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <ProductAnalytics />
+                  <Router />
+                </WouterRouter>
+              </SecretaryAuthProvider>
             </LanguageProvider>
           </AuthProvider>
           <VisitTracker />

@@ -1,0 +1,36 @@
+import type { ScopedMessages } from "@/lib/i18n";
+
+export const operationalAgendaMessages = {
+  "pt-BR": {
+    today: "Hoje", tomorrow: "Amanhã", appointments: "Agendamentos",
+    subtitle: "Consultas e sessões de procedimentos regenerativos", newAppointment: "Novo Agendamento",
+    upcoming: "Próximos", all: "Todos", schedule: "Agendar",
+    secretaryDashboard: "Painel da Secretária →", loading: "Carregando...",
+    empty: "Nenhum agendamento encontrado", create: "Criar agendamento",
+    appointment: "consulta", appointmentsCount: "consultas", patient: "Paciente",
+    edit: "Editar Agendamento", new: "Novo Agendamento", selectPatient: "Selecione o paciente",
+    date: "Data", time: "Hora", type: "Tipo", status: "Status", notes: "Observações",
+    optional: "Opcional", updated: "Agendamento atualizado!", scheduled: "Consulta agendada!",
+    removed: "Agendamento removido", error: "Erro", retry: "Tentar novamente", cancel: "Cancelar", saving: "Salvando...", save: "Salvar",
+    typeConsulta: "Consulta", typeRetorno: "Retorno", typeRegen: "Procedimento regenerativo", typePreop: "Avaliação pré-operatória",
+    typePostop: "Avaliação pós-operatória", typeCurativo: "Curativo", typeOutro: "Outro",
+    statusAgendado: "Agendado", statusConfirmado: "Confirmado", statusCancelado: "Cancelado",
+    statusRealizado: "Realizado", statusFaltou: "Não compareceu",
+  },
+  es: {
+    today: "Hoy", tomorrow: "Mañana", appointments: "Citas",
+    subtitle: "Consultas y sesiones de procedimientos regenerativos", newAppointment: "Nueva cita",
+    upcoming: "Próximas", all: "Todas", schedule: "Agendar",
+    secretaryDashboard: "Panel de la secretaria →", loading: "Cargando...",
+    empty: "No se encontraron citas", create: "Crear cita",
+    appointment: "cita", appointmentsCount: "citas", patient: "Paciente",
+    edit: "Editar cita", new: "Nueva cita", selectPatient: "Seleccione al paciente",
+    date: "Fecha", time: "Hora", type: "Tipo", status: "Estado", notes: "Observaciones",
+    optional: "Opcional", updated: "¡Cita actualizada!", scheduled: "¡Cita agendada!",
+    removed: "Cita eliminada", error: "Error", retry: "Intentar de nuevo", cancel: "Cancelar", saving: "Guardando...", save: "Guardar",
+    typeConsulta: "Consulta", typeRetorno: "Control", typeRegen: "Procedimiento regenerativo", typePreop: "Evaluación preoperatoria",
+    typePostop: "Evaluación postoperatoria", typeCurativo: "Curación", typeOutro: "Otro",
+    statusAgendado: "Agendada", statusConfirmado: "Confirmada", statusCancelado: "Cancelada",
+    statusRealizado: "Realizada", statusFaltou: "No asistió",
+  },
+} satisfies ScopedMessages<Record<string, string>>;

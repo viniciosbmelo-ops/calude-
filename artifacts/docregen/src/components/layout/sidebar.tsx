@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { Users, BellRing, LogOut, Menu, User, LineChart, MessageSquare, HelpCircle, Send, X, FlaskConical } from "lucide-react";
+import { LayoutDashboard, Users, BellRing, CalendarDays, LogOut, Menu, User, LineChart, MessageSquare, HelpCircle, Send, X, FlaskConical } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -15,8 +15,10 @@ interface SidebarProps {
 }
 
 const DOCTOR_LINKS = [
+  { href: "/dashboard", key: "nav.dashboard" as const, icon: LayoutDashboard },
   { href: "/regen", key: "nav.regenerative" as const, icon: FlaskConical },
   { href: "/patients", key: "nav.patients" as const, icon: Users },
+  { href: "/agenda", key: "nav.appointments" as const, icon: CalendarDays },
   { href: "/followup-central", key: "nav.followups" as const, icon: BellRing },
   { href: "/reports", key: "nav.reports" as const, icon: LineChart },
   { href: "/profile", key: "nav.profile" as const, icon: User },

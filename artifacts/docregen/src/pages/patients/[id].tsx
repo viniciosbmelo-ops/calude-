@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PreConsultTab } from "@/components/patient/pre-consult-tab";
 
 const AVATAR_COLORS = [
   "linear-gradient(135deg,#0B1F4B,#0E9AA7)",
@@ -38,7 +39,7 @@ const AVATAR_COLORS = [
 ];
 
 type DocTipo = "evolucao" | "receita" | "laudo" | "atestado";
-type Aba = "visao-geral" | "anamnese" | "evolucao" | "receitas" | "laudos" | "atestados" | "arquivos";
+type Aba = "visao-geral" | "pre-consulta" | "anamnese" | "evolucao" | "receitas" | "laudos" | "atestados" | "arquivos";
 
 interface PatientAttachment {
   id: number;
@@ -62,7 +63,7 @@ interface Documento {
   tempoAfastamento?: string;
 }
 
-const ABAS: Aba[] = ["visao-geral", "anamnese", "evolucao", "receitas", "laudos", "atestados", "arquivos"];
+const ABAS: Aba[] = ["visao-geral", "pre-consulta", "anamnese", "evolucao", "receitas", "laudos", "atestados", "arquivos"];
 
 const ABA_DOC_TIPO: Partial<Record<Aba, DocTipo>> = {
   evolucao: "evolucao",
@@ -88,7 +89,10 @@ export default function PatientDetail() {
   const deleteMutation = useDeletePatient();
   const updateMutation = useUpdatePatient();
 
-  const [abaAtiva, setAbaAtiva] = useState<Aba>("visao-geral");
+  const [abaAtiva, setAbaAtiva] = useState<Aba>(() => {
+    const requested = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("aba") : null;
+    return ABAS.includes(requested as Aba) ? (requested as Aba) : "visao-geral";
+  });
   const [anamneseText, setAnamneseText] = useState("");
   const [editandoAnamnese, setEditandoAnamnese] = useState(false);
   const [documentos, setDocumentos] = useState<Documento[]>([]);
@@ -494,7 +498,7 @@ export default function PatientDetail() {
   const hasAnamnese = !!anamneseText.trim();
   const dateLocale = locale === "es" ? es : ptBR;
   const tabs: Record<Aba, string> = {
-    "visao-geral": tr("tabOverview"), anamnese: tr("tabAnamnesis"),
+    "visao-geral": tr("tabOverview"), "pre-consulta": tr("tabPreConsult"), anamnese: tr("tabAnamnesis"),
     evolucao: tr("tabEvolution"), receitas: tr("tabPrescriptions"), laudos: tr("tabReports"),
     atestados: tr("tabCertificates"), arquivos: tr("tabFiles"),
   };
@@ -761,6 +765,11 @@ export default function PatientDetail() {
               );
             })()}
           </>
+        )}
+
+        {/* PRÉ-CONSULTA */}
+        {abaAtiva === "pre-consulta" && (
+          <PreConsultTab patientId={patient.id} />
         )}
 
         {/* ANAMNESE */}
