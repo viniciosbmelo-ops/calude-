@@ -24,7 +24,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { cn, formatCalendarDate, formatLocalDate as formatLocalDateInput, sortByPtBrName } from "@/lib/utils";
+import { cn, formatCalendarDate, formatLocalDate as formatLocalDateInput, formatPersonName, sortByPtBrName } from "@/lib/utils";
 import { regenConditionLabel } from "@/lib/regen-conditions";
 import {
   biologicDetailEntries,
@@ -415,6 +415,7 @@ function LabsTab({ caseId, labs, onRefresh }: { caseId: string; labs: LabResult[
                     </div>
                     <input
                       type="date"
+                      lang={typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined}
                       value={date[a.name] ?? ""}
                       onChange={e => setDate(d => ({ ...d, [a.name]: e.target.value }))}
                       className="px-2 py-1.5 rounded-lg text-xs border border-gray-200 bg-white text-gray-600 outline-none focus:border-blue-400 w-[110px] shrink-0"
@@ -463,7 +464,7 @@ function LabValueBadge({ value, flag, unit, date, small }: {
     <div className={cn("flex items-center gap-1 rounded-lg px-2 py-0.5", small ? "text-[10px]" : "text-xs")}
       style={{ background: bg, border: `1px solid ${border}` }}>
       <Icon className={small ? "h-2.5 w-2.5" : "h-3 w-3"} style={{ color }} />
-      <span className="font-bold" style={{ color }}>{value}</span>
+      <span className="font-bold" style={{ color }}>{Number.isFinite(Number(value)) ? new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(Number(value)) : value}</span>
       {unit && <span style={{ color, opacity: 0.7 }}>{unit}</span>}
       {date && <span className="text-gray-400 ml-1">{formatCalendarDate(date, locale, undefined, "")}</span>}
     </div>
@@ -2621,7 +2622,7 @@ function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromRes
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9CA3AF" }} interval={0} padding={{ left: 24, right: 24 }} />
                 <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} domain={[0, "auto"]} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E5E7EB" }}
@@ -2860,7 +2861,7 @@ export default function RegenCaso() {
           </button>
            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: 0 }}>{t("regenerativeCase")}</h1>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", margin: "3px 0 0" }}>
-            <span style={{ color: "#fff", fontWeight: 500 }}>{c.patient_name}</span>
+            <span style={{ color: "#fff", fontWeight: 500 }}>{formatPersonName(c.patient_name)}</span>
             {" · "}{conditionText}
           </p>
         </div>
@@ -2891,7 +2892,7 @@ export default function RegenCaso() {
           <div>
              <h1 className="text-2xl font-bold tracking-tight text-gray-900">{t("regenerativeCase")}</h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              <span className="font-medium text-gray-800">{c.patient_name}</span>
+              <span className="font-medium text-gray-800">{formatPersonName(c.patient_name)}</span>
               {" · "}{conditionText}
             </p>
           </div>

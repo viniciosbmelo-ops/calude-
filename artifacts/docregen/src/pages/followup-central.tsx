@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, RefreshCw, CheckCircle2, Clock, Calendar, Phone, AlertTriangle, Zap, FlaskConical, MessageSquare, Bot, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
-import { cn, formatLocalDate, toCalendarDateKey } from "@/lib/utils";
+import { cn, formatLocalDate, formatPersonName, toCalendarDateKey } from "@/lib/utils";
 import { regenConditionLabel } from "@/lib/regen-conditions";
 import { ErrorBoundary } from "@/components/route-error-boundary";
 import { reportFollowupPeriodLabel } from "@/locales/reporting-catalogs";
@@ -165,7 +165,7 @@ function RegenNotifCard({
 
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-sm text-foreground truncate">{row.patient_name}</span>
+          <span className="font-semibold text-sm text-foreground truncate">{formatPersonName(row.patient_name)}</span>
           {row.status === "sent" || row.status === "completed"
             ? <Badge className="bg-green-100 text-green-800 border-green-200 gap-1"><CheckCircle2 className="h-3 w-3" /> {t("followupSent")}</Badge>
             : row.response_count > 0
@@ -183,7 +183,7 @@ function RegenNotifCard({
             {formatCalendarDate(row.scheduled_date)}
           </span>
           <span className="font-medium text-foreground/70">{reportFollowupPeriodLabel(locale, row.periodo)}</span>
-          {row.condition_code && <span className="truncate max-w-48 text-violet-600">{regenConditionLabel(row.condition_code, locale)}</span>}
+          {row.condition_code && <span className="text-violet-600">{regenConditionLabel(row.condition_code, locale)}</span>}
           {!row.patient_phone && <span className="text-red-500 flex items-center gap-1"><Phone className="h-3 w-3" /> {t("followupNoPhone")}</span>}
         </div>
         {row.response_count > 0 && (
