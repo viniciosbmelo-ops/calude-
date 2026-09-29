@@ -7,9 +7,10 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "test": "pnpm run test:web && pnpm run test:api",
+    "test": "pnpm run test:web && pnpm run test:api && pnpm run test:docregen-api",
     "test:web": "vitest run",
     "test:api": "pnpm --filter @workspace/api-server test",
+    "test:docregen-api": "pnpm --filter @workspace/docregen-api test",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },

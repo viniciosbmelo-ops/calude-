@@ -1,32 +1,39 @@
 kind = "api"
-previewPath = "/api" # TODO - should be excluded from preview in the first place
-title = "API Server"
+previewPath = "/regen-api" # TODO - should be excluded from preview in the first place
+title = "DocRegen API Server"
 version = "1.0.0"
-id = "3B4_FFSkEVBkAeYMFRJ2e"
+id = "artifacts/docregen-api"
 
+# DocRegen's own backend, independent from DocKnee's api-server (which owns
+# "/api" on port 8080). The Replit path router sends each request to the service
+# whose `paths` entry is the longest matching prefix, so DocRegen uses a prefix
+# that shares nothing with "/api", "/docregen" (DocRegen frontend) or "/__mockup".
 [[services]]
-localPort = 8080
-name = "API Server"
-paths = ["/api"]
+localPort = 8082
+name = "DocRegen API Server"
+paths = ["/regen-api"]
 
 [services.development]
-run = "pnpm --filter @workspace/api-server run dev"
+run = "pnpm --filter @workspace/docregen-api run dev"
+
+[services.env]
+PORT = "8082"
 
 [services.production]
 
 [services.production.build]
-args = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
+args = ["pnpm", "--filter", "@workspace/docregen-api", "run", "build"]
 
 [services.production.build.env]
 NODE_ENV = "production"
 
 [services.production.run]
 # we don't run through pnpm to make startup faster in production
-args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+args = ["node", "--enable-source-maps", "artifacts/docregen-api/dist/index.mjs"]
 
 [services.production.run.env]
-PORT = "8080"
+PORT = "8082"
 NODE_ENV = "production"
 
 [services.production.health.startup]
-path = "/api/healthz"
+path = "/regen-api/healthz"

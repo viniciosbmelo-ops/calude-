@@ -45,3 +45,12 @@ for f in "$repo_root"/lib/db/pre-push/*.sql; do
 done
 pnpm --filter @workspace/db run push-force </dev/null
 echo "Development schema synced via drizzle-kit push. Production uses the Publish diff."
+
+# DocRegen has its own, independent database (lib/docregen-db). It is only
+# synced when DOCREGEN_DATABASE_URL is configured; it never uses DATABASE_URL.
+if [[ -n "${DOCREGEN_DATABASE_URL:-}" ]]; then
+  pnpm --filter @workspace/docregen-db run push-force </dev/null
+  echo "DocRegen development schema synced (DOCREGEN_DATABASE_URL)."
+else
+  echo "DOCREGEN_DATABASE_URL not set — skipping DocRegen schema sync."
+fi

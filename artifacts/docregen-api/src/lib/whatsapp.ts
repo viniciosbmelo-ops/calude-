@@ -1,6 +1,3 @@
-import type { SupportedLocale } from "./locale";
-import { regenPeriodForLocale, regenScaleForLocale } from "./regen-labels";
-
 export interface WhatsAppMessage {
   to: string;
   text: string;
@@ -210,58 +207,4 @@ export async function sendWhatsAppText(
 
   // Evolution não configurada → usar Meta diretamente
   return sendViaMeta(phone, text, options.idempotencyKey);
-}
-
-export function buildFollowupMessage(params: {
-  patientName: string;
-  periodo: string | null | undefined;
-  scales: string[];
-  link: string;
-  doctorName?: string;
-  locale?: SupportedLocale;
-}): string {
-  const { patientName, periodo, scales, link, doctorName, locale = "pt-BR" } = params;
-  const spanish = locale === "es";
-  const effectivePeriod = typeof periodo === "string" && periodo.trim()
-    ? periodo
-    : "pós-operatório";
-  const presentedPeriod = regenPeriodForLocale(effectivePeriod, locale);
-  // Sem escalas (ex.: todas eram escalas retiradas do joelho), a linha de escalas é omitida:
-  // o texto já pede o preenchimento das avaliações.
-  const scaleList = scales.map(scale => regenScaleForLocale(scale, locale)).join(", ");
-  const scaleLine = scaleList
-    ? spanish ? `📋 *Escalas para completar:* ${scaleList}\n\n` : `📋 *Escalas a preencher:* ${scaleList}\n\n`
-    : "";
-  const doctor = doctorName
-    ? spanish ? `Dr(a). ${doctorName}` : `Dr(a). ${doctorName}`
-    : spanish ? "su médico" : "seu médico";
-
-  const isPre = /pr[eé]-?op/i.test(effectivePeriod) || effectivePeriod.toLowerCase().includes("pré");
-
-  const contexto = isPre
-    ? spanish
-      ? "para su *cirugía* (evaluación preoperatoria)"
-      : "para a sua *cirurgia* (avaliação pré-operatória)"
-    : spanish
-      ? `de *${presentedPeriod}* después de su cirugía`
-      : `de *${presentedPeriod}* após a sua cirurgia`;
-
-  if (spanish) {
-    return (
-      `¡Hola, *${patientName}*! 👋\n\n` +
-      `${doctor} solicita que complete las evaluaciones ${contexto}.\n\n` +
-      scaleLine +
-      `Acceda mediante el siguiente enlace — tarda menos de 5 minutos:\n${link}\n\n` +
-      `🔐 *Contraseña de acceso:* su CPF (solo números)\n\n` +
-      `_¿Tiene dudas? Comuníquese con el consultorio._`
-    );
-  }
-  return (
-    `Olá, *${patientName}*! 👋\n\n` +
-    `${doctor} solicita o preenchimento das avaliações ${contexto}.\n\n` +
-    scaleLine +
-    `Acesse pelo link abaixo — leva menos de 5 minutos:\n${link}\n\n` +
-    `🔐 *Senha de acesso:* seu CPF (somente números)\n\n` +
-    `_Dúvidas? Entre em contato com o consultório._`
-  );
 }
