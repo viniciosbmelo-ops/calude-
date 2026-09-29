@@ -20,7 +20,6 @@
     "@workspace/clinical": "workspace:*",
     "@workspace/docregen-api-zod": "workspace:*",
     "@workspace/docregen-db": "workspace:*",
-    "@workspace/integrations-gemini-ai": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2",

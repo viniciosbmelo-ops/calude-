@@ -8,6 +8,7 @@ import { establishSession } from "../lib/session";
 import { localeForDoctorId } from "../lib/locale";
 import { regenPeriodForLocale } from "../lib/regen-labels";
 import { message } from "../lib/locale-catalog";
+import { clinicToday } from "../lib/regen-followup-schedule";
 
 const router: IRouter = Router();
 
@@ -354,7 +355,7 @@ function toIso(value: Date | string | null): string | null {
  */
 router.get("/secretary/regen-cases", requireDoctorOrSecretary, async (req, res): Promise<void> => {
   const doctorId = req.doctorId!;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = clinicToday();
   const result = await db.execute(sql`
     SELECT
       c.id,
@@ -436,7 +437,7 @@ type RegenAlertRow = {
  */
 async function listRegenFollowupAlerts(doctorId: number) {
   const locale = await localeForDoctorId(doctorId);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = clinicToday();
   const result = await db.execute(sql`
     SELECT
       n.id,

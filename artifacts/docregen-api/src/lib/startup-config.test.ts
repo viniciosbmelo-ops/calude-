@@ -3,7 +3,8 @@
  * OWN database (DOCREGEN_DATABASE_URL) and session secret, and it must never
  * fall back to — or share — DocKnee's DATABASE_URL / SESSION_SECRET.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:net";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -122,4 +123,45 @@ describe("server entry point", () => {
     expect(result.status).toBe(1);
     expect(`${result.stdout}${result.stderr}`).toMatch(/DOCREGEN_DATABASE_URL[^\n]*DATABASE_URL/);
   }, 70_000);
+
+  it("starts without the optional Gemini integration variables", async () => {
+    const databaseUrl = process.env["DOCREGEN_DATABASE_URL"];
+    expect(databaseUrl, "the integration suite needs DOCREGEN_DATABASE_URL").toBeTruthy();
+    const port = await new Promise<number>((resolve, reject) => {
+      const probe = createServer();
+      probe.once("error", reject);
+      probe.listen(0, "127.0.0.1", () => {
+        const { port: free } = probe.address() as { port: number };
+        probe.close(() => resolve(free));
+      });
+    });
+    const child = spawn(process.execPath, [tsxCli, "src/index.ts"], {
+      cwd: artifactDir,
+      env: {
+        PATH: process.env["PATH"] ?? "",
+        NODE_ENV: "test",
+        PORT: String(port),
+        LOG_LEVEL: "info",
+        DOCREGEN_DATABASE_URL: databaseUrl!,
+        DOCREGEN_SESSION_SECRET: OWN_SECRET,
+        // AI_INTEGRATIONS_GEMINI_* deliberately absent.
+      },
+    });
+    let output = "";
+    child.stdout.on("data", (chunk) => { output += String(chunk); });
+    child.stderr.on("data", (chunk) => { output += String(chunk); });
+    try {
+      const outcome = await new Promise<"listening" | "exited">((resolve) => {
+        const timer = setInterval(() => {
+          if (output.includes("Server listening")) { clearInterval(timer); resolve("listening"); }
+        }, 100);
+        child.once("exit", () => { clearInterval(timer); resolve("exited"); });
+      });
+      expect(outcome, output).toBe("listening");
+      const health = await fetch(`http://127.0.0.1:${port}/regen-api/healthz`);
+      expect(health.status).toBe(200);
+    } finally {
+      child.kill("SIGTERM");
+    }
+  }, 90_000);
 });

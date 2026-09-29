@@ -113,7 +113,7 @@ falls back to DocKnee's variables; it also refuses values equal to DocKnee's.
 | `DOCREGEN_GMAIL_USER`, `DOCREGEN_GMAIL_APP_PASSWORD`, `DOCREGEN_CONTACT_EMAIL` | email | Outgoing email and support contact |
 | `DOCREGEN_EVOLUTION_API_URL`, `DOCREGEN_EVOLUTION_API_KEY`, `DOCREGEN_EVOLUTION_INSTANCE` | WhatsApp | Evolution API instance for DocRegen |
 | `DOCREGEN_WHATSAPP_ACCESS_TOKEN`, `DOCREGEN_WHATSAPP_PHONE_NUMBER_ID` | WhatsApp fallback | Meta WhatsApp Business API |
-| `AI_INTEGRATIONS_GEMINI_BASE_URL`, `AI_INTEGRATIONS_GEMINI_API_KEY` | yes (regen AI) | Replit-managed Gemini integration (provider credentials, no app data) |
+| `AI_INTEGRATIONS_GEMINI_BASE_URL`, `AI_INTEGRATIONS_GEMINI_API_KEY` | no (regen AI) | Replit-managed Gemini integration (provider credentials, no app data). Optional: without them the API still starts and the AI summary answers 503 "IA não configurada" |
 
 Cookies: `docregen_session`, `docregen_secretary_session`, `docregen_patient_session`
 (path `/regen-api`). JWT issuer/audience `docregen-api` / `docregen-web`.

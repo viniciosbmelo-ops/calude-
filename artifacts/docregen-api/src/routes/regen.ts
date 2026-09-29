@@ -8,7 +8,17 @@ import { pool } from "@workspace/docregen-db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { z } from "zod/v4";
 import { randomUUID } from "crypto";
-import { ai } from "@workspace/integrations-gemini-ai";
+import { getGeminiClient } from "../lib/gemini";
+import {
+  REGEN_CONDITION_CATALOG,
+  isKnownRegenConditionCode,
+  regenConditionName,
+} from "../lib/regen-conditions";
+import {
+  addDaysToCalendarDate,
+  clinicToday,
+  regenFollowupScheduleFor,
+} from "../lib/regen-followup-schedule";
 import PDFDocument from "pdfkit";
 import { getBaseUrl } from "../lib/base-url";
 import { APP_BRAND_NAME, buildAppLink } from "../lib/app-links";
@@ -24,19 +34,8 @@ import {
 export { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
 
 // ─── Regen follow-up schedule ─────────────────────────────────────────────────
-// Escalas do joelho (WOMAC, IKDC, KOOS-12, Tegner) retiradas; só dor (VAS)
-// até as escalas de ombro/cotovelo serem definidas.
-const REGEN_FOLLOWUP_SCHEDULE = [
-  { periodo: "Pré-op (Baseline)",  days: 0,    scales: ["VAS Dor"] },
-  { periodo: "1 mês",              days: 30,   scales: ["VAS Dor"] },
-  { periodo: "6 semanas (HA)",     days: 42,   scales: ["VAS Dor"] },
-  { periodo: "3 meses",            days: 90,   scales: ["VAS Dor"] },
-  { periodo: "6 meses ★",          days: 180,  scales: ["VAS Dor"] },
-  { periodo: "12 meses",           days: 365,  scales: ["VAS Dor"] },
-  { periodo: "24 meses",           days: 730,  scales: ["VAS Dor"] },
-  { periodo: "4 anos",             days: 1460, scales: ["VAS Dor"] },
-];
-
+// Only pain (VAS) is collected at each checkpoint; product-specific checkpoints
+// (e.g. "6 semanas (HA)") are added only for cases using that product.
 const router: IRouter = Router();
 
 const ProductDetailsSchema = z.record(z.string(), z.string()).refine(
@@ -88,38 +87,14 @@ export async function initRegenData() {
       `);
     }
 
-    // Seed conditions
-    await client.query(`
-      INSERT INTO regen_conditions (code, name) VALUES
-        ('OA_QUADRIL',      'Osteoartrite de Quadril'),
-        ('OA_OMBRO',        'Osteoartrose de Ombro'),
-        ('TENDINOPATIA_OMBRO', 'Tendinopatia do Manguito Rotador'),
-        ('BURSITE_OMBRO',   'Bursite de Ombro'),
-        ('LESAO_LABRAL_OMBRO', 'Lesão Labral de Ombro'),
-        ('OA_COTOVELO',     'Osteoartrose de Cotovelo'),
-        ('TENDINOPATIA_COTOVELO', 'Tendinopatia de Cotovelo'),
-        ('OA_TORNOZELO',    'Osteoartrite de Tornozelo'),
-        ('OA_PUNHO',        'Osteoartrose de Punho'),
-        ('TENDINOPATIA_PUNHO', 'Tendinopatia de Punho e Mão'),
-        ('SINDROME_TUNEL_CARPO', 'Síndrome do Túnel do Carpo'),
-        ('OA_COLUNA_CERVICAL', 'Osteoartrose Cervical'),
-        ('HERNIA_DISCAL_CERVICAL', 'Hérnia Discal Cervical'),
-        ('OA_COLUNA_TORACICA', 'Osteoartrose Torácica'),
-        ('HERNIA_DISCAL_TORACICA', 'Hérnia Discal Torácica'),
-        ('OA_COLUNA_LOMBAR', 'Osteoartrose Lombar'),
-        ('HERNIA_DISCAL_LOMBAR', 'Hérnia Discal Lombar'),
-        ('CONDRAL_FOCAL',   'Lesão Condral Focal'),
-        ('OSTEOCONDRAL',    'Lesão Osteocondral'),
-        ('TENDINOPATIA',    'Tendinopatia'),
-        ('SINOVITE',        'Sinovite / Sinovite Vilonodular'),
-        ('BURSITE',         'Bursite'),
-        ('FRATURA_FADIGA',  'Fratura por Fadiga / Estresse'),
-        ('POS_OPERATORIO',  'Pós-Operatório / Bioestimulação'),
-        ('EPICONDILITE',    'Epicondilite Lateral / Medial'),
-        ('FASCITE_PLANTAR', 'Fasciíte Plantar'),
-        ('CUSTOM',          'Outra Condição (especificar)')
-      ON CONFLICT (code) DO NOTHING;
-    `);
+    // Seed conditions (catalog: lib/regen-conditions.ts). Names follow the
+    // catalog so renamed conditions are corrected on the next start.
+    const conditionValues = REGEN_CONDITION_CATALOG.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`);
+    await client.query(
+      `INSERT INTO regen_conditions (code, name) VALUES ${conditionValues.join(", ")}
+       ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name`,
+      REGEN_CONDITION_CATALOG.flatMap((condition) => [condition.code, condition.name]),
+    );
   } finally {
     client.release();
   }
@@ -218,6 +193,9 @@ router.get("/regen/conditions", requireAuth, async (req: any, res) => {
 
 // ─── Cases ───────────────────────────────────────────────────────────────────
 
+// Condition codes must come from the DocRegen catalog (or a legacy code).
+const RegenConditionCode = z.string().min(1).refine(isKnownRegenConditionCode, "condição desconhecida");
+
 const CaseBody = z.object({
   patientId:        z.number().optional(),
   patientName:      z.string().min(1),
@@ -226,7 +204,7 @@ const CaseBody = z.object({
   patientPhone:     z.string().optional(),
   weightKg:         z.number().optional(),
   heightCm:         z.number().optional(),
-  conditionCode:    z.string().min(1),
+  conditionCode:    RegenConditionCode,
   conditionCustom:  z.string().optional(),
   ladoArticulacao:  z.string().optional(),
   hospitalLocal:    z.string().optional(),
@@ -259,7 +237,7 @@ const CasePatchBody = z.object({
   patientPhone:      z.string().optional(),
   weightKg:          z.number().optional(),
   heightCm:          z.number().optional(),
-  conditionCode:     z.string().min(1).optional(),
+  conditionCode:     RegenConditionCode.optional(),
   conditionCustom:   z.string().optional(),
   ladoArticulacao:   z.string().optional(),
   hospitalLocal:     z.string().optional(),
@@ -491,7 +469,7 @@ const ProcedureBody = z.object({
   adverseEvent:      z.boolean().default(false),
   adverseEventDesc:  z.string().optional(),
   notes:             z.string().optional(),
-  performedAt:       z.string().optional(),
+  performedAt:       z.string().refine((v) => !Number.isNaN(Date.parse(v)), "invalid date").optional(),
   complianceResult:  z.record(z.string(), z.unknown()).optional(),
   biologicDetails:   z.record(z.string(), z.unknown()).optional(),
 });
@@ -551,6 +529,17 @@ router.post("/regen/cases/:caseId/procedures", requireAuth, async (req: any, res
 
 // ─── PROMs ───────────────────────────────────────────────────────────────────
 
+const PromBody = z.object({
+  instrument: z.string().trim().min(1),
+  timepoint:  z.string().trim().min(1),
+  answers:    z.record(z.string(), z.unknown()).optional(),
+  score:      z.number().finite().min(0).max(100).nullable().optional(),
+  answeredAt: z.string().datetime({ offset: true }).optional(),
+}).refine(
+  (body) => !/^vas$/i.test(body.instrument) || body.score == null || body.score <= 10,
+  { message: "VAS score must be between 0 and 10", path: ["score"] },
+);
+
 router.get("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => {
   try {
     const { rows: c } = await pool.query(
@@ -576,13 +565,15 @@ router.post("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => 
     );
     if (!c.length) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
 
-    const { instrument, timepoint, answers, score } = req.body;
-    if (!instrument || !timepoint || !answers) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing") });
+    // `answers` is optional: the case page records a total score only.
+    const parsed = PromBody.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing"), issues: parsed.error.issues });
+    const { instrument, timepoint, answers, score, answeredAt } = parsed.data;
 
     const { rows } = await pool.query(
-      `INSERT INTO regen_prom_responses (case_id, instrument, timepoint, answers, score)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [req.params.caseId, instrument, timepoint, JSON.stringify(answers), score ?? null]
+      `INSERT INTO regen_prom_responses (case_id, instrument, timepoint, answers, score, answered_at)
+       VALUES ($1,$2,$3,$4,$5,COALESCE($6::timestamptz, now())) RETURNING *`,
+      [req.params.caseId, instrument, timepoint, JSON.stringify(answers ?? {}), score ?? null, answeredAt ?? null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -722,6 +713,8 @@ router.get("/regen/stats", requireAuth, async (req: any, res) => {
 
 router.post("/regen/cases/:id/ai-summary", requireAuth, async (req: any, res) => {
   try {
+    const ai = getGeminiClient();
+    if (!ai) return res.status(503).json({ error: await requestMessage(req, "aiNotConfigured") });
     const { rows: c } = await pool.query(
       `SELECT * FROM regen_cases WHERE id = $1 AND doctor_id = $2`,
       [req.params.id, req.doctorId]
@@ -751,8 +744,8 @@ Seja objetivo, clínico, e destaque mudanças relevantes nos PROMs e na evoluç�
 Finalize com uma conclusão sobre o status atual.
 
 DADOS DO CASO:
-- Paciente: ${caso.patient_name} | Sexo: ${caso.patient_sex ?? "NI"} | Nascimento: ${caso.patient_dob ? new Date(caso.patient_dob).toLocaleDateString("pt-BR") : "NI"}
-- IMC: ${caso.imc ?? "NI"} | Condição: ${caso.condition_code.replace(/_/g, " ")}${caso.condition_custom ? " — " + caso.condition_custom : ""}
+- Paciente: ${caso.patient_name} | Sexo: ${caso.patient_sex ?? "NI"} | Nascimento: ${caso.patient_dob ? localeDate(caso.patient_dob, "pt-BR") : "NI"}
+- IMC: ${caso.imc ?? "NI"} | Condição: ${regenConditionName(caso.condition_code, "pt-BR")}${caso.condition_custom ? " — " + caso.condition_custom : ""}
 - Diabetes: ${caso.dm ? "Sim" + (caso.hba1c ? " (HbA1c " + caso.hba1c + "%)" : "") : "Não"} | Anticoagulante: ${caso.anticoagulant ? "Sim" : "Não"}
 - Objetivos: ${caso.goal_vev?.join(", ") ?? "não definidos"}
 
@@ -1170,7 +1163,7 @@ router.get("/regen/consent/:product", requireAuth, async (req: any, res) => {
       if (rows.length) {
         patientName = rows[0].patient_name ?? patientName;
         patientDob  = rows[0].patient_dob
-          ? new Date(rows[0].patient_dob).toLocaleDateString("pt-BR")
+          ? localeDate(rows[0].patient_dob, "pt-BR")
           : "";
       }
     }
@@ -1411,41 +1404,6 @@ const PRODUCT_NAMES: Record<string, string> = {
   OUTRO:           "Outro Procedimento",
 };
 
-const CONDITION_NAMES: Record<string, string> = {
-  hip_oa:     "Osteoartrose de Quadril",
-  shoulder_oa:"Osteoartrose de Ombro",
-  ankle_oa:   "Osteoartrose de Tornozelo",
-  tendinopathy:"Tendinopatia",
-  chondral:   "Lesão Condral",
-  other:      "Outro",
-  OA_QUADRIL: "Osteoartrite de Quadril",
-  OA_OMBRO: "Osteoartrose de Ombro",
-  TENDINOPATIA_OMBRO: "Tendinopatia do Manguito Rotador",
-  BURSITE_OMBRO: "Bursite de Ombro",
-  LESAO_LABRAL_OMBRO: "Lesão Labral de Ombro",
-  OA_COTOVELO: "Osteoartrose de Cotovelo",
-  EPICONDILITE: "Epicondilite Lateral / Medial",
-  TENDINOPATIA_COTOVELO: "Tendinopatia de Cotovelo",
-  OA_TORNOZELO: "Osteoartrite de Tornozelo",
-  OA_PUNHO: "Osteoartrose de Punho",
-  TENDINOPATIA_PUNHO: "Tendinopatia de Punho e Mão",
-  SINDROME_TUNEL_CARPO: "Síndrome do Túnel do Carpo",
-  OA_COLUNA_CERVICAL: "Osteoartrose Cervical",
-  HERNIA_DISCAL_CERVICAL: "Hérnia Discal Cervical",
-  OA_COLUNA_TORACICA: "Osteoartrose Torácica",
-  HERNIA_DISCAL_TORACICA: "Hérnia Discal Torácica",
-  OA_COLUNA_LOMBAR: "Osteoartrose Lombar",
-  HERNIA_DISCAL_LOMBAR: "Hérnia Discal Lombar",
-  CONDRAL_FOCAL: "Lesão Condral Focal",
-  OSTEOCONDRAL: "Lesão Osteocondral",
-  TENDINOPATIA: "Tendinopatia",
-  SINOVITE: "Sinovite / Sinovite Vilonodular",
-  BURSITE: "Bursite",
-  FRATURA_FADIGA: "Fratura por Fadiga / Estresse",
-  POS_OPERATORIO: "Pós-Operatório / Bioestimulação",
-  FASCITE_PLANTAR: "Fasciíte Plantar",
-  CUSTOM: "Outra Condição (especificar)",
-};
 
 const SPANISH_PRODUCT_NAMES: Record<string, string> = {
   PRP: "Plasma rico en plaquetas (PRP)", LP_PRP: "LP-PRP — pobre en leucocitos",
@@ -1456,26 +1414,6 @@ const SPANISH_PRODUCT_NAMES: Record<string, string> = {
   SUBCONDROPLASTIA: "Subcondroplastia", HIDROGEL: "Hidrogel (andamio polimérico)",
   RADIOFREQUENCIA: "Radiofrecuencia / neurotomía", BLOQUEIOS: "Bloqueos anestésicos / corticoide",
   NANOFAT: "Nanofat", OUTRO: "Otro procedimiento",
-};
-const SPANISH_CONDITION_NAMES: Record<string, string> = {
-  hip_oa: "Osteoartritis de cadera",
-  shoulder_oa: "Osteoartritis de hombro", ankle_oa: "Osteoartritis de tobillo",
-  tendinopathy: "Tendinopatía", chondral: "Lesión condral", other: "Otra condición",
-  OA_QUADRIL: "Osteoartritis de cadera",
-  OA_OMBRO: "Osteoartritis de hombro", TENDINOPATIA_OMBRO: "Tendinopatía del manguito rotador",
-  BURSITE_OMBRO: "Bursitis de hombro", LESAO_LABRAL_OMBRO: "Lesión labral de hombro",
-  OA_COTOVELO: "Osteoartritis de codo", EPICONDILITE: "Epicondilitis lateral / medial",
-  TENDINOPATIA_COTOVELO: "Tendinopatía de codo", OA_TORNOZELO: "Osteoartritis de tobillo",
-  OA_PUNHO: "Osteoartritis de muñeca", TENDINOPATIA_PUNHO: "Tendinopatía de muñeca y mano",
-  SINDROME_TUNEL_CARPO: "Síndrome del túnel carpiano", OA_COLUNA_CERVICAL: "Osteoartritis cervical",
-  HERNIA_DISCAL_CERVICAL: "Hernia discal cervical", OA_COLUNA_TORACICA: "Osteoartritis torácica",
-  HERNIA_DISCAL_TORACICA: "Hernia discal torácica", OA_COLUNA_LOMBAR: "Osteoartritis lumbar",
-  HERNIA_DISCAL_LOMBAR: "Hernia discal lumbar",
-  CONDRAL_FOCAL: "Lesión condral focal", OSTEOCONDRAL: "Lesión osteocondral",
-  TENDINOPATIA: "Tendinopatía",
-  SINOVITE: "Sinovitis / sinovitis villonodular", BURSITE: "Bursitis",
-  FRATURA_FADIGA: "Fractura por fatiga / estrés", POS_OPERATORIO: "Posoperatorio / bioestimulación",
-  FASCITE_PLANTAR: "Fascitis plantar", CUSTOM: "Otra condición (especificar)",
 };
 const SPANISH_SEX_NAMES: Record<string, string> = {
   masculino: "Masculino", male: "Masculino", m: "Masculino",
@@ -1501,6 +1439,7 @@ const SPANISH_APPLICATION_LOCATION_NAMES: Record<string, string> = {
   "intra-articular": "Intraarticular",
   subcondroplastia: "Subcondroplastia",
   "tecido periarticular": "Tejido periarticular",
+  "tendão patelar": "Tendón rotuliano",
   ligamento: "Ligamento",
   outro: "Otro",
 };
@@ -1525,7 +1464,7 @@ function productNameForLocale(code: string, locale: ReturnType<typeof resolveDoc
   return locale === "es" ? SPANISH_PRODUCT_NAMES[code] ?? PRODUCT_NAMES[code] ?? code : PRODUCT_NAMES[code] ?? code;
 }
 export function conditionNameForLocale(code: string, locale: ReturnType<typeof resolveDoctorLocale>): string {
-  return locale === "es" ? SPANISH_CONDITION_NAMES[code] ?? CONDITION_NAMES[code] ?? code : CONDITION_NAMES[code] ?? code;
+  return regenConditionName(code, locale);
 }
 function controlledValueForLocale(
   value: unknown,
@@ -3072,8 +3011,21 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     }
     locale = await localeForDoctorId(rows[0].doctor_id);
 
-    // Use provided date or today
-    const base = baseDate ? new Date(baseDate) : new Date();
+    // Base calendar date: explicit baseDate, else today on the clinic calendar
+    // (America/Sao_Paulo). Pure calendar arithmetic — no TZ math.
+    const today = clinicToday();
+    const base = typeof baseDate === "string" && baseDate.trim() ? baseDate : null;
+
+    // Product-specific checkpoints (e.g. the 6-week HA review) only apply when
+    // the case plans or has performed that product.
+    const { rows: performed } = await client.query(
+      `SELECT DISTINCT product_code FROM regen_procedures WHERE case_id = $1`,
+      [req.params.id],
+    );
+    const schedule = regenFollowupScheduleFor([
+      ...((rows[0].planned_products as string[] | null) ?? []),
+      ...performed.map((r: any) => r.product_code as string),
+    ]);
 
     // Check if notifications already exist — only add missing ones
     const { rows: existing } = await client.query(
@@ -3082,15 +3034,13 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     );
     const existingPeriods = new Set(existing.map((r: any) => r.periodo));
 
-    const toInsert = REGEN_FOLLOWUP_SCHEDULE.filter(s => !existingPeriods.has(s.periodo));
+    const toInsert = schedule.filter(s => !existingPeriods.has(s.periodo));
 
     for (const slot of toInsert) {
-      const scheduledDate = new Date(base);
-      scheduledDate.setDate(scheduledDate.getDate() + slot.days);
       await client.query(
         `INSERT INTO regen_followup_notifications (case_id, periodo, days_after_procedure, scheduled_date, scales)
          VALUES ($1, $2, $3, $4, $5)`,
-        [req.params.id, slot.periodo, slot.days, scheduledDate.toISOString().split("T")[0], slot.scales]
+        [req.params.id, slot.periodo, slot.days, addDaysToCalendarDate(base, slot.days, today), slot.scales]
       );
     }
 
@@ -3194,7 +3144,7 @@ router.get("/regen/followup-overview", requireAuth, async (req: any, res) => {
   try {
     const did = req.doctorId;
     const locale = await localeForDoctorId(did);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
 
     const { rows } = await pool.query(
       `SELECT

@@ -131,6 +131,7 @@ const messages = {
     labNotFound: "Exame não encontrado",
     productNotFound: "Produto não encontrado",
     aiSummaryGenerationFailed: "Erro ao gerar resumo IA",
+    aiNotConfigured: "IA não configurada",
     technicalReportGenerationFailed: "Erro ao gerar laudo técnico",
   },
   es: {
@@ -262,6 +263,7 @@ const messages = {
     labNotFound: "Examen no encontrado",
     productNotFound: "Producto no encontrado",
     aiSummaryGenerationFailed: "Error al generar el resumen con IA",
+    aiNotConfigured: "IA no configurada",
     technicalReportGenerationFailed: "Error al generar el informe técnico",
   },
 } as const;

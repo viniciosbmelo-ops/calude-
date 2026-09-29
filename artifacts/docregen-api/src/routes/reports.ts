@@ -29,12 +29,13 @@ router.get("/reports/regen", requireAuth, async (req, res): Promise<void> => {
   const byStatus:    Record<string, number> = {};
   const byCondition: Record<string, number> = {};
 
-  const STATUS_LABEL: Record<string, string> = { draft: "Rascunho", active: "Ativo", closed: "Fechado" };
-
+  // Keys are stable codes (status and condition codes); the frontend applies
+  // localized labels. A free-text condition (condition_custom) is used as-is.
   for (const r of rows) {
-    const st = STATUS_LABEL[r.status as string] ?? r.status;
+    const st = String(r.status ?? "draft");
     byStatus[st] = (byStatus[st] ?? 0) + 1;
-    const cond = (r.condition_custom as string | null)?.trim() || (r.condition_code as string).replace(/_/g, " ");
+    const custom = (r.condition_custom as string | null)?.trim();
+    const cond = custom || String(r.condition_code);
     byCondition[cond] = (byCondition[cond] ?? 0) + 1;
     for (const prod of (r.planned_products as string[] ?? [])) {
       byProduct[prod] = (byProduct[prod] ?? 0) + 1;

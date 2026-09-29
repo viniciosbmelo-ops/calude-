@@ -10,8 +10,27 @@ export function resolveDoctorLocale(idioma: unknown): SupportedLocale {
     : "pt-BR";
 }
 
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Formats a date for documents. Calendar dates ("YYYY-MM-DD", as PostgreSQL
+ * `date` columns are returned) are formatted from their Y/M/D parts in UTC so
+ * the server timezone can never shift them a day; instants format as before.
+ * Returns "" for unparseable input instead of throwing.
+ */
 export function localeDate(value: Date | string | number, locale: SupportedLocale): string {
-  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "pt-BR").format(new Date(value));
+  const formatLocale = locale === "es" ? "es-ES" : "pt-BR";
+  if (typeof value === "string") {
+    const match = DATE_ONLY_RE.exec(value.trim());
+    if (match) {
+      const utc = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+      if (Number.isNaN(utc.getTime())) return "";
+      return new Intl.DateTimeFormat(formatLocale, { timeZone: "UTC" }).format(utc);
+    }
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(formatLocale).format(date);
 }
 
 export async function localeForDoctorId(doctorId: number | null | undefined): Promise<SupportedLocale> {

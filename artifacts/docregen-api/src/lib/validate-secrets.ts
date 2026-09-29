@@ -38,6 +38,16 @@ const OPTIONAL: { key: string; descricao: string; feature: string }[] = [
     descricao: "Phone Number ID do WhatsApp Business (DocRegen)",
     feature: "Envio de mensagens via WhatsApp",
   },
+  {
+    key: "AI_INTEGRATIONS_GEMINI_BASE_URL",
+    descricao: "Integração Gemini (URL base)",
+    feature: "Resumo clínico por IA",
+  },
+  {
+    key: "AI_INTEGRATIONS_GEMINI_API_KEY",
+    descricao: "Integração Gemini (chave)",
+    feature: "Resumo clínico por IA",
+  },
 ];
 
 /** Pure check (testable): returns the list of fatal configuration problems. */
