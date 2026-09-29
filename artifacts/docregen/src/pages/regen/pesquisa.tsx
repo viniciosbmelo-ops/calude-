@@ -12,6 +12,8 @@ import { sortByPtBrName } from "@/lib/utils";
 import { REGEN_CONDITION_CATALOG, regenConditionLabel } from "@/lib/regen-conditions";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
+import { regenKneeMessages } from "@/locales/regen-knee";
+import { KNEE_PERFORMANCE_BY_CODE, assessChange } from "@/lib/regen-knee-measures";
 
 function authHeaders() {
   return {};
@@ -32,12 +34,31 @@ interface ResearchRow {
   avg_vas: number | null;
   dm: boolean;
   created_at: string;
+  /** Knee measures: `<key>_baseline`, `<key>_last`, `<key>_change` (SANE-joelho, OARSI tests, ROM per side). */
+  [measureColumn: string]: unknown;
 }
+
+/** Knee measure change columns shown in the table (the CSV carries every measure). */
+const KNEE_RESEARCH_COLUMNS = [
+  { key: "sane_joelho", better: "higher" as const },
+  { key: "chair_stand_30s", better: KNEE_PERFORMANCE_BY_CODE.get("CHAIR_STAND_30S")!.better },
+  { key: "walk_40m", better: KNEE_PERFORMANCE_BY_CODE.get("WALK_40M")!.better },
+  { key: "tug", better: KNEE_PERFORMANCE_BY_CODE.get("TUG")!.better },
+  { key: "stair_climb", better: KNEE_PERFORMANCE_BY_CODE.get("STAIR_CLIMB")!.better },
+];
 
 export default function RegenPesquisa() {
   const [, navigate] = useLocation();
   const { locale } = useLanguage();
   const t = useScopedTranslations(regenCoreMessages);
+  const tk = useScopedTranslations(regenKneeMessages);
+  const kneeHeaders: Record<string, string> = {
+    sane_joelho: tk("saneKnee"),
+    chair_stand_30s: tk("measure_CHAIR_STAND_30S"),
+    walk_40m: "40 m",
+    tug: "TUG",
+    stair_climb: tk("measure_STAIR_CLIMB"),
+  };
 
   // Filters
   const [sex,       setSex]       = useState("");
@@ -227,7 +248,7 @@ export default function RegenPesquisa() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),"DM",t("registration")].map(h => (
+                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),...KNEE_RESEARCH_COLUMNS.map(col => `Δ ${kneeHeaders[col.key]}`),"DM",t("registration")].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -253,6 +274,17 @@ export default function RegenPesquisa() {
                             : <span className="text-gray-400">0</span>}
                         </td>
                         <td className="px-3 py-2 text-center text-gray-700">{r.avg_vas ?? "—"}</td>
+                        {KNEE_RESEARCH_COLUMNS.map(col => {
+                          const change = r[`${col.key}_change`];
+                          if (typeof change !== "number") return <td key={col.key} className="px-3 py-2 text-center text-gray-400">—</td>;
+                          const assessment = assessChange(col.better, change);
+                          return (
+                            <td key={col.key} data-assessment={assessment}
+                              className={`px-3 py-2 text-center font-semibold ${assessment === "better" ? "text-green-700" : assessment === "worse" ? "text-red-700" : "text-gray-600"}`}>
+                              {change > 0 ? "+" : ""}{new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(change)}
+                            </td>
+                          );
+                        })}
                          <td className="px-3 py-2 text-center text-gray-700">{r.dm ? t("yes") : t("no")}</td>
                         <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
                            {new Date(r.created_at).toLocaleDateString(locale)}

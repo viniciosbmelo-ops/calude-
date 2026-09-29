@@ -1,6 +1,6 @@
 /**
  * DocRegen — Detalhe do Caso
- * Tabs: Visão geral | Procedimentos | PROMs | Exames laboratoriais | IA e laudos
+ * Tabs: Visão geral | Procedimentos | PROMs | Testes funcionais (joelho) | Exames laboratoriais | IA e laudos
  * Tema claro — igual ao Dashboard principal
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  Tooltip, ResponsiveContainer,
 } from "recharts";
 import { cn, formatCalendarDate, formatLocalDate as formatLocalDateInput, formatPersonName, sortByPtBrName } from "@/lib/utils";
 import { regenConditionLabel } from "@/lib/regen-conditions";
@@ -49,6 +49,9 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 import { complianceFlagText } from "@/locales/regen-compliance";
 import { parseApplicationSites } from "@/lib/regen-application-sites";
+import { regenKneeMessages } from "@/locales/regen-knee";
+import { SANE_KNEE_CODE, assessChange, isKneeCondition, promDirection } from "@/lib/regen-knee-measures";
+import { KneeRecommendationHint, PerformanceTestsTab } from "@/components/regen-knee-measures";
 
 type RegenMessageKey = keyof typeof regenCoreMessages["pt-BR"];
 const REGEN_SOURCE_KEYS = Object.fromEntries(
@@ -894,13 +897,16 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
 }
 
 // ─── PROM instruments ─────────────────────────────────────────────────────────
-// Escalas do joelho (KOOS, KOOS-JR, IKDC, Tegner, UCLA) retiradas; só dor (VAS)
-const PROMS      = ["VAS"];
+// Questionários licenciados do joelho (KOOS, WOMAC, IKDC, Oxford, Lysholm…) não
+// são usados: dor (VAS) para todos; casos de joelho também SANE-joelho (0–100).
 const TIMEPOINTS = ["Pré-operatório / Basal", "1 mês", "3 meses", "6 meses", "12 meses", "24 meses"];
 
-function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) {
+function PromForm({ caseId, kneeCase, onSaved }: { caseId: string; kneeCase: boolean; onSaved: () => void }) {
   const t = useScopedTranslations(regenCoreMessages);
+  const tk = useScopedTranslations(regenKneeMessages);
   const tr = useCaseTranslations();
+  const PROMS = kneeCase ? ["VAS", SANE_KNEE_CODE] : ["VAS"];
+  const promLabel = (p: string) => (p === SANE_KNEE_CODE ? tk("saneKnee") : p);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [instrument, setInstrument] = useState("VAS");
@@ -910,6 +916,10 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
 
   const handleSave = async () => {
     if (!instrument || !timepoint) return alert(t("selectPromFields"));
+    if (instrument === SANE_KNEE_CODE) {
+      const n = Number(score);
+      if (score.trim() === "" || !Number.isInteger(n) || n < 0 || n > 100) return alert(tk("saneIntegerError"));
+    }
     setSaving(true);
     try {
       const res = await fetch(`/regen-api/regen/cases/${caseId}/proms`, {
@@ -956,7 +966,7 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
                     background:  instrument === p ? "#EFF6FF" : "#F9FAFB",
                     borderColor: instrument === p ? "#93C5FD" : "#E5E7EB",
                     color:       instrument === p ? "#1E40AF" : "#6B7280",
-                  }}>{p}</button>
+                  }}>{promLabel(p)}</button>
               ))}
             </div>
           </div>
@@ -974,6 +984,7 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
               ))}
             </div>
           </div>
+          {instrument === SANE_KNEE_CODE && <p className="text-xs text-gray-500" data-testid="sane-knee-help">{tk("saneKneeHelp")}</p>}
           <Field label={t("totalScore")} value={score} onChange={setScore} type="number" placeholder={instrument === "VAS" ? "0–10" : "0–100"} />
           <Field label={t("promDateLabel")} value={answeredOn} onChange={setAnsweredOn} type="date" />
           <div className="flex gap-2">
@@ -1036,7 +1047,8 @@ function PatientPhoneField({ caseId, initial }: { caseId: string; initial: strin
 }
 
 // ─── Regen Follow-up Timeline ─────────────────────────────────────────────────
-const ALL_SCALES = ["VAS Dor"];
+const BASE_SCALES = ["VAS Dor"];
+const KNEE_SCALES = ["VAS Dor", "SANE Joelho"];
 type PreparedRegenFollowup = { link: string; message: string };
 
 function showPopupStatus(popup: Window, message: string) {
@@ -1049,8 +1061,11 @@ function showPopupStatus(popup: Window, message: string) {
   }
 }
 
-function RegenFollowupTimeline({ caseId, patientPhone, productCodes }: { caseId: string; patientPhone?: string; productCodes: string[] }) {
+function RegenFollowupTimeline({ caseId, patientPhone, productCodes, kneeCase = false }: { caseId: string; patientPhone?: string; productCodes: string[]; kneeCase?: boolean }) {
   const t = useScopedTranslations(regenCoreMessages);
+  const tk = useScopedTranslations(regenKneeMessages);
+  const ALL_SCALES = kneeCase ? KNEE_SCALES : BASE_SCALES;
+  const scaleLabel = (s: string) => (s === "SANE Joelho" ? tk("saneKnee") : tr(s));
   const tr = useCaseTranslations();
   const { locale } = useLanguage();
   const [notifs, setNotifs] = useState<any[]>([]);
@@ -1217,12 +1232,12 @@ function RegenFollowupTimeline({ caseId, patientPhone, productCodes }: { caseId:
               <tr className="bg-amber-50/80">
                 <th className="text-left px-4 py-2 font-semibold text-amber-800">{t("moment")}</th>
                 {ALL_SCALES.map(s => (
-                   <th key={s} className="px-3 py-2 font-semibold text-amber-800 text-center">{tr(s)}</th>
+                   <th key={s} className="px-3 py-2 font-semibold text-amber-800 text-center">{scaleLabel(s)}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {scheduleRowsForCase(productCodes, notifs.map(n => String(n.periodo))).map((row, i) => {
+              {scheduleRowsForCase(productCodes, notifs.map(n => String(n.periodo)), kneeCase).map((row, i) => {
                 const notif = notifs.find(n => n.periodo === row.periodo);
                 return (
                   <tr key={row.periodo} className={i % 2 === 0 ? "bg-white" : "bg-amber-50/30"}>
@@ -2561,10 +2576,17 @@ function ProceduresTab({ caseId, procedures, onRefresh }: { caseId: string; proc
 
 // ─── PROMs tab ────────────────────────────────────────────────────────────────
 const PROM_COLORS = ["#2563EB", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0891B2"];
+/** Axis maximum per PROM: VAS 0–10, SANE and others 0–100. */
+function promScaleMax(instrument: string): number {
+  return instrument === "VAS" ? 10 : 100;
+}
 
-function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromResponse[]; onRefresh: () => void }) {
+function PromsTab({ caseId, conditionCode, proms, onRefresh, onGoToTests }: { caseId: string; conditionCode: string; proms: PromResponse[]; onRefresh: () => void; onGoToTests?: () => void }) {
   const t = useScopedTranslations(regenCoreMessages);
+  const tk = useScopedTranslations(regenKneeMessages);
   const tr = useCaseTranslations();
+  const kneeCase = isKneeCondition(conditionCode);
+  const instrumentLabel = useCallback((name: string) => (name === "SANE Joelho" ? tk("saneKnee") : name), [tk]);
   const { locale, formatDate } = useLanguage();
   const [notifications, setNotifications] = useState<FollowupNotificationLike[]>([]);
 
@@ -2583,28 +2605,37 @@ function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromRes
     const base = tr(point.timepoint.replace(" ★", ""));
     return point.timepoint.includes("★") ? `${base} ★` : base;
   }, [tr]);
-  const chartData = useMemo(
-    () => points.map(point => ({ label: timepointLabel(point), [point.instrument]: point.score })),
-    [points, timepointLabel],
+  // One small chart per instrument: VAS (0–10) and SANE (0–100) never share an axis.
+  const chartsByInstrument = useMemo(
+    () => series.map(item => ({
+      instrument: item.instrument,
+      data: points.filter(p => p.instrument === item.instrument).map(point => ({ label: timepointLabel(point), score: point.score })),
+    })),
+    [series, points, timepointLabel],
   );
 
   return (
     <div className="space-y-4">
-      <PromForm caseId={caseId} onSaved={onRefresh} />
+      {kneeCase && <KneeRecommendationHint conditionCode={conditionCode} onGoToTests={onGoToTests} />}
+      <PromForm caseId={caseId} kneeCase={kneeCase} onSaved={onRefresh} />
 
       {series.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {series.map(item => (
-            <div key={item.instrument} className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" data-testid="prom-trend">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("promTrendLabel")} · {item.instrument}</p>
-              <p className="text-lg font-bold text-gray-900">{formatPromTrend(item.values, locale)}</p>
-              {item.values.length > 1 && (
-                <p className={cn("text-xs font-semibold", item.delta < 0 ? "text-green-600" : item.delta > 0 ? "text-red-600" : "text-gray-500")}>
-                  {item.delta > 0 ? "+" : ""}{new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(item.delta)}
-                </p>
-              )}
-            </div>
-          ))}
+          {series.map(item => {
+            const assessment = assessChange(promDirection(item.instrument), item.delta);
+            return (
+              <div key={item.instrument} className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" data-testid="prom-trend">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("promTrendLabel")} · {instrumentLabel(item.instrument)}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPromTrend(item.values, locale)}</p>
+                {item.values.length > 1 && (
+                  <p data-assessment={assessment} className={cn("text-xs font-semibold", assessment === "better" ? "text-green-600" : assessment === "worse" ? "text-red-600" : "text-gray-500")}>
+                    {item.delta > 0 ? "+" : ""}{new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(item.delta)} · {tk(assessment)}
+                  </p>
+                )}
+                <p className="text-[10px] text-gray-400">{tk(promDirection(item.instrument) === "lower" ? "better_lower" : "better_higher")}</p>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -2619,25 +2650,36 @@ function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromRes
           ) : points.length < 2 ? (
             <p className="text-xs text-gray-400 text-center py-6">{t("promTwoPoints")}</p>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9CA3AF" }} interval={0} padding={{ left: 24, right: 24 }} />
-                <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} domain={[0, "auto"]} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E5E7EB" }}
-                  labelStyle={{ fontWeight: 700, color: "#374151" }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {series.map((item, i) => (
-                  <Line
-                    key={item.instrument} type="monotone" dataKey={item.instrument}
-                    stroke={PROM_COLORS[i % PROM_COLORS.length]}
-                    strokeWidth={2} dot={{ r: 4 }} connectNulls isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+            <div className={cn("grid gap-3", chartsByInstrument.length > 1 && "md:grid-cols-2")} data-testid="prom-charts">
+              {chartsByInstrument.map(({ instrument, data }, i) => (
+                <div key={instrument} className="rounded-lg border border-gray-100 p-3" data-testid={`prom-chart-${instrument}`}>
+                  <p className="text-xs font-bold text-gray-900">
+                    {instrumentLabel(instrument)}{" "}
+                    <span className="font-normal text-gray-500">({promScaleMax(instrument) === 10 ? "0–10" : "0–100"})</span>
+                  </p>
+                  {data.length < 2 ? (
+                    <p className="text-[11px] text-gray-400 text-center py-4">{t("promTwoPoints")}</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6B7280" }} interval={0} padding={{ left: 16, right: 16 }} />
+                        <YAxis tick={{ fontSize: 10, fill: "#6B7280" }} domain={[0, promScaleMax(instrument)]} allowDecimals={false} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E5E7EB" }}
+                          labelStyle={{ fontWeight: 700, color: "#374151" }}
+                        />
+                        <Line
+                          type="monotone" dataKey="score" name={instrumentLabel(instrument)}
+                          stroke={PROM_COLORS[i % PROM_COLORS.length]}
+                          strokeWidth={2} dot={{ r: 4 }} connectNulls isAnimationActive={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -2666,7 +2708,7 @@ function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromRes
                   <tr key={point.key} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
                     <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{formatDate(point.date, { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
                     <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{timepointLabel(point)}</td>
-                    <td className="px-3 py-2 text-gray-800">{point.instrument}</td>
+                    <td className="px-3 py-2 text-gray-800">{instrumentLabel(point.instrument)}</td>
                     <td className="px-3 py-2 text-right font-bold text-gray-900">{new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(point.score)}</td>
                     <td className="px-4 py-2 text-gray-500">{point.source === "manual" ? t("promSourceManual") : t("promSourceFollowup")}</td>
                   </tr>
@@ -2681,11 +2723,12 @@ function PromsTab({ caseId, proms, onRefresh }: { caseId: string; proms: PromRes
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-type Tab = "overview" | "procedures" | "proms" | "labs" | "ia";
-const CASE_TABS: readonly Tab[] = ["overview", "procedures", "proms", "labs", "ia"];
+type Tab = "overview" | "procedures" | "proms" | "functional" | "labs" | "ia";
+const CASE_TABS: readonly Tab[] = ["overview", "procedures", "proms", "functional", "labs", "ia"];
 
 export default function RegenCaso() {
   const t = useScopedTranslations(regenCoreMessages);
+  const tk = useScopedTranslations(regenKneeMessages);
   const tr = useCaseTranslations();
   const { locale } = useLanguage();
   const params = useParams<{ id: string }>();
@@ -2838,10 +2881,15 @@ export default function RegenCaso() {
 
   const hasBlock = compliance.flags.some(f => f.severity === "block");
   const conditionText = regenConditionLabel(c.condition_code, locale, c.condition_custom);
+  const kneeCase = isKneeCondition(c.condition_code);
+  // "Testes funcionais" (OARSI performance tests + ROM) only for knee cases.
+  const visibleTabs = CASE_TABS.filter(value => value !== "functional" || kneeCase);
+  const activeTab: Tab = visibleTabs.includes(tab) ? tab : "overview";
   const tabLabels: Record<Tab, string> = {
     overview: t("caseTabOverview"),
     procedures: `${t("caseTabProcedures")}${procedures.length ? ` (${procedures.length})` : ""}`,
     proms: t("caseTabProms"),
+    functional: tk("tabFunctional"),
     labs: t("caseTabLabs"),
     ia: t("caseTabAi"),
   };
@@ -2937,10 +2985,10 @@ export default function RegenCaso() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={value => setTab(value as Tab)} className="px-4 md:px-6 pt-4 md:pt-6">
+      <Tabs value={activeTab} onValueChange={value => setTab(value as Tab)} className="px-4 md:px-6 pt-4 md:pt-6">
         <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
           <TabsList className="w-max md:w-auto">
-            {CASE_TABS.map(value => (
+            {visibleTabs.map(value => (
               <TabsTrigger key={value} value={value} data-testid={`case-tab-${value}`} className="text-xs sm:text-sm">
                 {tabLabels[value]}
               </TabsTrigger>
@@ -3167,6 +3215,7 @@ export default function RegenCaso() {
             caseId={caseId}
             patientPhone={c?.patient_phone ?? undefined}
             productCodes={[...(c.planned_products ?? []), ...procedures.map(p => p.product_code)]}
+            kneeCase={isKneeCondition(c.condition_code)}
           />
         </div>
 
@@ -3178,8 +3227,20 @@ export default function RegenCaso() {
       </TabsContent>
 
       <TabsContent value="proms" className="py-4 md:py-6">
-        <PromsTab caseId={caseId} proms={proms} onRefresh={fetchProms} />
+        <PromsTab caseId={caseId} conditionCode={c.condition_code} proms={proms} onRefresh={fetchProms}
+          onGoToTests={kneeCase ? () => setTab("functional") : undefined} />
       </TabsContent>
+
+      {kneeCase && (
+        <TabsContent value="functional" className="py-4 md:py-6">
+          <PerformanceTestsTab
+            caseId={caseId}
+            conditionCode={c.condition_code}
+            timepoints={TIMEPOINTS}
+            timepointLabel={(tp) => tr(tp)}
+          />
+        </TabsContent>
+      )}
 
       <TabsContent value="labs" className="py-4 md:py-6">
         <LabsTab caseId={caseId} labs={labs} onRefresh={fetchLabs} />

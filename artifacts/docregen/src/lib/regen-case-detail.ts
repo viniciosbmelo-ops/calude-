@@ -27,18 +27,20 @@ export const REGEN_SCHEDULE_META: readonly RegenScheduleRow[] = [
 /**
  * Schedule rows that apply to a case. Product-specific rows are shown only
  * when the case uses the product — or when a notification for that period
- * already exists (older schedules created before this rule).
+ * already exists (older schedules created before this rule). Knee cases also
+ * ask the SANE-joelho question at every slot (mirrors the API).
  */
 export function scheduleRowsForCase(
   productCodes: Iterable<string | null | undefined>,
   existingPeriods: Iterable<string> = [],
+  kneeCase = false,
 ): RegenScheduleRow[] {
   const used = new Set<string>();
   for (const code of productCodes) if (code) used.add(code.toUpperCase());
   const existing = new Set(existingPeriods);
   return REGEN_SCHEDULE_META.filter(
     (row) => !row.products || row.products.some((code) => used.has(code)) || existing.has(row.periodo),
-  );
+  ).map((row) => (kneeCase ? { ...row, scales: [...row.scales, "SANE Joelho"] } : row));
 }
 
 // ─── PROMs ──────────────────────────────────────────────────────────────────
@@ -70,10 +72,14 @@ export interface PromPoint {
   source: "manual" | "followup";
 }
 
-/** Same instrument under both naming schemes ("VAS" manual, "VAS Dor" follow-up). */
+/**
+ * Same instrument under both naming schemes ("VAS" manual, "VAS Dor"
+ * follow-up; "SANE_JOELHO" manual, "SANE Joelho" follow-up).
+ */
 export function normalizePromInstrument(name: string): string {
   const trimmed = name.trim();
   if (/^(vas|eva)(\s+(dor|dolor))?$/i.test(trimmed)) return "VAS";
+  if (/^sane[\s_-]+(joelho|rodilla)$/i.test(trimmed)) return "SANE Joelho";
   return trimmed;
 }
 
