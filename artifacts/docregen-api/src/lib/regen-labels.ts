@@ -30,6 +30,8 @@ const REGEN_PERIOD_LABELS: Record<string, Record<SupportedLocale, string>> = {
 const REGEN_SCALE_LABELS: Record<string, Record<SupportedLocale, string>> = {
   VAS: { "pt-BR": "VAS", es: "EVA" },
   "VAS Dor": { "pt-BR": "VAS Dor", es: "EVA Dolor" },
+  "SANE Joelho": { "pt-BR": "SANE Joelho", es: "SANE Rodilla" },
+  SANE_JOELHO: { "pt-BR": "SANE Joelho", es: "SANE Rodilla" },
 };
 
 /** Presentation-only localization; persisted period identifiers and free text stay untouched. */

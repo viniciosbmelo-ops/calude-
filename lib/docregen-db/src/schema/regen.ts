@@ -153,6 +153,28 @@ export const regenPromResponsesTable = pgTable("regen_prom_responses", {
   answeredAt: timestamp("answered_at", { withTimezone: true }).defaultNow(),
 });
 
+// ── regen_performance_tests ───────────────────────────────────────────────────
+// Clinician-measured knee physical performance tests (OARSI recommended set —
+// Dobson et al., Osteoarthritis Cartilage 2013;21(8):1042-52) and knee range of
+// motion. One row per measure/timepoint (and side, for ROM). `value` is the raw
+// value in `unit` (rep | s | deg); `details` holds optional context (steps for
+// the stair climb) and derived values (speed_mps for the 40 m walk). Validation
+// lives in @workspace/clinical/knee-function.
+export const regenPerformanceTestsTable = pgTable("regen_performance_tests", {
+  id: serial("id").primaryKey(),
+  caseId: uuid("case_id")
+    .notNull()
+    .references(() => regenCasesTable.id, { onDelete: "cascade" }),
+  measure: text("measure").notNull(),
+  timepoint: text("timepoint").notNull(),
+  side: text("side"),
+  value: numeric("value", { precision: 8, scale: 2 }).notNull(),
+  unit: text("unit").notNull(),
+  details: jsonb("details").notNull().default({}),
+  measuredAt: timestamp("measured_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // ── regen_lab_results ─────────────────────────────────────────────────────────
 export const regenLabResultsTable = pgTable("regen_lab_results", {
   id: serial("id").primaryKey(),
@@ -245,6 +267,7 @@ export type RegenTermsAcceptance = typeof regenTermsAcceptanceTable.$inferSelect
 export type RegenCase = typeof regenCasesTable.$inferSelect;
 export type RegenProcedure = typeof regenProceduresTable.$inferSelect;
 export type RegenPromResponse = typeof regenPromResponsesTable.$inferSelect;
+export type RegenPerformanceTest = typeof regenPerformanceTestsTable.$inferSelect;
 export type RegenLabResult = typeof regenLabResultsTable.$inferSelect;
 export type RegenAiInteraction = typeof regenAiInteractionsTable.$inferSelect;
 export type RegenFollowupNotification =

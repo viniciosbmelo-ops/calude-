@@ -6,6 +6,8 @@
  * 6-week hyaluronic-acid review ("6 semanas (HA)") belongs to viscosupplement
  * cases and must never appear for PRP-only (or other biologic) cases.
  */
+import { SANE_KNEE_SCALE, isKneeCondition } from "./regen-knee-measures";
+
 export type RegenFollowupSlot = {
   periodo: string;
   days: number;
@@ -27,17 +29,23 @@ export const REGEN_FOLLOWUP_SCHEDULE: readonly RegenFollowupSlot[] = [
   { periodo: "4 anos", days: 1460, scales: ["VAS Dor"] },
 ];
 
-/** Follow-up slots that apply to a case using the given product codes. */
+/**
+ * Follow-up slots that apply to a case using the given product codes. Knee
+ * cases also ask the patient the SANE-joelho single question at every slot
+ * (VAS + SANE-joelho).
+ */
 export function regenFollowupScheduleFor(
   productCodes: Iterable<string | null | undefined>,
+  conditionCode?: string | null,
 ): RegenFollowupSlot[] {
   const used = new Set<string>();
   for (const code of productCodes) {
     if (typeof code === "string" && code.trim()) used.add(code.trim().toUpperCase());
   }
+  const knee = isKneeCondition(conditionCode);
   return REGEN_FOLLOWUP_SCHEDULE.filter(
     (slot) => !slot.products || slot.products.some((code) => used.has(code)),
-  );
+  ).map((slot) => (knee ? { ...slot, scales: [...slot.scales, SANE_KNEE_SCALE] } : slot));
 }
 
 const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;

@@ -21,6 +21,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/docregen-db";
 import { scoreSANE } from "@workspace/clinical";
+import { scoreSANEKnee } from "@workspace/clinical/knee-function";
 import { eq, sql } from "drizzle-orm";
 import {
   issuePatientSession,
@@ -129,6 +130,7 @@ function validateRespostas(
 const SCALE_SCORE_RANGES: Record<string, [number, number]> = {
   "VAS Dor":  [0, 10],
   "SANE":     [0, 100],
+  "SANE Joelho": [0, 100],
 };
 
 /** Clamp score to the known range for this scale. */
@@ -171,6 +173,12 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
     const v = a["sane"];
     if (v === undefined) throw new Error("SANE: resposta 'sane' ausente");
     return scoreSANE({ value: v }).score;
+  },
+  // SANE-joelho: mesma pergunta única (0–100, 100 = joelho normal), mesmo escore.
+  "SANE Joelho": (a) => {
+    const v = a["sane"];
+    if (v === undefined) throw new Error("SANE Joelho: resposta 'sane' ausente");
+    return scoreSANEKnee({ value: v }).score;
   },
 };
 

@@ -25,6 +25,16 @@ import { APP_BRAND_NAME, buildAppLink } from "../lib/app-links";
 import { localeDate, localeForDoctorId, resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
 import { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
+import { ClinicalGuardError } from "@workspace/clinical";
+import { SANE_KNEE_CODE, validateKneePerformance } from "@workspace/clinical/knee-function";
+import {
+  RESEARCH_MEASURE_KEYS,
+  SANE_KNEE_SCALE,
+  baselineToLast,
+  isSaneKneeInstrument,
+  performanceResearchKey,
+  type MeasurePoint,
+} from "../lib/regen-knee-measures";
 import {
   applicationSitesForProductDetails,
   hasValidApplicationSitesExtension,
@@ -538,6 +548,10 @@ const PromBody = z.object({
 }).refine(
   (body) => !/^vas$/i.test(body.instrument) || body.score == null || body.score <= 10,
   { message: "VAS score must be between 0 and 10", path: ["score"] },
+).refine(
+  // SANE-joelho: single question, integer 0–100 (% of a normal knee), required.
+  (body) => !isSaneKneeInstrument(body.instrument) || (body.score != null && Number.isInteger(body.score)),
+  { message: "SANE Joelho score must be an integer between 0 and 100", path: ["score"] },
 );
 
 router.get("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => {
@@ -568,7 +582,9 @@ router.post("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => 
     // `answers` is optional: the case page records a total score only.
     const parsed = PromBody.safeParse(req.body ?? {});
     if (!parsed.success) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing"), issues: parsed.error.issues });
-    const { instrument, timepoint, answers, score, answeredAt } = parsed.data;
+    const { timepoint, answers, score, answeredAt } = parsed.data;
+    // Both SANE-joelho spellings are stored under one manual code.
+    const instrument = isSaneKneeInstrument(parsed.data.instrument) ? SANE_KNEE_CODE : parsed.data.instrument;
 
     const { rows } = await pool.query(
       `INSERT INTO regen_prom_responses (case_id, instrument, timepoint, answers, score, answered_at)
@@ -578,6 +594,97 @@ router.post("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => 
     res.status(201).json(rows[0]);
   } catch (e) {
     console.error("[regen/proms POST]", e);
+    res.status(500).json({ error: await requestMessage(req, "internalError") });
+  }
+});
+
+// ─── Knee performance tests (OARSI) ─────────────────────────────────────────
+// Clinician-measured: 30 s chair stand, 40 m fast-paced walk, TUG, stair climb
+// (OARSI recommended set — Dobson et al., Osteoarthritis Cartilage 2013) and
+// knee ROM (flexion / extension deficit, per side). Raw value + unit stored;
+// validation and direction of improvement from @workspace/clinical/knee-function.
+
+const PerformanceTestBody = z.object({
+  measure:    z.string().trim().min(1),
+  timepoint:  z.string().trim().min(1).max(80),
+  value:      z.number().finite(),
+  side:       z.enum(["D", "E"]).nullable().optional(),
+  steps:      z.number().int().nullable().optional(),
+  measuredAt: z.string().datetime({ offset: true }).optional(),
+});
+
+router.get("/regen/cases/:caseId/performance-tests", requireAuth, async (req: any, res) => {
+  try {
+    const { rows: c } = await pool.query(
+      `SELECT id FROM regen_cases WHERE id = $1 AND doctor_id = $2`,
+      [req.params.caseId, req.doctorId]
+    );
+    if (!c.length) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
+    const { rows } = await pool.query(
+      `SELECT * FROM regen_performance_tests WHERE case_id = $1 ORDER BY measured_at ASC, id ASC`,
+      [req.params.caseId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error("[regen/performance-tests GET]", e);
+    res.status(500).json({ error: await requestMessage(req, "internalError") });
+  }
+});
+
+router.post("/regen/cases/:caseId/performance-tests", requireAuth, async (req: any, res) => {
+  try {
+    const { rows: c } = await pool.query(
+      `SELECT id FROM regen_cases WHERE id = $1 AND doctor_id = $2`,
+      [req.params.caseId, req.doctorId]
+    );
+    if (!c.length) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
+
+    const parsed = PerformanceTestBody.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing"), issues: parsed.error.issues });
+    let record;
+    try {
+      record = validateKneePerformance({
+        measure: parsed.data.measure,
+        value: parsed.data.value,
+        side: parsed.data.side ?? undefined,
+        steps: parsed.data.steps ?? undefined,
+      });
+    } catch (err) {
+      if (err instanceof ClinicalGuardError) {
+        return res.status(400).json({
+          error: await requestMessage(req, "invalidData"),
+          issues: [{ path: [err.field ?? "value"], code: err.code, message: err.message }],
+        });
+      }
+      throw err;
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO regen_performance_tests (case_id, measure, timepoint, side, value, unit, details, measured_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8::timestamptz, now())) RETURNING *`,
+      [req.params.caseId, record.measure, parsed.data.timepoint, record.side, record.value, record.unit,
+       JSON.stringify(record.details), parsed.data.measuredAt ?? null]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    console.error("[regen/performance-tests POST]", e);
+    res.status(500).json({ error: await requestMessage(req, "internalError") });
+  }
+});
+
+router.delete("/regen/cases/:caseId/performance-tests/:testId", requireAuth, async (req: any, res) => {
+  try {
+    const testId = Number(req.params.testId);
+    if (!Number.isInteger(testId) || testId <= 0) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
+    const { rowCount } = await pool.query(
+      `DELETE FROM regen_performance_tests t USING regen_cases c
+        WHERE t.id = $1 AND t.case_id = $2 AND c.id = t.case_id AND c.doctor_id = $3`,
+      [testId, req.params.caseId, req.doctorId]
+    );
+    if (!rowCount) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
+    res.status(204).end();
+  } catch (e) {
+    console.error("[regen/performance-tests DELETE]", e);
     res.status(500).json({ error: await requestMessage(req, "internalError") });
   }
 });
@@ -825,9 +932,50 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
 
     const { rows } = await pool.query(sql, params);
 
+    // Knee outcome measures: SANE-joelho (manual + patient follow-up) and the
+    // OARSI performance tests / ROM → baseline, last and change per case.
+    const caseIds = rows.map((r: any) => r.id);
+    if (caseIds.length) {
+      const [perf, saneManual, saneFollowup] = await Promise.all([
+        pool.query(
+          `SELECT case_id, measure, side, value, measured_at FROM regen_performance_tests WHERE case_id = ANY($1::uuid[])`,
+          [caseIds]),
+        pool.query(
+          `SELECT case_id, score, answered_at FROM regen_prom_responses
+            WHERE case_id = ANY($1::uuid[]) AND instrument = $2 AND score IS NOT NULL`,
+          [caseIds, SANE_KNEE_CODE]),
+        pool.query(
+          `SELECT n.case_id, r.score, r.completado_em FROM regen_scale_responses r
+             JOIN regen_followup_notifications n ON n.id = r.notification_id
+            WHERE n.case_id = ANY($1::uuid[]) AND r.nome_escala = $2 AND r.score IS NOT NULL`,
+          [caseIds, SANE_KNEE_SCALE]),
+      ]);
+      const pointsByCase = new Map<string, MeasurePoint[]>();
+      const push = (caseId: string, point: MeasurePoint) => {
+        const list = pointsByCase.get(caseId) ?? [];
+        list.push(point);
+        pointsByCase.set(caseId, list);
+      };
+      for (const r of perf.rows) {
+        const key = performanceResearchKey(r.measure, r.side);
+        if (key) push(r.case_id, { key, value: Number(r.value), at: r.measured_at });
+      }
+      for (const r of saneManual.rows) push(r.case_id, { key: "sane_joelho", value: Number(r.score), at: r.answered_at });
+      for (const r of saneFollowup.rows) push(r.case_id, { key: "sane_joelho", value: Number(r.score), at: r.completado_em });
+      for (const row of rows as any[]) {
+        const changes = baselineToLast(pointsByCase.get(row.id) ?? []);
+        for (const key of RESEARCH_MEASURE_KEYS) {
+          row[`${key}_baseline`] = changes[key]?.baseline ?? null;
+          row[`${key}_last`] = changes[key]?.last ?? null;
+          row[`${key}_change`] = changes[key]?.change ?? null;
+        }
+      }
+    }
+
     if (format === "csv") {
       const cols = ["id","age","sex","imc","condition","status","procedure_count",
-                    "adverse_events","avg_vas","dm","created_at"];
+                    "adverse_events","avg_vas","dm","created_at",
+                    ...RESEARCH_MEASURE_KEYS.flatMap(key => [`${key}_baseline`, `${key}_last`, `${key}_change`])];
       const header = cols.join(",");
       const lines  = rows.map(r => cols.map(c => {
         const v = r[c];
@@ -3025,7 +3173,7 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     const schedule = regenFollowupScheduleFor([
       ...((rows[0].planned_products as string[] | null) ?? []),
       ...performed.map((r: any) => r.product_code as string),
-    ]);
+    ], rows[0].condition_code);
 
     // Check if notifications already exist — only add missing ones
     const { rows: existing } = await client.query(

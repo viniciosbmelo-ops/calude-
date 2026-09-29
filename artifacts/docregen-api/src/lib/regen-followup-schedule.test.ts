@@ -43,3 +43,17 @@ describe("localeDate for documents", () => {
     }
   });
 });
+
+describe("knee cases ask VAS + SANE-joelho", () => {
+  it("adds SANE Joelho to every slot for knee conditions only", () => {
+    for (const code of ["OA_JOELHO_KL1", "OA_JOELHO_KL4", "LESAO_MENISCAL_DEGENERATIVA", "TENDINOPATIA_PATELAR", "CONDROPATIA_PATELAR"]) {
+      const slots = regenFollowupScheduleFor(["PRP"], code);
+      expect(slots.every((s) => s.scales.join("|") === "VAS Dor|SANE Joelho"), code).toBe(true);
+    }
+    for (const code of ["OA_QUADRIL", "OA_OMBRO", null, undefined]) {
+      expect(regenFollowupScheduleFor(["PRP"], code).every((s) => s.scales.join("|") === "VAS Dor")).toBe(true);
+    }
+    // The shared schedule constant itself is never mutated.
+    expect(REGEN_FOLLOWUP_SCHEDULE.every((s) => s.scales.join("|") === "VAS Dor")).toBe(true);
+  });
+});

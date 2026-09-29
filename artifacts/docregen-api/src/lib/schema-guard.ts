@@ -43,6 +43,7 @@ export const REQUIRED_TABLES: string[] = [
   "regen_procedures",
   "regen_prom_responses",
   "regen_lab_results",
+  "regen_performance_tests",
   "regen_ai_interactions",
   "regen_followup_notifications",
   "regen_scale_responses",
