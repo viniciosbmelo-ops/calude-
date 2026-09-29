@@ -182,7 +182,7 @@ export default function Register() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "same-origin",
-            body: JSON.stringify({ aceito: true, tipo: "plataforma_docknee" }),
+            body: JSON.stringify({ aceito: true, tipo: "plataforma_docregen" }),
           }).catch(() => {/* falha silenciosa — não bloqueia o cadastro */});
 
           // Se um plano foi escolhido, leva ao checkout do Stripe

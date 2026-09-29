@@ -140,14 +140,14 @@ describe.sequential("regenerative case patient soft-link concurrency", () => {
         patient.id,
       ]);
 
-      const createPromise = apiRequest("/api/regen/cases", "POST", {
+      const createPromise = apiRequest("/regen-api/regen/cases", "POST", {
         patientId: patient.id,
         patientName: `Regen Concurrency Gate:${randomUUID()}`,
         conditionCode: "OA_OMBRO",
       });
       await waitForInsertGate(patient.id);
 
-      const deletePromise = apiRequest(`/api/patients/${patient.id}`, "DELETE");
+      const deletePromise = apiRequest(`/regen-api/patients/${patient.id}`, "DELETE");
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       await gateClient.query("COMMIT");

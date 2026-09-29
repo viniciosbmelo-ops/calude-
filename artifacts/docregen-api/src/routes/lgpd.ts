@@ -45,7 +45,7 @@ function csvCell(value: string | number | null | undefined): string {
 // ── 1. Consentimento ────────────────────────────────────────────────────────
 
 router.post("/lgpd/consentimento", requireAuth, async (req, res): Promise<void> => {
-  const { aceito = true, tipo = "plataforma_docknee" } = req.body as { aceito?: boolean; tipo?: string };
+  const { aceito = true, tipo = "plataforma_docregen" } = req.body as { aceito?: boolean; tipo?: string };
 
   if (typeof aceito !== "boolean") {
     res.status(400).json({ error: 'Campo "aceito" deve ser booleano' });

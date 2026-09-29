@@ -31,11 +31,8 @@ import { eq } from "drizzle-orm";
 import {
   db,
   doctorsTable,
-  followupTable,
   patientsTable,
   pool,
-  scaleResponsesTable,
-  surgeriesTable,
 } from "@workspace/docregen-db";
 import app from "../app";
 
@@ -50,9 +47,9 @@ function makeReq(overrides: Partial<Request> = {}): Request {
   } as unknown as Request;
 }
 
-// ─── classic public link integration ─────────────────────────────────────────
+// ─── regen public link integration ───────────────────────────────────────────
 
-describe.sequential("classic public link locale integration", () => {
+describe.sequential("regen public link locale integration", () => {
   let server: Server;
   let baseUrl: string;
   let doctorId: number;
@@ -79,7 +76,6 @@ describe.sequential("classic public link locale integration", () => {
   afterAll(async () => {
     if (doctorId) {
       await pool.query(`DELETE FROM regen_cases WHERE doctor_id = $1`, [doctorId]);
-      await db.delete(surgeriesTable).where(eq(surgeriesTable.doctorId, doctorId));
       await db.delete(patientsTable).where(eq(patientsTable.doctorId, doctorId));
       await db.delete(doctorsTable).where(eq(doctorsTable.id, doctorId));
     }
@@ -88,235 +84,16 @@ describe.sequential("classic public link locale integration", () => {
     });
   });
 
-  it("keeps a valid classic link available while its scales are being prepared", async () => {
-    const [patient] = await db.insert(patientsTable).values({
-      doctorId,
-      nome: "Paciente de enlace",
-    }).returning();
-    const [surgery] = await db.insert(surgeriesTable).values({
-      doctorId,
-      patientId: patient.id,
-    }).returning();
-    const token = randomUUID();
-    await db.insert(followupTable).values({
-      surgeryId: surgery.id,
-      tempo: "3m",
-      token,
-      escalasEnviadas: [],
-    });
-
-    const response = await fetch(`${baseUrl}/api/patient/${token}`);
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      tempo: "3m",
-      escalasEnviadas: [],
-      noScales: true,
-      doctorLocale: "es",
-    });
-  });
-
-  it("uses the Spanish owner locale after successful classic verification", async () => {
-    const [patient] = await db.insert(patientsTable).values({
-      doctorId,
-      nome: "Paciente con CPF",
-      cpf: "123.456.789-00",
-    }).returning();
-    const [surgery] = await db.insert(surgeriesTable).values({
-      doctorId,
-      patientId: patient.id,
-    }).returning();
-    const token = randomUUID();
-    await db.insert(followupTable).values({
-      surgeryId: surgery.id,
-      tempo: "3m",
-      token,
-      escalasEnviadas: ["VAS Dor"],
-    });
-
-    const response = await fetch(`${baseUrl}/api/patient/${token}/verify`, {
+  it("answers a malformed regen token with the safe 401, never a database error", async () => {
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/not-a-uuid/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cpf: "12345678900" }),
+      body: JSON.stringify({ cpf: "000.000.000-00" }),
     });
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      ok: true,
-      doctorLocale: "es",
-      tempo: "3m",
-      escalasEnviadas: ["VAS Dor"],
-    });
-  });
-
-  it("never exposes or accepts knee scales left in legacy classic follow-up rows", async () => {
-    const [patient] = await db.insert(patientsTable).values({
-      doctorId,
-      nome: "Paciente legado",
-      cpf: "987.654.321-00",
-    }).returning();
-    const [surgery] = await db.insert(surgeriesTable).values({
-      doctorId,
-      patientId: patient.id,
-    }).returning();
-    const token = randomUUID();
-    await db.insert(followupTable).values({
-      surgeryId: surgery.id,
-      tempo: "3m",
-      token,
-      escalasEnviadas: ["VAS Dor", "Lysholm", "IKDC"],
-    });
-
-    const publicResponse = await fetch(`${baseUrl}/api/patient/${token}`);
-    expect(publicResponse.status).toBe(200);
-    await expect(publicResponse.json()).resolves.toMatchObject({
-      escalasEnviadas: ["VAS Dor"],
-      noScales: false,
-    });
-
-    const verify = await fetch(`${baseUrl}/api/patient/${token}/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cpf: "98765432100" }),
-    });
-    expect(verify.status).toBe(200);
-    await expect(verify.json()).resolves.toMatchObject({ escalasEnviadas: ["VAS Dor"] });
-    const cookie = (verify.headers.get("set-cookie") ?? "").split(";")[0];
-    expect(cookie).toContain("=");
-
-    const postScale = (escala: string, body: unknown) => fetch(
-      `${baseUrl}/api/patient/${token}/scale/${encodeURIComponent(escala)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Cookie: cookie, Origin: baseUrl },
-        body: JSON.stringify(body),
-      },
-    );
-
-    const removed = await postScale("Lysholm", { respostas: { q1: 5 }, score: 80 });
-    expect(removed.status).toBe(400);
-
-    const vas = await postScale("VAS Dor", { respostas: { vas: 3 } });
-    expect(vas.status).toBe(200);
-    await expect(vas.json()).resolves.toEqual({ ok: true, allCompleted: true });
-
-    // DB rows are left untouched.
-    const [stored] = await db.select().from(followupTable).where(eq(followupTable.token, token));
-    expect(stored.escalasEnviadas).toEqual(["VAS Dor", "Lysholm", "IKDC"]);
-  });
-
-  it("scores SANE server-side, rejects out-of-range answers and names the elbow", async () => {
-    const [patient] = await db.insert(patientsTable).values({
-      doctorId,
-      nome: "Paciente cotovelo SANE",
-      cpf: "111.222.333-44",
-    }).returning();
-    const [surgery] = await db.insert(surgeriesTable).values({
-      doctorId,
-      patientId: patient.id,
-      regiao: "elbow",
-      tiposProcedimento: ["EL_DISTAL_BICEPS"],
-    }).returning();
-    const token = randomUUID();
-    const [followup] = await db.insert(followupTable).values({
-      surgeryId: surgery.id,
-      tempo: "3 meses",
-      token,
-      escalasEnviadas: ["VAS Dor", "SANE"],
-    }).returning();
-
-    const publicResponse = await fetch(`${baseUrl}/api/patient/${token}`);
-    expect(publicResponse.status).toBe(200);
-    await expect(publicResponse.json()).resolves.toMatchObject({
-      escalasEnviadas: ["VAS Dor", "SANE"],
-      regiao: "elbow",
-    });
-
-    const verify = await fetch(`${baseUrl}/api/patient/${token}/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cpf: "11122233344" }),
-    });
-    expect(verify.status).toBe(200);
-    await expect(verify.json()).resolves.toMatchObject({
-      escalasEnviadas: ["VAS Dor", "SANE"],
-      regiao: "elbow",
-    });
-    const cookie = (verify.headers.get("set-cookie") ?? "").split(";")[0];
-
-    const postSane = (body: unknown) => fetch(
-      `${baseUrl}/api/patient/${token}/scale/SANE`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Cookie: cookie, Origin: baseUrl },
-        body: JSON.stringify(body),
-      },
-    );
-
-    // Out-of-range, non-integer and missing answers are rejected (no clamp, no client score).
-    expect((await postSane({ respostas: { sane: 150 }, score: 50 })).status).toBe(400);
-    expect((await postSane({ respostas: { sane: -5 }, score: 50 })).status).toBe(400);
-    expect((await postSane({ respostas: { sane: 72.5 }, score: 72 })).status).toBe(400);
-    expect((await postSane({ respostas: { outra: 80 }, score: 80 })).status).toBe(400);
-    const rejected = await db.select().from(scaleResponsesTable)
-      .where(eq(scaleResponsesTable.followupId, followup.id));
-    expect(rejected).toEqual([]);
-
-    // The client score is ignored: the server scores the answer itself.
-    const ok = await postSane({ respostas: { sane: 80 }, score: 3 });
-    expect(ok.status).toBe(200);
-    await expect(ok.json()).resolves.toEqual({ ok: true, allCompleted: false });
-
-    const [stored] = await db.select().from(scaleResponsesTable)
-      .where(eq(scaleResponsesTable.followupId, followup.id));
-    expect(stored.nomeEscala).toBe("SANE");
-    expect(stored.score).toBe(80);
-    // SANE has no dedicated followup column: VAS stays untouched.
-    const [row] = await db.select().from(followupTable).where(eq(followupTable.id, followup.id));
-    expect(row.vasDor).toBeNull();
-  });
-
-  it("derives the shoulder region from the case type when surgeries.regiao is empty", async () => {
-    const [patient] = await db.insert(patientsTable).values({ doctorId, nome: "Paciente ombro" }).returning();
-    const [surgery] = await db.insert(surgeriesTable).values({
-      doctorId,
-      patientId: patient.id,
-      tiposProcedimento: ["SH_CUFF"],
-    }).returning();
-    const token = randomUUID();
-    await db.insert(followupTable).values({
-      surgeryId: surgery.id,
-      tempo: "6 semanas",
-      token,
-      escalasEnviadas: ["VAS Dor", "SANE"],
-    });
-
-    const response = await fetch(`${baseUrl}/api/patient/${token}`);
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ regiao: "shoulder" });
-  });
-
-  it("locks out repeated verification attempts for a nonexistent classic token", async () => {
-    const token = `missing-${randomUUID()}`;
-    const request = () => fetch(`${baseUrl}/api/patient/${token}/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cpf: "00000000000" }),
-    });
-
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const response = await request();
-      expect(response.status).toBe(401);
-      await expect(response.json()).resolves.toEqual({
-        error: "CPF incorreto. Verifique os dados e tente novamente.",
-      });
-    }
-
-    const locked = await request();
-    expect(locked.status).toBe(429);
-    await expect(locked.json()).resolves.toEqual({
-      error: "Muitas tentativas incorretas. Tente novamente em 15 minutos.",
-      code: "LOCKOUT",
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "CPF incorreto. Verifique os dados e tente novamente.",
     });
   });
 
@@ -335,7 +112,7 @@ describe.sequential("classic public link locale integration", () => {
       [caseId, "3 meses", 90, [], token],
     );
 
-    const response = await fetch(`${baseUrl}/api/patient/regen/${token}`);
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/${token}`);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -359,7 +136,7 @@ describe.sequential("classic public link locale integration", () => {
       [caseId, "30 dias", 30, ["VAS Dor"], token],
     );
 
-    const response = await fetch(`${baseUrl}/api/patient/regen/${token}`);
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/${token}`);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -384,7 +161,7 @@ describe.sequential("classic public link locale integration", () => {
       [caseId, "Pré-op (Baseline)", 0, ["VAS Dor"], token],
     );
 
-    const response = await fetch(`${baseUrl}/api/patient/regen/${token}`);
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/${token}`);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -413,7 +190,7 @@ describe.sequential("classic public link locale integration", () => {
       [caseId, "30 dias", 30, ["VAS Dor"], token],
     );
 
-    const response = await fetch(`${baseUrl}/api/patient/regen/${token}/verify`, {
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/${token}/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cpf: "987.654.321-00" }),
@@ -445,7 +222,7 @@ describe.sequential("classic public link locale integration", () => {
       [caseId, "30 dias", 30, ["VAS Dor"], token],
     );
 
-    const response = await fetch(`${baseUrl}/api/patient/regen/${token}/verify`, {
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/${token}/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cpf: "32165498700" }),
@@ -469,7 +246,7 @@ describe("patient-session: token format and signing", () => {
   });
 
   it("produces a two-segment base64url.base64url string", () => {
-    const cookie = buildPatientSessionToken("classic", "abc123");
+    const cookie = buildPatientSessionToken("preconsult", "abc123");
     const parts = cookie.split(".");
     expect(parts).toHaveLength(2);
     // Both segments must be non-empty base64url (no +/=)
@@ -478,10 +255,10 @@ describe("patient-session: token format and signing", () => {
     }
   });
 
-  it("builds and verifies a classic token", () => {
-    const cookie = buildPatientSessionToken("classic", "abc123");
+  it("builds and verifies a preconsult token", () => {
+    const cookie = buildPatientSessionToken("preconsult", "abc123");
     const result = verifyPatientSessionToken(cookie);
-    expect(result).toEqual({ tokenType: "classic", linkToken: "abc123" });
+    expect(result).toEqual({ tokenType: "preconsult", linkToken: "abc123" });
   });
 
   it("builds and verifies a regen token", () => {
@@ -492,7 +269,7 @@ describe("patient-session: token format and signing", () => {
 
   it("embeds iat and exp in the payload", () => {
     const before = Math.floor(Date.now() / 1000);
-    const cookie = buildPatientSessionToken("classic", "tok");
+    const cookie = buildPatientSessionToken("preconsult", "tok");
     const after = Math.floor(Date.now() / 1000);
 
     const payloadB64 = cookie.split(".")[0]!;
@@ -509,14 +286,14 @@ describe("patient-session: token format and signing", () => {
   });
 
   it("rejects a tampered HMAC", () => {
-    const cookie = buildPatientSessionToken("classic", "abc123");
+    const cookie = buildPatientSessionToken("preconsult", "abc123");
     const [payloadB64, mac] = cookie.split(".");
     const tampered = `${payloadB64!}.${mac!.slice(0, -4)}aaaa`;
     expect(verifyPatientSessionToken(tampered)).toBeNull();
   });
 
   it("rejects when mac has wrong base64url length", () => {
-    const cookie = buildPatientSessionToken("classic", "abc123");
+    const cookie = buildPatientSessionToken("preconsult", "abc123");
     const [payloadB64] = cookie.split(".");
     expect(verifyPatientSessionToken(`${payloadB64!}.abc`)).toBeNull();
   });
@@ -533,7 +310,7 @@ describe("patient-session: token format and signing", () => {
     const now = Math.floor(Date.now() / 1000);
     const payload = JSON.stringify({
       typ: "patient-session",
-      tokenType: "classic",
+      tokenType: "preconsult",
       linkToken: "tok",
       iat: now - 7300,
       exp: now - 1, // expired
@@ -553,19 +330,19 @@ describe("patient-session: token format and signing", () => {
   });
 
   it("getPatientSession returns null for empty cookie", () => {
-    const req = makeReq({ cookies: { docknee_patient_session: "" } });
+    const req = makeReq({ cookies: { docregen_patient_session: "" } });
     expect(getPatientSession(req)).toBeNull();
   });
 
   it("getPatientSession returns null for a garbage value", () => {
-    const req = makeReq({ cookies: { docknee_patient_session: "garbage:token:value" } });
+    const req = makeReq({ cookies: { docregen_patient_session: "garbage:token:value" } });
     expect(getPatientSession(req)).toBeNull();
   });
 
   it("getPatientSession returns parsed session for a valid cookie", () => {
-    const value = buildPatientSessionToken("classic", "tok-001");
-    const req = makeReq({ cookies: { docknee_patient_session: value } });
-    expect(getPatientSession(req)).toEqual({ tokenType: "classic", linkToken: "tok-001" });
+    const value = buildPatientSessionToken("preconsult", "tok-001");
+    const req = makeReq({ cookies: { docregen_patient_session: value } });
+    expect(getPatientSession(req)).toEqual({ tokenType: "preconsult", linkToken: "tok-001" });
   });
 });
 
@@ -576,10 +353,10 @@ describe("patient-session: binding enforcement", () => {
     process.env["DOCREGEN_SESSION_SECRET"] = "test-secret-for-unit-tests-32chars!!";
   });
 
-  it("classic token has tokenType=classic", () => {
-    const cookie = buildPatientSessionToken("classic", "tok-abc");
+  it("preconsult token has tokenType=preconsult", () => {
+    const cookie = buildPatientSessionToken("preconsult", "tok-abc");
     const result = verifyPatientSessionToken(cookie);
-    expect(result?.tokenType).toBe("classic");
+    expect(result?.tokenType).toBe("preconsult");
   });
 
   it("regen token has tokenType=regen", () => {
@@ -589,7 +366,7 @@ describe("patient-session: binding enforcement", () => {
   });
 
   it("linkToken is preserved exactly", () => {
-    const cookie = buildPatientSessionToken("classic", "tok-A");
+    const cookie = buildPatientSessionToken("preconsult", "tok-A");
     expect(verifyPatientSessionToken(cookie)?.linkToken).toBe("tok-A");
   });
 });
@@ -780,12 +557,6 @@ describe("clampScore per-scale ranges", () => {
 // ─── GET public response minimality ──────────────────────────────────────────
 
 describe("GET public response minimality", () => {
-  it("classic GET must not include internal IDs, name, or clinical dates", () => {
-    const banned = ["followupId", "patientNome", "surgeryDate", "dataAvaliacao", "patientId", "surgeryId"];
-    const publicResponse = { tempo: "3m", escalasEnviadas: ["VAS Dor", "SANE"], regiao: "elbow" };
-    for (const field of banned) expect(field in publicResponse).toBe(false);
-  });
-
   it("regen GET must not include internal IDs or patient name", () => {
     const banned = ["notifId", "patient_name", "patientNome", "conditionCode", "caseId"];
     const publicRegenResponse = {
@@ -798,14 +569,6 @@ describe("GET public response minimality", () => {
 // ─── verify response minimality ──────────────────────────────────────────────
 
 describe("verify response minimality", () => {
-  it("classic verify response must not include clinical dates or IDs", () => {
-    const verifyResponse = {
-      ok: true, tempo: "3m", escalasEnviadas: ["VAS Dor"], completedScales: [], noScales: false,
-    };
-    const banned = ["surgeryDate", "dataAvaliacao", "followupId", "patientNome", "patientId"];
-    for (const field of banned) expect(field in verifyResponse).toBe(false);
-  });
-
   it("regen verify response must not include patientNome or notifId", () => {
     const verifyResponse = {
       ok: true, periodo: "3 meses", scales: ["VAS Dor"],

@@ -46,7 +46,7 @@ afterAll(async () => {
 });
 
 async function patchLanguage(idioma: string): Promise<Response> {
-  return fetch(`${baseUrl}/api/doctors/${doctorId}`, {
+  return fetch(`${baseUrl}/regen-api/doctors/${doctorId}`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -58,7 +58,7 @@ async function patchLanguage(idioma: string): Promise<Response> {
 
 describe.sequential("doctor language preference", () => {
   it("defaults existing and new profiles to Portuguese", async () => {
-    const response = await fetch(`${baseUrl}/api/auth/me`, {
+    const response = await fetch(`${baseUrl}/regen-api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(response.status).toBe(200);
@@ -79,7 +79,7 @@ describe.sequential("doctor language preference", () => {
       .limit(1);
     expect(stored.idioma).toBe("es");
 
-    const me = await fetch(`${baseUrl}/api/auth/me`, {
+    const me = await fetch(`${baseUrl}/regen-api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const meBody = await me.json() as { idioma: string };

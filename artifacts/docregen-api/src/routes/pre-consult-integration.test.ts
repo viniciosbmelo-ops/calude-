@@ -53,7 +53,7 @@ function patientRequest(
   body?: unknown,
   cookie?: string,
 ): Promise<Response> {
-  return fetch(`${baseUrl}/api/pre-consult/${token}${path}`, {
+  return fetch(`${baseUrl}/regen-api/pre-consult/${token}${path}`, {
     method,
     headers: {
       ...(cookie ? { Cookie: cookie } : {}),
@@ -70,7 +70,7 @@ async function createInvite(
 ): Promise<{ token: string; inviteId: number }> {
   const response = await doctorRequest(
     auth,
-    `/api/patients/${targetPatientId}/pre-consult/invite`,
+    `/regen-api/patients/${targetPatientId}/pre-consult/invite`,
     "POST",
   );
   expect(response.status).toBe(201);
@@ -200,7 +200,7 @@ describe.sequential("pre-consult API integration", () => {
     try {
       const response = await doctorRequest(
         doctorAuth,
-        `/api/patients/${patientId}/pre-consult/invite`,
+        `/regen-api/patients/${patientId}/pre-consult/invite`,
         "POST",
       );
       expect(response.status).toBe(422);
@@ -264,7 +264,7 @@ describe.sequential("pre-consult API integration", () => {
     const verify = await patientRequest(token, "/verify", "POST", { cpf: "52998224725" });
     expect(verify.status).toBe(200);
     const cookie = verify.headers.get("set-cookie")?.split(";")[0];
-    expect(cookie).toContain("docknee_patient_session=");
+    expect(cookie).toContain("docregen_patient_session=");
 
     const originalAnswers = PreConsultAnswersSchema.parse({
       queixaPrincipal: "Dor no ombro direito",
@@ -380,7 +380,7 @@ describe.sequential("pre-consult API integration", () => {
     };
     const physicianEdit = await doctorRequest(
       doctorAuth,
-      `/api/patients/${patientId}/pre-consult`,
+      `/regen-api/patients/${patientId}/pre-consult`,
       "PATCH",
       { answers: physicianAnswers },
     );
@@ -413,7 +413,7 @@ describe.sequential("pre-consult API integration", () => {
 
     const forbiddenRead = await doctorRequest(
       otherDoctorAuth,
-      `/api/patients/${patientId}/pre-consult`,
+      `/regen-api/patients/${patientId}/pre-consult`,
     );
     expect(forbiddenRead.status).toBe(404);
 
@@ -434,13 +434,13 @@ describe.sequential("pre-consult API integration", () => {
 
     const revoke = await doctorRequest(
       otherDoctorAuth,
-      `/api/patients/${otherPatientId}/pre-consult/invite/${other.inviteId}/revoke`,
+      `/regen-api/patients/${otherPatientId}/pre-consult/invite/${other.inviteId}/revoke`,
       "POST",
     );
     expect(revoke.status).toBe(200);
     expect((await patientRequest(other.token, "")).status).toBe(404);
 
-    await fetch(`${baseUrl}/api/stats/visit`, {
+    await fetch(`${baseUrl}/regen-api/stats/visit`, {
       method: "POST",
       headers: {
         Origin: baseUrl,
@@ -490,7 +490,7 @@ describe.sequential("pre-consult API integration", () => {
 
     const response = await doctorRequest(
       doctorAuth,
-      `/api/patients/${disposablePatient.id}`,
+      `/regen-api/patients/${disposablePatient.id}`,
       "DELETE",
     );
     expect(response.status).toBe(204);

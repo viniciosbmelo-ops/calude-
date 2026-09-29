@@ -60,14 +60,23 @@ describe("assertRequiredSchema", () => {
     expect(unguarded).toEqual([]);
   });
 
-  it("requires the decision-support audit tables", () => {
+  it("requires the regenerative tables and none of DocKnee's surgical tables", () => {
     expect(REQUIRED_TABLES).toEqual(
       expect.arrayContaining([
-        "apoio_decisao_execucoes",
-        "apoio_decisao_escolhas",
-        "apoio_decisao_status",
+        "regen_cases",
+        "regen_followup_notifications",
+        "pre_consult_invites",
+        "appointments",
       ]),
     );
+    for (const dockneeOnly of [
+      "surgeries",
+      "followup",
+      "scheduled_notifications",
+      "apoio_decisao_execucoes",
+    ]) {
+      expect(REQUIRED_TABLES).not.toContain(dockneeOnly);
+    }
   });
 
   it("passes when all required tables and columns exist", async () => {
@@ -131,9 +140,9 @@ describe("assertRequiredSchema", () => {
   });
 
   it("does not probe columns for a table that is itself missing", async () => {
-    // scheduled_notifications missing → its columns must not be double-reported.
+    // whatsapp_outbox missing → its columns must not be double-reported.
     const present = REQUIRED_TABLES.filter(
-      (t) => t !== "scheduled_notifications",
+      (t) => t !== "whatsapp_outbox",
     );
     mockPoolQuery.mockResolvedValueOnce(tablesResult(present));
     mockPoolQuery.mockResolvedValueOnce(
@@ -147,9 +156,9 @@ describe("assertRequiredSchema", () => {
       err = e as Error;
     }
     expect(err).toBeDefined();
-    expect(err!.message).toContain("missing tables: scheduled_notifications");
+    expect(err!.message).toContain("missing tables: whatsapp_outbox");
     // Columns of the missing table must NOT appear in the missing-columns list.
-    expect(err!.message).not.toMatch(/scheduled_notifications\.attempts/);
+    expect(err!.message).not.toMatch(/whatsapp_outbox\.next_attempt_at/);
   });
 
   it("error message tells the operator how to apply the schema", async () => {

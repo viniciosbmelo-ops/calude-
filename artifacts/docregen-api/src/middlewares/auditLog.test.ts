@@ -36,8 +36,8 @@ describe("auditLog sanitizeDeep", () => {
       privacySafeAuditPath("/pre-consult/raw-secret-token/answers"),
     ).toBe("/pre-consult/:token/answers");
     expect(
-      privacySafeAuditPath("/api/pre-consult/raw-secret-token/submit"),
-    ).toBe("/api/pre-consult/:token/submit");
+      privacySafeAuditPath("/regen-api/pre-consult/raw-secret-token/submit"),
+    ).toBe("/regen-api/pre-consult/:token/submit");
   });
 
   it("redacts top-level sensitive fields", () => {

@@ -78,7 +78,7 @@ afterAll(async () => {
 
 describe("secretary appointments", () => {
   it("returns a newly created appointment when the agenda reloads", async () => {
-    const createResponse = await request("/api/appointments", {
+    const createResponse = await request("/regen-api/appointments", {
       method: "POST",
       body: JSON.stringify({
         patientId,
@@ -92,7 +92,7 @@ describe("secretary appointments", () => {
     expect(createResponse.status).toBe(201);
     const created = await createResponse.json() as { id: number };
 
-    const listResponse = await request("/api/appointments");
+    const listResponse = await request("/regen-api/appointments");
     expect(listResponse.status).toBe(200);
     const appointments = await listResponse.json() as Array<{
       id: number;

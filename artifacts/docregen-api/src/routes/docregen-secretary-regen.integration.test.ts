@@ -171,7 +171,7 @@ describe("GET /pre-consults/summary", () => {
   };
 
   it("returns exact per-doctor counts with a short recent list", async () => {
-    const response = await call(doctorAuthA, "/api/pre-consults/summary");
+    const response = await call(doctorAuthA, "/regen-api/pre-consults/summary");
     expect(response.status).toBe(200);
     const body = await response.json() as Summary;
     expect(body.counts).toEqual({ awaiting: 8, answered: 1 });
@@ -194,8 +194,8 @@ describe("GET /pre-consults/summary", () => {
   });
 
   it("is doctor-only", async () => {
-    expect((await fetch(`${baseUrl}/api/pre-consults/summary`)).status).toBe(401);
-    expect((await call(secretaryAuthA, "/api/pre-consults/summary")).status).toBe(401);
+    expect((await fetch(`${baseUrl}/regen-api/pre-consults/summary`)).status).toBe(401);
+    expect((await call(secretaryAuthA, "/regen-api/pre-consults/summary")).status).toBe(401);
   });
 });
 
@@ -207,7 +207,7 @@ describe("GET /secretary/regen-cases", () => {
   };
 
   it("lists only the cases of the secretary's own doctor, without clinical content", async () => {
-    const response = await call(secretaryAuthA, "/api/secretary/regen-cases");
+    const response = await call(secretaryAuthA, "/regen-api/secretary/regen-cases");
     expect(response.status).toBe(200);
     const body = await response.json() as CaseSummary[];
     expect(body.map((row) => row.id)).toEqual([caseA]);
@@ -223,22 +223,22 @@ describe("GET /secretary/regen-cases", () => {
     expect(JSON.stringify(body)).not.toContain("clinical secret");
     expect(body[0]).not.toHaveProperty("anamneseRegen");
 
-    const other = await call(secretaryAuthB, "/api/secretary/regen-cases");
+    const other = await call(secretaryAuthB, "/regen-api/secretary/regen-cases");
     expect(other.status).toBe(200);
     expect((await other.json() as CaseSummary[]).map((row) => row.id)).toEqual([caseB]);
   });
 
   it("lets the secretary schedule a regenerative session for her doctor's patient only", async () => {
-    const created = await call(secretaryAuthA, "/api/appointments", {
+    const created = await call(secretaryAuthA, "/regen-api/appointments", {
       method: "POST",
       body: JSON.stringify({ patientId: patientRegenA, data: "2099-05-10", hora: "08:30", tipo: "procedimento regenerativo" }),
     });
     expect(created.status).toBe(201);
 
-    const body = await (await call(secretaryAuthA, "/api/secretary/regen-cases")).json() as CaseSummary[];
+    const body = await (await call(secretaryAuthA, "/regen-api/secretary/regen-cases")).json() as CaseSummary[];
     expect(body[0]).toMatchObject({ nextSessionDate: "2099-05-10", nextSessionTime: "08:30" });
 
-    const crossDoctor = await call(secretaryAuthB, "/api/appointments", {
+    const crossDoctor = await call(secretaryAuthB, "/regen-api/appointments", {
       method: "POST",
       body: JSON.stringify({ patientId: patientRegenA, data: "2099-05-11", hora: "08:30", tipo: "procedimento regenerativo" }),
     });
@@ -246,10 +246,10 @@ describe("GET /secretary/regen-cases", () => {
   });
 
   it("keeps clinical regenerative endpoints closed to secretaries", async () => {
-    expect((await call(secretaryAuthA, "/api/regen/cases")).status).toBe(401);
-    expect((await call(secretaryAuthA, `/api/regen/cases/${caseA}`)).status).toBe(401);
-    expect((await call(secretaryAuthA, `/api/regen/cases/${caseA}/proms`)).status).toBe(401);
-    expect((await fetch(`${baseUrl}/api/secretary/regen-cases`)).status).toBe(401);
+    expect((await call(secretaryAuthA, "/regen-api/regen/cases")).status).toBe(401);
+    expect((await call(secretaryAuthA, `/regen-api/regen/cases/${caseA}`)).status).toBe(401);
+    expect((await call(secretaryAuthA, `/regen-api/regen/cases/${caseA}/proms`)).status).toBe(401);
+    expect((await fetch(`${baseUrl}/regen-api/secretary/regen-cases`)).status).toBe(401);
   });
 });
 
@@ -257,7 +257,7 @@ describe("GET /secretary/followup-alerts", () => {
   type RegenAlert = { id: string; caseId: string; patientId: number | null; periodo: string; kind: string; status: string };
 
   it("returns pending regenerative follow-ups for type=regen, scoped to the doctor", async () => {
-    const response = await call(secretaryAuthA, "/api/secretary/followup-alerts?type=regen");
+    const response = await call(secretaryAuthA, "/regen-api/secretary/followup-alerts?type=regen");
     expect(response.status).toBe(200);
     const body = await response.json() as RegenAlert[];
     expect(body.map((row) => row.id)).toEqual([notifA.overdue, notifA.sent, notifA.future]);
@@ -267,22 +267,22 @@ describe("GET /secretary/followup-alerts", () => {
     expect(body[0]).not.toHaveProperty("scales");
     expect(body[0]).not.toHaveProperty("token");
 
-    const other = await (await call(secretaryAuthB, "/api/secretary/followup-alerts?type=regen")).json() as RegenAlert[];
+    const other = await (await call(secretaryAuthB, "/regen-api/secretary/followup-alerts?type=regen")).json() as RegenAlert[];
     expect(other.map((row) => row.id)).toEqual([notifB]);
   });
 
-  it("keeps the surgical default when no type is given", async () => {
-    for (const path of ["/api/secretary/followup-alerts", "/api/secretary/followup-alerts?type=surgical"]) {
-      const response = await call(secretaryAuthA, path);
-      expect(response.status).toBe(200);
-      const body = await response.json() as Array<{ id: unknown }>;
-      expect(Array.isArray(body)).toBe(true);
-      expect(JSON.stringify(body)).not.toContain(notifA.overdue);
-    }
+  it("returns the same regenerative alerts when no type is given (DocRegen has no surgical alerts)", async () => {
+    const withType = await (await call(secretaryAuthA, "/regen-api/secretary/followup-alerts?type=regen")).json() as RegenAlert[];
+    const response = await call(secretaryAuthA, "/regen-api/secretary/followup-alerts");
+    expect(response.status).toBe(200);
+    const body = await response.json() as RegenAlert[];
+    expect(body).toEqual(withType);
+    expect(JSON.stringify(body)).not.toContain(notifB);
   });
 
   it("rejects unknown alert types", async () => {
-    expect((await call(secretaryAuthA, "/api/secretary/followup-alerts?type=other")).status).toBe(400);
-    expect((await call(secretaryAuthA, "/api/secretary/followup-alerts?type=regen&type=regen")).status).toBe(400);
+    expect((await call(secretaryAuthA, "/regen-api/secretary/followup-alerts?type=other")).status).toBe(400);
+    expect((await call(secretaryAuthA, "/regen-api/secretary/followup-alerts?type=surgical")).status).toBe(400);
+    expect((await call(secretaryAuthA, "/regen-api/secretary/followup-alerts?type=regen&type=regen")).status).toBe(400);
   });
 });

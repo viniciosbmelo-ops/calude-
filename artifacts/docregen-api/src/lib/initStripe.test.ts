@@ -43,7 +43,7 @@ describe("Stripe environment isolation", () => {
     vi.clearAllMocks();
     mocks.runMigrations.mockResolvedValue(undefined);
     mocks.findOrCreateManagedWebhook.mockResolvedValue({
-      url: "https://dockneeapp.com/api/stripe/webhook",
+      url: "https://docregen.example.com/regen-api/stripe/webhook",
     });
     mocks.syncProducts.mockResolvedValue(undefined);
     mocks.syncPrices.mockResolvedValue(undefined);
@@ -64,7 +64,7 @@ describe("Stripe environment isolation", () => {
   it("never manages a webhook from development or preview", async () => {
     vi.stubEnv("REPLIT_DEPLOYMENT", "");
     vi.stubEnv("REPLIT_DOMAINS", "temporary-preview.replit.dev");
-    vi.stubEnv("DOCREGEN_APP_URL", "https://dockneeapp.com");
+    vi.stubEnv("DOCREGEN_APP_URL", "https://docregen.example.com");
 
     await initStripe();
     await flushBackgroundSync();
@@ -75,14 +75,14 @@ describe("Stripe environment isolation", () => {
 
   it("uses the canonical production URL only in an official deployment", async () => {
     vi.stubEnv("REPLIT_DEPLOYMENT", "1");
-    vi.stubEnv("DOCREGEN_APP_URL", "https://dockneeapp.com");
+    vi.stubEnv("DOCREGEN_APP_URL", "https://docregen.example.com");
 
     await initStripe();
     await flushBackgroundSync();
 
     expect(mocks.findOrCreateManagedWebhook).toHaveBeenCalledOnce();
     expect(mocks.findOrCreateManagedWebhook).toHaveBeenCalledWith(
-      "https://dockneeapp.com/api/stripe/webhook",
+      "https://docregen.example.com/regen-api/stripe/webhook",
     );
   });
 
@@ -98,15 +98,15 @@ describe("Stripe environment isolation", () => {
   it("rejects an explicit webhook on a noncanonical HTTPS host", () => {
     expect(() => resolveManagedWebhookUrl({
       REPLIT_DEPLOYMENT: "1",
-      DOCREGEN_APP_URL: "https://dockneeapp.com",
-      DOCREGEN_STRIPE_WEBHOOK_URL: "https://unrelated.example/api/stripe/webhook",
+      DOCREGEN_APP_URL: "https://docregen.example.com",
+      DOCREGEN_STRIPE_WEBHOOK_URL: "https://unrelated.example/regen-api/stripe/webhook",
     })).toThrow("must match the canonical DOCREGEN_APP_URL");
   });
 
   it("does not resolve any managed webhook outside official deployment", () => {
     expect(resolveManagedWebhookUrl({
       REPLIT_DEPLOYMENT: "",
-      DOCREGEN_STRIPE_WEBHOOK_URL: "https://dockneeapp.com/api/stripe/webhook",
+      DOCREGEN_STRIPE_WEBHOOK_URL: "https://docregen.example.com/regen-api/stripe/webhook",
     })).toBeNull();
   });
 

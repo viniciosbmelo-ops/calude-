@@ -22,14 +22,14 @@ describe("session cookies", () => {
 
     establishSession(response, "doctor", "signed-session");
 
-    expect(clearCookie).toHaveBeenCalledTimes(5);
+    expect(clearCookie).toHaveBeenCalledTimes(Object.keys(SESSION_COOKIE_NAMES).length);
     expect(cookie).toHaveBeenCalledWith(
       SESSION_COOKIE_NAMES.doctor,
       "signed-session",
       expect.objectContaining({
         httpOnly: true,
         sameSite: "lax",
-        path: "/api",
+        path: "/regen-api",
         maxAge: 12 * 60 * 60 * 1000,
       }),
     );
@@ -40,14 +40,14 @@ describe("session cookies", () => {
 
     clearAllSessionCookies(response);
 
-    expect(clearCookie).toHaveBeenCalledTimes(5);
+    expect(clearCookie).toHaveBeenCalledTimes(Object.keys(SESSION_COOKIE_NAMES).length);
     for (const name of Object.values(SESSION_COOKIE_NAMES)) {
       expect(clearCookie).toHaveBeenCalledWith(
         name,
         expect.objectContaining({
           httpOnly: true,
           sameSite: "lax",
-          path: "/api",
+          path: "/regen-api",
         }),
       );
     }

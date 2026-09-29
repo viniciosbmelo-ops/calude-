@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { db, doctorsTable } from "@workspace/docregen-db";
+import { db, doctorsTable, patientsTable } from "@workspace/docregen-db";
 import app from "../app";
 import { hashPassword, signToken } from "../lib/auth";
 
@@ -11,6 +11,7 @@ let server: Server;
 let baseUrl: string;
 let doctorId: number;
 let authorization: string;
+let patientId: number;
 
 beforeAll(async () => {
   await new Promise<void>((resolve, reject) => {
@@ -29,6 +30,11 @@ beforeAll(async () => {
     isFree: true,
   }).returning();
   doctorId = doctor.id;
+  const [patient] = await db.insert(patientsTable).values({
+    doctorId,
+    nome: "Paciente de errores localizados",
+  }).returning();
+  patientId = patient.id;
   authorization = `Bearer ${signToken({
     doctorId,
     isAdmin: doctor.isAdmin,
@@ -37,6 +43,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (patientId) await db.delete(patientsTable).where(eq(patientsTable.id, patientId));
   if (doctorId) await db.delete(doctorsTable).where(eq(doctorsTable.id, doctorId));
   await new Promise<void>((resolve, reject) => {
     server.close(error => error ? reject(error) : resolve());
@@ -54,94 +61,81 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   });
 }
 
-describe.sequential("localized media and service errors", () => {
+const UPLOAD_URL = "/regen-api/storage/uploads/request-url";
+
+describe.sequential("localized upload errors", () => {
   it("localizes upload validation while preserving status and JSON contract", async () => {
-    const missing = await request("/api/media/request-upload-url", {
+    const missing = await request(UPLOAD_URL, {
       method: "POST",
       body: JSON.stringify({}),
     });
     expect(missing.status).toBe(400);
-    await expect(missing.json()).resolves.toEqual({
-      error: "name, contentType y surgeryId son obligatorios",
-    });
+    await expect(missing.json()).resolves.toEqual({ error: "Datos del paciente no válidos." });
 
-    const unsupported = await request("/api/media/request-upload-url", {
+    const withoutPatient = await request(UPLOAD_URL, {
+      method: "POST",
+      body: JSON.stringify({ purpose: "patient_attachment", name: "a.pdf", contentType: "application/pdf", size: 10 }),
+    });
+    expect(withoutPatient.status).toBe(400);
+    await expect(withoutPatient.json()).resolves.toEqual({ error: "ID de paciente no válido." });
+
+    const otherDoctorsPatient = await request(UPLOAD_URL, {
       method: "POST",
       body: JSON.stringify({
-        surgeryId: 1,
+        purpose: "patient_attachment",
+        patientId: 2147483647,
+        name: "a.pdf",
+        contentType: "application/pdf",
+        size: 10,
+      }),
+    });
+    expect(otherDoctorsPatient.status).toBe(404);
+    await expect(otherDoctorsPatient.json()).resolves.toEqual({ error: "Paciente no encontrado." });
+
+    const unsupported = await request(UPLOAD_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        purpose: "patient_attachment",
+        patientId,
         name: "archivo.svg",
         contentType: "image/svg+xml",
+        size: 10,
       }),
     });
     expect(unsupported.status).toBe(400);
     await expect(unsupported.json()).resolves.toEqual({ error: "Tipo de archivo no permitido" });
 
-    const tooLarge = await request("/api/media/request-upload-url", {
+    // Cached PWA bundles send fileName/mimeType instead of name/contentType.
+    const tooLarge = await request(UPLOAD_URL, {
       method: "POST",
       body: JSON.stringify({
-        surgeryId: 1,
-        name: "foto.jpg",
-        contentType: "image/jpeg",
-        size: 26 * 1024 * 1024,
+        purpose: "patient_attachment",
+        patientId,
+        fileName: "foto.jpg",
+        mimeType: "image/jpeg",
+        size: 1024 * 1024 * 1024,
       }),
     });
     expect(tooLarge.status).toBe(400);
-    await expect(tooLarge.json()).resolves.toEqual({
-      error: "Archivo demasiado grande (máximo 25 MB para este tipo)",
-    });
-
-    const cachedClientShape = await request("/api/media/request-upload-url", {
-      method: "POST",
-      body: JSON.stringify({
-        surgeryId: 2147483647,
-        fileName: "captura.png",
-        mimeType: "image/png",
-        size: 1024,
-      }),
-    });
-    expect(cachedClientShape.status).toBe(404);
-    await expect(cachedClientShape.json()).resolves.toEqual({
-      error: "Cirugía no encontrada",
-    });
+    const tooLargeBody = await tooLarge.json() as { error: string };
+    expect(tooLargeBody.error).toMatch(/^Archivo demasiado grande \(máximo \d+ MB para este tipo\)$/);
   });
 
-  it("localizes doctor service errors and preserves free identifiers verbatim", async () => {
-    const location = await request("/api/doctor/locations", {
-      method: "POST",
-      body: JSON.stringify({ nome: "" }),
-    });
-    expect(location.status).toBe(400);
-    await expect(location.json()).resolves.toEqual({ error: "El nombre del lugar es obligatorio." });
-
-    const email = `Servicio-Libre-${randomUUID()}@Example.TEST`;
-    const link = await request("/api/doctor/services/link", {
-      method: "POST",
-      body: JSON.stringify({ email, senha: "segredo" }),
-    });
-    expect(link.status).toBe(404);
-    const body = await link.json() as { error: string };
-    expect(body.error).toContain(email.toLowerCase());
-    expect(body.error).toContain("No se encontró ningún servicio");
-  });
-
-  it("uses Portuguese for unsupported doctor locales and anonymous service login", async () => {
+  it("uses Portuguese for unsupported doctor locales", async () => {
     await db.update(doctorsTable).set({ idioma: "unsupported-locale" }).where(eq(doctorsTable.id, doctorId));
 
-    const fallback = await request("/api/media/request-upload-url", {
+    const fallback = await request(UPLOAD_URL, {
       method: "POST",
       body: JSON.stringify({}),
     });
     expect(fallback.status).toBe(400);
-    await expect(fallback.json()).resolves.toEqual({
-      error: "name, contentType e surgeryId são obrigatórios",
-    });
+    await expect(fallback.json()).resolves.toEqual({ error: "Dados do paciente inválidos." });
+  });
 
-    const anonymous = await fetch(`${baseUrl}/api/service-auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    expect(anonymous.status).toBe(400);
-    await expect(anonymous.json()).resolves.toEqual({ error: "Dados de acesso inválidos." });
+  it("does not expose DocKnee's surgical media or institutional service routes", async () => {
+    for (const path of ["/regen-api/media/request-upload-url", "/regen-api/doctor/locations", "/regen-api/service-auth/login"]) {
+      const response = await request(path, { method: "POST", body: JSON.stringify({}) });
+      expect(response.status, path).toBe(404);
+    }
   });
 });

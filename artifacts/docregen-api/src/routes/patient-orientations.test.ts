@@ -22,7 +22,7 @@ const originalReplitDomains = process.env["REPLIT_DOMAINS"];
 
 function orientationKey(): Buffer {
   return createHmac("sha256", process.env["DOCREGEN_SESSION_SECRET"]!)
-    .update("docknee:patient-orientation:v1", "utf8")
+    .update("docregen:patient-orientation:v1", "utf8")
     .digest();
 }
 
@@ -32,8 +32,8 @@ function maliciousToken(
 ): string {
   return jwt.sign(payload, orientationKey(), {
     algorithm: "HS256",
-    issuer: "docknee-api",
-    audience: "docknee-patient",
+    issuer: "docregen-api",
+    audience: "docregen-patient",
     expiresIn: "7d",
     jwtid: "1234567890123456789012",
     header,
@@ -74,13 +74,13 @@ afterAll(async () => {
 
 describe("patient orientation bearer links", () => {
   it("rejects unauthenticated and non-contract mint requests", async () => {
-    const unauthenticated = await request("/api/patient-orientations/token", {
+    const unauthenticated = await request("/regen-api/patient-orientations/token", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ procKey: "prp_articular" }),
     });
     expect(unauthenticated.status).toBe(401);
 
-    const invalid = await request("/api/patient-orientations/token", {
+    const invalid = await request("/regen-api/patient-orientations/token", {
       method: "POST",
       headers: { Authorization: authorization, "Content-Type": "application/json" },
       body: JSON.stringify({ procKey: "prp_articular", locale: "es", patientName: "PHI" }),
@@ -89,7 +89,7 @@ describe("patient orientation bearer links", () => {
   });
 
   it("mints distinct doctor-bound pre/post links on the canonical authority", async () => {
-    const response = await request("/api/patient-orientations/token", {
+    const response = await request("/regen-api/patient-orientations/token", {
       method: "POST",
       headers: {
         Authorization: authorization, "Content-Type": "application/json",
@@ -126,7 +126,7 @@ describe("patient orientation bearer links", () => {
       ]) {
         if (appUrl === undefined) delete process.env["DOCREGEN_APP_URL"];
         else process.env["DOCREGEN_APP_URL"] = appUrl;
-        const response = await request("/api/patient-orientations/token", {
+        const response = await request("/regen-api/patient-orientations/token", {
           method: "POST",
           headers: {
             Authorization: authorization,
@@ -153,7 +153,7 @@ describe("patient orientation bearer links", () => {
 
   it("uses the doctor's current Spanish setting, then safely falls back to pt-BR", async () => {
     const token = signOrientationToken(doctorId, "ctm_osso", "pos");
-    const spanish = await request(`/api/patient-orientations/${token}?locale=pt-BR`);
+    const spanish = await request(`/regen-api/patient-orientations/${token}?locale=pt-BR`);
     expect(spanish.status).toBe(200);
     expect(spanish.headers.get("cache-control")).toBe("no-store");
     await expect(spanish.json()).resolves.toEqual({
@@ -162,7 +162,7 @@ describe("patient orientation bearer links", () => {
 
     await db.update(doctorsTable).set({ idioma: "untrusted-language" })
       .where(eq(doctorsTable.id, doctorId));
-    const fallback = await request(`/api/patient-orientations/${token}?locale=es`);
+    const fallback = await request(`/regen-api/patient-orientations/${token}?locale=es`);
     await expect(fallback.json()).resolves.toMatchObject({ doctorLocale: "pt-BR" });
   });
 
@@ -179,14 +179,14 @@ describe("patient orientation bearer links", () => {
       maliciousToken({ doctorId, procKey: "prp_articular", tab: "unknown", typ: "patient-orientation", version: 1 }),
       maliciousToken({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1, extra: true }),
       maliciousToken({ doctorId: 999999999, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }),
-      jwt.sign({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, orientationKey(), { algorithm: "HS256", issuer: "wrong", audience: "docknee-patient", expiresIn: "7d", jwtid: "1234567890123456789012" }),
-      jwt.sign({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, orientationKey(), { algorithm: "HS256", issuer: "docknee-api", audience: "wrong", expiresIn: "7d", jwtid: "1234567890123456789012" }),
-      jwt.sign({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, orientationKey(), { algorithm: "HS256", issuer: "docknee-api", audience: "docknee-patient", expiresIn: -1, jwtid: "1234567890123456789012" }),
+      jwt.sign({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, orientationKey(), { algorithm: "HS256", issuer: "wrong", audience: "docregen-patient", expiresIn: "7d", jwtid: "1234567890123456789012" }),
+      jwt.sign({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, orientationKey(), { algorithm: "HS256", issuer: "docregen-api", audience: "wrong", expiresIn: "7d", jwtid: "1234567890123456789012" }),
+      jwt.sign({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, orientationKey(), { algorithm: "HS256", issuer: "docregen-api", audience: "docregen-patient", expiresIn: -1, jwtid: "1234567890123456789012" }),
       maliciousToken({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, { alg: "HS384", typ: "patient-orientation" }),
       maliciousToken({ doctorId, procKey: "prp_articular", tab: "pre", typ: "patient-orientation", version: 1 }, { alg: "HS256", typ: "wrong" }),
     ];
     for (const token of badTokens) {
-      const response = await request(`/api/patient-orientations/${token}`);
+      const response = await request(`/regen-api/patient-orientations/${token}`);
       expect(response.status).toBe(404);
       expect(await response.text()).not.toContain(token);
     }
@@ -194,9 +194,9 @@ describe("patient orientation bearer links", () => {
 
   it("does not retain bearer tokens in log-safe paths or responses", () => {
     const rawToken = signOrientationToken(doctorId, "prp_articular", "pre");
-    expect(privacySafeRequestPath(`/api/patient-orientations/${rawToken}?x=1`))
-      .toBe("/api/patient-orientations/:token");
-    expect(privacySafeAuditPath(`/api/patient-orientations/${rawToken}`))
-      .toBe("/api/patient-orientations/:token");
+    expect(privacySafeRequestPath(`/regen-api/patient-orientations/${rawToken}?x=1`))
+      .toBe("/regen-api/patient-orientations/:token");
+    expect(privacySafeAuditPath(`/regen-api/patient-orientations/${rawToken}`))
+      .toBe("/regen-api/patient-orientations/:token");
   });
 });

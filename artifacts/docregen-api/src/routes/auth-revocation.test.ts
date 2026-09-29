@@ -2,7 +2,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { randomUUID } from "crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   db,
   doctorsTable,
@@ -119,46 +119,63 @@ afterAll(async () => {
   });
 });
 
+/**
+ * DocRegen has no admin console (that lives only in DocKnee). Blocking a doctor
+ * is an operator action on DocRegen's own database — the same writes DocKnee's
+ * admin endpoint performs (aprovado=false + session_version bump for the doctor
+ * and their secretaries). These tests verify the DocRegen API enforces it.
+ */
+async function blockDoctor(id: number): Promise<void> {
+  await db.update(doctorsTable)
+    .set({ aprovado: false, sessionVersion: sql`${doctorsTable.sessionVersion} + 1` })
+    .where(eq(doctorsTable.id, id));
+  await db.update(secretariesTable)
+    .set({ sessionVersion: sql`${secretariesTable.sessionVersion} + 1` })
+    .where(eq(secretariesTable.doctorId, id));
+}
+
+async function approveDoctor(id: number): Promise<void> {
+  await db.update(doctorsTable).set({ aprovado: true }).where(eq(doctorsTable.id, id));
+}
+
 describe.sequential("account blocking and session revocation", () => {
   it("revokes doctor and secretary sessions and keeps them revoked after unblock", async () => {
-    const doctorLogin = await login("/api/auth/login", doctorEmail);
-    const secretaryLogin = await login("/api/secretary-auth/login", secretaryEmail);
+    const doctorLogin = await login("/regen-api/auth/login", doctorEmail);
+    const secretaryLogin = await login("/regen-api/secretary-auth/login", secretaryEmail);
     expect(doctorLogin.status).toBe(200);
     expect(secretaryLogin.status).toBe(200);
 
-    const blocked = await adminPatch(`/api/admin/doctors/${doctorId}/block`);
-    expect(blocked.status).toBe(200);
+    await blockDoctor(doctorId);
 
-    const oldDoctorSession = await fetch(`${baseUrl}/api/auth/me`, {
+    const oldDoctorSession = await fetch(`${baseUrl}/regen-api/auth/me`, {
       headers: { Authorization: `Bearer ${doctorSessionToken}` },
     });
-    const oldSecretarySession = await fetch(`${baseUrl}/api/secretary-auth/me`, {
+    const oldSecretarySession = await fetch(`${baseUrl}/regen-api/secretary-auth/me`, {
       headers: { Authorization: `Bearer ${secretarySessionToken}` },
     });
-    const blockedLogin = await login("/api/auth/login", doctorEmail);
+    const blockedLogin = await login("/regen-api/auth/login", doctorEmail);
 
     expect(oldDoctorSession.status).toBe(401);
     expect(oldSecretarySession.status).toBe(401);
     expect(blockedLogin.status).toBe(401);
 
-    const approved = await adminPatch(`/api/admin/doctors/${doctorId}/approve`);
-    expect(approved.status).toBe(200);
+    await approveDoctor(doctorId);
 
-    const stillRevokedDoctor = await fetch(`${baseUrl}/api/auth/me`, {
+    const stillRevokedDoctor = await fetch(`${baseUrl}/regen-api/auth/me`, {
       headers: { Authorization: `Bearer ${doctorSessionToken}` },
     });
-    const stillRevokedSecretary = await fetch(`${baseUrl}/api/secretary-auth/me`, {
+    const stillRevokedSecretary = await fetch(`${baseUrl}/regen-api/secretary-auth/me`, {
       headers: { Authorization: `Bearer ${secretarySessionToken}` },
     });
     expect(stillRevokedDoctor.status).toBe(401);
     expect(stillRevokedSecretary.status).toBe(401);
 
-    expect((await login("/api/auth/login", doctorEmail)).status).toBe(200);
-    expect((await login("/api/secretary-auth/login", secretaryEmail)).status).toBe(200);
+    expect((await login("/regen-api/auth/login", doctorEmail)).status).toBe(200);
+    expect((await login("/regen-api/secretary-auth/login", secretaryEmail)).status).toBe(200);
   });
 
   it("returns 410 for legacy identity-data password reset endpoints", async () => {
-    const verifyIdentity = await fetch(`${baseUrl}/api/auth/verify-identity`, {
+    const verifyIdentity = await fetch(`${baseUrl}/regen-api/auth/verify-identity`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -167,7 +184,7 @@ describe.sequential("account blocking and session revocation", () => {
         crm: "1234",
       }),
     });
-    const legacyReset = await fetch(`${baseUrl}/api/auth/reset-password`, {
+    const legacyReset = await fetch(`${baseUrl}/regen-api/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -182,77 +199,22 @@ describe.sequential("account blocking and session revocation", () => {
     expect(legacyReset.status).toBe(410);
   });
 
-  it("allows an admin to edit doctor registration fields without changing privileged fields", async () => {
-    const [before] = await db
-      .select({
-        senhaHash: doctorsTable.senhaHash,
-        isAdmin: doctorsTable.isAdmin,
-        isFree: doctorsTable.isFree,
-        aprovado: doctorsTable.aprovado,
-      })
-      .from(doctorsTable)
-      .where(eq(doctorsTable.id, doctorId))
-      .limit(1);
-
-    const response = await fetch(`${baseUrl}/api/admin/doctors/${doctorId}/profile`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nome: "Médico Atualizado",
-        email: doctorEmail.toUpperCase(),
-        crm: "12.345",
-        crmEstado: "sp",
-        cpf: "123.456.789-01",
-        telefone: "(11) 99999-0000",
-        especialidade: "Ortopedia",
-        idioma: "es",
-        endereco: "Rua Teste, 10",
-        cidade: "São Paulo",
-        estado: "sp",
-        cep: "01000-000",
-        whatsappBusiness: "5511999990000",
-        isAdmin: true,
-        isFree: false,
-        aprovado: false,
-        senhaHash: "must-not-be-used",
-      }),
-    });
-
-    expect(response.status).toBe(200);
-    const body = await response.json() as { doctor: { id: number; email: string; crm: string; crmEstado: string } };
-    expect(body.doctor).toMatchObject({
-      id: doctorId,
-      email: doctorEmail,
-      crm: "12345",
-      crmEstado: "SP",
-    });
-
-    const [after] = await db
-      .select()
-      .from(doctorsTable)
-      .where(eq(doctorsTable.id, doctorId))
-      .limit(1);
-    expect(after).toMatchObject({
-      nome: "Médico Atualizado",
-      email: doctorEmail,
-      crm: "12345",
-      crmEstado: "SP",
-      cpf: "12345678901",
-      telefone: "(11) 99999-0000",
-      especialidade: "Ortopedia",
-      idioma: "es",
-      estado: "SP",
-    });
-    expect(after.senhaHash).toBe(before.senhaHash);
-    expect(after.isAdmin).toBe(before.isAdmin);
-    expect(after.isFree).toBe(before.isFree);
-    expect(after.aprovado).toBe(before.aprovado);
+  it("does not expose DocKnee's admin console endpoints", async () => {
+    for (const path of [
+      `/regen-api/admin/doctors/${doctorId}/block`,
+      `/regen-api/admin/doctors/${doctorId}/profile`,
+      `/regen-api/admin/doctors/${doctorId}/reset-password`,
+    ]) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(response.status, path).toBe(404);
+    }
   });
 
-  it("revokes the current session when an admin resets the doctor password", async () => {
+  it("revokes the previous session when the doctor changes their password", async () => {
     const [doctor] = await db
       .select({
         sessionVersion: doctorsTable.sessionVersion,
@@ -266,25 +228,22 @@ describe.sequential("account blocking and session revocation", () => {
       isAdmin: doctor.isAdmin,
       sessionVersion: doctor.sessionVersion,
     });
-    const newPassword = "admin-reset-password-456";
+    const newPassword = "doctor-changed-password-456";
 
-    const reset = await fetch(
-      `${baseUrl}/api/admin/doctors/${doctorId}/reset-password`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ novaSenha: newPassword }),
+    const change = await fetch(`${baseUrl}/regen-api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+        "Content-Type": "application/json",
       },
-    );
-    expect(reset.status).toBe(200);
+      body: JSON.stringify({ senhaAtual: password, novaSenha: newPassword }),
+    });
+    expect(change.status).toBe(200);
 
-    const revoked = await fetch(`${baseUrl}/api/auth/me`, {
+    const revoked = await fetch(`${baseUrl}/regen-api/auth/me`, {
       headers: { Authorization: `Bearer ${currentToken}` },
     });
     expect(revoked.status).toBe(401);
-    expect((await login("/api/auth/login", doctorEmail, newPassword)).status).toBe(200);
+    expect((await login("/regen-api/auth/login", doctorEmail, newPassword)).status).toBe(200);
   });
 });

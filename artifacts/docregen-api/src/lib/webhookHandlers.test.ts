@@ -5,7 +5,7 @@
  *   1. Signature verification (processWebhook) runs BEFORE any DB write.
  *   2. invoice.upcoming is skipped AFTER signature verification (23502 on invoices).
  *   3. Duplicate events (23505) are silently acknowledged.
- *   4. Physio billing is inside the same transaction — failure causes rollback.
+ *   4. Internal effects share the dedup transaction — failure causes rollback.
  *   5. Bad signature propagates as an error (Stripe retries).
  */
 
@@ -39,16 +39,18 @@ vi.mock("@workspace/docregen-db", () => ({
       where: vi.fn().mockResolvedValue([]),
     }),
   },
-  physiotherapistsTable: {} as never,
   stripeWebhookEventsTable: {} as never,
 }));
 
-vi.mock("./physioBilling", () => ({
-  mapStripeStatus: vi.fn().mockReturnValue(null),
-}));
-
+const mockLoggerWarn = vi.fn();
 vi.mock("./logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), fatal: vi.fn() },
+  logger: {
+    info: vi.fn(),
+    warn: (...args: unknown[]) => mockLoggerWarn(...args),
+    error: vi.fn(),
+    debug: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -269,47 +271,39 @@ describe("processStripeWebhook — signature-first + deduplication", () => {
     expect(mockClientRelease).toHaveBeenCalledTimes(1);
   });
 
-  // ── Physio billing in same transaction ────────────────────────────────────
+  // ── Internal effects in the same transaction ─────────────────────────────
 
-  it("physio billing failure causes ROLLBACK (dedup INSERT rolled back for retry)", async () => {
-    // physio billing is done via client.query inside the transaction.
-    // We simulate it failing by making the UPDATE call throw.
-    const billingErr = new Error("physio UPDATE failed");
+  it("an internal-effect failure causes ROLLBACK (dedup INSERT rolled back for retry)", async () => {
+    const lookupErr = new Error("doctor lookup failed");
 
     setupClient([
-      {},          // BEGIN
-      {},          // INSERT stripe_webhook_events (success)
-      billingErr,  // physio billing UPDATE (via client.query) → fail
-      {},          // ROLLBACK
+      {},         // BEGIN
+      {},         // INSERT stripe_webhook_events (success)
+      lookupErr,  // SELECT doctor by Stripe customer → fail
+      {},         // ROLLBACK
     ]);
 
     const payload = makePayload({
-      id: "evt_physio_fail_001",
-      type: "invoice.payment_failed",
+      id: "evt_effect_fail_001",
+      type: "customer.subscription.updated",
       data: {
-        object: {
-          metadata: { physio_id: "42" },
-        },
+        object: { status: "active", customer: "cus_doctor_fail", metadata: {} },
+        previous_attributes: { status: "trialing" },
       },
     });
 
-    // Should propagate the billing error
-    await expect(processStripeWebhook(payload, "sig")).rejects.toThrow("physio UPDATE failed");
+    await expect(processStripeWebhook(payload, "sig")).rejects.toThrow("doctor lookup failed");
 
-    // ROLLBACK must have been issued
-    const rollback = mockClientQuery.mock.calls.find(
-      (c) => typeof c[0] === "string" && c[0] === "ROLLBACK",
-    );
-    expect(rollback).toBeDefined();
-
+    const statements = mockClientQuery.mock.calls.map((c) => c[0]);
+    expect(statements).toContain("ROLLBACK");
+    expect(statements).not.toContain("COMMIT");
     expect(mockClientRelease).toHaveBeenCalledTimes(1);
   });
 
   it("records a canonical subscription activation when Stripe transitions a doctor to active", async () => {
     setupClient([
-      {},                 // BEGIN
-      {},                 // INSERT stripe_webhook_events
-      { rows: [] },       // no matching physiotherapist
+      {},                    // BEGIN
+      {},                    // INSERT stripe_webhook_events
       { rows: [{ id: 7 }] }, // matching doctor
       {},                 // INSERT analytics_events
       {},                 // COMMIT
@@ -334,27 +328,25 @@ describe("processStripeWebhook — signature-first + deduplication", () => {
     expect(mockClientQuery.mock.calls.at(-1)![0]).toBe("COMMIT");
   });
 
-  it("creates a privacy-safe admin alert for an authenticated failed payment event", async () => {
+  it("logs a failed payment privately without writing DocKnee admin alerts", async () => {
     setupClient([
       {}, // BEGIN
       {}, // INSERT stripe_webhook_events
-      {}, // INSERT admin_alerts
       {}, // COMMIT
     ]);
 
     const payload = makePayload({
       id: "evt_payment_failed_001",
       type: "invoice.payment_failed",
-      data: { object: {} },
+      data: { object: { customer: "cus_secret" } },
     });
 
     await processStripeWebhook(payload, "sig");
 
-    const alertInsert = mockClientQuery.mock.calls.find(
-      (c) => typeof c[0] === "string" && c[0].includes("INSERT INTO admin_alerts"),
-    );
-    expect(alertInsert).toBeDefined();
-    expect(String(alertInsert![0])).not.toContain("customer");
-    expect(mockClientQuery.mock.calls.at(-1)![0]).toBe("COMMIT");
+    const statements = mockClientQuery.mock.calls.map((c) => String(c[0]));
+    expect(statements.some((q) => q.includes("admin_alerts"))).toBe(false);
+    expect(statements.at(-1)).toBe("COMMIT");
+    expect(mockLoggerWarn).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(mockLoggerWarn.mock.calls[0])).not.toContain("cus_secret");
   });
 });

@@ -14,9 +14,10 @@ import app from "../app";
 import { signToken } from "../lib/auth";
 
 /**
- * Patient-facing links must open in the frontend that generated them: DocRegen
- * requests (X-App: docregen) get /docregen/... links, everything else keeps
- * the historical root links used by DocKnee.
+ * DocRegen is independent from DocKnee: every patient-facing link the DocRegen
+ * API builds points to the DocRegen frontend (/docregen/...) and carries
+ * DocRegen branding. There is no calling-app flag — an X-App header (the old
+ * shared-API mechanism) is ignored and can never produce a DocKnee link.
  */
 
 const DOCREGEN_APP_URL = "https://links.example";
@@ -97,58 +98,53 @@ afterAll(async () => {
 });
 
 async function inviteLink(appHeader?: string): Promise<{ link: string; whatsappMessage: string }> {
-  const response = await doctorRequest(`/api/patients/${patientId}/pre-consult/invite`, "POST", appHeader, {});
+  const response = await doctorRequest(`/regen-api/patients/${patientId}/pre-consult/invite`, "POST", appHeader, {});
   expect(response.status).toBe(201);
   return response.json() as Promise<{ link: string; whatsappMessage: string }>;
 }
 
-describe("app-aware patient links", () => {
-  it("keeps the root pre-consultation link when no app is declared (DocKnee)", async () => {
-    const body = await inviteLink();
-    expect(body.link).toMatch(new RegExp(`^${DOCREGEN_APP_URL}/pre-consulta/[A-Za-z0-9_-]+$`));
-    expect(body.whatsappMessage).toContain(body.link);
-  });
+const BRAND_LEAKS = /DocKnee|DocSholder/i;
 
-  it("points DocRegen pre-consultation invites at /docregen", async () => {
-    const body = await inviteLink("docregen");
+describe("DocRegen patient links", () => {
+  it("always points pre-consultation invites at /docregen without DocKnee branding", async () => {
+    const body = await inviteLink();
     expect(body.link).toMatch(new RegExp(`^${DOCREGEN_APP_URL}/docregen/pre-consulta/[A-Za-z0-9_-]+$`));
     expect(body.whatsappMessage).toContain(body.link);
+    expect(body.whatsappMessage).not.toMatch(BRAND_LEAKS);
   });
 
-  it("ignores unknown app identifiers instead of building URLs from them", async () => {
-    for (const header of ["https://evil.example", "/evil", "docregen/../x"]) {
+  it("ignores any X-App header (no DocKnee links, no URLs built from it)", async () => {
+    for (const header of ["docknee", "docregen", "https://evil.example", "/evil", "docregen/../x"]) {
       const body = await inviteLink(header);
-      expect(body.link.startsWith(`${DOCREGEN_APP_URL}/pre-consulta/`)).toBe(true);
+      expect(body.link).toMatch(new RegExp(`^${DOCREGEN_APP_URL}/docregen/pre-consulta/[A-Za-z0-9_-]+$`));
       expect(body.link).not.toContain("evil");
     }
   });
 
-  it("routes regenerative follow-up links through the calling app", async () => {
-    const path = `/api/regen/cases/${caseId}/notifications/${notificationId}/prepare-whatsapp`;
+  it("always builds regenerative follow-up links under /docregen", async () => {
+    const path = `/regen-api/regen/cases/${caseId}/notifications/${notificationId}/prepare-whatsapp`;
 
-    const docknee = await doctorRequest(path, "POST");
-    expect(docknee.status).toBe(200);
-    const dockneeBody = await docknee.json() as { link: string; token: string; message: string };
-    expect(dockneeBody.link).toBe(`${DOCREGEN_APP_URL}/patient/regen/${dockneeBody.token}`);
+    const first = await doctorRequest(path, "POST");
+    expect(first.status).toBe(200);
+    const firstBody = await first.json() as { link: string; token: string; message: string };
+    expect(firstBody.link).toBe(`${DOCREGEN_APP_URL}/docregen/patient/regen/${firstBody.token}`);
+    expect(firstBody.message).toContain(firstBody.link);
+    expect(firstBody.message).not.toMatch(BRAND_LEAKS);
 
-    const docregen = await doctorRequest(path, "POST", "docregen");
-    expect(docregen.status).toBe(200);
-    const docregenBody = await docregen.json() as { link: string; token: string; message: string };
-    expect(docregenBody.token).toBe(dockneeBody.token);
-    expect(docregenBody.link).toBe(`${DOCREGEN_APP_URL}/docregen/patient/regen/${docregenBody.token}`);
-    expect(docregenBody.message).toContain(docregenBody.link);
+    const withLegacyHeader = await doctorRequest(path, "POST", "docknee");
+    expect(withLegacyHeader.status).toBe(200);
+    const secondBody = await withLegacyHeader.json() as { link: string; token: string };
+    expect(secondBody.token).toBe(firstBody.token);
+    expect(secondBody.link).toBe(firstBody.link);
   });
 
-  it("routes patient-orientation links through the calling app", async () => {
-    const docknee = await doctorRequest("/api/patient-orientations/token", "POST", undefined, { procKey: "prp_articular" });
-    expect(docknee.status).toBe(201);
-    const dockneeBody = await docknee.json() as { preUrl: string; posUrl: string };
-    expect(dockneeBody.preUrl.startsWith(`${DOCREGEN_APP_URL}/orientacoes-paciente?token=`)).toBe(true);
-
-    const docregen = await doctorRequest("/api/patient-orientations/token", "POST", "docregen", { procKey: "prp_articular" });
-    expect(docregen.status).toBe(201);
-    const docregenBody = await docregen.json() as { preUrl: string; posUrl: string };
-    expect(docregenBody.preUrl.startsWith(`${DOCREGEN_APP_URL}/docregen/orientacoes-paciente?token=`)).toBe(true);
-    expect(docregenBody.posUrl.startsWith(`${DOCREGEN_APP_URL}/docregen/orientacoes-paciente?token=`)).toBe(true);
+  it("always builds patient-orientation links under /docregen", async () => {
+    for (const header of [undefined, "docknee"]) {
+      const response = await doctorRequest("/regen-api/patient-orientations/token", "POST", header, { procKey: "prp_articular" });
+      expect(response.status).toBe(201);
+      const body = await response.json() as { preUrl: string; posUrl: string };
+      expect(body.preUrl.startsWith(`${DOCREGEN_APP_URL}/docregen/orientacoes-paciente?token=`)).toBe(true);
+      expect(body.posUrl.startsWith(`${DOCREGEN_APP_URL}/docregen/orientacoes-paciente?token=`)).toBe(true);
+    }
   });
 });

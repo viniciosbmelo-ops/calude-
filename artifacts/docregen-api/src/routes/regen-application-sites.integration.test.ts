@@ -110,7 +110,7 @@ afterAll(async () => {
 
 describe.sequential("regenerative application sites API persistence", () => {
   it("persists POST values, synchronizes legacy fields, and PATCHes all rows", async () => {
-    const createResponse = await apiRequest("/api/regen/cases", "POST", {
+    const createResponse = await apiRequest("/regen-api/regen/cases", "POST", {
       patientName: "Application Sites Integration Patient",
       conditionCode: "OA_OMBRO",
       plannedProducts: ["PRP"],
@@ -135,7 +135,7 @@ describe.sequential("regenerative application sites API persistence", () => {
     });
     expect(JSON.parse(created.product_details.locaisAplicacao)).toEqual([firstSite]);
 
-    const patchResponse = await apiRequest(`/api/regen/cases/${created.id}`, "PATCH", {
+    const patchResponse = await apiRequest(`/regen-api/regen/cases/${created.id}`, "PATCH", {
       productDetails: {
         locaisAplicacao: JSON.stringify([firstSite, secondSite]),
         localAplicacao: "legacy value replaced by first row",
@@ -156,7 +156,7 @@ describe.sequential("regenerative application sites API persistence", () => {
       futureTechnicalField: "preserve after patch",
     });
 
-    const getResponse = await apiRequest(`/api/regen/cases/${created.id}`, "GET");
+    const getResponse = await apiRequest(`/regen-api/regen/cases/${created.id}`, "GET");
     expect(getResponse.status).toBe(200);
     const reopened = await getResponse.json() as {
       product_details: Record<string, string>;
@@ -171,7 +171,7 @@ describe.sequential("regenerative application sites API persistence", () => {
     expect(stored.productDetails).toEqual(reopened.product_details);
 
     for (const reportPath of ["report", "clinical-report"]) {
-      const reportResponse = await apiRequest(`/api/regen/cases/${created.id}/${reportPath}`, "GET");
+      const reportResponse = await apiRequest(`/regen-api/regen/cases/${created.id}/${reportPath}`, "GET");
       expect(reportResponse.status).toBe(200);
       expect(reportResponse.headers.get("content-type")).toContain("application/pdf");
       const reportText = extractPdfText(Buffer.from(await reportResponse.arrayBuffer()));
@@ -182,7 +182,7 @@ describe.sequential("regenerative application sites API persistence", () => {
 
     await db.update(doctorsTable).set({ idioma: "es" }).where(eq(doctorsTable.id, doctorId));
     for (const reportPath of ["report", "clinical-report"]) {
-      const reportResponse = await apiRequest(`/api/regen/cases/${created.id}/${reportPath}`, "GET");
+      const reportResponse = await apiRequest(`/regen-api/regen/cases/${created.id}/${reportPath}`, "GET");
       expect(reportResponse.status).toBe(200);
       const reportText = extractPdfText(Buffer.from(await reportResponse.arrayBuffer()));
       expect(reportText).toContain("Intraarticular");
@@ -190,7 +190,7 @@ describe.sequential("regenerative application sites API persistence", () => {
       expect(reportText).toContain("PATCH notes");
     }
 
-    const clearResponse = await apiRequest(`/api/regen/cases/${created.id}`, "PATCH", {
+    const clearResponse = await apiRequest(`/regen-api/regen/cases/${created.id}`, "PATCH", {
       productDetails: {
         locaisAplicacao: JSON.stringify([]),
         localAplicacao: "",
@@ -210,21 +210,21 @@ describe.sequential("regenerative application sites API persistence", () => {
 
   it("rejects a malformed repeatable extension on both create and patch", async () => {
     const malformed = { locaisAplicacao: JSON.stringify([{ localAplicacao: "Ligamento" }]) };
-    const createResponse = await apiRequest("/api/regen/cases", "POST", {
+    const createResponse = await apiRequest("/regen-api/regen/cases", "POST", {
       patientName: "Malformed Application Sites Patient",
       conditionCode: "OA_OMBRO",
       productDetails: malformed,
     });
     expect(createResponse.status).toBe(400);
 
-    const createValidResponse = await apiRequest("/api/regen/cases", "POST", {
+    const createValidResponse = await apiRequest("/regen-api/regen/cases", "POST", {
       patientName: "Patch Validation Patient",
       conditionCode: "OA_OMBRO",
       productDetails: { locaisAplicacao: JSON.stringify([firstSite]) },
     });
     expect(createValidResponse.status).toBe(201);
     const created = await createValidResponse.json() as { id: string };
-    const patchResponse = await apiRequest(`/api/regen/cases/${created.id}`, "PATCH", {
+    const patchResponse = await apiRequest(`/regen-api/regen/cases/${created.id}`, "PATCH", {
       productDetails: malformed,
     });
     expect(patchResponse.status).toBe(400);

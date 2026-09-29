@@ -38,6 +38,9 @@ import { regenPeriodForLocale } from "../lib/regen-labels";
 const router: IRouter = Router();
 
 async function localeForRegenToken(token: string) {
+  // regen_followup_notifications.token is a uuid column: querying it with a
+  // malformed token raises a database error (500). Such tokens never exist.
+  if (!UUID_TOKEN_PATTERN.test(token)) return resolveDoctorLocale(undefined);
   const { rows } = await pool.query(
     `SELECT d.idioma FROM regen_followup_notifications n
      JOIN regen_cases c ON c.id = n.case_id LEFT JOIN doctors d ON d.id = c.doctor_id

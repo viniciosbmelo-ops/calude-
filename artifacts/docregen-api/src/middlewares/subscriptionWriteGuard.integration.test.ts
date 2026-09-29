@@ -39,7 +39,7 @@ describe.sequential("subscription write guard integration", () => {
   });
 
   it("blocks a real paid clinical mutation without an active subscription", async () => {
-    const response = await fetch(`${baseUrl}/api/patients`, {
+    const response = await fetch(`${baseUrl}/regen-api/patients`, {
       method: "POST",
       headers: { Authorization: authorization, "Content-Type": "application/json" },
       body: JSON.stringify({ nome: "Must not be created" }),
@@ -53,7 +53,7 @@ describe.sequential("subscription write guard integration", () => {
   });
 
   it("preserves the authenticated billing checkout exception", async () => {
-    const response = await fetch(`${baseUrl}/api/stripe/checkout`, {
+    const response = await fetch(`${baseUrl}/regen-api/stripe/checkout`, {
       method: "POST",
       headers: { Authorization: authorization, "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -65,7 +65,7 @@ describe.sequential("subscription write guard integration", () => {
   });
 
   it("preserves public patient verification mutations", async () => {
-    const response = await fetch(`${baseUrl}/api/patient/nonexistent-token/verify`, {
+    const response = await fetch(`${baseUrl}/regen-api/patient/regen/nonexistent-token/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cpf: "12345678900" }),
@@ -80,7 +80,7 @@ describe.sequential("subscription write guard integration", () => {
   });
 
   it("preserves the public support contact exception", async () => {
-    const response = await fetch(`${baseUrl}/api/admin/contact`, {
+    const response = await fetch(`${baseUrl}/regen-api/admin/contact`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
