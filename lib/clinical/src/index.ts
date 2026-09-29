@@ -11,3 +11,4 @@ export * from './catalog/pathologies';
 export * from './catalog/caseTypes';
 export * from './surgery/payload';
 export * from './surgery/coreOptions';
+export * from './decision';

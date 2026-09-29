@@ -1,10 +1,11 @@
-/** Leitura do registro de ombro/cotovelo na página da cirurgia: relatório gerado, inventário e implantes. */
+/** Leitura do registro de ombro/cotovelo na página da cirurgia: relatório gerado, avaliação pré-operatória, inventário e implantes. */
 import { useEffect, useState } from "react";
 import { Check, Copy, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArthroscopicMap } from "@/components/shoulder/arthroscopic-map";
 import { ImplantsEditor } from "@/components/shoulder/implants-editor";
+import { PreopAssessmentView } from "@/components/shoulder/preop-assessment-section";
 import { isOpenOnly, type ClinicalPayload, type Region } from "@workspace/clinical/web";
 
 export type SurgeryReportState =
@@ -69,6 +70,9 @@ export function SurgeryClinicalView({ payload, report }: { payload: ClinicalPayl
           )}
         </CardContent>
       </Card>}
+
+      {/* Avaliação pré-operatória (payload v2), somente leitura; fora do relatório */}
+      <PreopAssessmentView value={payload.avaliacaoPreop} />
 
       {/* Cirurgia puramente aberta: nenhuma estrutura foi avaliada por artroscopia */}
       {payload.mapaArtroscopico.length > 0 && !isOpenOnly(payload.geral) && (

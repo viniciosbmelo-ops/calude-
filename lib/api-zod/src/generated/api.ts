@@ -851,3 +851,132 @@ export const GetAdminAnalyticsResponse = zod.object({
 }).describe('Existing admin analytics envelope with the usage fields below.')
 
 
+/**
+ * Admins see every algorithm version in the code, whatever its status and whatever the
+ * `apoio_decisao` feature flag. Other doctors see only versions whose status is `ativo`,
+ * and only while the `apoio_decisao` feature flag is enabled (default: off).
+ * A version without a status row, or whose last status row was recorded for a different
+ * content hash, is `rascunho`.
+ * @summary List decision-support algorithms visible to the current doctor
+ */
+export const ListApoioDecisaoAlgoritmosResponse = zod.object({
+  "moduloAtivo": zod.boolean().describe('State of the apoio_decisao feature flag'),
+  "algoritmos": zod.array(zod.object({
+  "id": zod.string(),
+  "versao": zod.string(),
+  "titulo": zod.string(),
+  "escopo": zod.string(),
+  "patologias": zod.array(zod.string()),
+  "status": zod.enum(['rascunho', 'revisado', 'ativo', 'aposentado']),
+  "hash": zod.string().describe('SHA-256 of the canonical content of the running code'),
+  "hashConfereLock": zod.boolean().describe('Whether the running content matches versions.lock.json'),
+  "statusAtualizadoEm": zod.coerce.date().nullable(),
+  "definicao": zod.record(zod.string(), zod.unknown()).describe('Declarative algorithm definition (inputs, options, rules, references)')
+}))
+})
+
+
+/**
+ * The server evaluates the input with the clinical engine and stores the execution
+ * (insert-only audit trail). Any client-sent result is ignored. The output is always a
+ * suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only)
+ * is stored with mode `revisao` and cannot be linked to a patient or surgery.
+ * @summary Evaluate a decision-support algorithm on the server and store the execution
+ */
+export const AvaliarApoioDecisaoParams = zod.object({
+  "algoritmoId": zod.coerce.string(),
+  "versao": zod.coerce.string()
+})
+
+export const AvaliarApoioDecisaoBody = zod.object({
+  "entrada": zod.record(zod.string(), zod.unknown()).describe('Input values keyed by the algorithm input ids; absent inputs stay unknown'),
+  "modo": zod.enum(['preop', 'registro']),
+  "patientId": zod.number().optional(),
+  "surgeryId": zod.number().optional()
+})
+
+export const AvaliarApoioDecisaoResponse = zod.object({
+  "execucaoId": zod.number(),
+  "modo": zod.enum(['preop', 'registro', 'revisao']),
+  "resultado": zod.object({
+  "rotulo": zod.enum(['Sugestão']),
+  "algoritmo": zod.record(zod.string(), zod.unknown()),
+  "motor": zod.string(),
+  "modo": zod.string(),
+  "opcoes": zod.array(zod.record(zod.string(), zod.unknown())),
+  "avisos": zod.array(zod.record(zod.string(), zod.unknown())),
+  "faltantes": zod.array(zod.record(zod.string(), zod.unknown())),
+  "trace": zod.array(zod.record(zod.string(), zod.unknown())),
+  "referencias": zod.array(zod.record(zod.string(), zod.unknown()))
+}).describe('Engine output (ResultadoApoio in @workspace\/clinical). Never a decision.')
+})
+
+
+/**
+ * Insert-only; the latest choice for an execution prevails. Exactly one of `opcao`
+ * (an option id of the algorithm) or `outra` (free text) is required. The agreement with
+ * the suggestion is computed by the server. Review-mode executions are refused.
+ * @summary Record the surgeon's choice for a stored execution
+ */
+export const RegistrarEscolhaApoioDecisaoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const registrarEscolhaApoioDecisaoBodyOutraMax = 500;
+
+export const registrarEscolhaApoioDecisaoBodyJustificativaMax = 2000;
+
+
+
+export const RegistrarEscolhaApoioDecisaoBody = zod.object({
+  "opcao": zod.string().min(1).optional(),
+  "outra": zod.string().min(1).max(registrarEscolhaApoioDecisaoBodyOutraMax).optional(),
+  "justificativa": zod.string().max(registrarEscolhaApoioDecisaoBodyJustificativaMax).optional()
+})
+
+export const RegistrarEscolhaApoioDecisaoResponse = zod.object({
+  "id": zod.number(),
+  "execucaoId": zod.number(),
+  "opcao": zod.string().nullable(),
+  "outra": zod.string().nullable(),
+  "concordancia": zod.enum(['concorda', 'diverge', 'sem_sugestao']),
+  "justificativa": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Allowed transitions: rascunho → revisado, revisado → rascunho | ativo, ativo → aposentado.
+ * Refused with 409 when `hash` differs from the hash of the code currently running, so a
+ * version can only be activated exactly as it was reviewed. Activating a version retires
+ * the previously active version of the same algorithm.
+ * @summary Change the status of an algorithm version (admin only)
+ */
+export const AlterarStatusApoioDecisaoParams = zod.object({
+  "algoritmoId": zod.coerce.string(),
+  "versao": zod.coerce.string()
+})
+
+
+export const alterarStatusApoioDecisaoBodyNotaMax = 2000;
+
+
+
+export const AlterarStatusApoioDecisaoBody = zod.object({
+  "status": zod.enum(['rascunho', 'revisado', 'ativo', 'aposentado']),
+  "hash": zod.string().min(1),
+  "nota": zod.string().max(alterarStatusApoioDecisaoBodyNotaMax).optional()
+})
+
+export const AlterarStatusApoioDecisaoResponse = zod.object({
+  "algoritmoId": zod.string(),
+  "versao": zod.string(),
+  "hash": zod.string(),
+  "status": zod.enum(['rascunho', 'revisado', 'ativo', 'aposentado']),
+  "anterior": zod.enum(['rascunho', 'revisado', 'ativo', 'aposentado']),
+  "aposentadas": zod.array(zod.string()).describe('Versions of the same algorithm retired by this activation'),
+  "createdAt": zod.coerce.date()
+})
+
+

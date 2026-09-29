@@ -57,3 +57,8 @@ export function diagnosesFor(region: Region) {
 export function intraopSchemaId(code: string): string | null {
   return PATHOLOGY_BY_CODE.get(code)?.intraop ?? null;
 }
+
+/** Schema da avaliação pré-operatória da patologia (payload `avaliacaoPreop`), ou null quando não há. */
+export function diagnosisSchemaId(code: string): string | null {
+  return PATHOLOGY_BY_CODE.get(code)?.diagnosis ?? null;
+}

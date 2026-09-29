@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "EL_DBR.diagnosis.v1",
+  "x-note": "Avaliação pré-operatória: todos os campos opcionais; o schema valida só tipo e faixa, sem interpretação clínica.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "data_lesao": {
+      "type": "string",
+      "format": "date"
+    },
+    "dias_desde_lesao_preop": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 3650
+    },
+    "tipo_rm": {
+      "enum": [
+        "completa",
+        "parcial",
+        "tendinopatia"
+      ]
+    },
+    "partial_pct_rm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "retracao_cm_rm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 30
+    },
+    "lacerto_integro_rm": {
+      "type": "boolean"
+    },
+    "hook_test": {
+      "type": "boolean",
+      "x-note": "Sim = teste positivo (alterado)."
+    },
+    "dor_na_rotacao": {
+      "type": "boolean"
+    },
+    "ocupacao_demanda": {
+      "enum": [
+        "bracal",
+        "atleta",
+        "sedentario"
+      ]
+    },
+    "necessidade_forca_supinacao": {
+      "type": "boolean"
+    },
+    "tratamento_conservador_semanas": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 520
+    },
+    "uso_anabolizantes": {
+      "type": "boolean"
+    },
+    "lesao_contralateral_previa": {
+      "type": "boolean"
+    },
+    "preferencia_paciente_nao_operatorio": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_RCT.diagnosis.v1",
+  "x-note": "Avaliação pré-operatória: todos os campos opcionais; o schema valida só tipo e faixa, sem interpretação clínica.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "inicio": {
+      "enum": [
+        "traumatico_agudo",
+        "agudo_sobre_cronico",
+        "degenerativo"
+      ]
+    },
+    "data_lesao": {
+      "type": "string",
+      "format": "date"
+    },
+    "semanas_desde_lesao": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2600
+    },
+    "tipo_rotura_rm": {
+      "enum": [
+        "parcial_articular",
+        "parcial_bursal",
+        "completa"
+      ]
+    },
+    "ellman_rm": {
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "tendoes_rm": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "SSP",
+          "ISP",
+          "SSC",
+          "TM"
+        ]
+      }
+    },
+    "tamanho_ap_mm_rm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "retracao_patte_rm": {
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "goutallier": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SSP": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "ISP": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "SSC": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "TM": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      }
+    },
+    "tangent_sign": {
+      "type": "boolean",
+      "x-note": "Sim = sinal positivo."
+    },
+    "hamada": {
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "distancia_acromioumeral_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 30
+    },
+    "pseudoparalisia": {
+      "type": "boolean"
+    },
+    "elevacao_ativa_graus": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 180
+    },
+    "elevacao_passiva_graus": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 180
+    },
+    "er_lag_sign": {
+      "type": "boolean",
+      "x-note": "Sim = sinal positivo."
+    },
+    "hornblower": {
+      "type": "boolean",
+      "x-note": "Sim = sinal positivo."
+    },
+    "belly_press_lift_off": {
+      "type": "boolean",
+      "x-note": "Sim = teste positivo (belly-press e/ou lift-off)."
+    },
+    "forca_re_mrc": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "tratamento_conservador_meses": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 600
+    },
+    "infiltracoes_previas": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "reparo_previo": {
+      "type": "boolean"
+    },
+    "deltoide_funcional": {
+      "type": "boolean"
+    },
+    "lesao_nervo": {
+      "type": "boolean"
+    },
+    "ombro_rigido": {
+      "type": "boolean"
+    }
+  }
+}

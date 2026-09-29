@@ -1,0 +1,364 @@
+/**
+ * Apoio à decisão baseado em literatura.
+ *
+ * - O servidor é a fonte da verdade: recalcula com o motor de @workspace/clinical e grava a execução
+ *   (tabela só de inserção). Qualquer resultado enviado pelo cliente é ignorado.
+ * - Toda saída é "Sugestão"; a escolha do cirurgião é registrada à parte.
+ * - Governança: conteúdo e versão no código (hash); status no banco (a linha mais recente vale,
+ *   sem linha = rascunho). Admin vê tudo; os demais só versões ativas, e só com a flag
+ *   `apoio_decisao` ligada (padrão: desligada).
+ */
+import { Router, type IRouter, type Request, type Response } from "express";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import {
+  db,
+  apoioDecisaoEscolhasTable,
+  apoioDecisaoExecucoesTable,
+  apoioDecisaoStatusTable,
+  featureFlagsTable,
+  patientsTable,
+  surgeriesTable,
+} from "@workspace/db";
+import {
+  AlterarStatusApoioDecisaoBody,
+  AvaliarApoioDecisaoBody,
+  RegistrarEscolhaApoioDecisaoBody,
+} from "@workspace/api-zod";
+import {
+  ClinicalGuardError,
+  concordancia,
+  decisionRegistry,
+  evaluate,
+  podeTransitar,
+  statusEfetivo,
+  type AlgoritmoRegistrado,
+  type DecisionRegistry,
+  type Proveniencia,
+  type ResultadoApoio,
+  type StatusAlgoritmo,
+} from "@workspace/clinical";
+import { requireAdmin, requireAuth } from "../middlewares/requireAuth";
+
+export const APOIO_DECISAO_FLAG = "apoio_decisao";
+
+type LinhaStatus = { algoritmoVersao: string; status: string; hash: string; createdAt: Date };
+
+async function flagLigada(): Promise<boolean> {
+  const [flag] = await db
+    .select({ enabled: featureFlagsTable.enabled })
+    .from(featureFlagsTable)
+    .where(eq(featureFlagsTable.key, APOIO_DECISAO_FLAG))
+    .limit(1);
+  return flag?.enabled === true;
+}
+
+/** Última linha de status por "id@versão" (tabela só de inserção: maior id vale). */
+async function ultimasLinhas(algoritmoIds: string[], executor: Pick<typeof db, "select"> = db): Promise<Map<string, LinhaStatus>> {
+  const out = new Map<string, LinhaStatus>();
+  if (!algoritmoIds.length) return out;
+  const rows = await executor
+    .select({
+      algoritmoId: apoioDecisaoStatusTable.algoritmoId,
+      algoritmoVersao: apoioDecisaoStatusTable.algoritmoVersao,
+      status: apoioDecisaoStatusTable.status,
+      hash: apoioDecisaoStatusTable.algoritmoHash,
+      createdAt: apoioDecisaoStatusTable.createdAt,
+    })
+    .from(apoioDecisaoStatusTable)
+    .where(inArray(apoioDecisaoStatusTable.algoritmoId, algoritmoIds))
+    .orderBy(desc(apoioDecisaoStatusTable.id));
+  for (const r of rows) {
+    const key = `${r.algoritmoId}@${r.algoritmoVersao}`;
+    if (!out.has(key)) out.set(key, r);
+  }
+  return out;
+}
+
+function chave(e: AlgoritmoRegistrado): string {
+  return `${e.def.id}@${e.def.versao}`;
+}
+
+function paramStr(v: unknown): string {
+  return Array.isArray(v) ? String(v[0]) : String(v ?? "");
+}
+
+function isPositiveInt(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v > 0;
+}
+
+/** Algoritmo visível ao usuário, com o status efetivo; undefined = não existe ou não visível. */
+async function algoritmoVisivel(
+  registry: DecisionRegistry,
+  req: Request,
+  id: string,
+  versao: string,
+): Promise<{ entry: AlgoritmoRegistrado; status: StatusAlgoritmo } | undefined> {
+  const entry = registry.get(id, versao);
+  if (!entry) return undefined;
+  const linhas = await ultimasLinhas([id]);
+  const status = statusEfetivo(linhas.get(chave(entry)), entry.hash);
+  if (req.isAdmin) return { entry, status };
+  if (status !== "ativo" || !(await flagLigada())) return undefined;
+  return { entry, status };
+}
+
+export function createDecisionSupportRouter(registry: DecisionRegistry = decisionRegistry): IRouter {
+  const router: IRouter = Router();
+
+  // GET /apoio-decisao/algoritmos — versões visíveis ao usuário, com status
+  router.get("/apoio-decisao/algoritmos", requireAuth, async (req, res): Promise<void> => {
+    const entries = registry.list();
+    const [moduloAtivo, linhas] = await Promise.all([
+      flagLigada(),
+      ultimasLinhas([...new Set(entries.map((e) => e.def.id))]),
+    ]);
+    const algoritmos = entries
+      .map((e) => {
+        const linha = linhas.get(chave(e));
+        const status = statusEfetivo(linha, e.hash);
+        return {
+          id: e.def.id,
+          versao: e.def.versao,
+          titulo: e.def.titulo,
+          escopo: e.def.escopo,
+          patologias: e.def.patologias,
+          status,
+          hash: e.hash,
+          hashConfereLock: e.hashLock === e.hash,
+          statusAtualizadoEm: linha && linha.hash === e.hash ? linha.createdAt.toISOString() : null,
+          definicao: e.def,
+        };
+      })
+      .filter((a) => req.isAdmin || (moduloAtivo && a.status === "ativo"));
+    res.json({ moduloAtivo, algoritmos });
+  });
+
+  // POST /apoio-decisao/algoritmos/:algoritmoId/:versao/avaliar — avalia no servidor e grava a execução
+  router.post("/apoio-decisao/algoritmos/:algoritmoId/:versao/avaliar", requireAuth, async (req, res): Promise<void> => {
+    const parsed = AvaliarApoioDecisaoBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Dados inválidos.", code: "INVALID_BODY" });
+      return;
+    }
+    const body = parsed.data;
+    if ((body.patientId !== undefined && !isPositiveInt(body.patientId))
+      || (body.surgeryId !== undefined && !isPositiveInt(body.surgeryId))) {
+      res.status(400).json({ error: "Identificador inválido.", code: "INVALID_ID" });
+      return;
+    }
+    const visivel = await algoritmoVisivel(registry, req, paramStr(req.params.algoritmoId), paramStr(req.params.versao));
+    if (!visivel) {
+      res.status(404).json({ error: "Algoritmo não encontrado.", code: "ALGORITHM_NOT_FOUND" });
+      return;
+    }
+    const { entry, status } = visivel;
+    const modoGravado = status === "ativo" ? body.modo : "revisao";
+    if (modoGravado === "revisao" && (body.patientId !== undefined || body.surgeryId !== undefined)) {
+      res.status(422).json({
+        error: "Versão não ativa: avaliação de revisão não pode ser vinculada a paciente ou cirurgia.",
+        code: "REVIEW_RUN_NOT_LINKABLE",
+      });
+      return;
+    }
+
+    let patientId: number | null = body.patientId ?? null;
+    const surgeryId: number | null = body.surgeryId ?? null;
+    if (surgeryId !== null) {
+      const [s] = await db
+        .select({ patientId: surgeriesTable.patientId })
+        .from(surgeriesTable)
+        .where(and(eq(surgeriesTable.id, surgeryId), eq(surgeriesTable.doctorId, req.doctorId!)))
+        .limit(1);
+      if (!s) {
+        res.status(404).json({ error: "Cirurgia não encontrada.", code: "SURGERY_NOT_FOUND" });
+        return;
+      }
+      if (patientId !== null && patientId !== s.patientId) {
+        res.status(422).json({ error: "A cirurgia não pertence a este paciente.", code: "PATIENT_SURGERY_MISMATCH" });
+        return;
+      }
+      patientId = s.patientId;
+    } else if (patientId !== null) {
+      const [p] = await db
+        .select({ id: patientsTable.id })
+        .from(patientsTable)
+        .where(and(eq(patientsTable.id, patientId), eq(patientsTable.doctorId, req.doctorId!)))
+        .limit(1);
+      if (!p) {
+        res.status(404).json({ error: "Paciente não encontrado.", code: "PATIENT_NOT_FOUND" });
+        return;
+      }
+    }
+
+    let resultado: ResultadoApoio;
+    try {
+      resultado = evaluate(entry.def, body.entrada, { status, hash: entry.hash, modo: body.modo });
+    } catch (err) {
+      if (err instanceof ClinicalGuardError) {
+        res.status(422).json({ error: err.message, code: err.code, ...(err.field ? { field: err.field } : {}) });
+        return;
+      }
+      throw err;
+    }
+    // Nesta fase toda entrada chega digitada no painel; a montagem a partir do registro vem depois.
+    const proveniencia: Record<string, Proveniencia> = {};
+    for (const k of Object.keys(resultado.entrada)) proveniencia[k] = "manual";
+
+    const [row] = await db
+      .insert(apoioDecisaoExecucoesTable)
+      .values({
+        doctorId: req.doctorId!,
+        patientId,
+        surgeryId,
+        algoritmoId: entry.def.id,
+        algoritmoVersao: entry.def.versao,
+        algoritmoHash: entry.hash,
+        statusNoMomento: status,
+        motorVersao: resultado.motor,
+        modo: modoGravado,
+        entrada: resultado.entrada,
+        proveniencia,
+        resultado,
+      })
+      .returning({ id: apoioDecisaoExecucoesTable.id });
+    res.status(201).json({ execucaoId: row.id, modo: modoGravado, resultado });
+  });
+
+  // POST /apoio-decisao/execucoes/:id/escolha — escolha do cirurgião, vinculada à execução
+  router.post("/apoio-decisao/execucoes/:id/escolha", requireAuth, async (req, res): Promise<void> => {
+    const id = Number.parseInt(paramStr(req.params.id), 10);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "ID inválido.", code: "INVALID_ID" });
+      return;
+    }
+    const parsed = RegistrarEscolhaApoioDecisaoBody.safeParse(req.body);
+    const body = parsed.success ? parsed.data : undefined;
+    const opcao = body?.opcao?.trim() || undefined;
+    const outra = body?.outra?.trim() || undefined;
+    if (!body || (opcao === undefined) === (outra === undefined)) {
+      res.status(400).json({ error: "Informe uma opção do algoritmo ou descreva outra conduta (apenas uma).", code: "INVALID_BODY" });
+      return;
+    }
+    const [exec] = await db
+      .select()
+      .from(apoioDecisaoExecucoesTable)
+      .where(and(eq(apoioDecisaoExecucoesTable.id, id), eq(apoioDecisaoExecucoesTable.doctorId, req.doctorId!)))
+      .limit(1);
+    if (!exec) {
+      res.status(404).json({ error: "Execução não encontrada.", code: "EXECUTION_NOT_FOUND" });
+      return;
+    }
+    if (exec.modo === "revisao") {
+      res.status(409).json({ error: "Execução de revisão não recebe escolha do cirurgião.", code: "REVIEW_RUN" });
+      return;
+    }
+    const resultado = exec.resultado as ResultadoApoio;
+    if (opcao !== undefined) {
+      const def = registry.get(exec.algoritmoId, exec.algoritmoVersao)?.def;
+      const validas = new Set(def ? def.opcoes.map((o) => o.id) : resultado.opcoes.map((o) => o.opcao));
+      if (!validas.has(opcao)) {
+        res.status(422).json({ error: "Opção não pertence ao algoritmo.", code: "UNKNOWN_OPTION" });
+        return;
+      }
+    }
+    const escolha = opcao !== undefined ? { opcao } : { outra: outra! };
+    const [row] = await db
+      .insert(apoioDecisaoEscolhasTable)
+      .values({
+        execucaoId: exec.id,
+        doctorId: req.doctorId!,
+        opcao: opcao ?? null,
+        outra: outra ?? null,
+        concordancia: concordancia(resultado, escolha),
+        justificativa: body.justificativa?.trim() || null,
+      })
+      .returning();
+    res.status(201).json({
+      id: row.id,
+      execucaoId: row.execucaoId,
+      opcao: row.opcao,
+      outra: row.outra,
+      concordancia: row.concordancia,
+      justificativa: row.justificativa,
+      createdAt: row.createdAt.toISOString(),
+    });
+  });
+
+  // POST /apoio-decisao/algoritmos/:algoritmoId/:versao/status — governança (admin)
+  router.post("/apoio-decisao/algoritmos/:algoritmoId/:versao/status", requireAdmin, async (req: Request, res: Response): Promise<void> => {
+    const parsed = AlterarStatusApoioDecisaoBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Dados inválidos.", code: "INVALID_BODY" });
+      return;
+    }
+    const { status: novo, hash, nota } = parsed.data;
+    const entry = registry.get(paramStr(req.params.algoritmoId), paramStr(req.params.versao));
+    if (!entry) {
+      res.status(404).json({ error: "Versão do algoritmo não existe no código em execução.", code: "ALGORITHM_NOT_FOUND" });
+      return;
+    }
+    if (entry.hashLock !== entry.hash) {
+      res.status(409).json({
+        error: "Conteúdo do algoritmo difere do versions.lock.json: suba a versão e regenere o lock.",
+        code: "LOCK_MISMATCH",
+      });
+      return;
+    }
+    if (hash !== entry.hash) {
+      res.status(409).json({
+        error: "O hash informado difere do conteúdo em execução. Revise a versão atual antes de mudar o status.",
+        code: "HASH_MISMATCH",
+      });
+      return;
+    }
+    const { id: algoritmoId, versao } = entry.def;
+
+    const outcome = await db.transaction(async (tx) => {
+      // Serializa mudanças de status do mesmo algoritmo
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(87011, hashtext(${algoritmoId}))`);
+      const linhas = await ultimasLinhas([algoritmoId], tx);
+      const anterior = statusEfetivo(linhas.get(chave(entry)), entry.hash);
+      if (!podeTransitar(anterior, novo)) return { kind: "invalid" as const, anterior };
+
+      const aposentadas: string[] = [];
+      if (novo === "ativo") {
+        for (const l of linhas.values()) {
+          if (l.algoritmoVersao !== versao && l.status === "ativo") aposentadas.push(l.algoritmoVersao);
+        }
+        if (aposentadas.length) {
+          await tx.insert(apoioDecisaoStatusTable).values(aposentadas.map((v) => ({
+            algoritmoId,
+            algoritmoVersao: v,
+            algoritmoHash: linhas.get(`${algoritmoId}@${v}`)!.hash,
+            status: "aposentado",
+            doctorId: req.doctorId!,
+            nota: `Aposentada ao ativar ${versao}.`,
+          })));
+        }
+      }
+      const [row] = await tx
+        .insert(apoioDecisaoStatusTable)
+        .values({ algoritmoId, algoritmoVersao: versao, algoritmoHash: entry.hash, status: novo, doctorId: req.doctorId!, nota: nota?.trim() || null })
+        .returning({ createdAt: apoioDecisaoStatusTable.createdAt });
+      return { kind: "ok" as const, anterior, aposentadas: aposentadas.sort(), createdAt: row.createdAt };
+    });
+
+    if (outcome.kind === "invalid") {
+      res.status(422).json({ error: `Transição não permitida: ${outcome.anterior} → ${novo}.`, code: "INVALID_TRANSITION" });
+      return;
+    }
+    res.status(201).json({
+      algoritmoId,
+      versao,
+      hash: entry.hash,
+      status: novo,
+      anterior: outcome.anterior,
+      aposentadas: outcome.aposentadas,
+      createdAt: outcome.createdAt.toISOString(),
+    });
+  });
+
+  return router;
+}
+
+export default createDecisionSupportRouter();

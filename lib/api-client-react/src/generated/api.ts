@@ -22,7 +22,13 @@ import type {
 import type {
   AdminAnalytics,
   AdminDashboard,
+  AlterarStatusApoioDecisaoBody,
+  ApoioDecisaoAlgoritmoList,
+  ApoioDecisaoEscolha,
+  ApoioDecisaoExecucao,
+  ApoioDecisaoStatusRegistro,
   AuthResponse,
+  AvaliarApoioDecisaoBody,
   ClinicianScalesResult,
   CreateFollowupBody,
   CreatePatientBody,
@@ -38,6 +44,7 @@ import type {
   Patient,
   PatientWithSurgeries,
   RegisterDoctorBody,
+  RegistrarEscolhaApoioDecisaoBody,
   SuccessResponse,
   Surgery,
   SurgeryDetail,
@@ -1937,4 +1944,317 @@ export function useGetAdminAnalytics<TData = Awaited<ReturnType<typeof getAdminA
 
 
 
+
+export const getListApoioDecisaoAlgoritmosUrl = () => {
+
+
+
+
+  return `/api/apoio-decisao/algoritmos`
+}
+
+/**
+ * Admins see every algorithm version in the code, whatever its status and whatever the
+ * `apoio_decisao` feature flag. Other doctors see only versions whose status is `ativo`,
+ * and only while the `apoio_decisao` feature flag is enabled (default: off).
+ * A version without a status row, or whose last status row was recorded for a different
+ * content hash, is `rascunho`.
+ * @summary List decision-support algorithms visible to the current doctor
+ */
+export const listApoioDecisaoAlgoritmos = async ( options?: RequestInit): Promise<ApoioDecisaoAlgoritmoList> => {
+
+  return customFetch<ApoioDecisaoAlgoritmoList>(getListApoioDecisaoAlgoritmosUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListApoioDecisaoAlgoritmosQueryKey = () => {
+    return [
+    `/api/apoio-decisao/algoritmos`
+    ] as const;
+    }
+
+
+export const getListApoioDecisaoAlgoritmosQueryOptions = <TData = Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListApoioDecisaoAlgoritmosQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>> = ({ signal }) => listApoioDecisaoAlgoritmos({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListApoioDecisaoAlgoritmosQueryResult = NonNullable<Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>>
+export type ListApoioDecisaoAlgoritmosQueryError = ErrorType<void>
+
+
+/**
+ * @summary List decision-support algorithms visible to the current doctor
+ */
+
+export function useListApoioDecisaoAlgoritmos<TData = Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApoioDecisaoAlgoritmos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListApoioDecisaoAlgoritmosQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAvaliarApoioDecisaoUrl = (algoritmoId: string,
+    versao: string,) => {
+
+
+
+
+  return `/api/apoio-decisao/algoritmos/${algoritmoId}/${versao}/avaliar`
+}
+
+/**
+ * The server evaluates the input with the clinical engine and stores the execution
+ * (insert-only audit trail). Any client-sent result is ignored. The output is always a
+ * suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only)
+ * is stored with mode `revisao` and cannot be linked to a patient or surgery.
+ * @summary Evaluate a decision-support algorithm on the server and store the execution
+ */
+export const avaliarApoioDecisao = async (algoritmoId: string,
+    versao: string,
+    avaliarApoioDecisaoBody: AvaliarApoioDecisaoBody, options?: RequestInit): Promise<ApoioDecisaoExecucao> => {
+
+  return customFetch<ApoioDecisaoExecucao>(getAvaliarApoioDecisaoUrl(algoritmoId,versao),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(avaliarApoioDecisaoBody)
+  }
+);}
+
+
+
+
+
+export const getAvaliarApoioDecisaoMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof avaliarApoioDecisao>>, TError,{algoritmoId: string;versao: string;data: BodyType<AvaliarApoioDecisaoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof avaliarApoioDecisao>>, TError,{algoritmoId: string;versao: string;data: BodyType<AvaliarApoioDecisaoBody>}, TContext> => {
+
+const mutationKey = ['avaliarApoioDecisao'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof avaliarApoioDecisao>>, {algoritmoId: string;versao: string;data: BodyType<AvaliarApoioDecisaoBody>}> = (props) => {
+          const {algoritmoId,versao,data} = props ?? {};
+
+          return  avaliarApoioDecisao(algoritmoId,versao,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AvaliarApoioDecisaoMutationResult = NonNullable<Awaited<ReturnType<typeof avaliarApoioDecisao>>>
+    export type AvaliarApoioDecisaoMutationBody = BodyType<AvaliarApoioDecisaoBody>
+    export type AvaliarApoioDecisaoMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Evaluate a decision-support algorithm on the server and store the execution
+ */
+export const useAvaliarApoioDecisao = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof avaliarApoioDecisao>>, TError,{algoritmoId: string;versao: string;data: BodyType<AvaliarApoioDecisaoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof avaliarApoioDecisao>>,
+        TError,
+        {algoritmoId: string;versao: string;data: BodyType<AvaliarApoioDecisaoBody>},
+        TContext
+      > => {
+      return useMutation(getAvaliarApoioDecisaoMutationOptions(options));
+    }
+
+export const getRegistrarEscolhaApoioDecisaoUrl = (id: number,) => {
+
+
+
+
+  return `/api/apoio-decisao/execucoes/${id}/escolha`
+}
+
+/**
+ * Insert-only; the latest choice for an execution prevails. Exactly one of `opcao`
+ * (an option id of the algorithm) or `outra` (free text) is required. The agreement with
+ * the suggestion is computed by the server. Review-mode executions are refused.
+ * @summary Record the surgeon's choice for a stored execution
+ */
+export const registrarEscolhaApoioDecisao = async (id: number,
+    registrarEscolhaApoioDecisaoBody: RegistrarEscolhaApoioDecisaoBody, options?: RequestInit): Promise<ApoioDecisaoEscolha> => {
+
+  return customFetch<ApoioDecisaoEscolha>(getRegistrarEscolhaApoioDecisaoUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(registrarEscolhaApoioDecisaoBody)
+  }
+);}
+
+
+
+
+
+export const getRegistrarEscolhaApoioDecisaoMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registrarEscolhaApoioDecisao>>, TError,{id: number;data: BodyType<RegistrarEscolhaApoioDecisaoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registrarEscolhaApoioDecisao>>, TError,{id: number;data: BodyType<RegistrarEscolhaApoioDecisaoBody>}, TContext> => {
+
+const mutationKey = ['registrarEscolhaApoioDecisao'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registrarEscolhaApoioDecisao>>, {id: number;data: BodyType<RegistrarEscolhaApoioDecisaoBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  registrarEscolhaApoioDecisao(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegistrarEscolhaApoioDecisaoMutationResult = NonNullable<Awaited<ReturnType<typeof registrarEscolhaApoioDecisao>>>
+    export type RegistrarEscolhaApoioDecisaoMutationBody = BodyType<RegistrarEscolhaApoioDecisaoBody>
+    export type RegistrarEscolhaApoioDecisaoMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record the surgeon's choice for a stored execution
+ */
+export const useRegistrarEscolhaApoioDecisao = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registrarEscolhaApoioDecisao>>, TError,{id: number;data: BodyType<RegistrarEscolhaApoioDecisaoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registrarEscolhaApoioDecisao>>,
+        TError,
+        {id: number;data: BodyType<RegistrarEscolhaApoioDecisaoBody>},
+        TContext
+      > => {
+      return useMutation(getRegistrarEscolhaApoioDecisaoMutationOptions(options));
+    }
+
+export const getAlterarStatusApoioDecisaoUrl = (algoritmoId: string,
+    versao: string,) => {
+
+
+
+
+  return `/api/apoio-decisao/algoritmos/${algoritmoId}/${versao}/status`
+}
+
+/**
+ * Allowed transitions: rascunho → revisado, revisado → rascunho | ativo, ativo → aposentado.
+ * Refused with 409 when `hash` differs from the hash of the code currently running, so a
+ * version can only be activated exactly as it was reviewed. Activating a version retires
+ * the previously active version of the same algorithm.
+ * @summary Change the status of an algorithm version (admin only)
+ */
+export const alterarStatusApoioDecisao = async (algoritmoId: string,
+    versao: string,
+    alterarStatusApoioDecisaoBody: AlterarStatusApoioDecisaoBody, options?: RequestInit): Promise<ApoioDecisaoStatusRegistro> => {
+
+  return customFetch<ApoioDecisaoStatusRegistro>(getAlterarStatusApoioDecisaoUrl(algoritmoId,versao),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(alterarStatusApoioDecisaoBody)
+  }
+);}
+
+
+
+
+
+export const getAlterarStatusApoioDecisaoMutationOptions = <TError = ErrorType<ErrorResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof alterarStatusApoioDecisao>>, TError,{algoritmoId: string;versao: string;data: BodyType<AlterarStatusApoioDecisaoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof alterarStatusApoioDecisao>>, TError,{algoritmoId: string;versao: string;data: BodyType<AlterarStatusApoioDecisaoBody>}, TContext> => {
+
+const mutationKey = ['alterarStatusApoioDecisao'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof alterarStatusApoioDecisao>>, {algoritmoId: string;versao: string;data: BodyType<AlterarStatusApoioDecisaoBody>}> = (props) => {
+          const {algoritmoId,versao,data} = props ?? {};
+
+          return  alterarStatusApoioDecisao(algoritmoId,versao,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AlterarStatusApoioDecisaoMutationResult = NonNullable<Awaited<ReturnType<typeof alterarStatusApoioDecisao>>>
+    export type AlterarStatusApoioDecisaoMutationBody = BodyType<AlterarStatusApoioDecisaoBody>
+    export type AlterarStatusApoioDecisaoMutationError = ErrorType<ErrorResponse | void>
+
+    /**
+ * @summary Change the status of an algorithm version (admin only)
+ */
+export const useAlterarStatusApoioDecisao = <TError = ErrorType<ErrorResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof alterarStatusApoioDecisao>>, TError,{algoritmoId: string;versao: string;data: BodyType<AlterarStatusApoioDecisaoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof alterarStatusApoioDecisao>>,
+        TError,
+        {algoritmoId: string;versao: string;data: BodyType<AlterarStatusApoioDecisaoBody>},
+        TContext
+      > => {
+      return useMutation(getAlterarStatusApoioDecisaoMutationOptions(options));
+    }
 

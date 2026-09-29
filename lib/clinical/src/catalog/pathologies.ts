@@ -2,6 +2,7 @@
  * Catálogo de patologias DocSholder v1 (seção 4 da especificação).
  * Fonte única para: seed SQL, dxlist do relatório, árvore de seleção na UI.
  * `intraop` = id do schema de registro intraoperatório quando já implementado.
+ * `diagnosis` = id do schema da avaliação pré-operatória (payload `avaliacaoPreop`).
  */
 export type Region = 'shoulder' | 'elbow';
 
@@ -19,14 +20,14 @@ export interface PathologyDef {
 
 export const PATHOLOGIES: PathologyDef[] = [
   // ---------- OMBRO ----------
-  { code: 'SH_RCT', region: 'shoulder', name_pt: 'Lesão do manguito rotador', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1', proms_default: ['ASES', 'SANE', 'CONSTANT'], default_protocol_code: 'PROT_RCR_STANDARD' },
-  { code: 'SH_RCT_TENDINOPATHY', region: 'shoulder', name_pt: 'Tendinopatia do manguito rotador', parent: 'SH_RCT', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
-  { code: 'SH_RCT_PARTIAL', region: 'shoulder', name_pt: 'Rotura parcial do manguito rotador', parent: 'SH_RCT', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
-  { code: 'SH_RCT_FULL', region: 'shoulder', name_pt: 'Rotura completa do manguito rotador', parent: 'SH_RCT', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
-  { code: 'SH_RCT_MASSIVE', region: 'shoulder', name_pt: 'Rotura maciça do manguito rotador', parent: 'SH_RCT', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1', default_protocol_code: 'PROT_RCR_MASSIVE' },
-  { code: 'SH_RCT_SUBSCAP', region: 'shoulder', name_pt: 'Lesão do subescapular', parent: 'SH_RCT', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
-  { code: 'SH_RCT_REVISION', region: 'shoulder', name_pt: 'Re-rotura do manguito rotador (revisão)', parent: 'SH_RCT', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
-  { code: 'SH_INST_ANT', region: 'shoulder', name_pt: 'Instabilidade glenoumeral anterior', diagnosis: 'SH_INST_ANT.diagnosis.v1', intraop: 'SH_INST_ANT.intraop.v1', report_template: 'SH_INST_ANT.v1', proms_default: ['SANE', 'ROWE'], default_protocol_code: 'PROT_BANKART' },
+  { code: 'SH_RCT', region: 'shoulder', name_pt: 'Lesão do manguito rotador', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1', proms_default: ['ASES', 'SANE', 'CONSTANT'], default_protocol_code: 'PROT_RCR_STANDARD' },
+  { code: 'SH_RCT_TENDINOPATHY', region: 'shoulder', name_pt: 'Tendinopatia do manguito rotador', parent: 'SH_RCT', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
+  { code: 'SH_RCT_PARTIAL', region: 'shoulder', name_pt: 'Rotura parcial do manguito rotador', parent: 'SH_RCT', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
+  { code: 'SH_RCT_FULL', region: 'shoulder', name_pt: 'Rotura completa do manguito rotador', parent: 'SH_RCT', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
+  { code: 'SH_RCT_MASSIVE', region: 'shoulder', name_pt: 'Rotura maciça do manguito rotador', parent: 'SH_RCT', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1', default_protocol_code: 'PROT_RCR_MASSIVE' },
+  { code: 'SH_RCT_SUBSCAP', region: 'shoulder', name_pt: 'Lesão do subescapular', parent: 'SH_RCT', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
+  { code: 'SH_RCT_REVISION', region: 'shoulder', name_pt: 'Re-rotura do manguito rotador (revisão)', parent: 'SH_RCT', diagnosis: 'SH_RCT.diagnosis.v1', intraop: 'SH_RCT.intraop.v1', report_template: 'SH_RCT.v1' },
+  { code: 'SH_INST_ANT', region: 'shoulder', name_pt: 'Instabilidade glenoumeral anterior', diagnosis: 'SH_INST_ANT.diagnosis.v2', intraop: 'SH_INST_ANT.intraop.v1', report_template: 'SH_INST_ANT.v1', proms_default: ['SANE', 'ROWE'], default_protocol_code: 'PROT_BANKART' },
   { code: 'SH_INST_POST', region: 'shoulder', name_pt: 'Instabilidade glenoumeral posterior' },
   { code: 'SH_INST_MDI', region: 'shoulder', name_pt: 'Instabilidade multidirecional do ombro' },
   { code: 'SH_BICEPS', region: 'shoulder', name_pt: 'Lesão do cabo longo do bíceps', intraop: 'SH_BICEPS.intraop.v1', report_template: 'SH_BICEPS.v1', proms_default: ['ASES', 'SANE'], default_protocol_code: 'PROT_BICEPS_TENODESIS' },
@@ -38,7 +39,7 @@ export const PATHOLOGIES: PathologyDef[] = [
   { code: 'SH_OA_GH', region: 'shoulder', name_pt: 'Artrose glenoumeral', intraop: 'SH_ARTHROPLASTY.intraop.v1', report_template: 'SH_ARTHROPLASTY.v1' },
   { code: 'SH_CTA', region: 'shoulder', name_pt: 'Artropatia do manguito rotador', intraop: 'SH_ARTHROPLASTY.intraop.v1', report_template: 'SH_ARTHROPLASTY.v1' },
   { code: 'SH_ARTHROPLASTY', region: 'shoulder', name_pt: 'Artroplastia do ombro', intraop: 'SH_ARTHROPLASTY.intraop.v1', report_template: 'SH_ARTHROPLASTY.v1', proms_default: ['ASES', 'SANE', 'CONSTANT'], default_protocol_code: 'PROT_RSA' },
-  { code: 'SH_FX_PROX_HUM', region: 'shoulder', name_pt: 'Fratura do úmero proximal' },
+  { code: 'SH_FX_PROX_HUM', region: 'shoulder', name_pt: 'Fratura do úmero proximal', diagnosis: 'SH_FX_PROX_HUM.diagnosis.v1' },
   { code: 'SH_FX_CLAV', region: 'shoulder', name_pt: 'Fratura da clavícula' },
   { code: 'SH_FX_SCAP', region: 'shoulder', name_pt: 'Fratura da escápula / glenoide' },
   { code: 'SH_PEC_MAJOR', region: 'shoulder', name_pt: 'Rotura do peitoral maior' },
@@ -51,7 +52,7 @@ export const PATHOLOGIES: PathologyDef[] = [
   { code: 'EL_UCL', region: 'elbow', name_pt: 'Lesão do ligamento colateral ulnar (medial)' },
   { code: 'EL_PLRI', region: 'elbow', name_pt: 'Instabilidade rotatória posterolateral' },
   { code: 'EL_DISL', region: 'elbow', name_pt: 'Luxação do cotovelo' },
-  { code: 'EL_DBR', region: 'elbow', name_pt: 'Rotura do tendão distal do bíceps', intraop: 'EL_DBR.intraop.v1', report_template: 'EL_DBR.v1', proms_default: ['SANE', 'MEPS'], default_protocol_code: 'PROT_DISTAL_BICEPS' },
+  { code: 'EL_DBR', region: 'elbow', name_pt: 'Rotura do tendão distal do bíceps', diagnosis: 'EL_DBR.diagnosis.v1', intraop: 'EL_DBR.intraop.v1', report_template: 'EL_DBR.v1', proms_default: ['SANE', 'MEPS'], default_protocol_code: 'PROT_DISTAL_BICEPS' },
   { code: 'EL_TRICEPS', region: 'elbow', name_pt: 'Rotura do tendão do tríceps' },
   { code: 'EL_CUBITAL', region: 'elbow', name_pt: 'Neuropatia ulnar no cotovelo' },
   { code: 'EL_STIFF', region: 'elbow', name_pt: 'Rigidez do cotovelo' },

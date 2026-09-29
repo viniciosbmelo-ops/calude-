@@ -24,3 +24,4 @@ export * from "./feature-flags";
 export * from "./content";
 export * from "./whatsapp-crm";
 export * from "./whatsapp-outbox";
+export * from "./decision-support";

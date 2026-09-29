@@ -27,6 +27,8 @@ import { HospitalField } from "@/components/hospital-field";
 import { SchemaForm, validateWith } from "@/components/shoulder/schema-form";
 import { ArthroscopicMap } from "@/components/shoulder/arthroscopic-map";
 import { ImplantsEditor } from "@/components/shoulder/implants-editor";
+import { PreopAssessmentForm, preopIssueCount } from "@/components/shoulder/preop-assessment-section";
+import { buildPreopPayload, emptyPreopState, preopStateFromPayload, visiblePreopBlocks, type PreopState } from "@/components/shoulder/preop-assessment";
 import { cn, sortByPtBrName } from "@/lib/utils";
 import { useScopedTranslations } from "@/lib/i18n";
 import { surgeryShoulderMessages } from "@/locales/surgery-shoulder";
@@ -104,6 +106,7 @@ export default function NewShoulderSurgery() {
   const [mapa, setMapa] = useState<ClinicalMapEntry[]>([]);
   const [implantes, setImplantes] = useState<ClinicalImplant[]>([]);
   const [observacoes, setObservacoes] = useState("");
+  const [preop, setPreop] = useState<PreopState>(emptyPreopState);
 
   // Mantém ?draft=&step= na URL para retomar o rascunho
   useEffect(() => {
@@ -140,6 +143,7 @@ export default function NewShoulderSurgery() {
           setTipos((dc.procedimentos ?? []).map((p: Obj) => p.tipoCaso));
           setMapa(dc.mapaArtroscopico ?? []);
           setImplantes(dc.implantes ?? []);
+          setPreop(preopStateFromPayload(dc.avaliacaoPreop));
         } else if (s.regiao) {
           setRegiao(s.regiao);
         }
@@ -174,6 +178,8 @@ export default function NewShoulderSurgery() {
     setTipos([]);
     setProcs({});
     setMapa([]);
+    // Sub-blocos pré-operatórios são por patologia (da região); os dados comuns continuam
+    setPreop((p) => ({ comum: p.comum, bySchema: {} }));
     // Vias de acesso e portais da outra região não se aplicam
     setGeral((g) => withoutOtherRegionOptions(r, g));
   }
@@ -187,6 +193,10 @@ export default function NewShoulderSurgery() {
     const base = SCHEMA_BY_ID.get(CORE_SCHEMA_ID)!;
     return region ? coreSchemaForRegion(base, region, geral) : base;
   }, [region, geral]);
+
+  // Avaliação pré-operatória: só os sub-blocos das patologias dos procedimentos escolhidos
+  const preopBlocks = useMemo(() => visiblePreopBlocks(tipos.map((k) => ({ codigo: procs[k]?.codigo ?? null }))), [tipos, procs]);
+  const preopPending = useMemo(() => preopIssueCount(preop, preopBlocks), [preop, preopBlocks]);
 
   const buildPayload = () => {
     const procedimentos = tipos.map((key) => ({ tipoCaso: key, codigo: procs[key]?.codigo ?? null, dados: procs[key]?.dados ?? {} }));
@@ -203,7 +213,7 @@ export default function NewShoulderSurgery() {
       procedimentoRealizado: procedimentos.map((p) => procedureName(p)).join(", "),
       observacoes,
       dadosClinicos: region
-        ? { versao: CLINICAL_PAYLOAD_VERSION, regiao: region, geral: { ...effectiveGeral, preop_dx: diagnoses }, procedimentos, mapaArtroscopico: arthroscopic ? mapa : [], implantes }
+        ? { versao: CLINICAL_PAYLOAD_VERSION, regiao: region, geral: { ...effectiveGeral, preop_dx: diagnoses }, procedimentos, mapaArtroscopico: arthroscopic ? mapa : [], implantes, avaliacaoPreop: buildPreopPayload(preop, preopBlocks) }
         : undefined,
     };
   };
@@ -457,6 +467,10 @@ export default function NewShoulderSurgery() {
 
               <SurgeryPreopFollowupCard draftId={draftId ?? null} patientPhone={selectedPatient?.telefone ?? undefined} ensureCurrentDraft={ensureDraft} ready={draftLoaded} showFollowup={!tipos.some((k) => k.endsWith("_FRACTURE"))} />
 
+              <Section title={t("preopTitle")} pending={preopPending > 0 ? preopPending : undefined} open={Boolean(serverIssues?.some((g) => g.scope.startsWith("avaliação pré-operatória")))} t={t}>
+                <PreopAssessmentForm blocks={preopBlocks} state={preop} onChange={setPreop} side={sideCode} region={region} />
+              </Section>
+
               <Section title={t("generalData")} pending={coreIssues.filter((i) => !hiddenCore.includes(i.field.split(".")[0])).length} t={t}>
                 <SchemaForm schema={coreSchema} value={geral} issues={coreIssues}
                   onChange={(v) => { const { preop_dx: _p, ...rest } = v; setGeral(rest); }}
@@ -540,9 +554,9 @@ export default function NewShoulderSurgery() {
 
 type T = ReturnType<typeof useScopedTranslations<(typeof surgeryShoulderMessages)["pt-BR"]>>;
 
-function Section({ title, pending, children, t }: { title: string; pending?: number; children: React.ReactNode; t: T }) {
+function Section({ title, pending, open = true, children, t }: { title: string; pending?: number; open?: boolean; children: React.ReactNode; t: T }) {
   return (
-    <details className="rounded-xl border p-4 bg-muted/10" open>
+    <details className="rounded-xl border p-4 bg-muted/10" open={open}>
       <summary className="flex cursor-pointer items-center justify-between gap-2 text-base font-semibold">
         <span>{title}</span>
         {pending !== undefined && (

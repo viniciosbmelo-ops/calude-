@@ -60,6 +60,16 @@ describe("assertRequiredSchema", () => {
     expect(unguarded).toEqual([]);
   });
 
+  it("requires the decision-support audit tables", () => {
+    expect(REQUIRED_TABLES).toEqual(
+      expect.arrayContaining([
+        "apoio_decisao_execucoes",
+        "apoio_decisao_escolhas",
+        "apoio_decisao_status",
+      ]),
+    );
+  });
+
   it("passes when all required tables and columns exist", async () => {
     mockPoolQuery
       .mockResolvedValueOnce(tablesResult(REQUIRED_TABLES))

@@ -6,14 +6,24 @@
  *
  * Rascunho: `parseClinicalPayload` só garante a FORMA (tipos e limites).
  * Finalização: `validateClinicalPayload` exige tudo válido pelos schemas.
+ *
+ * Versões: a v2 acrescenta o bloco opcional `avaliacaoPreop` (avaliação pré-operatória).
+ * Payloads v1 (sem o bloco) continuam aceitos na leitura, na gravação, na finalização e no relatório.
+ * O bloco pré-operatório NÃO entra no texto do relatório cirúrgico.
  */
 import type { ArthroMapEntry, ReportInput, ReportImplant } from '../report/reportEngine';
 import { ARTHRO_STRUCTURES, PATHOLOGY_BY_CODE, Region } from '../catalog/pathologies';
-import { CASE_TYPE_BY_KEY, intraopSchemaId } from '../catalog/caseTypes';
+import { CASE_TYPE_BY_KEY, diagnosisSchemaId, intraopSchemaId } from '../catalog/caseTypes';
 import type { SchemaRegistry, ValidationIssue } from '../schemaRegistry';
 import { coreRegionIssues, isOpenOnly } from './coreOptions';
 
-export const CLINICAL_PAYLOAD_VERSION = 1;
+export const CLINICAL_PAYLOAD_VERSION = 2;
+/** Versões de payload aceitas na leitura (a v1 não tem `avaliacaoPreop`). */
+export const SUPPORTED_PAYLOAD_VERSIONS = [1, 2] as const;
+/** Schema dos campos comuns da avaliação pré-operatória. */
+export const PREOP_COMMON_SCHEMA = 'PREOP_COMMON.v1';
+/** Limite de sub-blocos por patologia na avaliação pré-operatória. */
+export const MAX_PREOP_BLOCKS = 10;
 export const MAX_FREE_TEXT = 4000;
 
 export type SurgerySideLabel = 'Direito' | 'Esquerdo';
@@ -45,6 +55,25 @@ export interface ClinicalMapEntry extends ArthroMapEntry {
   justification?: string;
 }
 
+/** Sub-bloco da avaliação pré-operatória de uma patologia, validado pelo `<código>.diagnosis.vN` do catálogo. */
+export interface PreopPathologyAssessment {
+  /** Código da patologia do catálogo (ex.: SH_RCT_FULL); define o schema */
+  codigo: string;
+  /** Id do schema de diagnóstico (PATHOLOGIES[].diagnosis), ex.: SH_RCT.diagnosis.v1 */
+  schema: string;
+  dados: Record<string, any>;
+}
+
+/**
+ * Avaliação pré-operatória (payload v2). Tudo opcional; a validação cobre só tipo e faixa.
+ * `comum` segue PREOP_COMMON.v1 (data da avaliação, lado dominante, tabagismo, diabetes, nível de atividade).
+ * `patologias` tem no máximo um sub-bloco por schema de diagnóstico.
+ */
+export interface PreopAssessment {
+  comum: Record<string, any>;
+  patologias: PreopPathologyAssessment[];
+}
+
 export interface ClinicalPayload {
   versao: number;
   regiao: Region;
@@ -53,6 +82,8 @@ export interface ClinicalPayload {
   procedimentos: ClinicalProcedure[];
   mapaArtroscopico: ClinicalMapEntry[];
   implantes: ClinicalImplant[];
+  /** v2: avaliação pré-operatória; ausente nos payloads v1 e quando nada foi preenchido */
+  avaliacaoPreop?: PreopAssessment;
 }
 
 export interface SurgeryColumns {
@@ -95,6 +126,9 @@ export function sideCode(lado: string | null | undefined): 'R' | 'L' | undefined
 /** Garante a forma do payload (rascunho). Lança ClinicalPayloadError com mensagem em PT-BR. */
 export function parseClinicalPayload(raw: unknown): ClinicalPayload {
   if (!isObj(raw)) throw new ClinicalPayloadError('dadosClinicos deve ser um objeto.');
+  if (raw.versao !== undefined && !(SUPPORTED_PAYLOAD_VERSIONS as readonly unknown[]).includes(raw.versao)) {
+    throw new ClinicalPayloadError(`Versão de dadosClinicos não suportada: ${String(raw.versao)}.`);
+  }
   if (raw.regiao !== 'shoulder' && raw.regiao !== 'elbow') throw new ClinicalPayloadError('Região deve ser ombro ou cotovelo.');
   const regiao: Region = raw.regiao;
   if (raw.geral !== undefined && !isObj(raw.geral)) throw new ClinicalPayloadError('geral deve ser um objeto.');
@@ -161,7 +195,48 @@ export function parseClinicalPayload(raw: unknown): ClinicalPayload {
     return out;
   });
 
-  return { versao: CLINICAL_PAYLOAD_VERSION, regiao, geral, procedimentos, mapaArtroscopico, implantes };
+  const out: ClinicalPayload = { versao: CLINICAL_PAYLOAD_VERSION, regiao, geral, procedimentos, mapaArtroscopico, implantes };
+  const avaliacaoPreop = parsePreopAssessment(raw.avaliacaoPreop, regiao);
+  if (avaliacaoPreop) out.avaliacaoPreop = avaliacaoPreop;
+  return out;
+}
+
+/**
+ * Forma do bloco `avaliacaoPreop` (rascunho). Tipos e faixas dos campos ficam para a finalização
+ * (schemas PREOP_COMMON.v1 e `<código>.diagnosis.vN`), como nos dados intraoperatórios.
+ * Bloco vazio (sem campos comuns nem sub-blocos) é omitido: o payload fica igual ao de um v1.
+ */
+function parsePreopAssessment(raw: unknown, regiao: Region): PreopAssessment | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isObj(raw)) throw new ClinicalPayloadError('avaliacaoPreop deve ser um objeto.');
+  const comumRaw = raw.comum ?? {};
+  if (!isObj(comumRaw)) throw new ClinicalPayloadError('avaliacaoPreop.comum deve ser um objeto.');
+  const comum = { ...comumRaw };
+  const list = raw.patologias ?? [];
+  if (!Array.isArray(list) || list.length > MAX_PREOP_BLOCKS) throw new ClinicalPayloadError(`avaliacaoPreop.patologias: lista de até ${MAX_PREOP_BLOCKS} itens.`);
+  const seen = new Set<string>();
+  const patologias: PreopPathologyAssessment[] = list.map((e: unknown, i: number) => {
+    const n = `Avaliação pré-operatória ${i + 1}`;
+    if (!isObj(e)) throw new ClinicalPayloadError(`${n} inválida.`);
+    const def = typeof e.codigo === 'string' ? PATHOLOGY_BY_CODE.get(e.codigo) : undefined;
+    if (!def || def.region !== regiao) throw new ClinicalPayloadError(`${n}: patologia inválida para a região.`);
+    const schema = diagnosisSchemaId(def.code);
+    if (!schema) throw new ClinicalPayloadError(`${n}: ${def.name_pt} não tem avaliação pré-operatória estruturada.`);
+    if (e.schema !== undefined && e.schema !== schema) throw new ClinicalPayloadError(`${n}: schema deve ser ${schema}.`);
+    if (seen.has(schema)) throw new ClinicalPayloadError(`${n}: avaliação repetida para ${schema}.`);
+    seen.add(schema);
+    const dados = e.dados ?? {};
+    if (!isObj(dados)) throw new ClinicalPayloadError(`${n}: dados devem ser um objeto.`);
+    return { codigo: def.code, schema, dados: { ...dados } };
+  });
+  if (Object.keys(comum).length === 0 && patologias.length === 0) return undefined;
+  return { comum, patologias };
+}
+
+/** Sub-bloco pré-operatório de uma patologia (pelo schema de diagnóstico do código), se houver. */
+export function preopFor(p: Pick<ClinicalPayload, 'avaliacaoPreop'>, codigo: string): PreopPathologyAssessment | undefined {
+  const schema = diagnosisSchemaId(codigo);
+  return schema ? p.avaliacaoPreop?.patologias.find((e) => e.schema === schema) : undefined;
 }
 
 /** Núcleo cirúrgico completo (CORE_SURGERY) a partir dos dados gerais + colunas da cirurgia. */
@@ -183,7 +258,7 @@ export interface ValidateClinicalOptions {
   regionRules?: boolean;
 }
 
-/** Validação completa para finalizar: núcleo, cada procedimento e implantes. */
+/** Validação completa para finalizar: núcleo, cada procedimento, avaliação pré-operatória (tipo e faixa) e implantes. */
 export function validateClinicalPayload(registry: SchemaRegistry, p: ClinicalPayload, cols: SurgeryColumns, opts: ValidateClinicalOptions = {}): IssueGroup[] {
   const groups: IssueGroup[] = [];
   const coreData = coreFromSurgery(p, cols);
@@ -204,6 +279,14 @@ export function validateClinicalPayload(registry: SchemaRegistry, p: ClinicalPay
       if (!v.valid) groups.push({ scope, issues: v.issues });
     } else if (typeof proc.dados.descricao !== 'string' || proc.dados.descricao.trim().length < 3) {
       groups.push({ scope, issues: [{ field: 'descricao', keyword: 'required', message_pt: 'Descreva o procedimento realizado.' }] });
+    }
+  }
+  if (p.avaliacaoPreop) {
+    const common = registry.validate(PREOP_COMMON_SCHEMA, p.avaliacaoPreop.comum);
+    if (!common.valid) groups.push({ scope: 'avaliação pré-operatória', issues: common.issues });
+    for (const e of p.avaliacaoPreop.patologias) {
+      const v = registry.validate(e.schema, e.dados);
+      if (!v.valid) groups.push({ scope: `avaliação pré-operatória: ${PATHOLOGY_BY_CODE.get(e.codigo)?.name_pt ?? e.codigo}`, issues: v.issues });
     }
   }
   p.implantes.forEach((m, i) => {

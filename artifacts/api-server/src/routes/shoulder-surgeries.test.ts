@@ -200,6 +200,80 @@ describe("cirurgia de ombro e cotovelo", () => {
     expect(texto).toContain("Via de acesso: anterior em incisão única.");
   });
 
+  describe("avaliação pré-operatória (payload v2)", () => {
+    const preop = {
+      comum: { data_avaliacao: "2026-09-01", lado_dominante: "R", tabagismo: "nunca", diabetes: false, nivel_atividade: "recreativo" },
+      patologias: [{ codigo: "SH_BICEPS", dados: {} }],
+    };
+    const fxPreop = {
+      comum: { data_avaliacao: "2026-09-20", lado_dominante: "L", nivel_atividade: "sedentario" },
+      patologias: [{ codigo: "SH_FX_PROX_HUM", dados: { neer_partes: 3, desvio_tuberosidade_maior_mm: 6, dobradica_medial_desviada_mm: 2, asa: 3, cognicao_preservada: true } }],
+    };
+    const fxBody = (avaliacaoPreop: unknown) =>
+      body(
+        { regiao: "shoulder", geral: { ...geral, preop_dx: ["SH_FX_PROX_HUM"], postop_dx: ["SH_FX_PROX_HUM"] }, procedimentos: [{ tipoCaso: "SH_FRACTURE", codigo: "SH_FX_PROX_HUM", dados: { descricao: "Osteossíntese com placa bloqueada." } }], avaliacaoPreop },
+        { tipoCaso: "Fratura", tiposProcedimento: ["SH_FRACTURE"] },
+      );
+    let preopDraftId: number;
+
+    it("rascunho grava o bloco pré-operatório com o schema do catálogo", async () => {
+      const r = await api("/api/surgeries/draft", "POST", fxBody({ ...fxPreop, patologias: [{ ...fxPreop.patologias[0], dados: { neer_partes: 7 } }] }));
+      expect(r.status).toBe(200);
+      preopDraftId = (await json(r)).id;
+      createdSurgeries.push(preopDraftId);
+      const [row] = await db.select().from(surgeriesTable).where(eq(surgeriesTable.id, preopDraftId));
+      expect((row.dadosClinicos as any).versao).toBe(2);
+      expect((row.dadosClinicos as any).avaliacaoPreop.patologias[0]).toEqual({ codigo: "SH_FX_PROX_HUM", schema: "SH_FX_PROX_HUM.diagnosis.v1", dados: { neer_partes: 7 } });
+    });
+
+    it("rascunho recusa sub-bloco de patologia sem avaliação estruturada", async () => {
+      const r = await api("/api/surgeries/draft", "POST", fxBody(preop), authA);
+      expect(r.status).toBe(400);
+      expect(await json(r)).toMatchObject({ code: "CLINICAL_DATA_INVALID", error: expect.stringMatching(/não tem avaliação pré-operatória/) });
+    });
+
+    it("finalizar com valor fora da faixa devolve a pendência no escopo pré-operatório", async () => {
+      const bad = { ...fxPreop, comum: { ...fxPreop.comum, nivel_atividade: "elite" }, patologias: [{ codigo: "SH_FX_PROX_HUM", dados: { neer_partes: 5, desvio_tuberosidade_maior_mm: -1 } }] };
+      const r = await api(`/api/surgeries/${preopDraftId}/finalize`, "POST", fxBody(bad));
+      expect(r.status).toBe(422);
+      const j = await json(r);
+      expect(j.details.map((d: any) => d.scope)).toEqual(["avaliação pré-operatória", "avaliação pré-operatória: Fratura do úmero proximal"]);
+      expect(j.details[1].issues.map((i: any) => i.field)).toEqual(expect.arrayContaining(["neer_partes", "desvio_tuberosidade_maior_mm"]));
+      const [row] = await db.select().from(surgeriesTable).where(eq(surgeriesTable.id, preopDraftId));
+      expect(row.status).toBe("rascunho");
+    });
+
+    it("finalizar válido grava o bloco, e o relatório não traz dados pré-operatórios", async () => {
+      const r = await api(`/api/surgeries/${preopDraftId}/finalize`, "POST", fxBody(fxPreop));
+      expect(r.status).toBe(200);
+      const got = await json(await api(`/api/surgeries/${preopDraftId}`, "GET"));
+      expect(got.status).toBe("completo");
+      expect(got.dadosClinicos.avaliacaoPreop).toEqual({ comum: fxPreop.comum, patologias: [{ ...fxPreop.patologias[0], schema: "SH_FX_PROX_HUM.diagnosis.v1" }] });
+      const rel = await json(await api(`/api/surgeries/${preopDraftId}/relatorio`, "GET"));
+      expect(rel.texto).toContain("1. Fratura do úmero proximal\nOsteossíntese com placa bloqueada.");
+      expect(rel.texto).not.toMatch(/Neer|pré-operatória|dominante|ASA/);
+    });
+
+    it("registro v1 já gravado (sem versão nem bloco) continua gerando relatório", async () => {
+      const [row] = await db.select().from(surgeriesTable).where(eq(surgeriesTable.id, preopDraftId));
+      const { avaliacaoPreop: _a, ...v1 } = row.dadosClinicos as any;
+      await db.update(surgeriesTable).set({ dadosClinicos: { ...v1, versao: 1 } }).where(eq(surgeriesTable.id, preopDraftId));
+      const rel = await api(`/api/surgeries/${preopDraftId}/relatorio`, "GET");
+      expect(rel.status).toBe(200);
+      expect((await json(rel)).texto).toContain("1. Fratura do úmero proximal");
+    });
+
+    it("criar cirurgia completa com bloco pré-operatório de bíceps distal", async () => {
+      const avaliacaoPreop = { patologias: [{ codigo: "EL_DBR", dados: { tipo_rm: "completa", retracao_cm_rm: 3, hook_test: true, uso_anabolizantes: false } }] };
+      const r = await api("/api/surgeries", "POST", elbowBody({ geral: elbowGeral, avaliacaoPreop }));
+      expect(r.status).toBe(201);
+      const id = (await json(r)).id;
+      createdSurgeries.push(id);
+      const got = await json(await api(`/api/surgeries/${id}`, "GET"));
+      expect(got.dadosClinicos.avaliacaoPreop.patologias[0]).toMatchObject({ codigo: "EL_DBR", schema: "EL_DBR.diagnosis.v1", dados: avaliacaoPreop.patologias[0].dados });
+    });
+  });
+
   it("relatório de cirurgia sem dados de ombro responde 409", async () => {
     const [s] = await db.insert(surgeriesTable).values({ doctorId: doctorAId, patientId: patientAId }).returning();
     createdSurgeries.push(s.id);

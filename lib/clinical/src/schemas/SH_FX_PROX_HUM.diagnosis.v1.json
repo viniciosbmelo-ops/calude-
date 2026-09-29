@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SH_FX_PROX_HUM.diagnosis.v1",
+  "x-note": "Avaliação pré-operatória: todos os campos opcionais; o schema valida só tipo e faixa, sem interpretação clínica.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "data_lesao": {
+      "type": "string",
+      "format": "date"
+    },
+    "dias_desde_lesao": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 3650
+    },
+    "neer_partes": {
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "fratura_luxacao": {
+      "enum": [
+        "nenhuma",
+        "anterior",
+        "posterior"
+      ]
+    },
+    "head_split": {
+      "type": "boolean"
+    },
+    "impressao_cabeca_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "ao_ota": {
+      "enum": [
+        "11A1",
+        "11A2",
+        "11A3",
+        "11B1",
+        "11B2",
+        "11B3",
+        "11C1",
+        "11C2",
+        "11C3"
+      ]
+    },
+    "desvio_tuberosidade_maior_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "desvio_tuberosidade_menor_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "desvio_diafisario_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 200
+    },
+    "angulo_cervicodiafisario_graus": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 180
+    },
+    "impactada_em_valgo": {
+      "type": "boolean"
+    },
+    "extensao_metafisaria_posteromedial_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "dobradica_medial_desviada_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "cominuicao_calcar": {
+      "type": "boolean"
+    },
+    "deltoid_tuberosity_index": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "espessura_cortical_combinada_mm": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 30
+    },
+    "osteoporose_conhecida": {
+      "type": "boolean"
+    },
+    "asa": {
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "independencia_previa": {
+      "type": "boolean"
+    },
+    "cognicao_preservada": {
+      "type": "boolean"
+    },
+    "manguito_previo_deficiente": {
+      "type": "boolean"
+    },
+    "artrose_previa": {
+      "type": "boolean"
+    },
+    "fratura_exposta": {
+      "type": "boolean"
+    },
+    "lesao_neurovascular": {
+      "type": "boolean"
+    },
+    "politrauma": {
+      "type": "boolean"
+    }
+  }
+}

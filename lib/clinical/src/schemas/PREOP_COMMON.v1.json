@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "PREOP_COMMON.v1",
+  "x-note": "Avaliação pré-operatória: todos os campos opcionais; o schema valida só tipo e faixa, sem interpretação clínica.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "data_avaliacao": {
+      "type": "string",
+      "format": "date"
+    },
+    "lado_dominante": {
+      "enum": [
+        "R",
+        "L",
+        "ambidestro"
+      ]
+    },
+    "tabagismo": {
+      "enum": [
+        "nunca",
+        "ex_tabagista",
+        "atual"
+      ]
+    },
+    "diabetes": {
+      "type": "boolean"
+    },
+    "nivel_atividade": {
+      "enum": [
+        "sedentario",
+        "recreativo",
+        "competitivo",
+        "trabalhador_bracal"
+      ]
+    }
+  }
+}

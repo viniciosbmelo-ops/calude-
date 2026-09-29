@@ -31,10 +31,12 @@ export function validateWith(schemaId: string, data: unknown): ValidationIssue[]
 }
 
 const UNITS: [RegExp, string][] = [
-  [/_mm$/, "mm"], [/_deg$/, "°"], [/_pct$/, "%"], [/_cm$/, "cm"], [/_kg$/, "kg"],
-  [/_mmHg$/, "mmHg"], [/_mg$/, "mg"], [/_min$|^minutes_/, "min"], [/_days$|^days_/, "dias"],
+  [/_mm$|_mm_/, "mm"], [/_deg$|_graus$/, "°"], [/_pct$|_pct_/, "%"], [/_cm$|_cm_/, "cm"], [/_kg$/, "kg"],
+  [/_mmHg$/, "mmHg"], [/_mg$/, "mg"], [/_min$|^minutes_/, "min"], [/_days$|^days_|_dias$|^dias_/, "dias"],
+  [/_semanas$|^semanas_/, "semanas"], [/_meses$|^meses_/, "meses"],
 ];
-const unitOf = (name: string) => UNITS.find(([re]) => re.test(name))?.[1];
+/** Unidade pelo nome do campo (sufixo ou infixo, ex.: tamanho_ap_mm_rm → mm). */
+export const unitOf = (name: string) => UNITS.find(([re]) => re.test(name))?.[1];
 
 function clean(o: Obj): Obj | undefined {
   const out: Obj = {};

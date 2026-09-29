@@ -57,6 +57,10 @@ export const REQUIRED_TABLES: string[] = [
   "whatsapp_webhook_events",
   "whatsapp_outbox",
   "whatsapp_delivery_audit",
+  // Apoio à decisão (trilha de auditoria só de inserção; rota atrás da flag apoio_decisao)
+  "apoio_decisao_execucoes",
+  "apoio_decisao_escolhas",
+  "apoio_decisao_status",
 ];
 
 /**
@@ -116,6 +120,11 @@ export const REQUIRED_COLUMNS: RequiredColumn[] = [
   // Registro de ombro/cotovelo
   { table: "surgeries", column: "regiao" },
   { table: "surgeries", column: "dados_clinicos" },
+  // Apoio à decisão — versão travada por hash e escolha do cirurgião
+  { table: "apoio_decisao_execucoes", column: "algoritmo_hash" },
+  { table: "apoio_decisao_execucoes", column: "resultado" },
+  { table: "apoio_decisao_escolhas", column: "concordancia" },
+  { table: "apoio_decisao_status", column: "algoritmo_hash" },
 ];
 
 /**

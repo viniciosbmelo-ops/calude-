@@ -680,6 +680,168 @@ export interface AdminDashboard {
   geographicAccesses: GeographicAccessSummary;
 }
 
+export type ApoioDecisaoStatus = typeof ApoioDecisaoStatus[keyof typeof ApoioDecisaoStatus];
+
+
+export const ApoioDecisaoStatus = {
+  rascunho: 'rascunho',
+  revisado: 'revisado',
+  ativo: 'ativo',
+  aposentado: 'aposentado',
+} as const;
+
+/**
+ * Declarative algorithm definition (inputs, options, rules, references)
+ */
+export type ApoioDecisaoAlgoritmoDefinicao = { [key: string]: unknown };
+
+export interface ApoioDecisaoAlgoritmo {
+  id: string;
+  versao: string;
+  titulo: string;
+  escopo: string;
+  patologias: string[];
+  status: ApoioDecisaoStatus;
+  /** SHA-256 of the canonical content of the running code */
+  hash: string;
+  /** Whether the running content matches versions.lock.json */
+  hashConfereLock: boolean;
+  /** @nullable */
+  statusAtualizadoEm: string | null;
+  /** Declarative algorithm definition (inputs, options, rules, references) */
+  definicao: ApoioDecisaoAlgoritmoDefinicao;
+}
+
+export interface ApoioDecisaoAlgoritmoList {
+  /** State of the apoio_decisao feature flag */
+  moduloAtivo: boolean;
+  algoritmos: ApoioDecisaoAlgoritmo[];
+}
+
+/**
+ * Input values keyed by the algorithm input ids; absent inputs stay unknown
+ */
+export type AvaliarApoioDecisaoBodyEntrada = { [key: string]: unknown };
+
+export type AvaliarApoioDecisaoBodyModo = typeof AvaliarApoioDecisaoBodyModo[keyof typeof AvaliarApoioDecisaoBodyModo];
+
+
+export const AvaliarApoioDecisaoBodyModo = {
+  preop: 'preop',
+  registro: 'registro',
+} as const;
+
+export interface AvaliarApoioDecisaoBody {
+  /** Input values keyed by the algorithm input ids; absent inputs stay unknown */
+  entrada: AvaliarApoioDecisaoBodyEntrada;
+  modo: AvaliarApoioDecisaoBodyModo;
+  patientId?: number;
+  surgeryId?: number;
+}
+
+export type ResultadoApoioDecisaoRotulo = typeof ResultadoApoioDecisaoRotulo[keyof typeof ResultadoApoioDecisaoRotulo];
+
+
+export const ResultadoApoioDecisaoRotulo = {
+  Sugestão: 'Sugestão',
+} as const;
+
+export type ResultadoApoioDecisaoAlgoritmo = { [key: string]: unknown };
+
+export type ResultadoApoioDecisaoOpcoesItem = { [key: string]: unknown };
+
+export type ResultadoApoioDecisaoAvisosItem = { [key: string]: unknown };
+
+export type ResultadoApoioDecisaoFaltantesItem = { [key: string]: unknown };
+
+export type ResultadoApoioDecisaoTraceItem = { [key: string]: unknown };
+
+export type ResultadoApoioDecisaoReferenciasItem = { [key: string]: unknown };
+
+/**
+ * Engine output (ResultadoApoio in @workspace/clinical). Never a decision.
+ */
+export interface ResultadoApoioDecisao {
+  rotulo: ResultadoApoioDecisaoRotulo;
+  algoritmo: ResultadoApoioDecisaoAlgoritmo;
+  motor: string;
+  modo: string;
+  opcoes: ResultadoApoioDecisaoOpcoesItem[];
+  avisos: ResultadoApoioDecisaoAvisosItem[];
+  faltantes: ResultadoApoioDecisaoFaltantesItem[];
+  trace: ResultadoApoioDecisaoTraceItem[];
+  referencias: ResultadoApoioDecisaoReferenciasItem[];
+  [key: string]: unknown;
+ }
+
+export type ApoioDecisaoExecucaoModo = typeof ApoioDecisaoExecucaoModo[keyof typeof ApoioDecisaoExecucaoModo];
+
+
+export const ApoioDecisaoExecucaoModo = {
+  preop: 'preop',
+  registro: 'registro',
+  revisao: 'revisao',
+} as const;
+
+export interface ApoioDecisaoExecucao {
+  execucaoId: number;
+  modo: ApoioDecisaoExecucaoModo;
+  resultado: ResultadoApoioDecisao;
+}
+
+export interface RegistrarEscolhaApoioDecisaoBody {
+  /** @minLength 1 */
+  opcao?: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  outra?: string;
+  /** @maxLength 2000 */
+  justificativa?: string;
+}
+
+export type ApoioDecisaoEscolhaConcordancia = typeof ApoioDecisaoEscolhaConcordancia[keyof typeof ApoioDecisaoEscolhaConcordancia];
+
+
+export const ApoioDecisaoEscolhaConcordancia = {
+  concorda: 'concorda',
+  diverge: 'diverge',
+  sem_sugestao: 'sem_sugestao',
+} as const;
+
+export interface ApoioDecisaoEscolha {
+  id: number;
+  execucaoId: number;
+  /** @nullable */
+  opcao: string | null;
+  /** @nullable */
+  outra: string | null;
+  concordancia: ApoioDecisaoEscolhaConcordancia;
+  /** @nullable */
+  justificativa: string | null;
+  createdAt: string;
+}
+
+export interface AlterarStatusApoioDecisaoBody {
+  status: ApoioDecisaoStatus;
+  /** @minLength 1 */
+  hash: string;
+  /** @maxLength 2000 */
+  nota?: string;
+}
+
+export interface ApoioDecisaoStatusRegistro {
+  algoritmoId: string;
+  versao: string;
+  hash: string;
+  status: ApoioDecisaoStatus;
+  anterior: ApoioDecisaoStatus;
+  /** Versions of the same algorithm retired by this activation */
+  aposentadas: string[];
+  createdAt: string;
+}
+
 export type GetAdminAnalyticsParams = {
 period?: GetAdminAnalyticsPeriod;
 };

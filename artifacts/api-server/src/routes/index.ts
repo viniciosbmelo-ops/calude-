@@ -36,6 +36,7 @@ import totpRouter from "./totp";
 import preConsultRouter from "./pre-consult";
 import patientOrientationsRouter from "./patient-orientations";
 import adminWhatsappRouter from "./admin-whatsapp";
+import decisionSupportRouter from "./decision-support";
 import { subscriptionWriteGuard } from "../middlewares/subscriptionWriteGuard";
 
 const router: IRouter = Router();
@@ -78,5 +79,6 @@ router.use(totpRouter);
 router.use(preConsultRouter);
 router.use(patientOrientationsRouter);
 router.use(adminWhatsappRouter);
+router.use(decisionSupportRouter);
 
 export default router;

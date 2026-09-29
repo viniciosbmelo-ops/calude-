@@ -15,7 +15,8 @@
   "scripts": {
     "test": "vitest run",
     "lint:no-recommend": "tsx scripts/check-forbidden-terms.ts",
-    "gen": "tsx scripts/generate-validators.ts"
+    "gen": "tsx scripts/generate-validators.ts",
+    "lock:decision": "tsx scripts/lock-decision-versions.ts"
   },
   "dependencies": {
     "ajv": "^8.17.1",
