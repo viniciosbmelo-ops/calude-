@@ -14,7 +14,6 @@ import { buildFollowupMessage } from "./whatsapp";
 import { logger } from "./logger";
 import { randomUUID } from "crypto";
 import { getBaseUrl } from "./base-url";
-import { buildAppLink } from "./app-links";
 import {
   filterSupportedFollowupScales,
   hasFractureProcedure,
@@ -265,9 +264,7 @@ async function processClaimedNotification(claimed: ClaimedNotification): Promise
       return;
     }
 
-    // Scheduled job without a calling app: surgical follow-ups only exist in
-    // DocKnee, so the default app is used.
-    const link = buildAppLink(getBaseUrl(), `/patient/${followupToken}`);
+    const link = `${getBaseUrl()}/patient/${followupToken}`;
     const text = buildFollowupMessage({
       patientName: patient.nome,
       periodo: claimed.periodo,

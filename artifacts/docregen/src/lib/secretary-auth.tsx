@@ -29,7 +29,7 @@ export function SecretaryAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!shouldCheckSession) return;
-    fetch("/api/secretary-auth/me", {
+    fetch("/regen-api/secretary-auth/me", {
       credentials: "same-origin",
     })
       .then(res => {
@@ -54,7 +54,7 @@ export function SecretaryAuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", {
+      await fetch("/regen-api/auth/logout", {
         method: "POST",
         credentials: "same-origin",
       });

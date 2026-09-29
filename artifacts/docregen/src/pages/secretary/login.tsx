@@ -36,7 +36,7 @@ export default function SecretaryLogin() {
     setPasswordWarning(false);
     setLoading(true);
     try {
-      const res = await fetch("/api/secretary-auth/login", {
+      const res = await fetch("/regen-api/secretary-auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),

@@ -4,7 +4,6 @@ import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getUncachableStripeClient } from "../lib/stripeClient";
 import { getCheckoutRedirectBase } from "../lib/base-url";
-import { buildRequestAppLink } from "../lib/app-links";
 import { emitAnalyticsEvent, resolveAnalyticsSessionId } from "../lib/analyticsEmitter";
 import { resolveDoctorLocale } from "../lib/locale";
 import { localeForDoctorId } from "../lib/locale";
@@ -135,8 +134,8 @@ router.post("/stripe/checkout", requireAuth, async (req, res): Promise<void> => 
         line_items: [{ price: priceId, quantity: 1 }],
         payment_method_types: effectiveMethods,
         subscription_data: trialDays ? { trial_period_days: trialDays } : undefined,
-        success_url: buildRequestAppLink(req, base, "/sucesso?session_id={CHECKOUT_SESSION_ID}"),
-        cancel_url: buildRequestAppLink(req, base, "/assinatura-cancelada"),
+        success_url: `${base}/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${base}/assinatura-cancelada`,
         // Stripe accepts "es" for Spanish and "pt-BR" for Brazilian Portuguese.
         // This is derived solely from the authenticated doctor's saved profile.
         locale: resolveDoctorLocale(doctor.idioma),

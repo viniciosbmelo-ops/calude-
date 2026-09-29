@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCreatePatient } from "@workspace/api-client-react";
+import { useCreatePatient } from "@workspace/docregen-api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
@@ -36,7 +36,7 @@ import { Link } from "wouter";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import { useCreatePreConsultInvite } from "@/hooks/use-pre-consult";
-import { isValidCpf, normalizeCpf } from "../../../../../lib/api-zod/src/cpf";
+import { isValidCpf, normalizeCpf } from "../../../../../lib/docregen-api-zod/src/cpf";
 
 const ESTADOS_BR = [
   { uf: "AC", nome: "Acre" },

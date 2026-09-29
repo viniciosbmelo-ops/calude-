@@ -10,8 +10,8 @@
  *   - Fails silently — telemetry never disrupts the application.
  */
 
-const SESSION_STORAGE_KEY = "dk_analytics_sid";
-const API_BASE = "/api/analytics";
+const SESSION_STORAGE_KEY = "dr_analytics_sid";
+const API_BASE = "/regen-api/analytics";
 
 const ALLOWED_UTM_PARAMS = ["utm_source", "utm_medium", "utm_campaign"] as const;
 type UtmParam = (typeof ALLOWED_UTM_PARAMS)[number];

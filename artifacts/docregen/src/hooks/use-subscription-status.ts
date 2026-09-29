@@ -22,7 +22,7 @@ export function useSubscriptionStatus(): SubscriptionStatus {
     setLoading(true);
     // Never retain a previous grant while a fresh billing decision is pending.
     setCanWrite(false);
-    fetch("/api/stripe/subscription-status", {
+    fetch("/regen-api/stripe/subscription-status", {
       credentials: "same-origin",
     })
       .then((r) => {

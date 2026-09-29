@@ -102,7 +102,7 @@ describe("signed orientation sharing", () => {
 
   it("mints links through the API and contains no browser-origin unsigned fallback", () => {
     const source = readFileSync(new URL("../components/OrientacoesInline.tsx", import.meta.url), "utf8");
-    expect(source).toContain('fetch("/api/patient-orientations/token"');
+    expect(source).toContain('fetch("/regen-api/patient-orientations/token"');
     expect(source).toContain("value.preUrl");
     expect(source).toContain("value.posUrl");
     expect(source).not.toContain("window.location.origin");

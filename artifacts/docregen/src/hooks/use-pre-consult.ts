@@ -102,7 +102,7 @@ export function useGetPreConsultInvite(token: string) {
   return useQuery({
     queryKey: ["pre-consult", token],
     queryFn: async () => {
-      const res = await fetch(`/api/pre-consult/${token}`);
+      const res = await fetch(`/regen-api/pre-consult/${token}`);
       if (!res.ok) throw await parseError(res, "Convite inválido");
       return res.json() as Promise<{
         valid: boolean;
@@ -118,7 +118,7 @@ export function useGetPreConsultInvite(token: string) {
 export function useVerifyPreConsult(token: string) {
   return useMutation({
     mutationFn: async (cpf: string) => {
-      const res = await fetch(`/api/pre-consult/${token}/verify`, {
+      const res = await fetch(`/regen-api/pre-consult/${token}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cpf }),
@@ -133,7 +133,7 @@ export function useGetPreConsultForm(token: string, verified: boolean) {
   return useQuery({
     queryKey: ["pre-consult-form", token],
     queryFn: async () => {
-      const res = await fetch(`/api/pre-consult/${token}/form`);
+      const res = await fetch(`/regen-api/pre-consult/${token}/form`);
       if (!res.ok) throw await parseError(res, "Erro ao buscar formulário");
       return res.json() as Promise<PatientPreConsultForm>;
     },
@@ -145,7 +145,7 @@ export function useSavePreConsultAnswers(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (answers: Partial<PreConsultAnswers>) => {
-      const res = await fetch(`/api/pre-consult/${token}/answers`, {
+      const res = await fetch(`/regen-api/pre-consult/${token}/answers`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers }),
@@ -165,7 +165,7 @@ export function useSubmitPreConsult(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (answers: PreConsultAnswers) => {
-      const res = await fetch(`/api/pre-consult/${token}/submit`, {
+      const res = await fetch(`/regen-api/pre-consult/${token}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers }),
@@ -184,7 +184,7 @@ export function useUploadPreConsultAttachment(token: string) {
   return useMutation({
     mutationFn: async (file: File) => {
       // 1. Request URL
-      const urlRes = await fetch(`/api/pre-consult/${token}/uploads/request-url`, {
+      const urlRes = await fetch(`/regen-api/pre-consult/${token}/uploads/request-url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: file.name, size: file.size, mimeType: file.type }),
@@ -201,7 +201,7 @@ export function useUploadPreConsultAttachment(token: string) {
       if (!uploadRes.ok) throw new Error("Erro ao enviar arquivo");
 
       // 3. Register attachment
-      const attachRes = await fetch(`/api/pre-consult/${token}/attachments`, {
+      const attachRes = await fetch(`/regen-api/pre-consult/${token}/attachments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uploadToken }),
@@ -241,7 +241,7 @@ export interface PhysicianPreConsultData {
 }
 
 export async function fetchPhysicianPreConsult(patientId: number): Promise<PhysicianPreConsultData> {
-  const res = await fetch(`/api/patients/${patientId}/pre-consult`, { credentials: "same-origin" });
+  const res = await fetch(`/regen-api/patients/${patientId}/pre-consult`, { credentials: "same-origin" });
   if (!res.ok) throw await parseError(res, "Erro ao buscar pré-consulta");
   return res.json() as Promise<PhysicianPreConsultData>;
 }
@@ -262,7 +262,7 @@ export function useCreatePreConsultInvite(patientId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/patients/${patientId}/pre-consult/invite`, {
+      const res = await fetch(`/regen-api/patients/${patientId}/pre-consult/invite`, {
         method: "POST",
         credentials: "same-origin",
       });
@@ -279,7 +279,7 @@ export function useRevokePreConsultInvite(patientId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (inviteId: number) => {
-      const res = await fetch(`/api/patients/${patientId}/pre-consult/invite/${inviteId}/revoke`, {
+      const res = await fetch(`/regen-api/patients/${patientId}/pre-consult/invite/${inviteId}/revoke`, {
         method: "POST",
         credentials: "same-origin",
       });
@@ -296,7 +296,7 @@ export function useUpdatePhysicianPreConsult(patientId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (answers: Partial<PreConsultAnswers>) => {
-      const res = await fetch(`/api/patients/${patientId}/pre-consult`, {
+      const res = await fetch(`/regen-api/patients/${patientId}/pre-consult`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

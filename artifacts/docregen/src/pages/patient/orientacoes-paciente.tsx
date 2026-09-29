@@ -63,7 +63,7 @@ export default function OrientacoesPaciente() {
     if (!token) return;
     setLoading(true);
     setInvalid(false);
-    fetch(`/api/patient-orientations/${encodeURIComponent(token)}`, { credentials: "omit" })
+    fetch(`/regen-api/patient-orientations/${encodeURIComponent(token)}`, { credentials: "omit" })
       .then(async response => {
         if (!response.ok) throw new Error("invalid-orientation-token");
         const payload = await response.json() as { procKey?: unknown; tab?: unknown; doctorLocale?: unknown };

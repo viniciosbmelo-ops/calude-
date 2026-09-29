@@ -12,7 +12,7 @@ import { Save, User, Lock, Stethoscope, MapPin, Sun, Moon, MessageCircle, CheckC
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { useTheme } from "@/lib/theme";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
+import { getGetCurrentDoctorQueryKey } from "@workspace/docregen-api-client-react";
 import { useLanguage, useScopedTranslations, type Locale } from "@/lib/i18n";
 import { profileMessages } from "@/locales/profile";
 import { sortByPtBrName } from "@/lib/utils";
@@ -22,7 +22,7 @@ function ContactSupportCard() {
   const [contactEmail, setContactEmail] = useState<string>("");
 
   useEffect(() => {
-    fetch("/api/auth/config")
+    fetch("/regen-api/auth/config")
       .then(r => r.json())
       .then(d => { if (d.contactEmail) setContactEmail(d.contactEmail); })
       .catch(() => {});
@@ -150,7 +150,7 @@ function ChangePasswordCard() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
+      const res = await fetch("/regen-api/auth/change-password", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", ...getAnalyticsSessionHeaders() },
@@ -258,7 +258,7 @@ function SecretariesSection({ doctorId }: { doctorId: number }) {
 
   const load = async () => {
     setLoading(true);
-    const res = await fetch("/api/secretaries", { credentials: "same-origin" });
+    const res = await fetch("/regen-api/secretaries", { credentials: "same-origin" });
     if (res.ok) {
       const rows = await res.json();
       setList(sortByPtBrName(rows, (secretary) => secretary.nome, (secretary) => secretary.id));
@@ -288,8 +288,8 @@ function SecretariesSection({ doctorId }: { doctorId: number }) {
     if (form.senha) body["senha"] = form.senha;
 
     const res = editing
-      ? await fetch(`/api/secretaries/${editing.id}`, { method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      : await fetch("/api/secretaries", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      ? await fetch(`/regen-api/secretaries/${editing.id}`, { method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      : await fetch("/regen-api/secretaries", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
     const data = await res.json();
     if (!res.ok) { toast({ title: data.error, variant: "destructive" }); setSaving(false); return; }
@@ -301,7 +301,7 @@ function SecretariesSection({ doctorId }: { doctorId: number }) {
 
   const toggleAtivo = async (s: SecretaryRow) => {
     try {
-      const res = await fetch(`/api/secretaries/${s.id}`, {
+      const res = await fetch(`/regen-api/secretaries/${s.id}`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -322,7 +322,7 @@ function SecretariesSection({ doctorId }: { doctorId: number }) {
   const remove = async (s: SecretaryRow) => {
     if (!window.confirm(p("removeSecretary", { name: s.nome }))) return;
     try {
-      const res = await fetch(`/api/secretaries/${s.id}`, { method: "DELETE", credentials: "same-origin" });
+      const res = await fetch(`/regen-api/secretaries/${s.id}`, { method: "DELETE", credentials: "same-origin" });
       const data = await res.json().catch(() => null) as { error?: string } | null;
       if (!res.ok) {
         toast({ title: data?.error ?? p("secretaryActionError"), variant: "destructive" });
@@ -462,7 +462,7 @@ function BillingCard() {
 
   useEffect(() => {
     if (!showRenew || plans.length > 0) return;
-    fetch("/api/stripe/products-with-prices")
+    fetch("/regen-api/stripe/products-with-prices")
       .then(r => r.json())
       .then(d => { setPlans((d.data ?? []) as typeof plans); })
       .catch(() => {});
@@ -485,7 +485,7 @@ function BillingCard() {
     if (!cfg.priceId) return;
     setSubscribing(true);
     try {
-      const res = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/regen-api/stripe/checkout", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", ...getAnalyticsSessionHeaders() },
@@ -509,7 +509,7 @@ function BillingCard() {
     setCanceling(true);
     setShowConfirm(false);
     try {
-      const res = await fetch("/api/stripe/cancel-subscription", {
+      const res = await fetch("/regen-api/stripe/cancel-subscription", {
         method: "POST",
         credentials: "same-origin",
       });
@@ -777,7 +777,7 @@ function ProfileInner({ user }: { user: any }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`/api/doctors/${(user as any).id}`, {
+      const res = await fetch(`/regen-api/doctors/${(user as any).id}`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

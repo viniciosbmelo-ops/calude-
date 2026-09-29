@@ -69,7 +69,7 @@ export function countAppointmentsWithin(appointments: readonly DashboardAppointm
   return upcomingAppointments(appointments, today).filter(a => a.data <= limit).length;
 }
 
-/** Response of GET /api/pre-consults/summary (exact, doctor-wide). */
+/** Response of GET /regen-api/pre-consults/summary (exact, doctor-wide). */
 export type PreConsultSummary = {
   counts: { awaiting: number; answered: number };
   /** Soonest invite expiry first. */

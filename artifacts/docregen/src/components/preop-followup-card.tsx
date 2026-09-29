@@ -268,7 +268,7 @@ export function RegenPreopFollowupCard({
     setPrepared(null);
     void (async () => {
       try {
-        const response = await fetch(`/api/regen/cases/${caseId}/notifications`, { credentials: "same-origin" });
+        const response = await fetch(`/regen-api/regen/cases/${caseId}/notifications`, { credentials: "same-origin" });
         const rows = response.ok ? await readJson(response) : [];
         if (!active) return;
         const preop = Array.isArray(rows)
@@ -278,7 +278,7 @@ export function RegenPreopFollowupCard({
 
         if (preop?.token) {
           const preparedResponse = await fetch(
-            `/api/regen/cases/${caseId}/notifications/${preop.id}/prepare-whatsapp`,
+            `/regen-api/regen/cases/${caseId}/notifications/${preop.id}/prepare-whatsapp`,
             {
               method: "POST",
               credentials: "same-origin",
@@ -300,7 +300,7 @@ export function RegenPreopFollowupCard({
     setBusy(true);
     try {
       const id = await ensureCurrentCase();
-      const initResponse = await fetch(`/api/regen/cases/${id}/notifications/init`, {
+      const initResponse = await fetch(`/regen-api/regen/cases/${id}/notifications/init`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -317,7 +317,7 @@ export function RegenPreopFollowupCard({
       setNotification(preop);
 
       const preparedResponse = await fetch(
-        `/api/regen/cases/${id}/notifications/${preop.id}/prepare-whatsapp`,
+        `/regen-api/regen/cases/${id}/notifications/${preop.id}/prepare-whatsapp`,
         {
           method: "POST",
           credentials: "same-origin",
@@ -352,7 +352,7 @@ export function RegenPreopFollowupCard({
 
     if (notification.status !== "completed") {
       const response = await fetch(
-        `/api/regen/cases/${caseId}/notifications/${notification.id}`,
+        `/regen-api/regen/cases/${caseId}/notifications/${notification.id}`,
         {
           method: "PATCH",
           credentials: "same-origin",

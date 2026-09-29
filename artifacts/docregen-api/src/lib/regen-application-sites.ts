@@ -1,0 +1,70 @@
+export interface RegenApplicationSite {
+  localAplicacao: string;
+  guia: string;
+}
+
+export const APPLICATION_SITES_KEY = "locaisAplicacao";
+
+function asSite(value: unknown): RegenApplicationSite | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const localAplicacao = typeof row.localAplicacao === "string" ? row.localAplicacao : "";
+  const guia = typeof row.guia === "string" ? row.guia : "";
+  if (!localAplicacao.trim() && !guia.trim()) return null;
+  return { localAplicacao, guia };
+}
+
+/**
+ * Validates only the serialized repeatable extension. Other product detail
+ * keys intentionally remain open for future technical fields.
+ */
+export function parseApplicationSites(value: unknown): RegenApplicationSite[] | null {
+  if (typeof value !== "string" || !value.trim()) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+  if (parsed.some(item => (
+    !item
+    || typeof item !== "object"
+    || Array.isArray(item)
+    || typeof (item as Record<string, unknown>).localAplicacao !== "string"
+    || typeof (item as Record<string, unknown>).guia !== "string"
+  ))) return null;
+  const rows = parsed.map(asSite);
+  if (rows.some(row => row === null)) return null;
+  return rows.filter((row): row is RegenApplicationSite => row !== null);
+}
+
+export function hasValidApplicationSitesExtension(productDetails: Record<string, string>): boolean {
+  const raw = productDetails[APPLICATION_SITES_KEY];
+  if (raw === undefined) return true;
+  return parseApplicationSites(raw) !== null;
+}
+
+export function applicationSitesForProductDetails(
+  productDetails: Record<string, string> | null | undefined,
+): RegenApplicationSite[] {
+  const extension = parseApplicationSites(productDetails?.[APPLICATION_SITES_KEY]);
+  if (extension && extension.length > 0) return extension;
+  const legacy = asSite({
+    localAplicacao: productDetails?.localAplicacao,
+    guia: productDetails?.guia,
+  });
+  return legacy ? [legacy] : [];
+}
+
+export function synchronizeApplicationSiteLegacyFields(
+  productDetails: Record<string, string>,
+): Record<string, string> {
+  const sites = applicationSitesForProductDetails(productDetails);
+  if (sites.length === 0) return productDetails;
+  return {
+    ...productDetails,
+    localAplicacao: sites[0].localAplicacao,
+    guia: sites[0].guia,
+  };
+}

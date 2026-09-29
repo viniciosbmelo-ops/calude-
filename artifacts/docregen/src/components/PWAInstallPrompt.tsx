@@ -31,7 +31,7 @@ function detectPlatform(): Platform {
   return 'other';
 }
 
-const INSTALLED_KEY = 'docknee_pwa_installed';
+const INSTALLED_KEY = 'docregen_pwa_installed';
 
 function isRunningStandalone(): boolean {
   if ((window.navigator as any).standalone === true) return true;
@@ -54,7 +54,7 @@ function isAlreadyInstalled(): boolean {
 
 function wasNeverAgain(): boolean {
   try {
-    return localStorage.getItem('docknee_pwa_never') === '1';
+    return localStorage.getItem('docregen_pwa_never') === '1';
   } catch {
     return false;
   }
@@ -62,13 +62,13 @@ function wasNeverAgain(): boolean {
 
 function markNeverAgain(): void {
   try {
-    localStorage.setItem('docknee_pwa_never', '1');
+    localStorage.setItem('docregen_pwa_never', '1');
   } catch {}
 }
 
 function wasRecentlyDismissed(): boolean {
   try {
-    const ts = localStorage.getItem('docknee_pwa_dismissed');
+    const ts = localStorage.getItem('docregen_pwa_dismissed');
     if (!ts) return false;
     const days = (Date.now() - parseInt(ts)) / (1000 * 60 * 60 * 24);
     return days < 7;
@@ -79,7 +79,7 @@ function wasRecentlyDismissed(): boolean {
 
 function markDismissed(): void {
   try {
-    localStorage.setItem('docknee_pwa_dismissed', Date.now().toString());
+    localStorage.setItem('docregen_pwa_dismissed', Date.now().toString());
   } catch {}
 }
 

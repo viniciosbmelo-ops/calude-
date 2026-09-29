@@ -71,7 +71,7 @@ export default function RegenPesquisa() {
   const handleSearch = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`/api/regen/research?${buildQS()}`, { credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch(`/regen-api/regen/research?${buildQS()}`, { credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) throw new Error(await res.text());
       setRows(await res.json());
     } catch (e: any) {
@@ -83,7 +83,7 @@ export default function RegenPesquisa() {
   }, [sex, condition, procedure, ageMin, ageMax, imcMin, imcMax, t]);
 
   const handleExportCSV = () => {
-    const url = `/api/regen/research?${buildQS({ format: "csv" })}`;
+    const url = `/regen-api/regen/research?${buildQS({ format: "csv" })}`;
     const a = document.createElement("a");
     a.href = url;
     a.setAttribute("download", "regen-pesquisa.csv");

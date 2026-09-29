@@ -43,7 +43,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Never cache API calls — always go to network.
-  if (url.pathname.startsWith("/api/")) {
+  if (url.pathname.startsWith("/regen-api/")) {
     return;
   }
 

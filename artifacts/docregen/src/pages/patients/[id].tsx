@@ -4,7 +4,7 @@ import {
   useGetPatient,
   useDeletePatient,
   useUpdatePatient,
-} from "@workspace/api-client-react";
+} from "@workspace/docregen-api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ export default function PatientDetail() {
 
   const fetchAttachments = async (patientId: number) => {
     try {
-      const res = await fetch(`/api/patients/${patientId}/attachments`, {
+      const res = await fetch(`/regen-api/patients/${patientId}/attachments`, {
         credentials: "same-origin",
       });
       if (res.ok) setAttachments(await res.json());
@@ -127,7 +127,7 @@ export default function PatientDetail() {
       const file = fileArr[i];
       try {
         // 1. Request a pre-authorised upload grant (patient_attachment purpose)
-        const urlRes = await fetch("/api/storage/uploads/request-url", {
+        const urlRes = await fetch("/regen-api/storage/uploads/request-url", {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
@@ -146,7 +146,7 @@ export default function PatientDetail() {
         if (!uploadRes.ok) throw new Error("Upload failed");
         setUploadingFiles(prev => prev.map((u, idx) => idx === i ? { ...u, progress: 80 } : u));
         // 3. Atomically consume the grant token to register the attachment
-        await fetch(`/api/patients/${id}/attachments`, {
+        await fetch(`/regen-api/patients/${id}/attachments`, {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
@@ -163,7 +163,7 @@ export default function PatientDetail() {
 
   const handleDeleteAttachment = async (attachmentId: number) => {
     try {
-      await fetch(`/api/patients/${id}/attachments/${attachmentId}`, {
+      await fetch(`/regen-api/patients/${id}/attachments/${attachmentId}`, {
         method: "DELETE", credentials: "same-origin",
       });
       setAttachments(prev => prev.filter(a => a.id !== attachmentId));
@@ -209,7 +209,7 @@ export default function PatientDetail() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/regen/cases?patientId=${id}`, { credentials: "same-origin" })
+    fetch(`/regen-api/regen/cases?patientId=${id}`, { credentials: "same-origin" })
       .then(r => r.ok ? r.json() : [])
       .then(setRegenCases)
       .catch(() => {});
@@ -996,7 +996,7 @@ export default function PatientDetail() {
                     // for older attachments or a temporary signing failure.
                     const openUrl = att.downloadUrl ||
                       (att.objectPath.startsWith("/objects/")
-                        ? `/api/storage/objects/${att.objectPath.slice("/objects/".length)}`
+                        ? `/regen-api/storage/objects/${att.objectPath.slice("/objects/".length)}`
                         : null);
 
                     return (

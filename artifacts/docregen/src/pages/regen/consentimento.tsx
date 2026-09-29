@@ -52,7 +52,7 @@ export default function RegenConsentimento() {
 
   const fetchCases = useCallback(async () => {
     try {
-      const res = await fetch("/api/regen/cases", { credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch("/regen-api/regen/cases", { credentials: "same-origin", headers: authHeaders() });
       if (res.ok) {
         const data: any[] = await res.json();
         setCases(sortByPtBrName(
@@ -71,7 +71,7 @@ export default function RegenConsentimento() {
     setError(null);
     try {
       const qs = selectedCase ? `?caseId=${selectedCase}` : "";
-      const res = await fetch(`/api/regen/consent/${productCode}${qs}`, { credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch(`/regen-api/regen/consent/${productCode}${qs}`, { credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) throw new Error(await res.text());
       const blob = await res.blob();
       await sharePdfBlobOrDownload(

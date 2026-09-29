@@ -80,7 +80,7 @@ export default function ResetPasswordToken() {
     if (novaSenha.length < 8) { setErr(copy.passwordMin8Error); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/reset-password-token", {
+      const res = await fetch("/regen-api/auth/reset-password-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, novaSenha }),

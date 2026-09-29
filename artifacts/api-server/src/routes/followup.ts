@@ -6,7 +6,6 @@ import { CreateFollowupBody, UpdateFollowupBody } from "@workspace/api-zod";
 import crypto from "node:crypto";
 import { sendWhatsAppText, buildFollowupMessage } from "../lib/whatsapp";
 import { getBaseUrl } from "../lib/base-url";
-import { buildRequestAppLink } from "../lib/app-links";
 import {
   filterSupportedFollowupScales,
   hasFractureProcedure,
@@ -334,7 +333,7 @@ router.post("/followup/:id/send-scales", requireAuth, async (req, res): Promise<
   }
 
   const { token, followup } = outcome;
-  const link = buildRequestAppLink(req, getBaseUrl(req), `/patient/${token}`);
+  const link = `${getBaseUrl(req)}/patient/${token}`;
   res.json({ token, link, escalasEnviadas, followup });
 });
 
@@ -377,7 +376,7 @@ router.post("/followup/:id/prepare-whatsapp", requireAuth, async (req, res): Pro
     if (!row.followup.token) {
       await tx.update(followupTable).set({ token }).where(eq(followupTable.id, id));
     }
-    const link = buildRequestAppLink(req, getBaseUrl(req), `/patient/${token}`);
+    const link = `${getBaseUrl(req)}/patient/${token}`;
     const scales = filterSupportedFollowupScales(row.followup.escalasEnviadas);
     const message = buildFollowupMessage({
       patientName: row.patient.nome,
@@ -443,7 +442,7 @@ router.post("/followup/:id/send-whatsapp", requireAuth, async (req, res): Promis
     if (!row.followup.token) {
       await tx.update(followupTable).set({ token }).where(eq(followupTable.id, id));
     }
-    const link = buildRequestAppLink(req, getBaseUrl(req), `/patient/${token}`);
+    const link = `${getBaseUrl(req)}/patient/${token}`;
     const scales = filterSupportedFollowupScales(row.followup.escalasEnviadas);
     const text = customMessage ?? buildFollowupMessage({
       patientName: row.patient.nome,

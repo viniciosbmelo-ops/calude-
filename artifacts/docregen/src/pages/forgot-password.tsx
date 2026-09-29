@@ -20,7 +20,7 @@ export default function ForgotPassword() {
     if (!emailVal.trim()) { setErr(copy.enterEmail); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await fetch("/regen-api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

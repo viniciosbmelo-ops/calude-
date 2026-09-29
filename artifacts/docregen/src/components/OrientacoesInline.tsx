@@ -138,7 +138,7 @@ export default function OrientacoesInline({ productCode, patientPhone, defaultTa
     if (!open || shareState === "loading" || share) return;
     let cancelled = false;
     setShareState("loading");
-    fetch("/api/patient-orientations/token", {
+    fetch("/regen-api/patient-orientations/token", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },

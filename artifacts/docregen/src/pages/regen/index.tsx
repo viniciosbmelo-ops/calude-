@@ -129,9 +129,9 @@ export default function RegenDashboard() {
     setError(null);
     try {
       const [termsRes, statsRes, casesRes] = await Promise.all([
-        fetch("/api/regen/terms/status", { credentials: "same-origin", headers: authHeaders() }),
-        fetch("/api/regen/stats",        { credentials: "same-origin", headers: authHeaders() }),
-        fetch("/api/regen/cases",        { credentials: "same-origin", headers: authHeaders() }),
+        fetch("/regen-api/regen/terms/status", { credentials: "same-origin", headers: authHeaders() }),
+        fetch("/regen-api/regen/stats",        { credentials: "same-origin", headers: authHeaders() }),
+        fetch("/regen-api/regen/cases",        { credentials: "same-origin", headers: authHeaders() }),
       ]);
       setTermsStatus(await termsRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
@@ -148,7 +148,7 @@ export default function RegenDashboard() {
   const handleAcceptTerms = async () => {
     setAccepting(true);
     try {
-      const res = await fetch("/api/regen/terms/accept", { method: "POST", credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch("/regen-api/regen/terms/accept", { method: "POST", credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         alert(body.error ?? t("termsError"));

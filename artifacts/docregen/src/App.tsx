@@ -154,7 +154,7 @@ function Router() {
 function VisitTracker() {
   useEffect(() => {
     const path = window.location.pathname;
-    fetch("/api/stats/visit", {
+    fetch("/regen-api/stats/visit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path }),

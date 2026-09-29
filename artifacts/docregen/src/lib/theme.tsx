@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem("docknee_theme");
+    const stored = localStorage.getItem("docregen_theme");
     if (stored === "dark" || stored === "light") return stored;
     return "light";
   });
@@ -28,7 +28,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("docknee_theme", theme);
+    localStorage.setItem("docregen_theme", theme);
   }, [theme]);
 
   const setTheme = (t: Theme) => setThemeState(t);

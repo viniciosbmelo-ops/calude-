@@ -6,7 +6,7 @@
 /** Appointment type persisted for regenerative procedure sessions. */
 export const REGEN_SESSION_TYPE = "procedimento regenerativo";
 
-/** GET /api/secretary/regen-cases */
+/** GET /regen-api/secretary/regen-cases */
 export type SecretaryRegenCase = {
   id: string;
   patientId: number | null;
@@ -24,7 +24,7 @@ export type SecretaryRegenCase = {
   nextSessionTime: string | null;
 };
 
-/** GET /api/secretary/followup-alerts?type=regen */
+/** GET /regen-api/secretary/followup-alerts?type=regen */
 export type SecretaryRegenAlert = {
   id: string;
   caseId: string;

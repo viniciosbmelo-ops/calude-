@@ -276,7 +276,7 @@ function LabsTab({ caseId, labs, onRefresh }: { caseId: string; labs: LabResult[
     const flag = labFlag(val, a.refMin, a.refMax);
     setSaving(s => ({ ...s, [analyte]: true }));
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/labs`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/labs`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -306,7 +306,7 @@ function LabsTab({ caseId, labs, onRefresh }: { caseId: string; labs: LabResult[
   const handleDelete = async (id: number) => {
     setDeleting(d => ({ ...d, [id]: true }));
     try {
-      await fetch(`/api/regen/cases/${caseId}/labs/${id}`, {
+      await fetch(`/regen-api/regen/cases/${caseId}/labs/${id}`, {
         method: "DELETE",
         credentials: "same-origin",
       });
@@ -634,7 +634,7 @@ function PriorTreatmentsSection({
     setSelected(next);
     setSaving(true);
     try {
-      await fetch(`/api/regen/cases/${caseId}`, {
+      await fetch(`/regen-api/regen/cases/${caseId}`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -712,7 +712,7 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
     if (!productCode) return alert(t("selectOrthobiologic"));
     setSaving(true);
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/procedures`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/procedures`, {
         method: "POST",
         credentials: "same-origin",
         headers: authHeaders(),
@@ -882,7 +882,7 @@ function PromForm({ caseId, onSaved }: { caseId: string; onSaved: () => void }) 
     if (!instrument || !timepoint) return alert(t("selectPromFields"));
     setSaving(true);
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/proms`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/proms`, {
         method: "POST",
         credentials: "same-origin",
         headers: authHeaders(),
@@ -967,7 +967,7 @@ function PatientPhoneField({ caseId, initial }: { caseId: string; initial: strin
 
   const handleSave = async () => {
     setSaving(true);
-    await fetch(`/api/regen/cases/${caseId}`, {
+    await fetch(`/regen-api/regen/cases/${caseId}`, {
       method: "PATCH",
       credentials: "same-origin",
       headers: authHeaders(),
@@ -1039,7 +1039,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
     setLoading(true);
     setActionError("");
     try {
-      const r = await fetch(`/api/regen/cases/${caseId}/notifications`, { credentials: "same-origin", headers: authHeaders() });
+      const r = await fetch(`/regen-api/regen/cases/${caseId}/notifications`, { credentials: "same-origin", headers: authHeaders() });
       const data = await r.json().catch(() => null);
       if (!r.ok || !Array.isArray(data)) throw new Error(t("loadError"));
       setNotifs(data);
@@ -1056,7 +1056,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
     setIniting(true);
     setActionError("");
     try {
-      const r = await fetch(`/api/regen/cases/${caseId}/notifications/init`, {
+      const r = await fetch(`/regen-api/regen/cases/${caseId}/notifications/init`, {
         method: "POST",
         credentials: "same-origin",
         headers: authHeaders(),
@@ -1079,7 +1079,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
     setPreparing(notifId);
     setActionError("");
     try {
-      const r = await fetch(`/api/regen/cases/${caseId}/notifications/${notifId}/prepare-whatsapp`, {
+      const r = await fetch(`/regen-api/regen/cases/${caseId}/notifications/${notifId}/prepare-whatsapp`, {
         method: "POST",
         credentials: "same-origin",
         headers: authHeaders(),
@@ -1128,7 +1128,7 @@ function RegenFollowupTimeline({ caseId, patientPhone }: { caseId: string; patie
     }
     popup.location.href = waUrl;
 
-    const statusResponse = await fetch(`/api/regen/cases/${caseId}/notifications/${notifId}`, {
+    const statusResponse = await fetch(`/regen-api/regen/cases/${caseId}/notifications/${notifId}`, {
       method: "PATCH",
       credentials: "same-origin",
       headers: authHeaders(),
@@ -1384,7 +1384,7 @@ function AnamneseRegenTab({
       clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(async () => {
         setSaving(true);
-        const res = await fetch(`/api/regen/cases/${caseId}`, {
+        const res = await fetch(`/regen-api/regen/cases/${caseId}`, {
           method: "PATCH",
           credentials: "same-origin",
           headers: authHeaders(),
@@ -1814,7 +1814,7 @@ function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
     setDownloadingClinicalPdf(true);
     setClinicalPdfErr(null);
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/clinical-report`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/clinical-report`, {
         credentials: "same-origin",
         headers: authHeaders(),
       });
@@ -1839,7 +1839,7 @@ function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
     setDownloadingPdf(true);
     setPdfErr(null);
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/report`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/report`, {
         credentials: "same-origin",
         headers: authHeaders(),
       });
@@ -1863,7 +1863,7 @@ function IaTab({ caseId, proms }: { caseId: string; proms: PromResponse[] }) {
   const handleGenerate = async () => {
     setGenerating(true); setErr(null);
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/ai-summary`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/ai-summary`, {
         method: "POST",
         credentials: "same-origin",
         headers: authHeaders(),
@@ -2551,7 +2551,7 @@ export default function RegenCaso() {
 
   const fetchCase = useCallback(async () => {
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}`, { credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch(`/regen-api/regen/cases/${caseId}`, { credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) throw new Error(res.statusText);
       setC(await res.json());
     } catch {
@@ -2560,17 +2560,17 @@ export default function RegenCaso() {
   }, [caseId, t]);
 
   const fetchProcedures = useCallback(async () => {
-    const res = await fetch(`/api/regen/cases/${caseId}/procedures`, { credentials: "same-origin", headers: authHeaders() });
+    const res = await fetch(`/regen-api/regen/cases/${caseId}/procedures`, { credentials: "same-origin", headers: authHeaders() });
     if (res.ok) setProcedures(await res.json());
   }, [caseId]);
 
   const fetchProms = useCallback(async () => {
-    const res = await fetch(`/api/regen/cases/${caseId}/proms`, { credentials: "same-origin", headers: authHeaders() });
+    const res = await fetch(`/regen-api/regen/cases/${caseId}/proms`, { credentials: "same-origin", headers: authHeaders() });
     if (res.ok) setProms(await res.json());
   }, [caseId]);
 
   const fetchLabs = useCallback(async () => {
-    const res = await fetch(`/api/regen/cases/${caseId}/labs`, { credentials: "same-origin", headers: authHeaders() });
+    const res = await fetch(`/regen-api/regen/cases/${caseId}/labs`, { credentials: "same-origin", headers: authHeaders() });
     if (res.ok) setLabs(await res.json());
   }, [caseId]);
 
@@ -2640,7 +2640,7 @@ export default function RegenCaso() {
   }, [c, labs, proms, procedures]);
 
   const handleStatusChange = async (status: string) => {
-    await fetch(`/api/regen/cases/${caseId}`, {
+    await fetch(`/regen-api/regen/cases/${caseId}`, {
       method: "PATCH", credentials: "same-origin", headers: authHeaders(),
       body: JSON.stringify({ status }),
     });
@@ -2648,7 +2648,7 @@ export default function RegenCaso() {
   };
 
   const handleDelete = async () => {
-    await fetch(`/api/regen/cases/${caseId}`, {
+    await fetch(`/regen-api/regen/cases/${caseId}`, {
       method: "DELETE", credentials: "same-origin", headers: authHeaders(),
     });
     navigate("/regen");

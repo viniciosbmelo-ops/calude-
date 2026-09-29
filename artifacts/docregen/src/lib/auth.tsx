@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetCurrentDoctor, getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
-import type { Doctor } from "@workspace/api-client-react";
+import { useGetCurrentDoctor, getGetCurrentDoctorQueryKey } from "@workspace/docregen-api-client-react";
+import type { Doctor } from "@workspace/docregen-api-client-react";
 import { getBrowserAuthProfile } from "./auth-route";
 
 interface AuthContextType {
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", {
+      await fetch("/regen-api/auth/logout", {
         method: "POST",
         credentials: "same-origin",
       });

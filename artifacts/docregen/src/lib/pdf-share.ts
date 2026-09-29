@@ -39,7 +39,7 @@ export async function sharePdfBlobOrDownload(
     return { deferred: false };
   }
 
-  const resp = await fetch("/api/pdf/temp", {
+  const resp = await fetch("/regen-api/pdf/temp", {
     method: "POST",
     credentials: "same-origin",
     headers: {
@@ -54,7 +54,7 @@ export async function sharePdfBlobOrDownload(
   }
 
   const { url, path } = (await resp.json()) as { url?: string; path?: string };
-  const sameOriginPath = typeof path === "string" && /^\/api\/pdf\/temp\/[a-f0-9]{32}$/.test(path)
+  const sameOriginPath = typeof path === "string" && /^\/regen-api\/pdf\/temp\/[a-f0-9]{32}$/.test(path)
     ? path
     : undefined;
   const openUrl = sameOriginPath ?? url;
@@ -71,7 +71,7 @@ export async function sharePdfBlobOrDownload(
 
 /**
  * After generating a PDF on mobile:
- *   1. POST the raw bytes to /api/pdf/temp (real HTTPS URL, auth required).
+ *   1. POST the raw bytes to /regen-api/pdf/temp (real HTTPS URL, auth required).
  *   2. Call onDefer(httpsUrl) so the caller shows an "Abrir PDF" button.
  *   3. On button tap, handlePdfOpenClick opens the URL in DocRegen's
  *      in-app viewer, which keeps a visible back button on iOS.

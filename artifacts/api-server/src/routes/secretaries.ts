@@ -7,7 +7,6 @@ import { z } from "zod/v4";
 import { establishSession } from "../lib/session";
 import { isHiddenFracturePreoperative } from "../lib/followup-schedule";
 import { localeForDoctorId } from "../lib/locale";
-import { regenPeriodForLocale } from "../lib/regen-labels";
 import { message } from "../lib/locale-catalog";
 
 const router: IRouter = Router();
@@ -321,171 +320,10 @@ router.delete("/appointments/:id", requireDoctorOrSecretary, async (req, res): P
   res.json({ success: true });
 });
 
-// ── Regenerative cases (read-only summary for the secretary) ──────────────
-
-type RegenCaseSummaryRow = {
-  id: string;
-  patient_id: number | null;
-  patient_nome: string | null;
-  patient_telefone: string | null;
-  condition_code: string;
-  lado_articulacao: string | null;
-  status: string | null;
-  data_caso: string | null;
-  created_at: Date | string | null;
-  procedure_count: number;
-  last_procedure_at: Date | string | null;
-  next_followup_date: string | null;
-  next_session_date: string | null;
-  next_session_time: string | null;
-};
-
-function toIso(value: Date | string | null): string | null {
-  if (value === null) return null;
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
-
-/**
- * GET /secretary/regen-cases — regenerative cases of the doctor the caller
- * belongs to, reduced to what the front desk needs to schedule procedure
- * sessions: patient, condition, status, session counts and the next pending
- * follow-up / scheduled session. No clinical content (anamnesis, PROM scores,
- * labs, products, notes or consent) is exposed, and there is no write access:
- * sessions are scheduled through the regular /appointments endpoints.
- */
-router.get("/secretary/regen-cases", requireDoctorOrSecretary, async (req, res): Promise<void> => {
-  const doctorId = req.doctorId!;
-  const today = new Date().toISOString().slice(0, 10);
-  const result = await db.execute(sql`
-    SELECT
-      c.id,
-      p.id AS patient_id,
-      COALESCE(p.nome, c.patient_name) AS patient_nome,
-      COALESCE(p.telefone, c.patient_phone) AS patient_telefone,
-      c.condition_code,
-      c.lado_articulacao,
-      c.status,
-      to_char(c.data_caso, 'YYYY-MM-DD') AS data_caso,
-      c.created_at,
-      (SELECT COUNT(*) FROM regen_procedures pr WHERE pr.case_id = c.id)::int AS procedure_count,
-      (SELECT MAX(pr.performed_at) FROM regen_procedures pr WHERE pr.case_id = c.id) AS last_procedure_at,
-      (
-        SELECT to_char(MIN(n.scheduled_date), 'YYYY-MM-DD')
-        FROM regen_followup_notifications n
-        WHERE n.case_id = c.id
-          AND n.status <> 'completed'
-          AND NOT EXISTS (SELECT 1 FROM regen_scale_responses r WHERE r.notification_id = n.id)
-      ) AS next_followup_date,
-      next_session.data AS next_session_date,
-      next_session.hora AS next_session_time
-    FROM regen_cases c
-    LEFT JOIN patients p ON p.id = c.patient_id AND p.doctor_id = c.doctor_id
-    LEFT JOIN LATERAL (
-      SELECT a.data, a.hora
-      FROM appointments a
-      WHERE p.id IS NOT NULL
-        AND a.doctor_id = c.doctor_id
-        AND a.patient_id = p.id
-        AND a.tipo = 'procedimento regenerativo'
-        AND a.status <> 'cancelado'
-        AND a.data >= ${today}
-      ORDER BY a.data, a.hora
-      LIMIT 1
-    ) next_session ON true
-    WHERE c.doctor_id = ${doctorId}
-    ORDER BY c.created_at DESC NULLS LAST, c.id
-  `);
-
-  res.json((result.rows as RegenCaseSummaryRow[]).map((row) => ({
-    id: row.id,
-    patientId: row.patient_id === null ? null : Number(row.patient_id),
-    patientNome: row.patient_nome,
-    patientTelefone: row.patient_telefone,
-    conditionCode: row.condition_code,
-    ladoArticulacao: row.lado_articulacao,
-    status: row.status,
-    dataCaso: row.data_caso,
-    createdAt: toIso(row.created_at),
-    procedureCount: Number(row.procedure_count),
-    lastProcedureAt: toIso(row.last_procedure_at),
-    nextFollowupDate: row.next_followup_date,
-    nextSessionDate: row.next_session_date,
-    nextSessionTime: row.next_session_time,
-  })));
-});
-
 // ── Follow-up Alerts (for secretary) ───────────────────────────────────────
-
-const FOLLOWUP_ALERT_TYPES = new Set(["surgical", "regen"]);
-
-type RegenAlertRow = {
-  id: string;
-  case_id: string;
-  patient_id: number | null;
-  patient_nome: string | null;
-  patient_telefone: string | null;
-  periodo: string;
-  scheduled_date: string | null;
-  status: string;
-};
-
-/**
- * Regenerative follow-up (PROM) notifications still waiting for the patient:
- * no scale response recorded and not marked completed. Scoped to the
- * authenticated doctor (or the doctor the secretary belongs to). Only
- * scheduling/contact data is returned — never scores or clinical content.
- */
-async function listRegenFollowupAlerts(doctorId: number) {
-  const locale = await localeForDoctorId(doctorId);
-  const today = new Date().toISOString().slice(0, 10);
-  const result = await db.execute(sql`
-    SELECT
-      n.id,
-      n.case_id,
-      p.id AS patient_id,
-      COALESCE(p.nome, c.patient_name) AS patient_nome,
-      COALESCE(p.telefone, c.patient_phone) AS patient_telefone,
-      n.periodo,
-      to_char(n.scheduled_date, 'YYYY-MM-DD') AS scheduled_date,
-      n.status
-    FROM regen_followup_notifications n
-    JOIN regen_cases c ON c.id = n.case_id
-    LEFT JOIN patients p ON p.id = c.patient_id AND p.doctor_id = c.doctor_id
-    WHERE c.doctor_id = ${doctorId}
-      AND n.status <> 'completed'
-      AND NOT EXISTS (
-        SELECT 1 FROM regen_scale_responses r WHERE r.notification_id = n.id
-      )
-    ORDER BY n.scheduled_date ASC NULLS LAST, n.id
-  `);
-  return (result.rows as RegenAlertRow[]).map((row) => ({
-    id: row.id,
-    caseId: row.case_id,
-    patientId: row.patient_id === null ? null : Number(row.patient_id),
-    patientNome: row.patient_nome,
-    patientTelefone: row.patient_telefone,
-    periodo: regenPeriodForLocale(row.periodo, locale),
-    scheduledDate: row.scheduled_date,
-    status: row.status,
-    kind: row.status === "sent"
-      ? "awaiting" as const
-      : row.scheduled_date && row.scheduled_date <= today
-        ? "overdue" as const
-        : "scheduled" as const,
-  }));
-}
 
 router.get("/secretary/followup-alerts", requireDoctorOrSecretary, async (req, res): Promise<void> => {
   const doctorId = req.doctorId!;
-  const rawType = req.query["type"];
-  if (rawType !== undefined && (typeof rawType !== "string" || !FOLLOWUP_ALERT_TYPES.has(rawType))) {
-    res.status(400).json({ error: "Tipo de alerta inválido." });
-    return;
-  }
-  if (rawType === "regen") {
-    res.json(await listRegenFollowupAlerts(doctorId));
-    return;
-  }
 
   const alerts = await db
     .select({

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
+import { getGetCurrentDoctorQueryKey } from "@workspace/docregen-api-client-react";
 import { useAuth } from "./auth";
 import { toDisplayDate } from "./utils";
 
@@ -8,7 +8,7 @@ export const SUPPORTED_LOCALES = ["pt-BR", "es"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 const DEFAULT_LOCALE: Locale = "pt-BR";
-const LOCALE_STORAGE_KEY = "docknee_locale";
+const LOCALE_STORAGE_KEY = "docregen_locale";
 
 /**
  * Owns a temporary public-page locale. Only the most recently acquired
@@ -278,7 +278,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     try {
-      const response = await fetch(`/api/doctors/${user.id}`, {
+      const response = await fetch(`/regen-api/doctors/${user.id}`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

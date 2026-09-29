@@ -32,7 +32,7 @@
   },
   "references": [
     {
-      "path": "../../lib/api-client-react"
+      "path": "../../lib/docregen-api-client-react"
     },
     {
       "path": "../../lib/clinical"

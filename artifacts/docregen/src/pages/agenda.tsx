@@ -91,7 +91,7 @@ export default function AgendaPage() {
   } = useQuery<Appointment[]>({
     queryKey: ["appointments"],
     queryFn: async () => {
-      const res = await fetch("/api/appointments", { credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch("/regen-api/appointments", { credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) throw new Error(await responseError(res));
       return res.json();
     },
@@ -101,7 +101,7 @@ export default function AgendaPage() {
   const { data: patients = [], isError: patientsError, error: patientsQueryError, refetch: refetchPatients } = useQuery<Patient[]>({
     queryKey: ["patients-list"],
     queryFn: async () => {
-      const res = await fetch("/api/patients", { credentials: "same-origin", headers: authHeaders() });
+      const res = await fetch("/regen-api/patients", { credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) throw new Error(await responseError(res));
       const data = await res.json();
       return data.map((p: any) => ({ id: p.id, nome: p.nome }));
@@ -112,7 +112,7 @@ export default function AgendaPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const url = editing ? `/api/appointments/${editing.id}` : "/api/appointments";
+      const url = editing ? `/regen-api/appointments/${editing.id}` : "/regen-api/appointments";
       const method = editing ? "PATCH" : "POST";
       const body = editing
         ? { ...form }
@@ -130,7 +130,7 @@ export default function AgendaPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/appointments/${id}`, { method: "DELETE", credentials: "same-origin", headers: authHeaders() });
+      const response = await fetch(`/regen-api/appointments/${id}`, { method: "DELETE", credentials: "same-origin", headers: authHeaders() });
       if (!response.ok) throw new Error(await responseError(response));
     },
     onSuccess: () => {

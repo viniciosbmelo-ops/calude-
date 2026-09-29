@@ -20,6 +20,15 @@
     },
     {
       "path": "./lib/clinical"
+    },
+    {
+      "path": "./lib/docregen-db"
+    },
+    {
+      "path": "./lib/docregen-api-client-react"
+    },
+    {
+      "path": "./lib/docregen-api-zod"
     }
   ]
 }

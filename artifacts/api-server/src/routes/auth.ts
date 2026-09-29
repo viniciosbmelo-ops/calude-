@@ -12,7 +12,6 @@ import {
   LoginDoctorBody,
 } from "@workspace/api-zod";
 import { serializeDoctor } from "../lib/doctorSerializer";
-import { resolveClientApp } from "../lib/app-links";
 import {
   attachAnalyticsActor,
   emitAnalyticsEvent,
@@ -239,7 +238,6 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     .where(sql`lower(${doctorsTable.email}) = ${emailNorm}`)
     .limit(1);
 
-  const app = resolveClientApp(req);
   if (doctor?.aprovado) {
     // Respond immediately with the same body for existing/non-existing emails.
     // Token creation and mail delivery continue without exposing account
@@ -252,7 +250,6 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
           token,
           doctor.nome,
           requestedLocale ?? doctor.idioma,
-          app,
         );
       } catch (err) {
         req.log.error({ err }, "Failed to send password reset email");

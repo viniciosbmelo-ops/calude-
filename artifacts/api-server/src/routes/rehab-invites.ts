@@ -15,7 +15,6 @@ import { and, eq, desc, asc, gte, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getBaseUrl } from "../lib/base-url";
-import { buildAppLink } from "../lib/app-links";
 import { mapSurgeryToProtocol, patientInitials, PROTOCOL_LABELS, surgeryProcedureLabel } from "../services/surgeryProtocolMap";
 
 const router: IRouter = Router();
@@ -67,7 +66,7 @@ router.post("/patients/:patientId/rehab-invite", requireAuth, async (req, res): 
   const [doctor] = await db.select({ nome: doctorsTable.nome }).from(doctorsTable)
     .where(eq(doctorsTable.id, req.doctorId!)).limit(1);
 
-  const link = buildAppLink(getBaseUrl(), `/fisio/convite/${rawToken}`);
+  const link = `${getBaseUrl()}/fisio/convite/${rawToken}`;
   const initials = patientInitials(patient.nome);
   const protocolCode = mapSurgeryToProtocol(surgery);
   const procedureLabel = protocolCode ? PROTOCOL_LABELS[protocolCode] : surgeryProcedureLabel(surgery);

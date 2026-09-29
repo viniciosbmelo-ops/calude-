@@ -5,7 +5,7 @@ import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, X, ArrowLeft } from "lucide-react";
 import { getAnalyticsSessionHeaders } from "@/lib/analytics";
-import type { Doctor } from "@workspace/api-client-react";
+import type { Doctor } from "@workspace/docregen-api-client-react";
 import { useLanguage } from "@/lib/i18n";
 import { publicPageMessages } from "@/locales/public-pages";
 import { PublicLanguageSelector } from "@/components/public-language-selector";
@@ -60,7 +60,7 @@ export default function Login() {
     e.preventDefault();
     setContactSending(true);
     try {
-      const res = await fetch("/api/auth/contact", {
+      const res = await fetch("/regen-api/auth/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAnalyticsSessionHeaders() },
         body: JSON.stringify({ nome: contactNome, celular: contactCelular, mensagem: contactMensagem }),
@@ -82,7 +82,7 @@ export default function Login() {
   };
 
   useEffect(() => {
-    fetch("/api/auth/config")
+    fetch("/regen-api/auth/config")
       .then(r => r.json())
       .then(d => { if (d.contactEmail) setContactEmail(d.contactEmail); })
       .catch(() => {});
@@ -100,7 +100,7 @@ export default function Login() {
         await new Promise(resolve => window.setTimeout(resolve, 150));
       }
 
-      const sessionRes = await fetch("/api/auth/me", {
+      const sessionRes = await fetch("/regen-api/auth/me", {
         method: "GET",
         credentials: "same-origin",
         cache: "no-store",
@@ -142,7 +142,7 @@ export default function Login() {
     loginInFlightRef.current = true;
     setIsPending(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/regen-api/auth/login", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

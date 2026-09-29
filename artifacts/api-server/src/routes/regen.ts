@@ -11,7 +11,6 @@ import { randomUUID } from "crypto";
 import { ai } from "@workspace/integrations-gemini-ai";
 import PDFDocument from "pdfkit";
 import { getBaseUrl } from "../lib/base-url";
-import { appBrandName, buildRequestAppLink, resolveClientApp } from "../lib/app-links";
 import { localeDate, localeForDoctorId, resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
 import { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
@@ -1185,7 +1184,7 @@ router.get("/regen/consent/:product", requireAuth, async (req: any, res) => {
         .replace(/[^a-zA-Z0-9 _-]/g, "")
         .trim()
         .replace(/\s+/g, "_");
-      const filename = `${appBrandName(resolveClientApp(req))}_Consentimento_${product}_${safeName}.pdf`;
+      const filename = `DocSholder_Consentimento_${product}_${safeName}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       res.end(pdf);
@@ -1604,7 +1603,7 @@ router.get("/regen/cases/:id/report", requireAuth, async (req: any, res) => {
       const safeName = patientName
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
-      const filename = `${appBrandName(resolveClientApp(req))}_FichaTecnica_${safeName}_${Date.now()}.pdf`;
+      const filename = `DocSholder_FichaTecnica_${safeName}_${Date.now()}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       res.end(pdf);
@@ -2645,7 +2644,7 @@ router.get("/regen/cases/:id/clinical-report", requireAuth, async (req: any, res
       const safeName = patientName
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
-      const filename = `${appBrandName(resolveClientApp(req))}_LaudoClinico_${safeName}_${Date.now()}.pdf`;
+      const filename = `DocSholder_LaudoClinico_${safeName}_${Date.now()}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       res.end(pdf);
@@ -3158,7 +3157,7 @@ router.post("/regen/cases/:id/notifications/:notifId/prepare-whatsapp", requireA
     const doctorNome = doctorRows[0]?.nome ?? "Dr.";
     locale = resolveDoctorLocale(doctorRows[0]?.idioma);
 
-    const link = buildRequestAppLink(req, getBaseUrl(req), `/patient/regen/${token}`);
+    const link = `${getBaseUrl(req)}/patient/regen/${token}`;
     const scalesText = notif.scales
       .map((scale: unknown) => regenScaleForLocale(scale, locale))
       .join(", ");

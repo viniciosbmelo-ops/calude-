@@ -110,7 +110,7 @@ export default function SecretaryDashboard() {
 
     setPreConsultPatientId(patient.id);
     try {
-      const response = await secretaryFetch(`/api/patients/${patient.id}/pre-consult/invite`, {
+      const response = await secretaryFetch(`/regen-api/patients/${patient.id}/pre-consult/invite`, {
         method: "POST",
         body: JSON.stringify({}),
       });
@@ -140,7 +140,7 @@ export default function SecretaryDashboard() {
 
   const loadPatients = useCallback(async () => {
     try {
-      const response = await secretaryFetch("/api/patients");
+      const response = await secretaryFetch("/regen-api/patients");
       if (!response.ok) throw new Error(await responseError(response));
       setPatients(await response.json());
       setLoadErrors(errors => ({ ...errors, patients: null }));
@@ -151,7 +151,7 @@ export default function SecretaryDashboard() {
 
   const loadAppointments = useCallback(async () => {
     try {
-      const response = await secretaryFetch("/api/appointments");
+      const response = await secretaryFetch("/regen-api/appointments");
       if (!response.ok) throw new Error(await responseError(response));
       setAppointments(await response.json());
       setLoadErrors(errors => ({ ...errors, appointments: null }));
@@ -162,7 +162,7 @@ export default function SecretaryDashboard() {
 
   const loadRegenCases = useCallback(async () => {
     try {
-      const response = await secretaryFetch("/api/secretary/regen-cases");
+      const response = await secretaryFetch("/regen-api/secretary/regen-cases");
       if (!response.ok) throw new Error(await responseError(response));
       setRegenCases(await response.json());
       setLoadErrors(errors => ({ ...errors, regen: null }));
@@ -173,7 +173,7 @@ export default function SecretaryDashboard() {
 
   const loadAlerts = useCallback(async () => {
     try {
-      const response = await secretaryFetch("/api/secretary/followup-alerts?type=regen");
+      const response = await secretaryFetch("/regen-api/secretary/followup-alerts?type=regen");
       if (!response.ok) throw new Error(await responseError(response));
       setAlerts(await response.json());
       setLoadErrors(errors => ({ ...errors, alerts: null }));
@@ -199,7 +199,7 @@ export default function SecretaryDashboard() {
     setSavingAppt(true);
     try {
       if (editingAppt) {
-        const res = await secretaryFetch(`/api/appointments/${editingAppt.id}`, {
+        const res = await secretaryFetch(`/regen-api/appointments/${editingAppt.id}`, {
           method: "PATCH", body: JSON.stringify(newAppt),
         });
         if (!res.ok) {
@@ -208,7 +208,7 @@ export default function SecretaryDashboard() {
         }
         toast({ title: t("appointmentUpdated") });
       } else {
-        const res = await secretaryFetch("/api/appointments", {
+        const res = await secretaryFetch("/regen-api/appointments", {
           method: "POST",
           body: JSON.stringify({ ...newAppt, patientId: Number(newAppt.patientId) }),
         });
@@ -237,7 +237,7 @@ export default function SecretaryDashboard() {
     if (deletingAppointmentId !== null) return;
     setDeletingAppointmentId(id);
     try {
-      const response = await secretaryFetch(`/api/appointments/${id}`, { method: "DELETE" });
+      const response = await secretaryFetch(`/regen-api/appointments/${id}`, { method: "DELETE" });
       if (!response.ok) {
         toast({ title: t("operationError"), description: await responseError(response), variant: "destructive" });
         return;
@@ -284,7 +284,7 @@ export default function SecretaryDashboard() {
         const value = newPatient[k].trim();
         if (value) payload[k] = value;
       }
-      const res = await secretaryFetch("/api/patients", { method: "POST", body: JSON.stringify(payload) });
+      const res = await secretaryFetch("/regen-api/patients", { method: "POST", body: JSON.stringify(payload) });
       if (!res.ok) {
         toast({ title: t("operationError"), description: await responseError(res), variant: "destructive" });
         return;

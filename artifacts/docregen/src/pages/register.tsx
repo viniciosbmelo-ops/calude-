@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useRegisterDoctor } from "@workspace/api-client-react";
+import { useRegisterDoctor } from "@workspace/docregen-api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { getAnalyticsSessionHeaders } from "@/lib/analytics";
@@ -96,7 +96,7 @@ export default function Register() {
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    fetch("/api/stripe/products-with-prices")
+    fetch("/regen-api/stripe/products-with-prices")
       .then((r) => r.json())
       .then((res: { data?: StripePlan[] }) => {
         const list = Array.isArray(res.data) ? res.data : [];
@@ -178,7 +178,7 @@ export default function Register() {
         onSuccess: async (data) => {
           login(data.doctor);
           // Grava o aceite dos termos no banco (prova jurídica LGPD)
-          fetch("/api/lgpd/consentimento", {
+          fetch("/regen-api/lgpd/consentimento", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "same-origin",
@@ -189,7 +189,7 @@ export default function Register() {
           if (selectedPriceId) {
             setRedirecting(true);
             try {
-              const resp = await fetch("/api/stripe/checkout", {
+              const resp = await fetch("/regen-api/stripe/checkout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...getAnalyticsSessionHeaders() },
                 credentials: "same-origin",

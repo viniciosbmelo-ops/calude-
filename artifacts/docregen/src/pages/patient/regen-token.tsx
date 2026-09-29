@@ -69,7 +69,7 @@ function CpfGate({ token, onVerified }: { token: string; onVerified: (info: Pati
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/patient/regen/${token}/verify`, {
+      const res = await fetch(`/regen-api/patient/regen/${token}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -238,7 +238,7 @@ export default function RegenPatientPage() {
     let mounted = true;
     let releaseDisplayLanguage: (() => void) | undefined;
 
-    fetch(`/api/patient/regen/${token}`)
+    fetch(`/regen-api/patient/regen/${token}`)
       .then(async r => ({ ok: r.ok, data: await readJsonSafely(r) }))
       .then(({ ok, data: d }) => {
         if (!mounted) return;
@@ -340,7 +340,7 @@ export default function RegenPatientPage() {
     setSubmitting(true);
     setSubmitError("");
     try {
-      const res = await fetch(`/api/patient/regen/${token}/scale/${encodeURIComponent(currentScaleName)}`, {
+      const res = await fetch(`/regen-api/patient/regen/${token}/scale/${encodeURIComponent(currentScaleName)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

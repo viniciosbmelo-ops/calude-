@@ -46,7 +46,7 @@ function ContactModal({ open, onClose, user, onUnreadChange }: { open: boolean; 
   const fetchInbox = useCallback(async () => {
     setLoadingInbox(true);
     try {
-      const res = await fetch("/api/inbox", { credentials: "same-origin" });
+      const res = await fetch("/regen-api/inbox", { credentials: "same-origin" });
       if (res.ok) {
         const data: InboxMessage[] = await res.json();
         setInbox(data);
@@ -57,7 +57,7 @@ function ContactModal({ open, onClose, user, onUnreadChange }: { open: boolean; 
   }, [onUnreadChange]);
 
   const markReplyRead = useCallback(async (id: number) => {
-    await fetch(`/api/inbox/${id}/read-reply`, { method: "PATCH", credentials: "same-origin" });
+    await fetch(`/regen-api/inbox/${id}/read-reply`, { method: "PATCH", credentials: "same-origin" });
     setInbox(prev => prev.map(m => m.id === id ? { ...m, respostaLida: true } : m));
     onUnreadChange?.(0);
   }, [onUnreadChange]);
@@ -77,7 +77,7 @@ function ContactModal({ open, onClose, user, onUnreadChange }: { open: boolean; 
     if (!mensagem.trim() || sending) return;
     setSending(true);
     try {
-      await fetch("/api/admin/contact", {
+      await fetch("/regen-api/admin/contact", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -247,7 +247,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   useEffect(() => {
     const fetchInboxCount = async () => {
       try {
-        const res = await fetch("/api/inbox/unread-count", { credentials: "same-origin" });
+        const res = await fetch("/regen-api/inbox/unread-count", { credentials: "same-origin" });
         if (res.ok) { const d = await res.json(); setInboxUnread(d.count ?? 0); }
       } catch {}
     };

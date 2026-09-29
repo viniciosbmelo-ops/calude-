@@ -1,22 +1,6 @@
-// Tag every same-origin /api call so the shared API builds DocRegen links.
-import "./lib/app-header-install";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-
-// Remove legacy localStorage auth keys on startup (theme is preserved)
-const LEGACY_KEYS = [
-  "docknee_token",
-  "docknee_secretary_token",
-  "docknee_secretary",
-  "docknee_physio_token",
-  "docknee_physio",
-  "docknee_service_token",
-  "docknee_service_info",
-];
-for (const key of LEGACY_KEYS) {
-  localStorage.removeItem(key);
-}
 
 createRoot(document.getElementById("root")!).render(<App />);
 

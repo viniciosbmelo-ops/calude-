@@ -824,10 +824,10 @@ export default function RegenNovo() {
   useEffect(() => {
     const draftId = new URLSearchParams(window.location.search).get("draft");
     Promise.all([
-      fetch("/api/regen/conditions", { credentials: "same-origin", headers: authHdr() }).then(r => r.json()).catch(() => []),
-      fetch("/api/patients",         { credentials: "same-origin", headers: authHdr() }).then(r => r.json()).catch(() => []),
+      fetch("/regen-api/regen/conditions", { credentials: "same-origin", headers: authHdr() }).then(r => r.json()).catch(() => []),
+      fetch("/regen-api/patients",         { credentials: "same-origin", headers: authHdr() }).then(r => r.json()).catch(() => []),
       draftId
-        ? fetch(`/api/regen/cases/${draftId}`, { credentials: "same-origin", headers: authHdr() }).then(r => r.ok ? r.json() : null).catch(() => null)
+        ? fetch(`/regen-api/regen/cases/${draftId}`, { credentials: "same-origin", headers: authHdr() }).then(r => r.ok ? r.json() : null).catch(() => null)
         : Promise.resolve(null),
     ]).then(([conds, pats, draft]) => {
       setConditions(Array.isArray(conds) ? conds : []);
@@ -1016,13 +1016,13 @@ export default function RegenNovo() {
   async function upsertDraft(status: "draft" | "active" = "draft") {
     const payload = buildPayload(status);
     if (caseId) {
-      const res = await fetch(`/api/regen/cases/${caseId}`, {
+      const res = await fetch(`/regen-api/regen/cases/${caseId}`, {
         method: "PATCH", credentials: "same-origin", headers: authHdr(), body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       return caseId;
     } else {
-      const res = await fetch("/api/regen/cases", {
+      const res = await fetch("/regen-api/regen/cases", {
         method: "POST", credentials: "same-origin", headers: authHdr(), body: JSON.stringify(payload),
       });
       if (res.status === 403) { alert(t("acceptTermsCreate")); navigate("/regen"); return null; }
@@ -1058,7 +1058,7 @@ export default function RegenNovo() {
         };
       });
     if (!results.length) return;
-    const res = await fetch(`/api/regen/cases/${id}/labs`, {
+    const res = await fetch(`/regen-api/regen/cases/${id}/labs`, {
       method: "POST",
       credentials: "same-origin",
       headers: authHdr(),
@@ -1112,7 +1112,7 @@ export default function RegenNovo() {
     if (!caseId) { alert(t("saveBeforePlan")); return; }
     setGerandoPlano(true);
     try {
-      const res = await fetch(`/api/regen/cases/${caseId}/report`, { credentials: "same-origin", headers: authHdr() });
+      const res = await fetch(`/regen-api/regen/cases/${caseId}/report`, { credentials: "same-origin", headers: authHdr() });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setPlanoGerado(data.report ?? "");

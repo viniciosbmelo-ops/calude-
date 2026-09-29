@@ -126,10 +126,10 @@ export default defineConfig(async ({ command }) => {
       port,
       host: "0.0.0.0",
       allowedHosts: true,
-      // Outside the Replit path router, forward API calls to the shared
-      // api-server (artifacts/api-server) so DocRegen can run standalone.
+      // Outside the Replit path router, forward API calls to DocRegen's own
+      // API server (artifacts/docregen-api, mounted at /regen-api).
       ...(process.env.API_PROXY_TARGET
-        ? { proxy: { "/api": { target: process.env.API_PROXY_TARGET, changeOrigin: true } } }
+        ? { proxy: { "/regen-api": { target: process.env.API_PROXY_TARGET, changeOrigin: true } } }
         : {}),
       headers: {
         "Content-Security-Policy": csp,

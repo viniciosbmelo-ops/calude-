@@ -62,7 +62,7 @@ function RegenNotifCard({
     setLoading(true);
     try {
       // 1. Prepare message + phone
-      const prepRes = await fetch(`/api/regen/cases/${row.case_id}/notifications/${row.notif_id}/prepare-whatsapp`, {
+      const prepRes = await fetch(`/regen-api/regen/cases/${row.case_id}/notifications/${row.notif_id}/prepare-whatsapp`, {
         method: "POST",
         credentials: "same-origin",
       });
@@ -76,7 +76,7 @@ function RegenNotifCard({
       }
 
       // 2. Send via Evolution API on the server
-      const sendRes = await fetch("/api/notifications/send-text", {
+      const sendRes = await fetch("/regen-api/notifications/send-text", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -86,7 +86,7 @@ function RegenNotifCard({
       if (sendRes.ok) {
         popup?.close();
         // 3. Mark notification as sent
-        await fetch(`/api/regen/cases/${row.case_id}/notifications/${row.notif_id}`, {
+        await fetch(`/regen-api/regen/cases/${row.case_id}/notifications/${row.notif_id}`, {
           method: "PATCH",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
@@ -99,7 +99,7 @@ function RegenNotifCard({
         const waUrl = `https://wa.me/${data.phone}?text=${encodeURIComponent(data.message)}`;
         if (!popup) throw new Error(t("followupPrepareError"));
         popup.location.href = waUrl;
-        await fetch(`/api/regen/cases/${row.case_id}/notifications/${row.notif_id}`, {
+        await fetch(`/regen-api/regen/cases/${row.case_id}/notifications/${row.notif_id}`, {
           method: "PATCH",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
@@ -122,7 +122,7 @@ function RegenNotifCard({
     if (popup) popup.opener = null;
     setLoading(true);
     try {
-      const res = await fetch(`/api/regen/cases/${row.case_id}/notifications/${row.notif_id}/prepare-whatsapp`, {
+      const res = await fetch(`/regen-api/regen/cases/${row.case_id}/notifications/${row.notif_id}/prepare-whatsapp`, {
         method: "POST",
         credentials: "same-origin",
       });
@@ -136,7 +136,7 @@ function RegenNotifCard({
       const waUrl = `https://wa.me/${data.phone}?text=${encodeURIComponent(data.message)}`;
       if (!popup) throw new Error(t("followupPrepareError"));
       popup.location.href = waUrl;
-      await fetch(`/api/regen/cases/${row.case_id}/notifications/${row.notif_id}`, {
+      await fetch(`/regen-api/regen/cases/${row.case_id}/notifications/${row.notif_id}`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -242,7 +242,7 @@ function RegenFollowupTab({ doctorNome }: { doctorNome: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/regen/followup-overview", {
+      const res = await fetch("/regen-api/regen/followup-overview", {
         credentials: "same-origin",
       });
       if (res.ok) setRegenData(await res.json());

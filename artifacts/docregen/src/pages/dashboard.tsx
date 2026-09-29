@@ -112,23 +112,23 @@ export default function Dashboard() {
 
   const statsQuery = useQuery<RegenStats>({
     queryKey: ["regen-stats"],
-    queryFn: () => getJson<RegenStats>("/api/regen/stats"),
+    queryFn: () => getJson<RegenStats>("/regen-api/regen/stats"),
     staleTime: 60_000,
   });
   const followupQuery = useQuery<RegenFollowupOverview>({
     queryKey: ["regen-followup-overview"],
-    queryFn: () => getJson<RegenFollowupOverview>("/api/regen/followup-overview"),
+    queryFn: () => getJson<RegenFollowupOverview>("/regen-api/regen/followup-overview"),
     staleTime: 60_000,
   });
   const appointmentsQuery = useQuery<DashboardAppointment[]>({
     queryKey: ["appointments"],
-    queryFn: () => getJson<DashboardAppointment[]>("/api/appointments"),
+    queryFn: () => getJson<DashboardAppointment[]>("/regen-api/appointments"),
     staleTime: 30_000,
   });
   // Exact, doctor-wide pre-consultation counts from the aggregate endpoint.
   const preConsultQuery = useQuery<PreConsultSummary>({
     queryKey: ["pre-consults-summary"],
-    queryFn: () => getJson<PreConsultSummary>("/api/pre-consults/summary"),
+    queryFn: () => getJson<PreConsultSummary>("/regen-api/pre-consults/summary"),
     staleTime: 60_000,
   });
 

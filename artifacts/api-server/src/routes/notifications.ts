@@ -4,7 +4,6 @@ import { eq, and, lte, lt, inArray, isNotNull, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { buildFollowupMessage } from "../lib/whatsapp";
 import { getBaseUrl } from "../lib/base-url";
-import { buildAppLink } from "../lib/app-links";
 import { randomUUID } from "crypto";
 import { filterSupportedFollowupScales, hasFractureProcedure, isPreoperativePeriod } from "../lib/followup-schedule";
 import { resolveDoctorLocale } from "../lib/locale";
@@ -130,9 +129,7 @@ async function dispatchNotification(
       patientName: row.patient.nome,
       periodo: row.notif.periodo,
       scales: filterSupportedFollowupScales(row.notif.scales),
-      // Queued from a scheduled/claimed notification (no calling app): the
-      // surgical questionnaire only exists in DocKnee, so the default app is used.
-      link: buildAppLink(getBaseUrl(), `/patient/${token}`),
+      link: `${getBaseUrl()}/patient/${token}`,
       doctorName,
       locale: resolveDoctorLocale(doctorIdioma),
     });

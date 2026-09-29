@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": [
+      "node"
+    ],
+    "noImplicitReturns": false
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../lib/docregen-db"
+    },
+    {
+      "path": "../../lib/docregen-api-zod"
+    },
+    {
+      "path": "../../lib/integrations-openai-ai-server"
+    },
+    {
+      "path": "../../lib/integrations-gemini-ai"
+    },
+    {
+      "path": "../../lib/clinical"
+    }
+  ]
+}

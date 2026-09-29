@@ -61,7 +61,7 @@ export default function Reports() {
       if (appliedRegen.status)     p.set("status",     appliedRegen.status);
       if (appliedRegen.dataInicio) p.set("dataInicio", appliedRegen.dataInicio);
       if (appliedRegen.dataFim)    p.set("dataFim",    appliedRegen.dataFim);
-      const res = await fetch(`/api/reports/regen${p.toString() ? "?" + p.toString() : ""}`, {
+      const res = await fetch(`/regen-api/reports/regen${p.toString() ? "?" + p.toString() : ""}`, {
         credentials: "same-origin",
       });
       if (!res.ok) throw new Error(tx("loadError"));

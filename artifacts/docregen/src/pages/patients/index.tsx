@@ -1,4 +1,4 @@
-import { useListPatients } from "@workspace/api-client-react";
+import { useListPatients } from "@workspace/docregen-api-client-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
