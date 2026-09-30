@@ -163,7 +163,12 @@ the account's `session_version`, so every token of that doctor/secretary stops w
 - **Research export**: per-export random pseudonyms, month/year, 5-year age bands, 5-unit
   BMI bands, coded values only; k<5 groups (age band × sex × BMI band, or an export with
   fewer than 5 cases) are flagged (`smallGroupWarning`, header `X-Research-Warning`, UI
-  banner) and lose the anatomical-site column.
+  banner) and lose the anatomical-site column. Age bands come from the case snapshot
+  (`regen_cases.patient_dob`): `POST /regen/cases` with `patientId` fills any snapshot field
+  the client omits (name, birth date, sex, phone) from the patient row, and a later
+  `PATCH` completes empty ones on legacy linked cases. The web client types patients with
+  the generated `Patient` (camelCase, e.g. `dataNascimento`); regen case rows stay
+  snake_case (raw SQL).
 - **Body size**: JSON 1 MB by default; only `/regen-api/pdf/temp` (base64 variant) accepts
   30 MB. Malformed JSON → 400.
 - **Temporary PDFs** are stored in the database (`temp_pdfs`) with TTL and quotas.
@@ -195,9 +200,20 @@ that owns cases cannot be deleted while the records must be kept.
 
 Anonymization cannot be undone: export first when the record may still be needed in
 identifiable form (the legal retention duty stays with the physician/clinic).
-Residual note: `DELETE /regen-api/patients/:id` (patient "Excluir" button) still deletes the
-patient together with its regenerative cases; the owner should decide whether to restrict it
-given the 20-year retention duty.
+
+**Patient deletion** (`DELETE /regen-api/patients/:id`, patient "Excluir" button) is a hard
+delete **only for a patient without any clinical record** (e.g. registered by mistake). Under
+a row lock on the patient, `src/lib/patientClinicalRecords.ts` checks every table that
+references it: regenerative cases (and their procedures, PROMs, labs, performance tests,
+follow-ups, scale responses, AI interactions), appointments, attachments, pré-consulta
+questionnaires with any answer, and the anamnesis/reports/Beighton fields of the patient row.
+If anything exists the API answers **409** `{ error, code: "patient_has_clinical_records",
+clinicalRecords: { <kind>: count } }` (PT/ES message pointing to "Anonimizar dados
+identificáveis") and nothing is deleted. Otherwise the patient is deleted (cascading only
+unanswered pré-consulta questionnaires/invites and pending upload grants) and pending upload
+files are queued in `storage_cleanup_jobs` in the same transaction → 204. The "Excluir"
+dialog (`src/components/patient/delete-patient-dialog.tsx`) explains the rule up front and,
+when blocked, offers anonymization with its own confirmation.
 
 **Account deletion requests** (`DELETE /regen-api/lgpd/solicitar-exclusao`, profile →
 "Privacidade e dados") create a row in `lgpd_requests`, set `doctors.deletion_requested_at`

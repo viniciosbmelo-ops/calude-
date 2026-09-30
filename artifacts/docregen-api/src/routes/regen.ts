@@ -243,7 +243,8 @@ const RegenConditionCode = z.string().min(1).refine(isKnownRegenConditionCode, "
 
 const CaseBody = z.object({
   patientId:        z.number().optional(),
-  patientName:      z.string().min(1),
+  // Optional when patientId is given: the snapshot is then filled from the patient row.
+  patientName:      z.string().min(1).optional(),
   patientDob:       CalendarDate.optional(),
   patientSex:       z.string().optional(),
   patientPhone:     z.string().optional(),
@@ -271,7 +272,63 @@ const CaseBody = z.object({
   productDetails:    ProductDetailsSchema.optional(),
   coMeds:            z.array(z.object({ name: z.string(), dose: z.string() })).optional(),
   assocProcedures:   z.array(z.string()).optional(),
+}).refine((body) => body.patientId !== undefined || body.patientName !== undefined, {
+  message: "patientName or patientId is required",
+  path: ["patientName"],
 });
+
+type PatientSnapshotRow = {
+  nome: string | null;
+  data_nascimento: string | null;
+  sexo: string | null;
+  telefone: string | null;
+};
+
+/**
+ * Case snapshot of the linked patient. Fields the client sent win; missing ones
+ * come from the patient row, so a case created from a patient always carries
+ * its birth date (age bands in research), sex and phone.
+ */
+export function patientSnapshot(
+  body: { patientName?: string; patientDob?: string; patientSex?: string; patientPhone?: string },
+  patient: PatientSnapshotRow | undefined,
+) {
+  const text = (value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : undefined;
+  };
+  const patientDob = text(patient?.data_nascimento);
+  return {
+    patientName: text(body.patientName) ?? text(patient?.nome) ?? null,
+    patientDob: body.patientDob ?? (patientDob ? calendarDateParam(patientDob) ?? null : null),
+    patientSex: text(body.patientSex) ?? text(patient?.sexo) ?? null,
+    patientPhone: text(body.patientPhone) ?? text(patient?.telefone) ?? null,
+  };
+}
+
+/**
+ * Linked case whose snapshot misses birth date, sex or phone (e.g. drafts saved
+ * before the client sent them): fill only the empty fields from the patient row.
+ */
+async function fillMissingPatientSnapshot(caseId: string, doctorId: number): Promise<void> {
+  const { rows: [row] } = await pool.query<PatientSnapshotRow & { patient_dob: string | null; patient_sex: string | null; patient_phone: string | null }>(
+    `SELECT to_char(c.patient_dob, 'YYYY-MM-DD') AS patient_dob, c.patient_sex, c.patient_phone,
+            p.nome, p.data_nascimento, p.sexo, p.telefone
+       FROM regen_cases c JOIN patients p ON p.id = c.patient_id AND p.doctor_id = c.doctor_id
+      WHERE c.id = $1 AND c.doctor_id = $2`,
+    [caseId, doctorId],
+  );
+  if (!row || (row.patient_dob && row.patient_sex && row.patient_phone)) return;
+  const snapshot = patientSnapshot({}, row);
+  await pool.query(
+    `UPDATE regen_cases SET
+       patient_dob = COALESCE(patient_dob, $3::date),
+       patient_sex = COALESCE(NULLIF(btrim(patient_sex), ''), $4),
+       patient_phone = COALESCE(NULLIF(btrim(patient_phone), ''), $5)
+     WHERE id = $1 AND doctor_id = $2`,
+    [caseId, doctorId, snapshot.patientDob, snapshot.patientSex, snapshot.patientPhone],
+  );
+}
 
 // Separate PATCH schema — avoids .partial() interacting with .default() in Zod v4
 const CasePatchBody = z.object({
@@ -346,15 +403,23 @@ router.post("/regen/cases", requireAuth, async (req: any, res) => {
     try {
       await client.query("BEGIN");
 
+      let patientRow: PatientSnapshotRow | undefined;
       if (body.patientId !== undefined) {
-        const patient = await client.query(
-          `SELECT 1 FROM patients WHERE id = $1 AND doctor_id = $2 FOR KEY SHARE`,
+        const patient = await client.query<PatientSnapshotRow>(
+          `SELECT nome, data_nascimento, sexo, telefone
+             FROM patients WHERE id = $1 AND doctor_id = $2 FOR KEY SHARE`,
           [body.patientId, req.doctorId],
         );
         if (!patient.rowCount) {
           await client.query("ROLLBACK");
           return res.status(404).json({ error: message(locale, "patientNotFound") });
         }
+        patientRow = patient.rows[0];
+      }
+      const snapshot = patientSnapshot(body, patientRow);
+      if (!snapshot.patientName) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: message(locale, "invalidData") });
       }
 
       await client.query(
@@ -367,9 +432,9 @@ router.post("/regen/cases", requireAuth, async (req: any, res) => {
             product_details, co_meds, assoc_procedures, anamnese_regen)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)`,
         [
-          id, req.doctorId, body.patientId ?? null, body.patientName,
-          body.patientDob ?? null, body.patientSex ?? null,
-          body.patientPhone ?? null,
+          id, req.doctorId, body.patientId ?? null, snapshot.patientName,
+          snapshot.patientDob, snapshot.patientSex,
+          snapshot.patientPhone,
           body.weightKg ?? null, body.heightCm ?? null, imc,
           body.conditionCode, body.conditionCustom ?? null,
           body.ladoArticulacao ?? null, body.hospitalLocal ?? null, body.dataCaso ?? null,
@@ -480,6 +545,7 @@ router.patch("/regen/cases/:id", requireAuth, async (req: any, res) => {
       `UPDATE regen_cases SET ${fields.join(", ")} WHERE id = $${idx++} AND doctor_id = $${idx}`,
       vals
     );
+    await fillMissingPatientSnapshot(req.params.id, req.doctorId);
     const { rows } = await pool.query(`SELECT * FROM regen_cases WHERE id = $1`, [req.params.id]);
     res.json(rows[0]);
   } catch (e: any) {

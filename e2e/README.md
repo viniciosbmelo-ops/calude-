@@ -57,7 +57,9 @@ resetting the databases.
   "Estrutura anatômica" select (region headers) → tendinopathy on the A1 pulley → patient
   link asks SANE Punho e Mão; knee functional test; KOOS/WOMAC/IKDC rejected by the API; agenda
   create/edit; dashboard counts; follow-up central dates; reports; research CSV (pseudonymized:
-  no case UUID or exact dates, k<5 warning, anatomical labels once groups reach 5);
+  no case UUID or exact dates, k<5 warning, anatomical labels once groups reach 5; age band
+  filled from the patient's birth date); deleting a patient with clinical records is refused
+  (409) and the dialog offers "Anonimizar dados identificáveis";
   secretary (isolation from another doctor; no CPF, anamnesis, reports or diagnosis); logout.
   `docregen/dates.en-us.ts`: the same date contract with an en-US browser.
 - **DocKnee** (`docknee/docknee.spec.ts`): login; patient; pré-consulta with upload;

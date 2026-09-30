@@ -59,6 +59,7 @@ import {
 import { DateInput } from "@/components/ui/date-input";
 import { AnatomicalStructureSelect } from "@/components/anatomical-structure-select";
 import { TermsModal, useRegenTermsGate } from "@/components/regen-terms-modal";
+import type { Patient } from "@workspace/docregen-api-client-react";
 
 function authHdr() {
   return {
@@ -554,7 +555,7 @@ function BioReadyPanel({
 /* ─── Patient selector (reused from old novo.tsx) ────────────────────────────── */
 function PatientSelector({
   patients, selectedId, onSelect,
-}: { patients: any[]; selectedId: number | null; onSelect: (p: any | null) => void }) {
+}: { patients: Patient[]; selectedId: number | null; onSelect: (p: Patient | null) => void }) {
   const [query, setQuery] = useState("");
   const t = useScopedTranslations(regenCoreMessages);
   const { locale } = useLanguage();
@@ -586,7 +587,7 @@ function PatientSelector({
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900 text-sm">{formatPersonName(selected.nome)}</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            {selected.data_nascimento ? t("bornAbbreviation", { date: formatCalendarDate(selected.data_nascimento, locale, undefined, selected.data_nascimento) }) : ""}
+            {selected.dataNascimento ? t("bornAbbreviation", { date: formatCalendarDate(selected.dataNascimento, locale, undefined, selected.dataNascimento) }) : ""}
             {selected.sexo ? ` · ${selected.sexo === "M" ? t("masculine") : selected.sexo === "F" ? t("feminine") : selected.sexo}` : ""}
           </p>
         </div>
@@ -621,7 +622,7 @@ function PatientSelector({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
-                <p className="text-xs text-gray-500">{formatCalendarDate(p.data_nascimento, locale, undefined, p.data_nascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
+                <p className="text-xs text-gray-500">{formatCalendarDate(p.dataNascimento, locale, undefined, p.dataNascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
               </div>
             </button>
           ))}
@@ -680,11 +681,11 @@ export default function RegenNovo() {
 
   /* remote data */
   const [conditions, setConditions]   = useState<RegenCondition[]>([]);
-  const [patients, setPatients]       = useState<any[]>([]);
+  const [patients, setPatients]       = useState<Patient[]>([]);
   const [loadingBase, setLoadingBase] = useState(true);
 
   /* ── Step 1: Dados Básicos ── */
-  const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [dataCaso,        setDataCaso]        = useState(() => formatLocalDate());
   const [lado,            setLado]            = useState("");
   const [hospital,        setHospital]        = useState("");
@@ -836,7 +837,7 @@ export default function RegenNovo() {
         }
         // Restore patient object from patients list
         if (draft.patient_id) {
-          const found = patsList.find((p: any) => p.id === draft.patient_id);
+          const found = patsList.find((p: Patient) => p.id === draft.patient_id);
           if (found) setSelectedPatient(found);
         }
         // Jump to step from URL param if provided (e.g. returning from consent page)
@@ -889,7 +890,7 @@ export default function RegenNovo() {
         : labHba1c,
       imc,
       conditionCode,
-      patientAge: patientAgeFromDob(selectedPatient?.data_nascimento),
+      patientAge: patientAgeFromDob(selectedPatient?.dataNascimento),
       productCode: prpComplianceProduct(plannedProducts),
       plateletCount: Number.isNaN(plateletValue) ? null : plateletValue,
       labFlagCount,
@@ -903,7 +904,7 @@ export default function RegenNovo() {
     hba1c,
     imc,
     conditionCode,
-    selectedPatient?.data_nascimento,
+    selectedPatient?.dataNascimento,
     plannedProducts,
     labValues,
   ]);
@@ -936,7 +937,7 @@ export default function RegenNovo() {
     return {
       patientId:    selectedPatient?.id ?? undefined,
       patientName:  selectedPatient?.nome,
-      patientDob:   selectedPatient?.data_nascimento ?? undefined,
+      patientDob:   selectedPatient?.dataNascimento ?? undefined,
       patientSex:   selectedPatient?.sexo ?? undefined,
       patientPhone: patientPhone.trim() || selectedPatient?.telefone || undefined,
       weightKg:     parseFloat(weightKg)  || undefined,

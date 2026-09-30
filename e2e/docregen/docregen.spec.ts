@@ -154,6 +154,9 @@ test("create regenerative cases: knee OA Kellgren-Lawrence III and shoulder", as
   kneeCaseId = await createRegenCase("Joelho", /Kellgren-Lawrence III$/, caseDate);
   await expect(page.getByText(/Kellgren-Lawrence III/).filter({ visible: true }).first()).toBeVisible();
   expect(sql(DB.docregen, `SELECT condition_code FROM regen_cases WHERE id = '${kneeCaseId}'`)).toBe("OA_JOELHO_KL3");
+  // The case snapshot carries the patient's birth date (age band in research).
+  expect(sql(DB.docregen, `SELECT to_char(patient_dob, 'YYYY-MM-DD') FROM regen_cases WHERE id = '${kneeCaseId}'`))
+    .toBe(PATIENT.nascimentoIso);
   await expectNoInvalidDate(page);
   await shot(page, APP, "10-knee-case");
 
@@ -536,7 +539,16 @@ test("research export: pseudonymized CSV (no case UUID, no exact dates), k<5 war
   expect(csv).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   expect(csv).not.toContain(PATIENT.nome);
   expect(csv).not.toContain(PATIENT.cpf);
+  // Every case was created from the registered patient: the age band is never empty.
+  const ageBand = (() => {
+    const [y, m, d] = PATIENT.nascimentoIso.split("-").map(Number) as [number, number, number];
+    const [ty, tm, td] = isoToday(0).split("-").map(Number) as [number, number, number];
+    const age = ty - y - (tm < m || (tm === m && td < d) ? 1 : 0);
+    const low = Math.floor(age / 5) * 5;
+    return `${low}-${low + 4}`;
+  })();
   for (const row of rows) {
+    expect(row[cols.indexOf("age_band")]).toBe(ageBand);
     expect(row[cols.indexOf("pseudo_id")]).toMatch(/^R-[0-9a-f]{8}$/);
     expect(row[cols.indexOf("case_month")]).toMatch(/^\d{4}-\d{2}$/);
     // k<5: the descriptive column is suppressed.
@@ -571,6 +583,25 @@ test("research export: pseudonymized CSV (no case UUID, no exact dates), k<5 war
   } finally {
     sql(DB.docregen, `DELETE FROM regen_cases WHERE doctor_id = ${doctorId} AND patient_name = 'E2E CLONE'`);
   }
+});
+
+test("patient with clinical records: delete is refused and the dialog offers anonymization", async () => {
+  await page.goto(`/docregen/patients/${patientId}`);
+  await page.getByRole("button", { name: "Excluir" }).filter({ visible: true }).first().click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText(/Só é possível excluir um paciente sem nenhum registro clínico/)).toBeVisible();
+  const refused = page.waitForResponse((r) => r.url().endsWith(`/regen-api/patients/${patientId}`) && r.request().method() === "DELETE");
+  await dialog.getByRole("button", { name: "Excluir" }).click();
+  expect((await refused).status()).toBe(409);
+  await expect(dialog.getByText("Este paciente não pode ser excluído")).toBeVisible();
+  await expect(dialog.getByText(/20 anos/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Anonimizar dados identificáveis" }).click();
+  await expect(dialog.getByText("Anonimizar dados identificáveis do paciente?")).toBeVisible();
+  await shot(page, APP, "24a-delete-blocked-anonymize");
+  // Not confirmed here: the rest of the run still needs the identified patient.
+  await dialog.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  expect(sql(DB.docregen, `SELECT nome FROM patients WHERE id = ${patientId}`)).toBe(PATIENT.nome.toLocaleUpperCase("pt-BR"));
 });
 
 test("secretary: created by the doctor, logs in, sees agenda/patients/regen/alerts, never another doctor's data", async ({ browser, playwright }) => {
