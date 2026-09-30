@@ -201,7 +201,7 @@ describe("GET /pre-consults/summary", () => {
 
 describe("GET /secretary/regen-cases", () => {
   type CaseSummary = {
-    id: string; patientId: number | null; patientNome: string | null; conditionCode: string;
+    id: string; patientId: number | null; patientNome: string | null;
     status: string | null; procedureCount: number; nextFollowupDate: string | null;
     nextSessionDate: string | null; nextSessionTime: string | null;
   };
@@ -214,7 +214,6 @@ describe("GET /secretary/regen-cases", () => {
     expect(body[0]).toMatchObject({
       patientId: patientRegenA,
       patientNome: "DOCREGEN SEC PATIENT A11",
-      conditionCode: "knee_oa",
       status: "active",
       procedureCount: 0,
       nextFollowupDate: "2020-01-01",
@@ -222,6 +221,10 @@ describe("GET /secretary/regen-cases", () => {
     });
     expect(JSON.stringify(body)).not.toContain("clinical secret");
     expect(body[0]).not.toHaveProperty("anamneseRegen");
+    // The diagnosis is clinical content: the front desk does not get it.
+    expect(body[0]).not.toHaveProperty("conditionCode");
+    expect(body[0]).not.toHaveProperty("ladoArticulacao");
+    expect(JSON.stringify(body)).not.toContain("knee_oa");
 
     const other = await call(secretaryAuthB, "/regen-api/secretary/regen-cases");
     expect(other.status).toBe(200);

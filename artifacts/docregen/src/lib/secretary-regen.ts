@@ -12,8 +12,6 @@ export type SecretaryRegenCase = {
   patientId: number | null;
   patientNome: string | null;
   patientTelefone: string | null;
-  conditionCode: string;
-  ladoArticulacao: string | null;
   status: string | null;
   dataCaso: string | null;
   createdAt: string | null;

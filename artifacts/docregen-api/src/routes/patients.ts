@@ -23,12 +23,34 @@ function normalizePatientName(nome: string): string {
   return nome.trim().toLocaleUpperCase("pt-BR");
 }
 
+/**
+ * Front-desk projection of a patient: identification and contact data needed
+ * to schedule and to send the pré-consulta link — never CPF, anamnesis,
+ * reports, health-plan card, address or other clinical/sensitive fields.
+ */
+export function secretaryPatientView(patient: typeof patientsTable.$inferSelect) {
+  return {
+    id: patient.id,
+    nome: patient.nome,
+    telefone: patient.telefone,
+    email: patient.email,
+    dataNascimento: patient.dataNascimento,
+    numeroRegistro: patient.numeroRegistro,
+    createdAt: patient.createdAt.toISOString(),
+  };
+}
+
 router.get("/patients", requireDoctorOrSecretary, async (req, res): Promise<void> => {
   const patients = await db
     .select()
     .from(patientsTable)
     .where(eq(patientsTable.doctorId, req.doctorId!))
     .orderBy(sql`lower(${patientsTable.nome}) COLLATE "pt-BR-x-icu"`, patientsTable.id);
+
+  if (req.role === "secretary") {
+    res.json(patients.map(secretaryPatientView));
+    return;
+  }
 
   res.json(patients.map((patient) => ({
     ...patient,
@@ -59,6 +81,10 @@ router.post("/patients", requireDoctorOrSecretary, async (req, res): Promise<voi
     .where(eq(patientsTable.id, patient.id))
     .returning();
 
+  if (req.role === "secretary") {
+    res.status(201).json(secretaryPatientView(updated));
+    return;
+  }
   res.status(201).json({ ...updated, createdAt: updated.createdAt.toISOString() });
 });
 

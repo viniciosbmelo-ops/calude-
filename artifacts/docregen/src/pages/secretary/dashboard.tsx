@@ -15,7 +15,6 @@ import { cn, formatLocalDate, formatPersonName, sortByPtBrName } from "@/lib/uti
 import { APPOINTMENT_STATUSES, appointmentStatusLabel, appointmentTypeLabel, selectableAppointmentTypes } from "@/lib/appointment-types";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { consoleMessages } from "@/locales/console";
-import { conditionCodeLabel } from "@/lib/dashboard-metrics";
 import {
   REGEN_SESSION_TYPE,
   daysUntil,
@@ -256,14 +255,14 @@ export default function SecretaryDashboard() {
 
   const openScheduleSession = (regenCase: SecretaryRegenCase) => {
     if (regenCase.patientId === null) return;
-    const condition = conditionCodeLabel(regenCase.conditionCode, locale);
     setEditingAppt(null);
     setNewAppt({
       patientId: String(regenCase.patientId),
       data: "",
       hora: "",
       tipo: REGEN_SESSION_TYPE,
-      observacoes: condition ? `${t("regenSessionNote")} — ${condition}` : t("regenSessionNote"),
+      // The front desk never sees the diagnosis (LGPD minimization).
+      observacoes: t("regenSessionNote"),
       status: "agendado",
     });
     setShowApptDialog(true);
@@ -542,9 +541,9 @@ export default function SecretaryDashboard() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5 capitalize">
-                              {conditionCodeLabel(c.conditionCode, locale)}{c.ladoArticulacao ? ` · ${c.ladoArticulacao}` : ""}
-                            </p>
+                            {c.dataCaso && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{formatCalendarDate(c.dataCaso)}</p>
+                            )}
                             <p className="text-xs text-muted-foreground">{t("regenSessions", { count: c.procedureCount })}</p>
                             <p className="text-xs text-muted-foreground">
                               {c.nextSessionDate
