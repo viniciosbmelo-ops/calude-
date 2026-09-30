@@ -1,3 +1,4 @@
+import { SANE_REGIONS } from "@workspace/clinical/region-sane";
 import type { SupportedLocale } from "./locale";
 
 const REGEN_PERIOD_LABELS: Record<string, Record<SupportedLocale, string>> = {
@@ -30,8 +31,8 @@ const REGEN_PERIOD_LABELS: Record<string, Record<SupportedLocale, string>> = {
 const REGEN_SCALE_LABELS: Record<string, Record<SupportedLocale, string>> = {
   VAS: { "pt-BR": "VAS", es: "EVA" },
   "VAS Dor": { "pt-BR": "VAS Dor", es: "EVA Dolor" },
-  "SANE Joelho": { "pt-BR": "SANE Joelho", es: "SANE Rodilla" },
-  SANE_JOELHO: { "pt-BR": "SANE Joelho", es: "SANE Rodilla" },
+  // Region SANEs, under both spellings ("SANE Ombro" / "SANE_OMBRO").
+  ...Object.fromEntries(SANE_REGIONS.flatMap((d) => [[d.scale, d.label], [d.code, d.label]])),
 };
 
 /** Presentation-only localization; persisted period identifiers and free text stay untouched. */

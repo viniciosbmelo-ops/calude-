@@ -10,6 +10,7 @@
     "./labels": "./src/labels.pt.json",
     "./catalog": "./src/catalog/pathologies.ts",
     "./knee-function": "./src/proms/kneeFunction.ts",
+    "./region-sane": "./src/proms/regionSane.ts",
     "./validators": "./src/generated/validators.js",
     "./web": "./src/web.ts"
   },

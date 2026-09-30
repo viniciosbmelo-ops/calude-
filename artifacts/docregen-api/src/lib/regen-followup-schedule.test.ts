@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   REGEN_FOLLOWUP_SCHEDULE,
+  REGEN_PATIENT_SCALES,
+  REGEN_PROM_INSTRUMENTS,
+  isRegenPatientScale,
   addDaysToCalendarDate,
   clinicToday,
   regenFollowupScheduleFor,
@@ -51,9 +54,62 @@ describe("knee cases ask VAS + SANE-joelho", () => {
       expect(slots.every((s) => s.scales.join("|") === "VAS Dor|SANE Joelho"), code).toBe(true);
     }
     for (const code of ["OA_QUADRIL", "OA_OMBRO", null, undefined]) {
-      expect(regenFollowupScheduleFor(["PRP"], code).every((s) => s.scales.join("|") === "VAS Dor")).toBe(true);
+      expect(regenFollowupScheduleFor(["PRP"], code).some((s) => s.scales.includes("SANE Joelho"))).toBe(false);
     }
     // The shared schedule constant itself is never mutated.
     expect(REGEN_FOLLOWUP_SCHEDULE.every((s) => s.scales.join("|") === "VAS Dor")).toBe(true);
+  });
+});
+
+describe("every case asks VAS + the SANE of its condition region", () => {
+  const expected: Record<string, string> = {
+    OA_OMBRO: "SANE Ombro",
+    TENDINOPATIA_OMBRO: "SANE Ombro",
+    BURSITE_OMBRO: "SANE Ombro",
+    LESAO_LABRAL_OMBRO: "SANE Ombro",
+    OA_QUADRIL: "SANE Quadril",
+    OA_COTOVELO: "SANE Cotovelo",
+    TENDINOPATIA_COTOVELO: "SANE Cotovelo",
+    EPICONDILITE: "SANE Cotovelo",
+    OA_TORNOZELO: "SANE Tornozelo e Pé",
+    FASCITE_PLANTAR: "SANE Tornozelo e Pé",
+    OA_PUNHO: "SANE Punho e Mão",
+    TENDINOPATIA_PUNHO: "SANE Punho e Mão",
+    SINDROME_TUNEL_CARPO: "SANE Punho e Mão",
+    OA_COLUNA_CERVICAL: "SANE Coluna",
+    HERNIA_DISCAL_CERVICAL: "SANE Coluna",
+    OA_COLUNA_TORACICA: "SANE Coluna",
+    HERNIA_DISCAL_TORACICA: "SANE Coluna",
+    OA_COLUNA_LOMBAR: "SANE Coluna",
+    HERNIA_DISCAL_LOMBAR: "SANE Coluna",
+    OA_JOELHO_KL2: "SANE Joelho",
+  };
+
+  it("adds exactly one region SANE per slot", () => {
+    for (const [code, scale] of Object.entries(expected)) {
+      const slots = regenFollowupScheduleFor(["AH"], code);
+      expect(slots.length, code).toBe(REGEN_FOLLOWUP_SCHEDULE.length);
+      expect(slots.every((s) => s.scales.join("|") === `VAS Dor|${scale}`), code).toBe(true);
+    }
+  });
+
+  it("asks VAS only when the condition has no defined region or is unknown/legacy", () => {
+    for (const code of ["CONDRAL_FOCAL", "OSTEOCONDRAL", "TENDINOPATIA", "SINOVITE", "BURSITE", "FRATURA_FADIGA",
+      "POS_OPERATORIO", "CUSTOM", "hip_oa", "OA_JOELHO", "NOPE", "", null, undefined]) {
+      expect(regenFollowupScheduleFor(["PRP"], code).every((s) => s.scales.join("|") === "VAS Dor"), String(code)).toBe(true);
+    }
+  });
+
+  it("patient/clinician allowlists hold exactly VAS + the seven region SANEs", () => {
+    expect([...REGEN_PATIENT_SCALES].sort()).toEqual([
+      "SANE Coluna", "SANE Cotovelo", "SANE Joelho", "SANE Ombro", "SANE Punho e Mão", "SANE Quadril",
+      "SANE Tornozelo e Pé", "VAS Dor",
+    ]);
+    expect([...REGEN_PROM_INSTRUMENTS].sort()).toEqual([
+      "SANE Coluna", "SANE Cotovelo", "SANE Joelho", "SANE Ombro", "SANE Punho e Mão", "SANE Quadril",
+      "SANE Tornozelo e Pé", "SANE_COLUNA", "SANE_COTOVELO", "SANE_JOELHO", "SANE_OMBRO", "SANE_PUNHO_MAO",
+      "SANE_QUADRIL", "SANE_TORNOZELO_PE", "VAS",
+    ]);
+    for (const name of ["KOOS", "WOMAC", "IKDC", "ASES", "DASH", "SANE"]) expect(isRegenPatientScale(name)).toBe(false);
   });
 });

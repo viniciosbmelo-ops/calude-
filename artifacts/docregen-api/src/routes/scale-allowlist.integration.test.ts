@@ -17,10 +17,22 @@ import { initRegenData } from "./regen";
 
 /**
  * Only the scales DocRegen offers can be written from a client: manual PROMs
- * VAS and SANE-joelho ("SANE_JOELHO" / "SANE Joelho"), and the follow-up link
- * scales "VAS Dor" and "SANE Joelho". Licensed or retired names are rejected
- * with 400, while rows stored under old names keep being returned for display.
+ * VAS and the region SANEs under either spelling ("SANE_JOELHO" / "SANE
+ * Joelho", "SANE_OMBRO" / "SANE Ombro", quadril, cotovelo, tornozelo/pé,
+ * punho/mão, coluna), and the follow-up link scales "VAS Dor" + region SANE.
+ * Licensed or retired names are rejected with 400, while rows stored under
+ * old names keep being returned for display.
  */
+
+const REGION_SANES: Array<[string, string]> = [
+  ["SANE_OMBRO", "SANE Ombro"],
+  ["SANE_JOELHO", "SANE Joelho"],
+  ["SANE_QUADRIL", "SANE Quadril"],
+  ["SANE_COTOVELO", "SANE Cotovelo"],
+  ["SANE_TORNOZELO_PE", "SANE Tornozelo e Pé"],
+  ["SANE_PUNHO_MAO", "SANE Punho e Mão"],
+  ["SANE_COLUNA", "SANE Coluna"],
+];
 
 const REJECTED = ["KOOS", "WOMAC", "IKDC", "ASES", "DASH"];
 
@@ -88,7 +100,7 @@ describe("DocRegen PROM instrument allowlist", () => {
     const created = await createCase({ conditionCode: "OA_JOELHO_KL3" });
     const promsPath = `/regen/cases/${created.id}/proms`;
 
-    for (const instrument of [...REJECTED, "vas", "VAS Dor", "SANE", "KOOS-JR", ""]) {
+    for (const instrument of [...REJECTED, "vas", "VAS Dor", "SANE", "KOOS-JR", "", "SANE Hombro", "SANE_OMBRO_D", "sane_coluna", "SANE Lombar"]) {
       const res = await call(promsPath, {
         method: "POST",
         body: JSON.stringify({ instrument, timepoint: "1 mês", score: 5 }),
@@ -107,6 +119,28 @@ describe("DocRegen PROM instrument allowlist", () => {
       expect(sane.status, instrument).toBe(201);
       expect((await j(sane)).instrument).toBe("SANE_JOELHO");
     }
+
+    // Every region SANE, under both spellings, is accepted (integer 0–100) and
+    // stored under its manual code; non-integer or out-of-range scores are not.
+    for (const [code, scale] of REGION_SANES) {
+      for (const instrument of [code, scale]) {
+        const ok = await call(promsPath, {
+          method: "POST", body: JSON.stringify({ instrument, timepoint: "6 meses", score: 0 }),
+        });
+        expect(ok.status, instrument).toBe(201);
+        expect((await j(ok)).instrument).toBe(code);
+        for (const score of [100.5, 101, 55.5]) {
+          const bad = await call(promsPath, {
+            method: "POST", body: JSON.stringify({ instrument, timepoint: "6 meses", score }),
+          });
+          expect(bad.status, `${instrument} ${score}`).toBe(400);
+        }
+      }
+    }
+    await pool.query(
+      `DELETE FROM regen_prom_responses WHERE case_id = $1 AND timepoint = '6 meses'`,
+      [created.id],
+    );
 
     // A row recorded before the allowlist existed keeps being displayed.
     await pool.query(

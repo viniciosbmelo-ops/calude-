@@ -27,15 +27,14 @@ import { localeDate, localeForDoctorId, resolveDoctorLocale } from "../lib/local
 import { message } from "../lib/locale-catalog";
 import { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
 import { ClinicalGuardError } from "@workspace/clinical";
-import { SANE_KNEE_CODE, validateKneePerformance } from "@workspace/clinical/knee-function";
+import { validateKneePerformance } from "@workspace/clinical/knee-function";
 import {
   RESEARCH_MEASURE_KEYS,
-  SANE_KNEE_SCALE,
   baselineToLast,
-  isSaneKneeInstrument,
   performanceResearchKey,
   type MeasurePoint,
 } from "../lib/regen-knee-measures";
+import { SANE_REGIONS, saneRegionByInstrument } from "../lib/regen-sane";
 import {
   applicationSitesForProductDetails,
   hasValidApplicationSitesExtension,
@@ -551,9 +550,10 @@ const PromBody = z.object({
   (body) => body.instrument !== "VAS" || body.score == null || body.score <= 10,
   { message: "VAS score must be between 0 and 10", path: ["score"] },
 ).refine(
-  // SANE-joelho: single question, integer 0–100 (% of a normal knee), required.
-  (body) => !isSaneKneeInstrument(body.instrument) || (body.score != null && Number.isInteger(body.score)),
-  { message: "SANE Joelho score must be an integer between 0 and 100", path: ["score"] },
+  // Region SANE (joelho, ombro, quadril, …): single question, integer 0–100
+  // (% of a normal region), required.
+  (body) => !saneRegionByInstrument(body.instrument) || (body.score != null && Number.isInteger(body.score)),
+  { message: "SANE score must be an integer between 0 and 100", path: ["score"] },
 );
 
 router.get("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => {
@@ -585,8 +585,8 @@ router.post("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => 
     const parsed = PromBody.safeParse(req.body ?? {});
     if (!parsed.success) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing"), issues: parsed.error.issues });
     const { timepoint, answers, score, answeredAt } = parsed.data;
-    // Both SANE-joelho spellings are stored under one manual code.
-    const instrument = isSaneKneeInstrument(parsed.data.instrument) ? SANE_KNEE_CODE : parsed.data.instrument;
+    // Both spellings of a region SANE ("SANE_OMBRO" / "SANE Ombro") are stored under the manual code.
+    const instrument = saneRegionByInstrument(parsed.data.instrument)?.code ?? parsed.data.instrument;
 
     const { rows } = await pool.query(
       `INSERT INTO regen_prom_responses (case_id, instrument, timepoint, answers, score, answered_at)
@@ -934,8 +934,9 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
 
     const { rows } = await pool.query(sql, params);
 
-    // Knee outcome measures: SANE-joelho (manual + patient follow-up) and the
-    // OARSI performance tests / ROM → baseline, last and change per case.
+    // Outcome measures: region SANEs (manual + patient follow-up; one column
+    // set per region) and the knee OARSI performance tests / ROM → baseline,
+    // last and change per case.
     const caseIds = rows.map((r: any) => r.id);
     if (caseIds.length) {
       const [perf, saneManual, saneFollowup] = await Promise.all([
@@ -943,14 +944,14 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
           `SELECT case_id, measure, side, value, measured_at FROM regen_performance_tests WHERE case_id = ANY($1::uuid[])`,
           [caseIds]),
         pool.query(
-          `SELECT case_id, score, answered_at FROM regen_prom_responses
-            WHERE case_id = ANY($1::uuid[]) AND instrument = $2 AND score IS NOT NULL`,
-          [caseIds, SANE_KNEE_CODE]),
+          `SELECT case_id, instrument, score, answered_at FROM regen_prom_responses
+            WHERE case_id = ANY($1::uuid[]) AND instrument = ANY($2::text[]) AND score IS NOT NULL`,
+          [caseIds, SANE_REGIONS.map((d) => d.code)]),
         pool.query(
-          `SELECT n.case_id, r.score, r.completado_em FROM regen_scale_responses r
+          `SELECT n.case_id, r.nome_escala, r.score, r.completado_em FROM regen_scale_responses r
              JOIN regen_followup_notifications n ON n.id = r.notification_id
-            WHERE n.case_id = ANY($1::uuid[]) AND r.nome_escala = $2 AND r.score IS NOT NULL`,
-          [caseIds, SANE_KNEE_SCALE]),
+            WHERE n.case_id = ANY($1::uuid[]) AND r.nome_escala = ANY($2::text[]) AND r.score IS NOT NULL`,
+          [caseIds, SANE_REGIONS.map((d) => d.scale)]),
       ]);
       const pointsByCase = new Map<string, MeasurePoint[]>();
       const push = (caseId: string, point: MeasurePoint) => {
@@ -962,8 +963,14 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
         const key = performanceResearchKey(r.measure, r.side);
         if (key) push(r.case_id, { key, value: Number(r.value), at: r.measured_at });
       }
-      for (const r of saneManual.rows) push(r.case_id, { key: "sane_joelho", value: Number(r.score), at: r.answered_at });
-      for (const r of saneFollowup.rows) push(r.case_id, { key: "sane_joelho", value: Number(r.score), at: r.completado_em });
+      for (const r of saneManual.rows) {
+        const key = saneRegionByInstrument(r.instrument)?.researchKey;
+        if (key) push(r.case_id, { key, value: Number(r.score), at: r.answered_at });
+      }
+      for (const r of saneFollowup.rows) {
+        const key = saneRegionByInstrument(r.nome_escala)?.researchKey;
+        if (key) push(r.case_id, { key, value: Number(r.score), at: r.completado_em });
+      }
       for (const row of rows as any[]) {
         const changes = baselineToLast(pointsByCase.get(row.id) ?? []);
         for (const key of RESEARCH_MEASURE_KEYS) {

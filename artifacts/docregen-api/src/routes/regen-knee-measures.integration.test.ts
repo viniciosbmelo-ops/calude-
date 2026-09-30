@@ -182,11 +182,16 @@ describe("patient follow-up for knee cases asks VAS + SANE-joelho", () => {
   it("schedules SANE Joelho only for knee conditions", async () => {
     const knee = await createCase({ conditionCode: "OA_JOELHO_KL2", plannedProducts: ["PRP"] });
     const hip = await createCase({ conditionCode: "OA_QUADRIL", plannedProducts: ["PRP"] });
+    const other = await createCase({ conditionCode: "SINOVITE", plannedProducts: ["PRP"] });
     const kneeRows = await j(await call(`/regen/cases/${knee.id}/notifications/init`, { method: "POST", body: JSON.stringify({ baseDate: "2026-09-29" }) }));
     const hipRows = await j(await call(`/regen/cases/${hip.id}/notifications/init`, { method: "POST", body: JSON.stringify({ baseDate: "2026-09-29" }) }));
     expect(kneeRows.length).toBeGreaterThan(0);
     for (const row of kneeRows) expect(row.scales).toEqual(["VAS Dor", "SANE Joelho"]);
-    for (const row of hipRows) expect(row.scales).toEqual(["VAS Dor"]);
+    const otherRows = await j(await call(`/regen/cases/${other.id}/notifications/init`, { method: "POST", body: JSON.stringify({ baseDate: "2026-09-29" }) }));
+    // Hip cases get their own region SANE; region-less conditions ask VAS only.
+    for (const row of hipRows) expect(row.scales).toEqual(["VAS Dor", "SANE Quadril"]);
+    expect(otherRows.length).toBeGreaterThan(0);
+    for (const row of otherRows) expect(row.scales).toEqual(["VAS Dor"]);
   });
 
   it("scores the patient's SANE-joelho answer server-side (integer 0–100)", async () => {

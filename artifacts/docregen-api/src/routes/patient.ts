@@ -7,8 +7,8 @@
  *   POST /patient/regen/:token/scale/:escala  → same guards
  *
  * Security properties:
- *   ✅ Req #1  — public GET returns minimum: scales list + period + joint region
- *               (shoulder/elbow, for the SANE wording), no IDs/names/dates
+ *   ✅ Req #1  — public GET returns minimum: scales list + period (the region
+ *               SANE scale name carries the SANE wording), no IDs/names/dates
  *   ✅ Req #2  — verify denies by default when identifier absent; persistent PG lockout (5 × 15 min)
  *   ✅ Req #3  — scale POST requires session cookie; app.ts CSRF guard applies (patient cookie in SESSION_COOKIE_NAMES)
  *   ✅ Req #4  — score recalculated server-side; no silent 0 fallback for invalid answers
@@ -20,7 +20,7 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/docregen-db";
-import { scoreSANEKnee } from "@workspace/clinical/knee-function";
+import { SANE_REGIONS, scoreSANERegion } from "@workspace/clinical/region-sane";
 import { eq, sql } from "drizzle-orm";
 import {
   issuePatientSession,
@@ -129,7 +129,8 @@ function validateRespostas(
 // WOMAC) foram retiradas. Escalas de ombro/cotovelo entram aqui com o cálculo.
 const SCALE_SCORE_RANGES: Record<string, [number, number]> = {
   "VAS Dor":  [0, 10],
-  "SANE Joelho": [0, 100],
+  // Region SANEs ("SANE Joelho", "SANE Ombro", …): integer 0–100.
+  ...Object.fromEntries(SANE_REGIONS.map((d) => [d.scale, [0, 100] as [number, number]])),
 };
 
 /** Clamp score to the known range for this scale. */
@@ -166,12 +167,13 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
     if (v === undefined || !isFinite(v)) throw new Error("VAS: resposta 'vas' ausente ou inválida");
     return Math.max(0, Math.min(10, v));
   },
-  // SANE-joelho: mesma pergunta única (0–100, 100 = joelho normal), mesmo escore.
-  "SANE Joelho": (a) => {
+  // SANE por região (joelho, ombro, quadril, cotovelo, tornozelo/pé,
+  // punho/mão, coluna): pergunta única, inteiro 0–100 (100 = região normal).
+  ...Object.fromEntries(SANE_REGIONS.map((d) => [d.scale, (a: Answers) => {
     const v = a["sane"];
-    if (v === undefined) throw new Error("SANE Joelho: resposta 'sane' ausente");
-    return scoreSANEKnee({ value: v }).score;
-  },
+    if (v === undefined) throw new Error(`${d.scale}: resposta 'sane' ausente`);
+    return scoreSANERegion(d.scale, { value: v }).score;
+  }])),
 };
 
 /**

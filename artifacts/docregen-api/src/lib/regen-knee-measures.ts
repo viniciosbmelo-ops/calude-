@@ -10,6 +10,7 @@ import {
   SANE_KNEE_CODE,
 } from "@workspace/clinical/knee-function";
 import { REGEN_CONDITION_CATALOG } from "./regen-conditions";
+import { SANE_RESEARCH_KEYS } from "./regen-sane";
 
 /** Follow-up (patient link) scale name for SANE-joelho; persisted in regen_scale_responses.nome_escala. */
 export const SANE_KNEE_SCALE = "SANE Joelho";
@@ -39,9 +40,12 @@ export interface MeasureChange {
   change: number;
 }
 
-/** Research/report column keys: SANE plus each test (ROM split by side D/E). */
+/**
+ * Research/report column keys: one SANE per body region ("sane_ombro",
+ * "sane_joelho", …) plus each knee test (ROM split by side D/E).
+ */
 export const RESEARCH_MEASURE_KEYS: readonly string[] = [
-  "sane_joelho",
+  ...SANE_RESEARCH_KEYS,
   ...KNEE_PERFORMANCE_MEASURES.flatMap((m) =>
     m.perSide ? [`${m.code.toLowerCase()}_d`, `${m.code.toLowerCase()}_e`] : [m.code.toLowerCase()],
   ),
