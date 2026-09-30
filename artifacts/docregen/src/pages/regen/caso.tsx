@@ -1967,6 +1967,10 @@ function IaTab({ caseId }: { caseId: string }) {
           </button>
         </div>
 
+        <p className="px-4 pt-3 text-[11px] leading-snug text-gray-500" data-testid="ai-external-provider-note">
+          {t("aiExternalProviderNote", { limit: 20 })}
+        </p>
+
         {err && (
           <div className="flex items-center gap-2 m-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
             <AlertCircle className="h-4 w-4 shrink-0" /> {err}

@@ -7,9 +7,11 @@ import { Router, type IRouter } from "express";
 import { pool } from "@workspace/docregen-db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { z } from "zod/v4";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getGeminiClient } from "../lib/gemini";
 import { csvDocument } from "../lib/csv";
+import { aiDailyLimit, buildAiSummaryPrompt } from "../lib/ai-summary-prompt";
+import { consumeRateLimit, retryAfterSeconds } from "../lib/dbRateLimit";
 import {
   RESEARCH_EXPORT_COLUMNS,
   RESEARCH_MIN_GROUP_SIZE,
@@ -879,37 +881,20 @@ router.post("/regen/cases/:id/ai-summary", requireAuth, async (req: any, res) =>
       pool.query(`SELECT * FROM regen_lab_results WHERE case_id = $1 ORDER BY analyte`, [req.params.id]),
     ]);
 
-    const promsText = promRows.rows.map(p =>
-      `${p.instrument} (${p.timepoint}): score ${p.score ?? "não informado"}`
-    ).join("\n");
-    const procsText = procRows.rows.map(p =>
-      `${localeDate(p.performed_at, "pt-BR") || "NI"}: ${p.product_code}${p.volume_ml ? ` ${p.volume_ml}mL` : ""}${p.adverse_event ? " [EVENTO ADVERSO: " + p.adverse_event_desc + "]" : ""}`
-    ).join("\n");
-    const labsText = labRows.rows.slice(0, 20).map(l =>
-      `${l.analyte}: ${l.value_num} ${l.unit ?? ""}${l.flag ? " [" + l.flag + "]" : ""}`
-    ).join("\n");
+    // Per-doctor daily quota (DB-backed: shared by every instance).
+    const quota = await consumeRateLimit(`ai-summary:${req.doctorId}`, aiDailyLimit(), 24 * 60 * 60 * 1000);
+    if (!quota.allowed) {
+      res.setHeader("Retry-After", String(retryAfterSeconds(quota.resetAt)));
+      return res.status(429).json({
+        error: `Limite diário de resumos por IA atingido (${quota.limit} por dia). Tente novamente em ${Math.ceil(retryAfterSeconds(quota.resetAt) / 3600)} h.`,
+        code: "AI_RATE_LIMIT",
+        limit: quota.limit,
+        resetAt: quota.resetAt.toISOString(),
+      });
+    }
 
-    const prompt = `Você é um assistente clínico especializado em medicina regenerativa ortopédica.
-Gere um resumo clínico narrativo em português brasileiro (2-4 parágrafos) sobre a evolução do paciente abaixo.
-Seja objetivo, clínico, e destaque mudanças relevantes nos PROMs e na evolução clínica.
-Finalize com uma conclusão sobre o status atual.
-
-DADOS DO CASO:
-- Paciente: ${caso.patient_name} | Sexo: ${caso.patient_sex ?? "NI"} | Nascimento: ${caso.patient_dob ? localeDate(caso.patient_dob, "pt-BR") : "NI"}
-- IMC: ${caso.imc ?? "NI"} | Condição: ${regenConditionName(caso.condition_code, "pt-BR")}${caso.condition_custom ? " — " + caso.condition_custom : ""}
-- Diabetes: ${caso.dm ? "Sim" + (caso.hba1c ? " (HbA1c " + caso.hba1c + "%)" : "") : "Não"} | Anticoagulante: ${caso.anticoagulant ? "Sim" : "Não"}
-- Objetivos: ${caso.goal_vev?.join(", ") ?? "não definidos"}
-
-PROCEDIMENTOS:
-${procsText || "Nenhum registrado"}
-
-PROMS (instrumentos de resultado):
-${promsText || "Nenhum registrado"}
-
-EXAMES LABORATORIAIS RELEVANTES:
-${labsText || "Nenhum registrado"}
-
-Gere apenas o texto clínico narrativo, sem títulos ou marcadores.`;
+    // No direct identifiers leave the platform (see lib/ai-summary-prompt.ts).
+    const prompt = buildAiSummaryPrompt({ caso, procedures: procRows.rows, proms: promRows.rows, labs: labRows.rows });
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -919,9 +904,9 @@ Gere apenas o texto clínico narrativo, sem títulos ou marcadores.`;
 
     // Save interaction
     await pool.query(
-      `INSERT INTO regen_ai_interactions (case_id, doctor_id, model, raw_output, accepted_output)
-       VALUES ($1, $2, $3, $4, $4)`,
-      [req.params.id, req.doctorId, "gemini-2.5-flash", JSON.stringify({ summary })]
+      `INSERT INTO regen_ai_interactions (case_id, doctor_id, prompt_hash, model, raw_output, accepted_output)
+       VALUES ($1, $2, $3, $4, $5, $5)`,
+      [req.params.id, req.doctorId, createHash("sha256").update(prompt).digest("hex"), "gemini-2.5-flash", JSON.stringify({ summary })]
     );
 
     res.json({ summary });
