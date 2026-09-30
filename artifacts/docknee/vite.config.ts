@@ -129,6 +129,11 @@ export default defineConfig(async ({ command }) => {
       headers: {
         "Content-Security-Policy": csp,
       },
+      // Outside the Replit path router (e.g. the local E2E suite), forward API
+      // calls to DocKnee's API server (artifacts/api-server, mounted at /api).
+      ...(process.env.API_PROXY_TARGET
+        ? { proxy: { "/api": { target: process.env.API_PROXY_TARGET, changeOrigin: true } } }
+        : {}),
       fs: {
         strict: true,
         deny: ["**/.*"],

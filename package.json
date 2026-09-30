@@ -12,10 +12,13 @@
     "test:api": "pnpm --filter @workspace/api-server test",
     "test:docregen-api": "pnpm --filter @workspace/docregen-api test",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:serve": "tsx e2e/serve.ts"
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/nodemailer": "^8.0.1",
