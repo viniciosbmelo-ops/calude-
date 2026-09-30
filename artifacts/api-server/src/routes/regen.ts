@@ -691,7 +691,7 @@ router.get("/regen/stats", requireAuth, async (req: any, res) => {
       pool.query(
         `SELECT COUNT(*)::int AS procedures_this_month
          FROM regen_procedures p JOIN regen_cases c ON c.id = p.case_id
-         WHERE c.doctor_id = $1 AND p.performed_at >= date_trunc('month', now())`, [did]),
+         WHERE c.doctor_id = $1 AND p.performed_at >= (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo')`, [did]),
       pool.query(
         `SELECT
           COUNT(*) FILTER (WHERE p.product_code = 'PRP')::int  AS prp_count,
@@ -754,7 +754,7 @@ router.post("/regen/cases/:id/ai-summary", requireAuth, async (req: any, res) =>
       `${p.instrument} (${p.timepoint}): score ${p.score ?? "não informado"}`
     ).join("\n");
     const procsText = procRows.rows.map(p =>
-      `${new Date(p.performed_at).toLocaleDateString("pt-BR")}: ${p.product_code}${p.volume_ml ? ` ${p.volume_ml}mL` : ""}${p.adverse_event ? " [EVENTO ADVERSO: " + p.adverse_event_desc + "]" : ""}`
+      `${localeDate(p.performed_at, "pt-BR") || "NI"}: ${p.product_code}${p.volume_ml ? ` ${p.volume_ml}mL` : ""}${p.adverse_event ? " [EVENTO ADVERSO: " + p.adverse_event_desc + "]" : ""}`
     ).join("\n");
     const labsText = labRows.rows.slice(0, 20).map(l =>
       `${l.analyte}: ${l.value_num} ${l.unit ?? ""}${l.flag ? " [" + l.flag + "]" : ""}`

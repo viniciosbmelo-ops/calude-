@@ -17,6 +17,7 @@ import {
   processStorageCleanupJobs,
 } from "../lib/storageCleanup";
 import { localeForDoctorId } from "../lib/locale";
+import { clinicToday } from "../lib/calendar-date";
 import { message } from "../lib/locale-catalog";
 
 const router: IRouter = Router();
@@ -67,7 +68,7 @@ router.post("/patients", requireDoctorOrSecretary, async (req, res): Promise<voi
   }).returning();
 
   // Generate registro number: PAC-YYYY-NNNNN
-  const year = patient.createdAt.getFullYear();
+  const year = clinicToday(patient.createdAt).slice(0, 4); // clinic calendar year
   const numeroRegistro = `PAC-${year}-${String(patient.id).padStart(5, "0")}`;
   const [updated] = await db
     .update(patientsTable)

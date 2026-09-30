@@ -23,6 +23,7 @@ import { requirePhysio } from "../middlewares/requireAuth";
 import { enforcePatientLimit, physioWriteGuard } from "../middlewares/physioPlanGuard";
 import { claimPatientSlot } from "../lib/physioBilling";
 import { z } from "zod/v4";
+import { addDaysToCalendarDate, clinicDayRange, clinicToday } from "../lib/calendar-date";
 import {
   generateFollowupsPreview,
   getProtocolDefinition,
@@ -705,10 +706,11 @@ router.post("/physio/invites/accept", enforcePatientLimit, async (req, res): Pro
 
 router.get("/physio/dashboard", async (req, res): Promise<void> => {
   const physioId = req.physioId!;
-  const today = new Date().toISOString().slice(0, 10);
-  const in7 = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const startOfDay = new Date(`${today}T00:00:00`);
-  const endOfDay = new Date(`${today}T23:59:59.999`);
+  // "Today" is the clinic calendar day (America/Sao_Paulo), not the UTC day:
+  // between 21:00 and 24:00 in Brasília the UTC date is already tomorrow.
+  const today = clinicToday();
+  const in7 = addDaysToCalendarDate(today, 7, today);
+  const { start: startOfDay, end: startOfTomorrow } = clinicDayRange(today);
 
   const followupBase = {
     id: physioFollowupsTable.id,
@@ -761,7 +763,7 @@ router.get("/physio/dashboard", async (req, res): Promise<void> => {
         eq(physioAppointmentsTable.physioId, physioId),
         eq(physioAppointmentsTable.status, "scheduled"),
         gte(physioAppointmentsTable.startsAt, startOfDay),
-        lte(physioAppointmentsTable.startsAt, endOfDay),
+        lt(physioAppointmentsTable.startsAt, startOfTomorrow),
       ))
       .orderBy(asc(physioAppointmentsTable.startsAt)),
     db.select({ count: sql<number>`count(*)::int` })

@@ -7,6 +7,7 @@ import { describeAccessGeography, type AccessType } from "../lib/accessGeography
 import { serializeDoctor } from "../lib/doctorSerializer";
 import { isHiddenFracturePreoperative } from "../lib/followup-schedule";
 import { hasRecordedAssessment } from "../lib/followup-assessment";
+import { calendarAgeYears, clinicDayStart, clinicPeriodRange, clinicToday } from "../lib/calendar-date";
 
 const router: IRouter = Router();
 
@@ -236,15 +237,17 @@ router.get("/reports/admin", requireAdmin, async (req, res): Promise<void> => {
     ? withRetorno.filter(f => f.retornoEsporte === true).length / withRetorno.length * 100
     : null;
 
-  // Monthly surgeries (last 12 months)
+  // Monthly surgeries (last 12 months), grouped by the clinic calendar month
+  // (America/Sao_Paulo), not the database session timezone.
+  const surgeryMonth = sql`to_char(${surgeriesTable.createdAt} AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM')`;
   const monthlyRaw = await db
     .select({
-      month: sql<string>`to_char(${surgeriesTable.createdAt}, 'YYYY-MM')`,
+      month: sql<string>`${surgeryMonth}`,
       count: count(),
     })
     .from(surgeriesTable)
-    .groupBy(sql`to_char(${surgeriesTable.createdAt}, 'YYYY-MM')`)
-    .orderBy(sql`to_char(${surgeriesTable.createdAt}, 'YYYY-MM')`);
+    .groupBy(surgeryMonth)
+    .orderBy(surgeryMonth);
 
   const monthlySurgeries = monthlyRaw.map(r => ({ month: r.month, count: Number(r.count) }));
 
@@ -357,7 +360,8 @@ router.get("/reports/admin", requireAdmin, async (req, res): Promise<void> => {
 
   // Access stats from audit logs
   const agora = new Date();
-  const inicioDia  = new Date(agora); inicioDia.setHours(0, 0, 0, 0);
+  // Start of the clinic day (00:00 America/Sao_Paulo), not of the server's day.
+  const inicioDia  = clinicDayStart(clinicToday(agora));
   const inicioSemana = new Date(agora); inicioSemana.setDate(agora.getDate() - 7);
   const inicio30dias = new Date(agora); inicio30dias.setDate(agora.getDate() - 30);
 
@@ -447,13 +451,13 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
   if (idadeMin) {
     const idadeMinInt = parseInt(idadeMin, 10);
     if (!isNaN(idadeMinInt) && idadeMinInt >= 0 && idadeMinInt <= 120) {
-      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') <= (CURRENT_DATE - INTERVAL '${sql.raw(String(idadeMinInt))} years')` as any);
+      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') <= ((now() AT TIME ZONE 'America/Sao_Paulo')::date - INTERVAL '${sql.raw(String(idadeMinInt))} years')` as any);
     }
   }
   if (idadeMax) {
     const idadeMaxInt = parseInt(idadeMax, 10);
     if (!isNaN(idadeMaxInt) && idadeMaxInt >= 0 && idadeMaxInt <= 120) {
-      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') >= (CURRENT_DATE - INTERVAL '${sql.raw(String(idadeMaxInt))} years')` as any);
+      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') >= ((now() AT TIME ZONE 'America/Sao_Paulo')::date - INTERVAL '${sql.raw(String(idadeMaxInt))} years')` as any);
     }
   }
 
@@ -511,7 +515,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
     .where(whereClause)
     .orderBy(sql`${surgeriesTable.createdAt} DESC`, sql`${followupTable.createdAt} ASC`);
 
-  const now = new Date();
+  const today = clinicToday();
   const data = rows
     .filter((row) => isCompletedSurgery({ status: row.surgeryStatus }))
     .filter((row) => !isHiddenFracturePreoperative(
@@ -523,15 +527,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
     followupRetornoEsporte, followupNivelRetorno,
     followupFalha, followupFalhaType, followupObservacoes, followupCreatedAt, surgeryCreatedAt,
     ...rest }) => {
-    let idade: number | null = null;
-    if (patientDatNasc) {
-      const dob = new Date(patientDatNasc);
-      if (!isNaN(dob.getTime())) {
-        idade = now.getFullYear() - dob.getFullYear();
-        const m = now.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) idade--;
-      }
-    }
+    const idade = patientDatNasc ? calendarAgeYears(patientDatNasc, today) : null;
     return {
       id: followupId ?? null,
       tempo: followupTempo ?? null,
@@ -575,28 +571,13 @@ router.get("/reports/consultas", requireAuth, async (req, res): Promise<void> =>
   const doctorId = req.doctorId!;
   const { tipo, plano, periodo } = req.query as Record<string, string>;
 
-  // Calcular intervalo de datas pelo período
-  const now = new Date();
+  // Calcular intervalo de datas pelo período (dia/semana dom–sáb/mês) no
+  // calendário da clínica (America/Sao_Paulo), nunca no dia UTC do servidor.
   let dateFrom: string | null = null;
   let dateTo: string | null = null;
 
-  if (periodo === "dia") {
-    dateFrom = now.toISOString().slice(0, 10);
-    dateTo = dateFrom;
-  } else if (periodo === "semana") {
-    const day = now.getDay(); // 0=Dom
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - day);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    dateFrom = weekStart.toISOString().slice(0, 10);
-    dateTo = weekEnd.toISOString().slice(0, 10);
-  } else if (periodo === "mes") {
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    dateFrom = `${y}-${String(m).padStart(2, "0")}-01`;
-    const lastDay = new Date(y, m, 0).getDate();
-    dateTo = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  if (periodo === "dia" || periodo === "semana" || periodo === "mes") {
+    ({ from: dateFrom, to: dateTo } = clinicPeriodRange(periodo));
   }
 
   // Buscar agendamentos com plano do paciente

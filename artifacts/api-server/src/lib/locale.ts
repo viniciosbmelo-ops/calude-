@@ -1,5 +1,6 @@
 import { db, doctorsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { CLINIC_TIME_ZONE } from "./calendar-date";
 
 export type SupportedLocale = "pt-BR" | "es";
 
@@ -15,8 +16,10 @@ const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 /**
  * Formats a date for documents. Calendar dates ("YYYY-MM-DD", as PostgreSQL
  * `date` columns are returned) are formatted from their Y/M/D parts in UTC so
- * the server timezone can never shift them a day; instants format as before.
- * Returns "" for unparseable input instead of throwing.
+ * the server timezone can never shift them a day. Instants (issue dates such as
+ * `new Date()`, timestamps) format on the clinic calendar (America/Sao_Paulo),
+ * so a document issued at 23:30 in Brasília never shows the next day even when
+ * the server runs in UTC. Returns "" for unparseable input instead of throwing.
  */
 export function localeDate(value: Date | string | number, locale: SupportedLocale): string {
   const formatLocale = locale === "es" ? "es-ES" : "pt-BR";
@@ -30,7 +33,7 @@ export function localeDate(value: Date | string | number, locale: SupportedLocal
   }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(formatLocale).format(date);
+  return new Intl.DateTimeFormat(formatLocale, { timeZone: CLINIC_TIME_ZONE }).format(date);
 }
 
 export async function localeForDoctorId(doctorId: number | null | undefined): Promise<SupportedLocale> {
