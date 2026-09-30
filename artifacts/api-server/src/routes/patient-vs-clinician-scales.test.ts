@@ -11,7 +11,7 @@ import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { db, doctorsTable, followupTable, patientsTable, scaleResponsesTable, surgeriesTable } from "@workspace/db";
+import { db, doctorsTable, followupTable, patientsTable, scaleResponsesTable, scheduledNotificationsTable, surgeriesTable } from "@workspace/db";
 import app from "../app";
 import { hashPassword, signToken } from "../lib/auth";
 import { completedPatientScales } from "./patient";
@@ -197,5 +197,34 @@ describe("dashboard follow-up KPI", () => {
     expect(after.totalSurgeries).toBe(4);
     expect(after.surgeriesWithAnsweredFollowup).toBe(3);
     expect(after.followupCompliance).toBe(75);
+  });
+});
+
+describe.sequential("surgeon schedule status after the patient answers the link", () => {
+  it("marks the scheduled notification completed only when every sent scale is answered", async () => {
+    const f = await createFollowup({});
+    const [patientRow] = await db.select({ patientId: surgeriesTable.patientId }).from(surgeriesTable).where(eq(surgeriesTable.id, f.surgeryId));
+    const [notification] = await db.insert(scheduledNotificationsTable).values({
+      surgeryId: f.surgeryId,
+      patientId: patientRow.patientId,
+      periodo: "6 meses",
+      daysAfterSurgery: 180,
+      scheduledDate: "2026-03-01",
+      scales: ["VAS Dor", "SANE"],
+      status: "sent",
+      followupId: f.followupId,
+      sentAt: new Date(),
+    }).returning();
+    const statusOf = async () => (await db.select({ status: scheduledNotificationsTable.status })
+      .from(scheduledNotificationsTable).where(eq(scheduledNotificationsTable.id, notification.id)))[0]?.status;
+
+    const { cookie } = await verify(f.token, f.cpf);
+    await submit(f.token, cookie, "VAS Dor", { vas: 4 });
+    expect(await statusOf()).toBe("sent");
+    await expect(submit(f.token, cookie, "SANE", { sane: 80 })).resolves.toEqual({ ok: true, allCompleted: true });
+    expect(await statusOf()).toBe("completed");
+
+    const schedule = await fetch(`${baseUrl}/api/surgeries/${f.surgeryId}/schedule`, { headers: { Authorization: `Bearer ${auth}` } });
+    expect((await json(schedule)).find((row: { id: number }) => row.id === notification.id)?.status).toBe("completed");
   });
 });

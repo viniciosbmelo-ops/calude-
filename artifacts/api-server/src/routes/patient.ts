@@ -25,7 +25,7 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, doctorsTable, followupTable, surgeriesTable, scaleResponsesTable, patientsTable } from "@workspace/db";
+import { db, doctorsTable, followupTable, surgeriesTable, scaleResponsesTable, patientsTable, scheduledNotificationsTable } from "@workspace/db";
 import { pool } from "@workspace/db";
 import {
   filterSupportedFollowupScales,
@@ -35,7 +35,7 @@ import {
   resolveFollowupRegion,
 } from "../lib/followup-schedule";
 import { scoreSANE } from "@workspace/clinical";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   issuePatientSession,
   revokePatientSession,
@@ -571,6 +571,19 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
     .where(eq(scaleResponsesTable.followupId, persistedFollowupId));
   const completedScales = completedPatientScales(requestedScales, allResponses.map(r => r.nomeEscala));
   const allCompleted = requestedScales.every(e => completedScales.includes(e));
+
+  if (allCompleted) {
+    // The surgeon's schedule (and the follow-up central) read the scheduled
+    // notification's status: once the patient answered every scale it is
+    // "completed", not "sent / awaiting answer" (as regen follow-ups already do).
+    await db
+      .update(scheduledNotificationsTable)
+      .set({ status: "completed", nextAttemptAt: null, claimedAt: null })
+      .where(and(
+        eq(scheduledNotificationsTable.followupId, persistedFollowupId),
+        inArray(scheduledNotificationsTable.status, ["pending", "sent"]),
+      ));
+  }
 
   res.json({ ok: true, allCompleted });
 });
