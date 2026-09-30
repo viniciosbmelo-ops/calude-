@@ -22,5 +22,32 @@ export interface Patient {
   nivelAtividade?: string | null;
   /** @nullable */
   beightonScore?: number | null;
+  /** @nullable */
+  cpf?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  anamnese?: string | null;
+  /** @nullable */
+  laudos?: string | null;
+  /** @nullable */
+  planoSaude?: string | null;
+  /** @nullable */
+  numeroCarteirinha?: string | null;
+  /** @nullable */
+  indicadoPor?: string | null;
+  /** @nullable */
+  pais?: string | null;
+  /** @nullable */
+  endereco?: string | null;
+  /** @nullable */
+  cidade?: string | null;
+  /** @nullable */
+  estado?: string | null;
+  /** @nullable */
+  cep?: string | null;
+  /** @nullable */
+  numeroRegistro?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }

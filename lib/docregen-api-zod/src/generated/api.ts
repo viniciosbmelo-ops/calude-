@@ -223,7 +223,21 @@ export const ListPatientsResponseItem = zod.object({
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
   "beightonScore": zod.number().nullish(),
-  "createdAt": zod.string()
+  "cpf": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "anamnese": zod.string().nullish(),
+  "laudos": zod.string().nullish(),
+  "planoSaude": zod.string().nullish(),
+  "numeroCarteirinha": zod.string().nullish(),
+  "indicadoPor": zod.string().nullish(),
+  "pais": zod.string().nullish(),
+  "endereco": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "estado": zod.string().nullish(),
+  "cep": zod.string().nullish(),
+  "numeroRegistro": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
 })
 export const ListPatientsResponse = zod.array(ListPatientsResponseItem)
 
@@ -242,7 +256,9 @@ export const CreatePatientBody = zod.object({
   "nivelAtividade": zod.string().optional(),
   "beightonScore": zod.number().optional(),
   "planoSaude": zod.string().optional(),
+  "numeroCarteirinha": zod.string().optional(),
   "indicadoPor": zod.string().optional(),
+  "pais": zod.string().optional(),
   "endereco": zod.string().optional(),
   "cidade": zod.string().optional(),
   "estado": zod.string().optional(),
@@ -259,7 +275,21 @@ export const CreatePatientResponse = zod.object({
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
   "beightonScore": zod.number().nullish(),
-  "createdAt": zod.string()
+  "cpf": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "anamnese": zod.string().nullish(),
+  "laudos": zod.string().nullish(),
+  "planoSaude": zod.string().nullish(),
+  "numeroCarteirinha": zod.string().nullish(),
+  "indicadoPor": zod.string().nullish(),
+  "pais": zod.string().nullish(),
+  "endereco": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "estado": zod.string().nullish(),
+  "cep": zod.string().nullish(),
+  "numeroRegistro": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
 })
 
 
@@ -280,7 +310,21 @@ export const GetPatientResponse = zod.object({
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
   "beightonScore": zod.number().nullish(),
-  "createdAt": zod.string()
+  "cpf": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "anamnese": zod.string().nullish(),
+  "laudos": zod.string().nullish(),
+  "planoSaude": zod.string().nullish(),
+  "numeroCarteirinha": zod.string().nullish(),
+  "indicadoPor": zod.string().nullish(),
+  "pais": zod.string().nullish(),
+  "endereco": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "estado": zod.string().nullish(),
+  "cep": zod.string().nullish(),
+  "numeroRegistro": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
 })
 
 
@@ -304,7 +348,9 @@ export const UpdatePatientBody = zod.object({
   "anamnese": zod.string().nullish(),
   "laudos": zod.string().nullish(),
   "planoSaude": zod.string().optional(),
+  "numeroCarteirinha": zod.string().optional(),
   "indicadoPor": zod.string().optional(),
+  "pais": zod.string().optional(),
   "endereco": zod.string().optional(),
   "cidade": zod.string().optional(),
   "estado": zod.string().optional(),
@@ -321,19 +367,32 @@ export const UpdatePatientResponse = zod.object({
   "lado": zod.string().nullish(),
   "nivelAtividade": zod.string().nullish(),
   "beightonScore": zod.number().nullish(),
-  "createdAt": zod.string()
+  "cpf": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "anamnese": zod.string().nullish(),
+  "laudos": zod.string().nullish(),
+  "planoSaude": zod.string().nullish(),
+  "numeroCarteirinha": zod.string().nullish(),
+  "indicadoPor": zod.string().nullish(),
+  "pais": zod.string().nullish(),
+  "endereco": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "estado": zod.string().nullish(),
+  "cep": zod.string().nullish(),
+  "numeroRegistro": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
 })
 
 
 /**
+ * Hard delete is allowed only for a patient with no clinical record (e.g. created by mistake); stored files are deleted too. A patient with any clinical record gets 409: the medical record must be kept for 20 years (Lei 13.787/2018) — use POST /lgpd/anonimizar-paciente/{id} instead.
  * @summary Delete patient
  */
 export const DeletePatientParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const DeletePatientResponse = zod.object({
-  "success": zod.boolean()
-})
+export const DeletePatientResponse = zod.void()
 
 

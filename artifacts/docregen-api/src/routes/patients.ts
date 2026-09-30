@@ -3,7 +3,6 @@ import {
   db,
   patientAttachmentsTable,
   patientsTable,
-  regenCasesTable,
   uploadGrantsTable,
 } from "@workspace/docregen-db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -14,6 +13,7 @@ import {
   processStorageCleanupJobs,
 } from "../lib/storageCleanup";
 import { localeForDoctorId } from "../lib/locale";
+import { hasClinicalRecords, patientClinicalRecords } from "../lib/patientClinicalRecords";
 import { calendarDateParam, clinicToday } from "../lib/regen-followup-schedule";
 
 /** Birth date must be a real calendar day when given (no "2026-13-45" / "2026-02-30"). */
@@ -154,8 +154,10 @@ router.delete("/patients/:id", requireAuth, async (req, res): Promise<void> => {
   }
 
   const result = await db.transaction(async (tx) => {
-    // Lock the parent before collecting paths. New FK-backed uploads then wait
-    // for this transaction and cannot slip in between collection and deletion.
+    // Lock the parent first. Every writer that links a record to this patient
+    // (regen case, appointment, attachment, pré-consulta, upload grant) takes a
+    // KEY SHARE lock on the patient row, so it either committed before this
+    // lock — and is seen by the check below — or waits and then finds no patient.
     const [existing] = await tx
       .select({ id: patientsTable.id })
       .from(patientsTable)
@@ -164,47 +166,46 @@ router.delete("/patients/:id", requireAuth, async (req, res): Promise<void> => {
         eq(patientsTable.doctorId, req.doctorId!),
       ))
       .for("update");
-    if (!existing) return { found: false as const, cleanupJobs: 0 };
+    if (!existing) return { status: "not_found" as const };
 
+    // Medical records must be kept for 20 years (Lei 13.787/2018): a patient
+    // with any clinical record is never hard-deleted — only anonymized.
+    const records = await patientClinicalRecords(tx, id);
+    if (hasClinicalRecords(records)) return { status: "has_records" as const, records };
+
+    // No clinical data (e.g. created by mistake): delete the patient and queue
+    // any stored file (attachments cannot exist here; pending upload grants can).
     const attachments = await tx
       .select({ objectPath: patientAttachmentsTable.objectPath })
       .from(patientAttachmentsTable)
-      .where(and(
-        eq(patientAttachmentsTable.patientId, id),
-        eq(patientAttachmentsTable.doctorId, req.doctorId!),
-      ));
+      .where(eq(patientAttachmentsTable.patientId, id));
     const uploadGrants = await tx
       .select({ objectPath: uploadGrantsTable.objectPath })
       .from(uploadGrantsTable)
-      .where(and(
-        eq(uploadGrantsTable.patientId, id),
-        eq(uploadGrantsTable.doctorId, req.doctorId!),
-      ));
-
+      .where(eq(uploadGrantsTable.patientId, id));
     const cleanupJobs = await enqueueStorageCleanup(tx, [
       ...attachments.map((item) => item.objectPath),
       ...uploadGrants.map((item) => item.objectPath),
     ]);
 
-    // Delete direct relations that predate their database cascade constraint.
-    // Their dependent records are cascaded by their own case/patient foreign keys.
-    await tx
-      .delete(regenCasesTable)
-      .where(and(
-        eq(regenCasesTable.patientId, id),
-        eq(regenCasesTable.doctorId, req.doctorId!),
-      ));
-
-    // The patient delete cascades agenda entries, attachments, upload grants,
-    // pre-consultations and invitations.
+    // The patient delete cascades upload grants and unanswered pré-consulta
+    // questionnaires/invitations (the only rows that can still reference it).
     await tx
       .delete(patientsTable)
       .where(and(eq(patientsTable.id, id), eq(patientsTable.doctorId, req.doctorId!)));
-    return { found: true as const, cleanupJobs };
+    return { status: "deleted" as const, cleanupJobs };
   });
 
-  if (!result.found) {
+  if (result.status === "not_found") {
     res.status(404).json({ error: message(locale, "patientNotFound") });
+    return;
+  }
+  if (result.status === "has_records") {
+    res.status(409).json({
+      error: message(locale, "patientHasClinicalRecords"),
+      code: "patient_has_clinical_records",
+      clinicalRecords: result.records,
+    });
     return;
   }
 

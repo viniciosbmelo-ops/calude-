@@ -17,7 +17,9 @@ export interface CreatePatientBody {
   nivelAtividade?: string;
   beightonScore?: number;
   planoSaude?: string;
+  numeroCarteirinha?: string;
   indicadoPor?: string;
+  pais?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;

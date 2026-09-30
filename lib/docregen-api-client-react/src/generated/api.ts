@@ -27,6 +27,7 @@ import type {
   HealthStatus,
   LoginBody,
   Patient,
+  PatientDeleteBlocked,
   RegisterDoctorBody,
   SuccessResponse,
   UpdateDoctorBody,
@@ -882,11 +883,12 @@ export const getDeletePatientUrl = (id: number,) => {
 }
 
 /**
+ * Hard delete is allowed only for a patient with no clinical record (e.g. created by mistake); stored files are deleted too. A patient with any clinical record gets 409: the medical record must be kept for 20 years (Lei 13.787/2018) — use POST /lgpd/anonimizar-paciente/{id} instead.
  * @summary Delete patient
  */
-export const deletePatient = async (id: number, options?: RequestInit): Promise<SuccessResponse> => {
+export const deletePatient = async (id: number, options?: RequestInit): Promise<void> => {
 
-  return customFetch<SuccessResponse>(getDeletePatientUrl(id),
+  return customFetch<void>(getDeletePatientUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -899,7 +901,7 @@ export const deletePatient = async (id: number, options?: RequestInit): Promise<
 
 
 
-export const getDeletePatientMutationOptions = <TError = ErrorType<unknown>,
+export const getDeletePatientMutationOptions = <TError = ErrorType<ErrorResponse | PatientDeleteBlocked>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePatient>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deletePatient>>, TError,{id: number}, TContext> => {
 
@@ -928,12 +930,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeletePatientMutationResult = NonNullable<Awaited<ReturnType<typeof deletePatient>>>
 
-    export type DeletePatientMutationError = ErrorType<unknown>
+    export type DeletePatientMutationError = ErrorType<ErrorResponse | PatientDeleteBlocked>
 
     /**
  * @summary Delete patient
  */
-export const useDeletePatient = <TError = ErrorType<unknown>,
+export const useDeletePatient = <TError = ErrorType<ErrorResponse | PatientDeleteBlocked>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePatient>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deletePatient>>,

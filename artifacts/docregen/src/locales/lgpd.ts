@@ -27,6 +27,10 @@ export const lgpdMessages = {
     anonymizeConfirm: "Anonimizar",
     anonymized: "Dados identificáveis anonimizados; registros clínicos mantidos conforme a obrigação legal de guarda.",
     anonymizeError: "Não foi possível anonimizar o paciente.",
+    deleteTitle: "Excluir paciente?",
+    deleteDescription: "Só é possível excluir um paciente sem nenhum registro clínico (por exemplo, cadastrado por engano); os arquivos enviados também são apagados. Se houver casos, procedimentos, escalas, exames, pré-consulta respondida, anexos, agendamentos ou anamnese, o paciente não é excluído: o prontuário deve ser guardado por 20 anos (Lei 13.787/2018). Nesse caso, use \"Anonimizar dados identificáveis\". Esta ação não pode ser desfeita.",
+    deleteBlockedTitle: "Este paciente não pode ser excluído",
+    deleteBlockedFallback: "Este paciente tem registros clínicos, que devem ser guardados por 20 anos (Lei 13.787/2018). Para remover os dados pessoais, use \"Anonimizar dados identificáveis\".",
   },
   es: {
     privacyTitle: "Privacidad y datos (LGPD)",
@@ -49,5 +53,9 @@ export const lgpdMessages = {
     anonymizeConfirm: "Anonimizar",
     anonymized: "Datos identificables anonimizados; registros clínicos conservados conforme a la obligación legal.",
     anonymizeError: "No fue posible anonimizar al paciente.",
+    deleteTitle: "¿Eliminar paciente?",
+    deleteDescription: "Solo se puede eliminar un paciente sin ningún registro clínico (por ejemplo, registrado por error); los archivos enviados también se borran. Si hay casos, procedimientos, escalas, exámenes, preconsulta respondida, adjuntos, citas o anamnesis, el paciente no se elimina: la historia clínica debe conservarse durante 20 años (Ley brasileña 13.787/2018). En ese caso, use \"Anonimizar datos identificables\". Esta acción no se puede deshacer.",
+    deleteBlockedTitle: "Este paciente no puede eliminarse",
+    deleteBlockedFallback: "Este paciente tiene registros clínicos, que deben conservarse durante 20 años (Ley brasileña 13.787/2018). Para eliminar los datos personales, use \"Anonimizar datos identificables\".",
   },
 } satisfies ScopedMessages<Record<string, string>>;

@@ -19,7 +19,9 @@ export interface UpdatePatientBody {
   anamnese?: string | null;
   laudos?: string | null;
   planoSaude?: string;
+  numeroCarteirinha?: string;
   indicadoPor?: string;
+  pais?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;

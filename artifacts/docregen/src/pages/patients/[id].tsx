@@ -2,7 +2,6 @@ import {
   getGetPatientQueryKey,
   getListPatientsQueryKey,
   useGetPatient,
-  useDeletePatient,
   useUpdatePatient,
 } from "@workspace/docregen-api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PreConsultTab } from "@/components/patient/pre-consult-tab";
+import { DeletePatientDialog } from "@/components/patient/delete-patient-dialog";
 import { DateInput } from "@/components/ui/date-input";
 
 const AVATAR_COLORS = [
@@ -90,7 +90,6 @@ export default function PatientDetail() {
   const queryClient = useQueryClient();
 
   const { data: patient, isLoading, error } = useGetPatient(id);
-  const deleteMutation = useDeletePatient();
   const updateMutation = useUpdatePatient();
 
   const [abaAtiva, setAbaAtiva] = useState<Aba>(() => {
@@ -221,9 +220,9 @@ export default function PatientDetail() {
 
   useEffect(() => {
     if (patient) {
-      setAnamneseText((patient as any).anamnese || "");
+      setAnamneseText(patient.anamnese || "");
       try {
-        const parsed = JSON.parse((patient as any).laudos || "[]");
+        const parsed = JSON.parse(patient.laudos || "[]");
         const docsArr: Documento[] = Array.isArray(parsed) ? parsed : [];
         docsArr.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
         setDocumentos(docsArr);
@@ -231,20 +230,20 @@ export default function PatientDetail() {
         setDocumentos([]);
       }
       setEditForm({
-        nome: (patient as any).nome || "",
-        cpf: (patient as any).cpf || "",
-        dataNascimento: (patient as any).dataNascimento || "",
-        email: (patient as any).email || "",
-        sexo: (patient as any).sexo || "",
-        telefone: (patient as any).telefone || "",
-        planoSaude: (patient as any).planoSaude || "",
-        numeroCarteirinha: (patient as any).numeroCarteirinha || "",
-        indicadoPor: (patient as any).indicadoPor || "",
-        pais: (patient as any).pais || "",
-        endereco: (patient as any).endereco || "",
-        cidade: (patient as any).cidade || "",
-        estado: (patient as any).estado || "",
-        cep: (patient as any).cep || "",
+        nome: patient.nome || "",
+        cpf: patient.cpf || "",
+        dataNascimento: patient.dataNascimento || "",
+        email: patient.email || "",
+        sexo: patient.sexo || "",
+        telefone: patient.telefone || "",
+        planoSaude: patient.planoSaude || "",
+        numeroCarteirinha: patient.numeroCarteirinha || "",
+        indicadoPor: patient.indicadoPor || "",
+        pais: patient.pais || "",
+        endereco: patient.endereco || "",
+        cidade: patient.cidade || "",
+        estado: patient.estado || "",
+        cep: patient.cep || "",
       });
     }
   }, [patient]);
@@ -263,26 +262,18 @@ export default function PatientDetail() {
     }
   };
 
-  const handleDelete = () => {
-    deleteMutation.mutate(
-      { id },
-      {
-        onSuccess: async () => {
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() }),
-            queryClient.invalidateQueries({ queryKey: ["regen-stats"] }),
-            queryClient.invalidateQueries({ queryKey: ["regen-by-product"] }),
-            queryClient.invalidateQueries({ queryKey: ["regen-outcomes"] }),
-            queryClient.invalidateQueries({ queryKey: ["regen-followup-overview"] }),
-            queryClient.invalidateQueries({ queryKey: ["reports/regen"] }),
-          ]);
-          queryClient.removeQueries({ queryKey: getGetPatientQueryKey(id) });
-          toast({ title: tr("patientDeleted") });
-          setLocation("/patients");
-        },
-        onError: () => toast({ title: tr("deleteError"), variant: "destructive" }),
-      }
-    );
+  const handleDeleted = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: ["regen-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["regen-by-product"] }),
+      queryClient.invalidateQueries({ queryKey: ["regen-outcomes"] }),
+      queryClient.invalidateQueries({ queryKey: ["regen-followup-overview"] }),
+      queryClient.invalidateQueries({ queryKey: ["reports/regen"] }),
+    ]);
+    queryClient.removeQueries({ queryKey: getGetPatientQueryKey(id) });
+    toast({ title: tr("patientDeleted") });
+    setLocation("/patients");
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -305,7 +296,7 @@ export default function PatientDetail() {
           cidade: editForm.cidade || undefined,
           estado: editForm.estado || undefined,
           cep: editForm.cep || undefined,
-        } as any,
+        },
       },
       {
         onSuccess: () => { setEditOpen(false); toast({ title: tr("registrationUpdated") }); },
@@ -316,7 +307,7 @@ export default function PatientDetail() {
 
   const saveAnamnese = () => {
     updateMutation.mutate(
-      { id, data: { anamnese: anamneseText } as any },
+      { id, data: { anamnese: anamneseText } },
       {
         onSuccess: () => { setEditandoAnamnese(false); toast({ title: tr("anamnesisSaved") }); },
         onError: () => toast({ title: tr("saveError"), variant: "destructive" }),
@@ -341,7 +332,7 @@ export default function PatientDetail() {
     };
     const updated = [novo, ...documentos];
     updateMutation.mutate(
-      { id, data: { laudos: JSON.stringify(updated) } as any },
+      { id, data: { laudos: JSON.stringify(updated) } },
       {
         onSuccess: () => { setDocumentos(updated); setNovoDoc(null); toast({ title: tr("documentSaved") }); },
         onError: () => toast({ title: tr("saveError"), variant: "destructive" }),
@@ -352,7 +343,7 @@ export default function PatientDetail() {
   const deleteDocumento = (docId: string) => {
     const updated = documentos.filter(d => d.id !== docId);
     updateMutation.mutate(
-      { id, data: { laudos: JSON.stringify(updated) } as any },
+      { id, data: { laudos: JSON.stringify(updated) } },
       {
         onSuccess: () => setDocumentos(updated),
         onError: () => toast({ title: tr("deleteError"), variant: "destructive" }),
@@ -370,7 +361,7 @@ export default function PatientDetail() {
         conteudo: doc.conteudo,
         data: doc.data,
         pacienteNome: patient.nome,
-        pacienteDataNascimento: (patient as any).dataNascimento ?? null,
+        pacienteDataNascimento: patient.dataNascimento ?? null,
         medicoNome: (doctor as any).nome || tr("doctorFallback"),
         medicoCrm: (doctor as any).crm || "",
         medicoCrmEstado: (doctor as any).crmEstado || "",
@@ -478,7 +469,7 @@ export default function PatientDetail() {
 
     const updated = [novo, ...documentos];
     updateMutation.mutate(
-      { id, data: { laudos: JSON.stringify(updated) } as any },
+      { id, data: { laudos: JSON.stringify(updated) } },
       {
         onSuccess: async () => {
           setDocumentos(updated);
@@ -576,23 +567,17 @@ export default function PatientDetail() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <DeletePatientDialog
+                patientId={id}
+                onDeleted={handleDeleted}
+                onAnonymize={handleAnonymize}
+                onError={() => toast({ title: tr("deleteError"), variant: "destructive" })}
+                trigger={
                   <button title={tr("delete")} aria-label={tr("delete")} className="w-8 h-8 flex items-center justify-center shrink-0 rounded-full" style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer" }}>
                     <Trash2 className="h-4 w-4" style={{ color: "rgba(255,255,255,0.45)" }} />
                   </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{tr("confirmDeletion")}</AlertDialogTitle>
-                    <AlertDialogDescription>{tr("confirmDeletionDescription")}</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">{tr("delete")}</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                }
+              />
             </div>
           </div>
           {patient.telefone && (
@@ -601,10 +586,10 @@ export default function PatientDetail() {
               <span className="text-xs">{patient.telefone}</span>
             </div>
           )}
-          {(patient as any).numeroRegistro && (
+          {patient.numeroRegistro && (
             <div className="flex items-center gap-1.5 mt-1 ml-[76px]">
               <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: "rgba(14,154,167,0.15)", color: "#0E9AA7", letterSpacing: "0.04em" }}>
-                {(patient as any).numeroRegistro}
+                {patient.numeroRegistro}
               </span>
             </div>
           )}
@@ -670,23 +655,17 @@ export default function PatientDetail() {
               <button onClick={() => setEditOpen(true)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" style={{ background: "none", border: "none", cursor: "pointer" }} title={tr("editRegistration")}>
                 <Pencil className="h-4 w-4" />
               </button>
-              <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button title={tr("delete")} aria-label={tr("delete")} className="p-1.5 text-muted-foreground/40 hover:text-destructive transition-colors" style={{ background: "none", border: "none", cursor: "pointer" }}>
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{tr("confirmDeletion")}</AlertDialogTitle>
-                  <AlertDialogDescription>{tr("confirmDeletionDescription")}</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{tr("cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">{tr("delete")}</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              <DeletePatientDialog
+                patientId={id}
+                onDeleted={handleDeleted}
+                onAnonymize={handleAnonymize}
+                onError={() => toast({ title: tr("deleteError"), variant: "destructive" })}
+                trigger={
+                  <button title={tr("delete")} aria-label={tr("delete")} className="p-1.5 text-muted-foreground/40 hover:text-destructive transition-colors" style={{ background: "none", border: "none", cursor: "pointer" }}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                }
+              />
           </div>
           </div>
           {/* Desktop tabs */}
@@ -833,7 +812,7 @@ export default function PatientDetail() {
                     style={{ fontFamily: "inherit" }}
                   />
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setEditandoAnamnese(false); setAnamneseText((patient as any).anamnese || ""); }}>{tr("cancel")}</Button>
+                    <Button variant="outline" size="sm" onClick={() => { setEditandoAnamnese(false); setAnamneseText(patient.anamnese || ""); }}>{tr("cancel")}</Button>
                     <Button size="sm" onClick={saveAnamnese} disabled={updateMutation.isPending} className="gap-1.5" style={{ background: "#0B1F4B" }}>
                       <Save className="h-4 w-4" />{tr("saveAnamnesis")}
                     </Button>

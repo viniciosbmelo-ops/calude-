@@ -122,7 +122,7 @@ afterAll(async () => {
 });
 
 describe.sequential("regenerative case patient soft-link concurrency", () => {
-  it("never leaves an orphan when linked-case creation races patient deletion", async () => {
+  it("never leaves an orphan nor deletes a record when linked-case creation races patient deletion", async () => {
     const [patient] = await db
       .insert(patientsTable)
       .values({
@@ -158,7 +158,9 @@ describe.sequential("regenerative case patient soft-link concurrency", () => {
         deletePromise,
       ]);
       expect(createResponse.status).toBe(201);
-      expect(deleteResponse.status).toBe(204);
+      // The delete waits for the case insert, then sees the new clinical
+      // record and refuses (20-year retention): patient and case both remain.
+      expect(deleteResponse.status).toBe(409);
 
       const remainingPatients = await db
         .select({ id: patientsTable.id })
@@ -168,8 +170,8 @@ describe.sequential("regenerative case patient soft-link concurrency", () => {
         .select({ id: regenCasesTable.id })
         .from(regenCasesTable)
         .where(eq(regenCasesTable.patientId, patient.id));
-      expect(remainingPatients).toHaveLength(0);
-      expect(remainingCases).toHaveLength(0);
+      expect(remainingPatients).toHaveLength(1);
+      expect(remainingCases).toHaveLength(1);
     } finally {
       if (!gateCommitted) {
         await gateClient.query("ROLLBACK").catch(() => undefined);

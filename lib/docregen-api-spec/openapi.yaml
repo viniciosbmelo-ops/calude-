@@ -257,13 +257,26 @@ paths:
           required: true
           schema:
             type: integer
+      description: >
+        Hard delete is allowed only for a patient with no clinical record (e.g.
+        created by mistake); stored files are deleted too. A patient with any
+        clinical record gets 409: the medical record must be kept for 20 years
+        (Lei 13.787/2018) — use POST /lgpd/anonimizar-paciente/{id} instead.
       responses:
-        "200":
-          description: Deleted
+        "204":
+          description: Deleted (no clinical record existed)
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The patient has clinical records and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDeleteBlocked"
 
 components:
   schemas:
@@ -280,6 +293,21 @@ components:
         error:
           type: string
       required: [error]
+
+    PatientDeleteBlocked:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [patient_has_clinical_records]
+        clinicalRecords:
+          type: object
+          description: Number of clinical records by kind
+          additionalProperties:
+            type: integer
+      required: [error, code, clinicalRecords]
 
     SuccessResponse:
       type: object
@@ -447,7 +475,35 @@ components:
           type: ["string", "null"]
         beightonScore:
           type: ["integer", "null"]
+        cpf:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        anamnese:
+          type: ["string", "null"]
+        laudos:
+          type: ["string", "null"]
+        planoSaude:
+          type: ["string", "null"]
+        numeroCarteirinha:
+          type: ["string", "null"]
+        indicadoPor:
+          type: ["string", "null"]
+        pais:
+          type: ["string", "null"]
+        endereco:
+          type: ["string", "null"]
+        cidade:
+          type: ["string", "null"]
+        estado:
+          type: ["string", "null"]
+        cep:
+          type: ["string", "null"]
+        numeroRegistro:
+          type: ["string", "null"]
         createdAt:
+          type: string
+        updatedAt:
           type: string
       required: [id, doctorId, nome, createdAt]
 
@@ -474,7 +530,11 @@ components:
           type: integer
         planoSaude:
           type: string
+        numeroCarteirinha:
+          type: string
         indicadoPor:
+          type: string
+        pais:
           type: string
         endereco:
           type: string
@@ -515,7 +575,11 @@ components:
           nullable: true
         planoSaude:
           type: string
+        numeroCarteirinha:
+          type: string
         indicadoPor:
+          type: string
+        pais:
           type: string
         endereco:
           type: string

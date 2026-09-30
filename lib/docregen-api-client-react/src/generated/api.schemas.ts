@@ -13,6 +13,25 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type PatientDeleteBlockedCode = typeof PatientDeleteBlockedCode[keyof typeof PatientDeleteBlockedCode];
+
+
+export const PatientDeleteBlockedCode = {
+  patient_has_clinical_records: 'patient_has_clinical_records',
+} as const;
+
+/**
+ * Number of clinical records by kind
+ */
+export type PatientDeleteBlockedClinicalRecords = {[key: string]: number};
+
+export interface PatientDeleteBlocked {
+  error: string;
+  code: PatientDeleteBlockedCode;
+  /** Number of clinical records by kind */
+  clinicalRecords: PatientDeleteBlockedClinicalRecords;
+}
+
 export interface SuccessResponse {
   success: boolean;
 }
@@ -143,7 +162,34 @@ export interface Patient {
   nivelAtividade?: string | null;
   /** @nullable */
   beightonScore?: number | null;
+  /** @nullable */
+  cpf?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  anamnese?: string | null;
+  /** @nullable */
+  laudos?: string | null;
+  /** @nullable */
+  planoSaude?: string | null;
+  /** @nullable */
+  numeroCarteirinha?: string | null;
+  /** @nullable */
+  indicadoPor?: string | null;
+  /** @nullable */
+  pais?: string | null;
+  /** @nullable */
+  endereco?: string | null;
+  /** @nullable */
+  cidade?: string | null;
+  /** @nullable */
+  estado?: string | null;
+  /** @nullable */
+  cep?: string | null;
+  /** @nullable */
+  numeroRegistro?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CreatePatientBody {
@@ -157,7 +203,9 @@ export interface CreatePatientBody {
   nivelAtividade?: string;
   beightonScore?: number;
   planoSaude?: string;
+  numeroCarteirinha?: string;
   indicadoPor?: string;
+  pais?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;
@@ -177,7 +225,9 @@ export interface UpdatePatientBody {
   anamnese?: string | null;
   laudos?: string | null;
   planoSaude?: string;
+  numeroCarteirinha?: string;
   indicadoPor?: string;
+  pais?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;

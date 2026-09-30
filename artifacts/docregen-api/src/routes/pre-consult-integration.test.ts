@@ -602,19 +602,19 @@ describe.sequential("pre-consult API integration", () => {
     expect(Number(templatedAudit.rows[0]?.count ?? "0")).toBeGreaterThan(0);
   });
 
-  it("commits storage cleanup work atomically with patient deletion", async () => {
-    const [disposablePatient] = await db
+  it("never deletes a patient whose pré-consulta attachment is a clinical record (20-year retention)", async () => {
+    const [recordPatient] = await db
       .insert(patientsTable)
       .values({
         doctorId,
-        nome: "PRE-CONSULT DELETION OUTBOX PATIENT",
+        nome: "PRE-CONSULT RETAINED ATTACHMENT PATIENT",
         cpf: "93541134780",
       })
       .returning();
     const objectPath = `invalid-deletion-outbox-${randomUUID()}`;
     cleanupJobPaths.push(objectPath);
     await db.insert(patientAttachmentsTable).values({
-      patientId: disposablePatient.id,
+      patientId: recordPatient.id,
       doctorId,
       fileName: "clinical-document.pdf",
       fileSize: 10,
@@ -625,26 +625,28 @@ describe.sequential("pre-consult API integration", () => {
 
     const response = await doctorRequest(
       doctorAuth,
-      `/regen-api/patients/${disposablePatient.id}`,
+      `/regen-api/patients/${recordPatient.id}`,
       "DELETE",
     );
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(409);
 
-    const deletedPatients = await db
+    const remainingPatients = await db
       .select({ id: patientsTable.id })
       .from(patientsTable)
-      .where(eq(patientsTable.id, disposablePatient.id));
-    const deletedAttachments = await db
+      .where(eq(patientsTable.id, recordPatient.id));
+    const remainingAttachments = await db
       .select({ id: patientAttachmentsTable.id })
       .from(patientAttachmentsTable)
-      .where(eq(patientAttachmentsTable.patientId, disposablePatient.id));
-    const [cleanupJob] = await db
+      .where(eq(patientAttachmentsTable.patientId, recordPatient.id));
+    const cleanupJobs = await db
       .select()
       .from(storageCleanupJobsTable)
       .where(eq(storageCleanupJobsTable.objectPath, objectPath));
 
-    expect(deletedPatients).toHaveLength(0);
-    expect(deletedAttachments).toHaveLength(0);
-    expect(cleanupJob?.objectPath).toBe(objectPath);
+    expect(remainingPatients).toHaveLength(1);
+    expect(remainingAttachments).toHaveLength(1);
+    expect(cleanupJobs).toHaveLength(0);
+
+    await db.delete(patientsTable).where(eq(patientsTable.id, recordPatient.id));
   });
 });
