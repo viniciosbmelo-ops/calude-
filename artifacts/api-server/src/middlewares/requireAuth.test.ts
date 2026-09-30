@@ -6,8 +6,8 @@ vi.mock("../lib/sessionAccountStore", () => ({
   validateCurrentAccount: vi.fn(async (payload: AuthTokenPayload) => payload),
 }));
 
+import jwt from "jsonwebtoken";
 import {
-  signPhysioToken,
   signSecretaryToken,
   signServiceToken,
   signToken,
@@ -19,7 +19,6 @@ import {
   requireAuth,
   requireDoctorOrSecretary,
   optionalDoctorAuth,
-  requirePhysio,
   requireSecretary,
   requireService,
 } from "./requireAuth";
@@ -114,38 +113,46 @@ describe("role-aware authentication middleware", () => {
     expect(doctorOnly.status).toHaveBeenCalledWith(401);
   });
 
-  it("does not accept physio or service cookies on doctor routes", async () => {
-    const physio = await runMiddleware(requireAuth, {
-      cookies: {
-        [SESSION_COOKIE_NAMES.physio]: signPhysioToken({ physioId: 8 }),
-      },
-    });
+  it("does not accept service cookies on doctor routes", async () => {
     const service = await runMiddleware(requireAuth, {
       cookies: {
         [SESSION_COOKIE_NAMES.service]: signServiceToken({ serviceId: 9 }),
       },
     });
 
-    expect(physio.next).not.toHaveBeenCalled();
-    expect(physio.status).toHaveBeenCalledWith(401);
     expect(service.next).not.toHaveBeenCalled();
     expect(service.status).toHaveBeenCalledWith(401);
   });
 
+  it("rejects tokens of the removed physiotherapist role everywhere", async () => {
+    // A still-valid token issued before the physio portal was removed.
+    const legacyPhysioToken = jwt.sign(
+      { physioId: 8, sessionVersion: 0, role: "physio", isAdmin: false },
+      process.env["SESSION_SECRET"]!,
+      { algorithm: "HS256", issuer: "docknee-api", audience: "docknee-web", expiresIn: "12h" },
+    );
+    for (const middleware of [requireAuth, requireDoctorOrSecretary, requireSecretary, requireService]) {
+      const viaCookie = await runMiddleware(middleware, {
+        cookies: { docknee_physio_session: legacyPhysioToken },
+      });
+      const viaBearer = await runMiddleware(middleware, {
+        authorization: `Bearer ${legacyPhysioToken}`,
+      });
+      expect(viaCookie.next).not.toHaveBeenCalled();
+      expect(viaCookie.status).toHaveBeenCalledWith(401);
+      expect(viaBearer.next).not.toHaveBeenCalled();
+      expect(viaBearer.status).toHaveBeenCalledWith(401);
+    }
+    expect(validateCurrentAccount).not.toHaveBeenCalledWith(expect.objectContaining({ role: "physio" }));
+  });
+
   it("enforces each specialized role cookie", async () => {
-    const physio = await runMiddleware(requirePhysio, {
-      cookies: {
-        [SESSION_COOKIE_NAMES.physio]: signPhysioToken({ physioId: 8 }),
-      },
-    });
     const service = await runMiddleware(requireService, {
       cookies: {
         [SESSION_COOKIE_NAMES.service]: signServiceToken({ serviceId: 9 }),
       },
     });
 
-    expect(physio.next).toHaveBeenCalledOnce();
-    expect(physio.req.physioId).toBe(8);
     expect(service.next).toHaveBeenCalledOnce();
     expect(service.req.serviceId).toBe(9);
   });

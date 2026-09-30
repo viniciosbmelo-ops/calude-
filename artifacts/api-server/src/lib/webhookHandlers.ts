@@ -1,6 +1,5 @@
 import { pool } from "@workspace/db";
 import { getStripeSync } from "./stripeClient";
-import { mapStripeStatus } from "./physioBilling";
 import { logger } from "./logger";
 
 /** Minimal pg PoolClient interface — avoids importing pg directly. */
@@ -190,6 +189,28 @@ async function applyCanonicalAdminEvents(
      VALUES ($1, $2, 'subscription_activated', NULL, 'checkout')`,
     [`stripe:${event.id ?? "unknown"}`, doctorId],
   );
+}
+
+/**
+ * The physiotherapist portal was removed, but legacy physiotherapist Stripe
+ * subscriptions may still emit events. Keep their stored billing status in
+ * sync (e.g. cancellations) so the preserved records stay accurate.
+ */
+export function mapStripeStatus(status: string): "trialing" | "active" | "past_due" | "canceled" | null {
+  switch (status) {
+    case "trialing":
+      return "trialing";
+    case "active":
+      return "active";
+    case "past_due":
+    case "unpaid":
+      return "past_due";
+    case "canceled":
+    case "incomplete_expired":
+      return "canceled";
+    default:
+      return null; // incomplete etc. — don't change local state
+  }
 }
 
 async function findPhysioId(

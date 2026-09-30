@@ -58,8 +58,7 @@ export function sanitisePath(raw?: string): string {
 
 const SAFE_STATIC_PATHS = new Set([
   "/", "/admin", "/agenda", "/agenda-cirurgica", "/assinatura-cancelada",
-  "/dashboard", "/fisio", "/fisio/agenda", "/fisio/dashboard", "/fisio/login",
-  "/fisio/pacientes", "/fisio/pacientes/novo", "/fisio/planos", "/followup",
+  "/dashboard", "/followup",
   "/followup-central", "/forgot-password", "/login", "/orientacoes-paciente",
   "/patients", "/patients/new", "/pending-approval", "/profile", "/redefinir-senha",
   "/regen", "/regen/caso/novo", "/regen/consentimento", "/regen/orientacoes",
@@ -71,8 +70,6 @@ const SAFE_STATIC_PATHS = new Set([
 const SAFE_DYNAMIC_PATHS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/pre-consulta\/[^/]+$/, "/pre-consulta/:token"],
   [/^\/admin\/doctors\/[^/]+$/, "/admin/doctors/:id"],
-  [/^\/fisio\/convite\/[^/]+$/, "/fisio/convite/:token"],
-  [/^\/fisio\/pacientes\/[^/]+$/, "/fisio/pacientes/:id"],
   [/^\/patient\/regen\/[^/]+$/, "/patient/regen/:token"],
   [/^\/patient\/[^/]+$/, "/patient/:token"],
   [/^\/patients\/[^/]+$/, "/patients/:id"],
@@ -241,7 +238,6 @@ export type NavigationFeatureName =
   | "checkout"
   | "support"
   | "regen"
-  | "physio"
   | "agenda"
   | "dashboard"
   | "patients"

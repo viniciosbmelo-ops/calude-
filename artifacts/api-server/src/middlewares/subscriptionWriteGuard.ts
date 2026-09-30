@@ -5,14 +5,13 @@ import { resolveStoredSubscriptionAccess } from "../lib/subscriptionAccess";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /**
- * These writes either establish a session/billing, belong to the separately
- * billed physiotherapy product, or are patient/public data-entry flows. Every
+ * These writes either establish a session/billing or are patient/public
+ * data-entry flows. Every
  * other unsafe API request is a doctor product mutation and must be billed.
  */
 const EXEMPT_MUTATION_PATHS: readonly RegExp[] = [
   /^\/(?:health|auth|secretary-auth|service-auth)(?:\/|$)/,
   /^\/stripe(?:\/|$)/,
-  /^\/physio(?:\/|$)/,
   /^\/analytics(?:\/|$)/,
   /^\/stats(?:\/|$)/,
   /^\/admin\/contact\/?$/,

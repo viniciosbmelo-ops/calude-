@@ -33,7 +33,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RehabReferralCard } from "@/components/rehab-referral-card";
 import { PreConsultTab } from "@/components/patient/pre-consult-tab";
 
 const AVATAR_COLORS = [
@@ -830,11 +829,6 @@ export default function PatientDetail() {
                 )}
               </div>
             </div>
-
-            <RehabReferralCard
-              patientId={patient.id}
-              surgeries={(patient.surgeries as SurgeryItem[] | undefined) ?? []}
-            />
 
             {/* ── Casos Regenerativos ── */}
             {regenCases.length > 0 && (() => {

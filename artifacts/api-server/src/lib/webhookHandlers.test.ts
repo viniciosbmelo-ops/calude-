@@ -43,10 +43,6 @@ vi.mock("@workspace/db", () => ({
   stripeWebhookEventsTable: {} as never,
 }));
 
-vi.mock("./physioBilling", () => ({
-  mapStripeStatus: vi.fn().mockReturnValue(null),
-}));
-
 vi.mock("./logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), fatal: vi.fn() },
 }));

@@ -21,12 +21,6 @@ import scheduledSurgeriesRouter from "./scheduled-surgeries";
 import statsRouter from "./stats";
 import stripeRouter from "./stripe";
 import pdfRouter from "./pdf";
-import physioRouter from "./physio";
-import physioClinicalRouter from "./physio-clinical";
-import physioDocumentsRouter from "./physio-documents";
-import physioAgendaRouter from "./physio-agenda";
-import physioBillingRouter from "./physio-billing";
-import rehabInvitesRouter from "./rehab-invites";
 import servicesRouter from "./services";
 import regenRouter from "./regen";
 import analyticsRouter from "./analytics";
@@ -41,6 +35,27 @@ import { subscriptionWriteGuard } from "../middlewares/subscriptionWriteGuard";
 
 const router: IRouter = Router();
 
+/**
+ * The physiotherapist portal ("painel de fisioterapia") was removed: its
+ * login, clinical, documents, agenda, billing and admin endpoints plus the
+ * surgeon-side referral invites that only fed it. Answer 404 for every method
+ * before the billing guard so no retired path surfaces an auth/billing error.
+ * The underlying tables and their data are intentionally preserved.
+ */
+const RETIRED_PATHS: readonly RegExp[] = [
+  /^\/physio(?:-auth)?(?:\/|$)/,
+  /^\/admin\/physiotherapists(?:\/|$)/,
+  /^\/patients\/[^/]+\/(?:rehab|rehab-invite)\/?$/,
+  /^\/care-links(?:\/|$)/,
+];
+
+router.use((req, res, next) => {
+  if (RETIRED_PATHS.some((pattern) => pattern.test(req.path))) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  next();
+});
 router.use(subscriptionWriteGuard);
 router.use(healthRouter);
 router.use(authRouter);
@@ -64,12 +79,6 @@ router.use(scheduledSurgeriesRouter);
 router.use(statsRouter);
 router.use(stripeRouter);
 router.use(pdfRouter);
-router.use(physioRouter);
-router.use(physioBillingRouter);
-router.use(physioClinicalRouter);
-router.use(physioDocumentsRouter);
-router.use(physioAgendaRouter);
-router.use(rehabInvitesRouter);
 router.use(servicesRouter);
 router.use(regenRouter);
 router.use(analyticsRouter);

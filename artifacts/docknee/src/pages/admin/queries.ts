@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   AdminAnalyticsData, FeatureFlag, Announcement, Faq, 
-  Campaign, AdminAlert, ContactMessage, AdminPhysio,
+  Campaign, AdminAlert, ContactMessage,
   AllSurgery, ServiceInst, Conversation, Message, Assignee
 } from "./types";
 
@@ -204,21 +204,6 @@ export function useAllSurgeries() {
   return useQuery<AllSurgery[]>({
     queryKey: ["admin-surgeries"],
     queryFn: () => fetchJson("/api/admin/all-surgeries")
-  });
-}
-
-export function usePhysios() {
-  return useQuery<AdminPhysio[]>({
-    queryKey: ["admin-physios"],
-    queryFn: () => fetchJson("/api/admin/physiotherapists")
-  });
-}
-
-export function useMutatePhysio() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, action }: { id: number; action: string }) => fetchJson(`/api/admin/physiotherapists/${id}/${action}`, { method: "PATCH" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-physios"] })
   });
 }
 

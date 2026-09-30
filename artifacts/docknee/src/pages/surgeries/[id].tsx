@@ -1,4 +1,4 @@
-/** Página da cirurgia de ombro/cotovelo: registro, relatório, fotos, fisioterapia e seguimento. */
+/** Página da cirurgia de ombro/cotovelo: registro, relatório, fotos e seguimento. */
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,7 +7,6 @@ import { ArrowLeft, Calendar, ClipboardList, Download, ExternalLink, FileText, L
 import { CASE_TYPE_BY_KEY, applicableClinicianScales, type ClinicalPayload } from "@workspace/clinical/web";
 import { SurgeryClinicalView, useSurgeryReport } from "@/components/shoulder/surgery-clinical-view";
 import { SurgeryFollowupSection, type SurgeryFollowup } from "@/components/shoulder/surgery-followup-section";
-import { SurgeryRehabSection } from "@/components/shoulder/surgery-rehab-section";
 import { SurgeryMedia } from "@/components/surgery-media";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -353,8 +352,6 @@ export default function SurgeryDetail() {
                 </Card>
               </TabsContent>
             </Tabs>
-
-            <SurgeryRehabSection surgeryId={surgery.id} patientId={surgery.patientId} patientPhone={surgery.patient.telefone} />
 
             <SurgeryFollowupSection
               surgeryId={surgery.id}

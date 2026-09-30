@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { operationalCoreMessages } from "./operational-core";
 import { operationalPatientsListMessages } from "./operational-patients-list";
-import { physioMessages } from "./physio";
 import { regenCoreMessages } from "./regen-core";
 import { surgeryShoulderMessages } from "./surgery-shoulder";
 import { surgeryViewMessages } from "./surgery-view";
@@ -9,7 +8,6 @@ import { surgeryViewMessages } from "./surgery-view";
 const catalogs = {
   operationalCoreMessages,
   operationalPatientsListMessages,
-  physioMessages,
   regenCoreMessages,
   surgeryShoulderMessages,
   surgeryViewMessages,

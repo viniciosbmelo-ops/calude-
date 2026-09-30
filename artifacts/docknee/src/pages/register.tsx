@@ -241,17 +241,6 @@ export default function Register() {
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight" style={{ color: "#1A365D" }}>{copy.registrationTitle}</CardTitle>
           <CardDescription className="text-base">{copy.registrationSubtitle}</CardDescription>
-          {/* Fisioterapeuta link — oculto temporariamente */}
-          {false && (
-          <div className="pt-2">
-            <Link
-              href="/fisio"
-              className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-100 transition-colors"
-            >
-              🩺 É fisioterapeuta? Cadastre-se aqui
-            </Link>
-          </div>
-          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -1,19 +1,3 @@
-export interface AdminPhysio {
-  id: number;
-  nome: string;
-  email: string;
-  celular: string;
-  crefito: string | null;
-  clinica: string | null;
-  cidade: string | null;
-  plan: string;
-  subscriptionStatus: string;
-  patientsCreatedTotal: number;
-  ativo: boolean;
-  createdAt: string;
-  patientsCount: number;
-}
-
 export interface ContactMessage {
   id: number;
   doctorId: number | null;

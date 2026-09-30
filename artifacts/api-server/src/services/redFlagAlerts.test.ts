@@ -1,25 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildRedFlagMessage,
+  RETIRED_OUTBOX_EVENT_TYPES,
   classifyOutboxDelivery,
   expiredDispatchRequiresIntervention,
-  flagLabel,
 } from "./redFlagAlerts";
 
-describe("red flag alert content", () => {
-  it("uses patient initials and controlled clinical labels", () => {
-    const text = buildRedFlagMessage({
-      patientName: "Maria da Silva",
-      physioName: "Ana Souza",
-      redFlags: ["sinal_desconhecido"],
-    });
-    expect(text).toContain("M.D.S.");
-    expect(text).toContain("Sinal clínico de atenção");
-    expect(text).not.toContain("Maria da Silva");
-  });
-
-  it("does not echo an unknown flag into a WhatsApp alert", () => {
-    expect(flagLabel("token=secret clinical payload")).toBe("Sinal clínico de atenção");
+describe("retired physiotherapy alerts", () => {
+  it("never dispatches rehab red-flag alerts queued by the removed physio portal", () => {
+    expect(RETIRED_OUTBOX_EVENT_TYPES).toContain("rehab_red_flag");
   });
 });
 

@@ -1,7 +1,6 @@
 import {
   db,
   doctorsTable,
-  physiotherapistsTable,
   secretariesTable,
   servicesTable,
 } from "@workspace/db";
@@ -73,31 +72,6 @@ export async function validateCurrentAccount(
       doctorId: secretary.doctorId,
       isAdmin: false,
       sessionVersion: secretary.sessionVersion,
-    };
-  }
-
-  if (payload.role === "physio") {
-    const [physio] = await db
-      .select({
-        id: physiotherapistsTable.id,
-        sessionVersion: physiotherapistsTable.sessionVersion,
-      })
-      .from(physiotherapistsTable)
-      .where(and(
-        eq(physiotherapistsTable.id, payload.physioId),
-        eq(physiotherapistsTable.ativo, true),
-      ))
-      .limit(1);
-
-    if (!physio || physio.sessionVersion !== payload.sessionVersion) {
-      return null;
-    }
-
-    return {
-      role: "physio",
-      physioId: physio.id,
-      isAdmin: false,
-      sessionVersion: physio.sessionVersion,
     };
   }
 

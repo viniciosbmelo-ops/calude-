@@ -8,14 +8,10 @@ import {
   db,
   doctorsTable,
   patientsTable,
-  physioAppointmentsTable,
-  physioFollowupsTable,
-  physioPatientsTable,
-  physiotherapistsTable,
   surgeriesTable,
 } from "@workspace/db";
 import app from "../app";
-import { signPhysioToken, signToken } from "../lib/auth";
+import { signToken } from "../lib/auth";
 
 /**
  * "Today" and report periods follow the clinic calendar (America/Sao_Paulo)
@@ -27,9 +23,7 @@ import { signPhysioToken, signToken } from "../lib/auth";
 let server: Server;
 let baseUrl: string;
 let doctorId: number;
-let physioId: number;
 let doctorAuth: string;
-let physioAuth: string;
 const surgeryIds: number[] = [];
 const originalTz = process.env.TZ;
 
@@ -93,47 +87,11 @@ beforeAll(async () => {
     })
     .returning();
   surgeryIds.push(surgery.id);
-
-  const [physio] = await db
-    .insert(physiotherapistsTable)
-    .values({
-      nome: "Clinic Today Physio",
-      email: `clinic-today-physio-${randomUUID()}@example.test`,
-      senhaHash: "not-used",
-      celular: "5511955555555",
-    })
-    .returning();
-  physioId = physio.id;
-  physioAuth = signPhysioToken({ physioId, sessionVersion: physio.sessionVersion });
-
-  const [physioPatient] = await db
-    .insert(physioPatientsTable)
-    .values({ physioId, fullName: "Physio Today Patient" })
-    .returning();
-
-  await db.insert(physioFollowupsTable).values([
-    { physioId, physioPatientId: physioPatient.id, title: "Ontem", dueDate: "2026-09-28" },
-    { physioId, physioPatientId: physioPatient.id, title: "Hoje", dueDate: "2026-09-29" },
-    { physioId, physioPatientId: physioPatient.id, title: "Amanha", dueDate: "2026-09-30" },
-    { physioId, physioPatientId: physioPatient.id, title: "Em 7 dias", dueDate: "2026-10-06" },
-    { physioId, physioPatientId: physioPatient.id, title: "Em 8 dias", dueDate: "2026-10-07" },
-  ]);
-
-  const at = (iso: string) => new Date(iso);
-  await db.insert(physioAppointmentsTable).values([
-    // 00:30 and 23:30 BRT on the 29th: today.
-    { physioId, physioPatientId: physioPatient.id, startsAt: at("2026-09-29T00:30:00-03:00"), endsAt: at("2026-09-29T01:00:00-03:00") },
-    { physioId, physioPatientId: physioPatient.id, startsAt: at("2026-09-29T23:30:00-03:00"), endsAt: at("2026-09-29T23:59:00-03:00") },
-    // 23:30 BRT on the 28th and 00:30 BRT on the 30th: not today.
-    { physioId, physioPatientId: physioPatient.id, startsAt: at("2026-09-28T23:30:00-03:00"), endsAt: at("2026-09-28T23:59:00-03:00") },
-    { physioId, physioPatientId: physioPatient.id, startsAt: at("2026-09-30T00:30:00-03:00"), endsAt: at("2026-09-30T01:00:00-03:00") },
-  ]);
 });
 
 afterAll(async () => {
   vi.useRealTimers();
   if (surgeryIds.length) await db.delete(surgeriesTable).where(inArray(surgeriesTable.id, surgeryIds));
-  if (physioId) await db.delete(physiotherapistsTable).where(eq(physiotherapistsTable.id, physioId));
   if (doctorId) {
     await db.delete(appointmentsTable).where(eq(appointmentsTable.doctorId, doctorId));
     await db.delete(patientsTable).where(eq(patientsTable.doctorId, doctorId));
@@ -161,18 +119,5 @@ describe("clinic 'today' at 23:30 BRT with the server in UTC", () => {
     const months = new Map<string, number>(body.monthlySurgeries.map((m: { month: string; count: number }) => [m.month, m.count]));
     expect(months.get("2031-01")).toBeGreaterThanOrEqual(1);
     expect(months.has("2031-02")).toBe(false);
-  });
-
-  it("physio dashboard: overdue, next 7 days and today's agenda use the clinic day", async () => {
-    const res = await call("/physio/dashboard", physioAuth);
-    expect(res.status).toBe(200);
-    const body = await j(res);
-    expect(body.followups.overdue.map((f: { title: string }) => f.title)).toEqual(["Ontem"]);
-    expect(body.followups.next7days.map((f: { title: string }) => f.title)).toEqual(["Hoje", "Amanha", "Em 7 dias"]);
-    expect(body.followups.upcomingCount).toBe(1);
-    expect(body.todayAgenda.map((a: { startsAt: string }) => a.startsAt)).toEqual([
-      "2026-09-29T03:30:00.000Z",
-      "2026-09-30T02:30:00.000Z",
-    ]);
   });
 });

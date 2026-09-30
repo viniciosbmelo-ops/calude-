@@ -10,7 +10,6 @@ declare global {
       doctorId?: number;
       isAdmin?: boolean;
       secretaryId?: number;
-      physioId?: number;
       serviceId?: number;
       role?: AuthTokenPayload["role"];
     }
@@ -32,7 +31,6 @@ function assignPayload(req: Request, payload: AuthTokenPayload): void {
       ? payload.doctorId
       : undefined;
   req.secretaryId = payload.role === "secretary" ? payload.secretaryId : undefined;
-  req.physioId = payload.role === "physio" ? payload.physioId : undefined;
   req.serviceId = payload.role === "service" ? payload.serviceId : undefined;
 }
 
@@ -59,7 +57,7 @@ async function authenticate(
   }
 
   if (candidates.length === 0) {
-    const isSessionProbe = /\/(?:auth|secretary-auth|physio-auth|service-auth)\/me(?:\?|$)/.test(
+    const isSessionProbe = /\/(?:auth|secretary-auth|service-auth)\/me(?:\?|$)/.test(
       req.originalUrl,
     );
     if (!isSessionProbe) {
@@ -104,16 +102,6 @@ export function optionalDoctorAuth(req: Request, res: Response, next: NextFuncti
     assignPayload(req, currentPayload);
     next();
   })().catch(next);
-}
-
-export function requirePhysio(req: Request, res: Response, next: NextFunction): void {
-  void authenticate(req, res, () => {
-    if (req.role !== "physio" || !req.physioId) {
-      res.status(403).json({ error: "Acesso negado. Somente fisioterapeutas." });
-      return;
-    }
-    next();
-  }, ["physio"]).catch(next);
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {

@@ -3,34 +3,17 @@ import { eq } from "drizzle-orm";
 import cron from "node-cron";
 import { sendWhatsAppText, sanitizeWhatsAppError } from "../lib/whatsapp";
 import { logger } from "../lib/logger";
-import { patientInitials } from "./surgeryProtocolMap";
 
 const MAX_ATTEMPTS = 5;
 const PROCESSING_LEASE_MINUTES = 5;
 const BACKOFF_MINUTES = [1, 5, 30, 120, 480];
 
-// Sinais de alerta da reabilitação do joelho retirados; os de ombro/cotovelo
-// entram com o protocolo.
-const FLAG_LABELS: Record<string, string> = {};
-
-export function flagLabel(flag: string): string {
-  return FLAG_LABELS[flag] ?? "Sinal clínico de atenção";
-}
-
-export function buildRedFlagMessage(params: {
-  patientName: string;
-  physioName: string;
-  redFlags: string[];
-}): string {
-  const initials = patientInitials(params.patientName);
-  const lines = params.redFlags.map((flag) => `• ${flagLabel(flag)}`).join("\n");
-  return (
-    `🚨 DocSholder — Alerta de reabilitação\n\n` +
-    `Paciente ${initials} (encaminhado) apresentou sinais de atenção na avaliação ` +
-    `do fisioterapeuta ${params.physioName}:\n\n${lines}\n\n` +
-    `Acesse o DocSholder para ver os detalhes das avaliações.`
-  );
-}
+/**
+ * Event type of the WhatsApp alerts the removed physiotherapist portal queued
+ * for surgeons. The portal is gone, so rows still pending in the outbox are
+ * never dispatched (they stay in the table untouched for audit).
+ */
+export const RETIRED_OUTBOX_EVENT_TYPES = ["rehab_red_flag"] as const;
 
 interface ClaimedAlert {
   id: number;
@@ -114,12 +97,14 @@ export async function claimNextRedFlagAlert(): Promise<ClaimedAlert | null> {
         WHERE status = 'pending'
           AND next_attempt_at <= now()
           AND attempts < max_attempts
+          AND event_type <> ALL($1::text[])
         ORDER BY next_attempt_at, id
         FOR UPDATE SKIP LOCKED
         LIMIT 1
      )
      RETURNING id, recipient, message, idempotency_key AS "idempotencyKey",
                attempts, max_attempts AS "maxAttempts"`,
+    [[...RETIRED_OUTBOX_EVENT_TYPES]],
   );
   return result.rows[0] ?? null;
 }

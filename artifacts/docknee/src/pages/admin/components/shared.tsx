@@ -24,9 +24,8 @@ function generateTempPassword(): string {
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { type?: "doctor" | "physio"; onClose: () => void; onSuccess: () => void }) {
+export function AdminRegisterDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const t = useScopedTranslations(adminConsoleMessages);
-  const isPhysio = type === "physio";
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
     e.preventDefault();
     setError(null);
     if (!form.nome || !form.email || !form.senha || !form.crm || !form.crmEstado || !form.cpf) {
-      setError(isPhysio ? t("institutions.createPhysio.requiredFields") : t("dialog.requiredFields"));
+      setError(t("dialog.requiredFields"));
       return;
     }
     setLoading(true);
@@ -53,11 +52,11 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? (isPhysio ? t("institutions.createPhysio.error") : t("dialog.registerError"))); return; }
+      if (!res.ok) { setError(data.error ?? t("dialog.registerError")); return; }
       setCreated({ nome: form.nome, email: form.email, senha: form.senha, crm: form.crm, crmEstado: form.crmEstado });
       onSuccess();
     } catch {
-      setError(isPhysio ? t("institutions.createPhysio.connectionError") : t("dialog.connectionRetry"));
+      setError(t("dialog.connectionRetry"));
     } finally {
       setLoading(false);
     }
@@ -65,9 +64,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
 
   const copyCredentials = () => {
     if (!created) return;
-    const text = isPhysio
-      ? t("institutions.createPhysio.clipboard", { name: created.nome, email: created.email, password: created.senha, state: created.crmEstado, crefito: created.crm })
-      : `DocSholder — Credenciais de acesso\nNome: ${created.nome}\nEmail: ${created.email}\nSenha: ${created.senha}\nCRM: ${created.crmEstado} ${created.crm}\n\nAcesse: dockneeapp.com`;
+    const text = `DocSholder — Credenciais de acesso\nNome: ${created.nome}\nEmail: ${created.email}\nSenha: ${created.senha}\nCRM: ${created.crmEstado} ${created.crm}\n\nAcesse: dockneeapp.com`;
     navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
 
@@ -84,8 +81,8 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
               <UserPlus className="h-4 w-4 text-emerald-700" />
             </div>
             <div>
-               <p className="text-sm font-bold text-foreground">{isPhysio ? t("institutions.createPhysio.title") : t("dialog.registerDoctor")}</p>
-               <p className="text-[11px] text-muted-foreground">{isPhysio ? t("institutions.createPhysio.description") : t("dialog.freeAccount")}</p>
+               <p className="text-sm font-bold text-foreground">{t("dialog.registerDoctor")}</p>
+               <p className="text-[11px] text-muted-foreground">{t("dialog.freeAccount")}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -98,7 +95,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
             <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
-                  <p className="text-sm font-bold text-emerald-800">{isPhysio ? t("institutions.createPhysio.success") : t("dialog.registered")}</p>
+                  <p className="text-sm font-bold text-emerald-800">{t("dialog.registered")}</p>
               </div>
               <div className="space-y-2 text-sm">
                  <div className="flex justify-between"><span className="text-muted-foreground">{t("dialog.name")}</span><span className="font-medium">{created.nome}</span></div>
@@ -111,7 +108,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
                     </button>
                   </span>
                 </div>
-                 <div className="flex justify-between"><span className="text-muted-foreground">{isPhysio ? "CREFITO" : "CRM"}</span><span className="font-medium">{created.crmEstado} {created.crm}</span></div>
+                 <div className="flex justify-between"><span className="text-muted-foreground">CRM</span><span className="font-medium">{created.crmEstado} {created.crm}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">{t("dialog.accountStatus")}</span><Badge className="bg-emerald-500 text-white text-xs h-5">{t("dialog.exemptApproved")}</Badge></div>
               </div>
             </div>
@@ -119,7 +116,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
             <div className="flex gap-2">
               <Button onClick={copyCredentials} variant="outline" className="flex-1 gap-1.5 text-sm">
                 {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                 {copied ? t("dialog.copied") : (isPhysio ? t("institutions.createPhysio.copyCredentials") : t("dialog.copyCredentials"))}
+                 {copied ? t("dialog.copied") : t("dialog.copyCredentials")}
               </Button>
                <Button onClick={onClose} className="flex-1 text-sm">{t("close")}</Button>
             </div>
@@ -131,17 +128,17 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
             )}
             <div className="grid grid-cols-1 gap-3">
               <div>
-                 <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.name") : t("dialog.fullName")}</label>
-                <input className={inputCls} placeholder={isPhysio ? t("institutions.createPhysio.namePlaceholder") : t("explicit.133")} value={form.nome} onChange={set("nome")} autoFocus />
+                 <label className={labelCls}>{t("dialog.fullName")}</label>
+                <input className={inputCls} placeholder={t("explicit.133")} value={form.nome} onChange={set("nome")} autoFocus />
               </div>
               <div>
-                 <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.email") : `${t("dialog.email")} *`}</label>
-                <input type="email" className={inputCls} placeholder={isPhysio ? t("institutions.createPhysio.emailPlaceholder") : t("explicit.134")} value={form.email} onChange={set("email")} />
+                 <label className={labelCls}>{`${t("dialog.email")} *`}</label>
+                <input type="email" className={inputCls} placeholder={t("explicit.134")} value={form.email} onChange={set("email")} />
               </div>
               <div>
-                 <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.password") : t("dialog.tempPassword")}</label>
+                 <label className={labelCls}>{t("dialog.tempPassword")}</label>
                 <div className="relative">
-                <input type={showSenha ? "text" : "password"} className={inputCls + " pr-9"} placeholder={isPhysio ? t("institutions.createPhysio.passwordPlaceholder") : t("dialog.initialPassword")} value={form.senha} onChange={set("senha")} />
+                <input type={showSenha ? "text" : "password"} className={inputCls + " pr-9"} placeholder={t("dialog.initialPassword")} value={form.senha} onChange={set("senha")} />
                   <button type="button" onClick={() => setShowSenha(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showSenha ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
@@ -149,37 +146,37 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                   <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.crefito") : t("dialog.crmNumber")}</label>
-                  <input className={inputCls} placeholder={isPhysio ? t("institutions.createPhysio.crefitoPlaceholder") : "12345"} value={form.crm} onChange={set("crm")} />
+                   <label className={labelCls}>{t("dialog.crmNumber")}</label>
+                  <input className={inputCls} placeholder="12345" value={form.crm} onChange={set("crm")} />
                 </div>
                 <div>
-                   <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.state") : t("dialog.crmState")}</label>
+                   <label className={labelCls}>{t("dialog.crmState")}</label>
                   <select className={inputCls} value={form.crmEstado} onChange={set("crmEstado")}>
                     {UF_LIST.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                   <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.cpf") : t("dialog.cpf")}</label>
+                   <label className={labelCls}>{t("dialog.cpf")}</label>
                 <input className={inputCls} placeholder="000.000.000-00" value={form.cpf} onChange={set("cpf")} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                   <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.phone") : t("dialog.phone")}</label>
+                   <label className={labelCls}>{t("dialog.phone")}</label>
                   <input className={inputCls} placeholder="(11) 99999-9999" value={form.telefone} onChange={set("telefone")} />
                 </div>
                 <div>
-                   <label className={labelCls}>{isPhysio ? t("institutions.createPhysio.specialty") : t("dialog.specialty")}</label>
-                  <input className={inputCls} placeholder={isPhysio ? t("institutions.createPhysio.specialtyPlaceholder") : "Ortopedia"} value={form.especialidade} onChange={set("especialidade")} />
+                   <label className={labelCls}>{t("dialog.specialty")}</label>
+                  <input className={inputCls} placeholder="Ortopedia" value={form.especialidade} onChange={set("especialidade")} />
                 </div>
               </div>
             </div>
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
-              ✓ {isPhysio ? t("institutions.createPhysio.accountCreated") : t("dialog.accountCreated")}
+              ✓ {t("dialog.accountCreated")}
             </div>
             <Button type="submit" className="w-full gap-2" disabled={loading}>
               {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-               {loading ? (isPhysio ? t("institutions.createPhysio.registering") : t("dialog.registering")) : (isPhysio ? t("institutions.createPhysio.title") : t("dialog.registerDoctor"))}
+               {loading ? t("dialog.registering") : t("dialog.registerDoctor")}
             </Button>
           </form>
         )}
@@ -188,7 +185,7 @@ export function AdminRegisterDialog({ type = "doctor", onClose, onSuccess }: { t
   );
 }
 
-export function AdminResetPasswordDialog({ doctorId, doctorNome, userId, role, onClose }: { doctorId?: number; doctorNome?: string; userId?: string | number; role?: "doctor" | "physio" | "service"; onClose: () => void }) {
+export function AdminResetPasswordDialog({ doctorId, doctorNome, userId, role, onClose }: { doctorId?: number; doctorNome?: string; userId?: string | number; role?: "doctor" | "service"; onClose: () => void }) {
   const t = useScopedTranslations(adminConsoleMessages);
   const { toast } = useToast();
   const isService = role === "service";
@@ -209,7 +206,6 @@ export function AdminResetPasswordDialog({ doctorId, doctorNome, userId, role, o
     setLoading(true);
     try {
       let url = `/api/admin/doctors/${targetId}/reset-password`;
-      if (role === "physio") url = `/api/admin/physiotherapists/${targetId}/reset-password`;
       if (role === "service") url = `/api/admin/services/${targetId}/reset-password`;
       
       const res = await fetch(url, {

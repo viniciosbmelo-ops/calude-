@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { useServices, usePhysios, useMutateService, useMutatePhysio } from "../queries";
-import { ServiceInst, AdminPhysio } from "../types";
+import { useServices, useMutateService } from "../queries";
+import { ServiceInst } from "../types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Search, Activity, Plus, Edit2, Trash2, KeyRound, Ban, CheckCircle, X } from "lucide-react";
-import { AdminRegisterDialog, AdminResetPasswordDialog } from "./shared";
+import { Building2, Search, Activity, Edit2, Trash2, KeyRound, X } from "lucide-react";
+import { AdminResetPasswordDialog } from "./shared";
 import { useToast } from "@/hooks/use-toast";
 import { sortByPtBrName } from "@/lib/utils";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
@@ -32,43 +31,24 @@ function BaseModal({ title, children, onClose }: { title: string, children: Reac
 
 export function Institutions() {
   const { data: services, isLoading: servicesLoading } = useServices();
-  const { data: physios, isLoading: physiosLoading } = usePhysios();
   const mutService = useMutateService();
-  const mutPhysio = useMutatePhysio();
   const { toast } = useToast();
   const t = useScopedTranslations(adminConsoleMessages);
   const { formatDate } = useLanguage();
   const formatDateTime = (value: string | null | undefined) => !value ? t("never") : formatDate(value);
 
   const [searchInst, setSearchInst] = useState("");
-  const [searchPhysio, setSearchPhysio] = useState("");
   
   const [showRegService, setShowRegService] = useState(false);
   const [editingService, setEditingService] = useState<ServiceInst | null>(null);
   const [serviceCreateError, setServiceCreateError] = useState<string | null>(null);
   
-  const [showRegPhysio, setShowRegPhysio] = useState(false);
-  const [resetPassUser, setResetPassUser] = useState<{ id: string | number; role: "doctor" | "physio" | "service" } | null>(null);
+  const [resetPassUser, setResetPassUser] = useState<{ id: string | number; role: "doctor" | "service" } | null>(null);
 
   const filteredServices = sortByPtBrName((services?.filter(s =>
     s.nome.toLowerCase().includes(searchInst.toLowerCase()) ||
     s.email.toLowerCase().includes(searchInst.toLowerCase())
   ) || []), (service) => service.nome, (service) => service.id);
-
-  const filteredPhysios = sortByPtBrName((physios?.filter(p =>
-    p.nome.toLowerCase().includes(searchPhysio.toLowerCase()) ||
-    p.email.toLowerCase().includes(searchPhysio.toLowerCase()) ||
-    (p.crefito && p.crefito.includes(searchPhysio))
-  ) || []), (physio) => physio.nome, (physio) => physio.id);
-
-  const handlePhysioBlock = async (p: AdminPhysio) => {
-    const action = p.ativo ? "block" : "unblock";
-    if (p.ativo && !confirm(t("institutions.blockPhysio.confirm", { name: p.nome }))) return;
-    try {
-      await mutPhysio.mutateAsync({ id: p.id as number, action });
-      toast({ title: p.ativo ? t("institutions.blockPhysio.blocked", { name: p.nome }) : t("institutions.blockPhysio.unblocked", { name: p.nome }) });
-    } catch { toast({ title: t("institutions.blockPhysio.error"), variant: "destructive" }); }
-  };
 
   const handleDeleteService = async (s: ServiceInst) => {
     if (!confirm(t("institutions.deleteService.confirm", { name: s.nome }))) return;
@@ -87,13 +67,7 @@ export function Institutions() {
         </div>
       </div>
 
-      <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-sm mb-4">
-          <TabsTrigger value="services">{t("institutions.services", { count: filteredServices.length })}</TabsTrigger>
-          <TabsTrigger value="physios">{t("institutions.physios", { count: filteredPhysios.length })}</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="services" className="space-y-4">
+      <div className="space-y-4">
           <Card className="shadow-sm border-border/50">
             <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
               <div className="flex items-center gap-2 w-full max-w-md bg-muted/30 p-2 rounded-lg border border-border/50">
@@ -167,85 +141,7 @@ export function Institutions() {
               </div>
             )}
           </Card>
-        </TabsContent>
-
-        <TabsContent value="physios" className="space-y-4">
-          <Card className="shadow-sm border-border/50">
-            <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex items-center gap-2 w-full max-w-md bg-muted/30 p-2 rounded-lg border border-border/50">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <input 
-                  type="text" 
-                  placeholder={t("institutions.searchPhysios")}
-                  className="flex-1 bg-transparent border-none text-sm outline-none placeholder:text-muted-foreground"
-                  value={searchPhysio}
-                  onChange={e => setSearchPhysio(e.target.value)}
-                />
-              </div>
-              <Button size="sm" className="gap-1.5 whitespace-nowrap" onClick={() => setShowRegPhysio(true)}>
-                <Plus className="h-3.5 w-3.5" /> {t("institutions.newPhysio")}
-              </Button>
-            </div>
-            {physiosLoading ? (
-              <div className="p-6 space-y-3" aria-label={t("institutions.loadingPhysios")} role="status">
-                <span className="sr-only">{t("institutions.loadingPhysios")}</span>
-                {[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead>{t("institutions.tablePhysio")}</TableHead>
-                      <TableHead>{t("institutions.tableWorkLocation")}</TableHead>
-                      <TableHead>{t("institutions.tableStatusPlan")}</TableHead>
-                      <TableHead className="text-right">{t("institutions.tableActions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPhysios.map(physio => (
-                      <TableRow key={physio.id} className="hover:bg-muted/20">
-                        <TableCell>
-                          <div className="font-semibold text-sm">{physio.nome}</div>
-                          <div className="text-xs text-muted-foreground font-mono mt-0.5">{physio.email}</div>
-                          {physio.crefito && <div className="text-[10px] text-muted-foreground mt-0.5">CREFITO: {physio.crefito}</div>}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{physio.clinica || "—"}</div>
-                          {physio.cidade && <div className="text-[10px] text-muted-foreground">{physio.cidade}</div>}
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {physio.ativo ? (
-                              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-none text-[10px]">{t("institutions.active")}</Badge>
-                            ) : (
-                              <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-none text-[10px]">{t("institutions.blocked")}</Badge>
-                            )}
-                            <div className="text-[11px] font-medium text-purple-600 uppercase tracking-wider">{physio.plan}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
-                          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setResetPassUser({ id: physio.id as number, role: "physio" })}><KeyRound className="h-3.5 w-3.5 mr-1" /> {t("institutions.passwordAction")}</Button>
-                          <Button variant="ghost" size="icon" className={`h-8 w-8 ml-1 ${physio.ativo ? "text-amber-600" : "text-emerald-600"}`} onClick={() => handlePhysioBlock(physio)} title={physio.ativo ? t("institutions.blockPhysio.blockAction") : t("institutions.blockPhysio.unblockAction")} aria-label={physio.ativo ? t("institutions.blockPhysio.blockAction") : t("institutions.blockPhysio.unblockAction")}>
-                            {physio.ativo ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredPhysios.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
-                          {t("institutions.noPhysios")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Modals */}
       {showRegService && (
@@ -341,7 +237,6 @@ export function Institutions() {
         </BaseModal>
       )}
       
-      {showRegPhysio && <AdminRegisterDialog type="physio" onClose={() => setShowRegPhysio(false)} onSuccess={() => setShowRegPhysio(false)} />}
       {resetPassUser && <AdminResetPasswordDialog userId={resetPassUser.id as string} role={resetPassUser.role} onClose={() => setResetPassUser(null)} />}
     </div>
   );

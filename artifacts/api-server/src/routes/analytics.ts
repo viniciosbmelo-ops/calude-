@@ -62,7 +62,7 @@ const ALLOWED_ERROR_TYPES = new Set([
 ]);
 const ALLOWED_FEATURES = new Set([
   "surgery", "followup", "patient", "report", "pdf", "exam",
-  "checkout", "support", "regen", "physio", "agenda", "dashboard", "admin",
+  "checkout", "support", "regen", "agenda", "dashboard", "admin",
   "patients", "surgeries", "profile", "settings", "subscription",
 ]);
 
@@ -97,8 +97,7 @@ async function resolveDoctorId(req: Request): Promise<number | null> {
 
 const SAFE_STATIC_PATHS = new Set([
   "/", "/admin", "/agenda", "/agenda-cirurgica", "/assinatura-cancelada",
-  "/dashboard", "/fisio", "/fisio/agenda", "/fisio/dashboard", "/fisio/login",
-  "/fisio/pacientes", "/fisio/pacientes/novo", "/fisio/planos", "/followup",
+  "/dashboard", "/followup",
   "/followup-central", "/forgot-password", "/login", "/orientacoes-paciente",
   "/patients", "/patients/new", "/pending-approval", "/profile", "/redefinir-senha",
   "/regen", "/regen/caso/novo", "/regen/consentimento", "/regen/orientacoes",
@@ -110,8 +109,6 @@ const SAFE_STATIC_PATHS = new Set([
 const SAFE_DYNAMIC_PATHS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/admin\/doctors\/[^/]+$/, "/admin/doctors/:id"],
   [/^\/pre-consulta\/[^/]+$/, "/pre-consulta/:token"],
-  [/^\/fisio\/convite\/[^/]+$/, "/fisio/convite/:token"],
-  [/^\/fisio\/pacientes\/[^/]+$/, "/fisio/pacientes/:id"],
   [/^\/patient\/regen\/[^/]+$/, "/patient/regen/:token"],
   [/^\/patient\/[^/]+$/, "/patient/:token"],
   [/^\/patients\/[^/]+$/, "/patients/:id"],

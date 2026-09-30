@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { LanguageProvider } from "@/lib/i18n";
 import { SecretaryAuthProvider } from "@/lib/secretary-auth";
-import { PhysioAuthProvider } from "@/lib/physio-auth";
 import { ServiceAuthProvider } from "@/lib/service-auth";
 import { ThemeProvider } from "@/lib/theme";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -46,15 +45,6 @@ import FollowupCentral from "@/pages/followup-central";
 import WhatsappBroadcast from "@/pages/whatsapp-broadcast";
 import SecretaryLogin from "@/pages/secretary/login";
 import SecretaryDashboard from "@/pages/secretary/dashboard";
-import FisioLanding from "@/pages/fisio/index";
-import FisioLogin from "@/pages/fisio/login";
-import FisioDashboard from "@/pages/fisio/dashboard";
-import FisioPacientes from "@/pages/fisio/pacientes";
-import FisioAgenda from "@/pages/fisio/agenda";
-import FisioPacienteNovo from "@/pages/fisio/paciente-novo";
-import FisioPacienteDetalhe from "@/pages/fisio/paciente-detalhe";
-import FisioConvite from "@/pages/fisio/convite";
-import FisioPlanos from "@/pages/fisio/planos";
 import ServiceLogin from "@/pages/service/login";
 import ServiceDashboard from "@/pages/service/dashboard";
 import AgendaPage from "@/pages/agenda";
@@ -171,17 +161,6 @@ function Router() {
       <Route path="/service/login" component={ServiceLogin} />
       <Route path="/service/dashboard" component={ServiceDashboard} />
 
-      {/* Physiotherapist routes — independent auth */}
-      <Route path="/fisio" component={FisioLanding} />
-      <Route path="/fisio/login" component={FisioLogin} />
-      <Route path="/fisio/dashboard" component={FisioDashboard} />
-      <Route path="/fisio/pacientes" component={FisioPacientes} />
-      <Route path="/fisio/agenda" component={FisioAgenda} />
-      <Route path="/fisio/pacientes/novo" component={FisioPacienteNovo} />
-      <Route path="/fisio/pacientes/:id" component={FisioPacienteDetalhe} />
-      <Route path="/fisio/convite/:token" component={FisioConvite} />
-      <Route path="/fisio/planos" component={FisioPlanos} />
-      
       <Route component={NotFound} />
     </Switch>
   );
@@ -207,16 +186,14 @@ function App() {
           <AuthProvider>
             <LanguageProvider>
               <SecretaryAuthProvider>
-                <PhysioAuthProvider>
-                  <ServiceAuthProvider>
-                    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                      <ProductAnalytics />
-                      <RouteErrorBoundary>
-                        <Router />
-                      </RouteErrorBoundary>
-                    </WouterRouter>
-                  </ServiceAuthProvider>
-                </PhysioAuthProvider>
+                <ServiceAuthProvider>
+                  <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                    <ProductAnalytics />
+                    <RouteErrorBoundary>
+                      <Router />
+                    </RouteErrorBoundary>
+                  </WouterRouter>
+                </ServiceAuthProvider>
               </SecretaryAuthProvider>
             </LanguageProvider>
           </AuthProvider>

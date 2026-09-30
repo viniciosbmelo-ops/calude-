@@ -21,12 +21,6 @@ export type AuthTokenPayload =
       sessionVersion: number;
     }
   | {
-      role: "physio";
-      physioId: number;
-      isAdmin: false;
-      sessionVersion: number;
-    }
-  | {
       role: "service";
       serviceId: number;
       isAdmin: false;
@@ -65,22 +59,6 @@ export function signSecretaryToken(payload: {
 }): string {
   return jwt.sign(
     { ...payload, sessionVersion: payload.sessionVersion ?? 0, role: "secretary", isAdmin: false },
-    JWT_SECRET,
-    {
-      algorithm: "HS256",
-      issuer: TOKEN_ISSUER,
-      audience: TOKEN_AUDIENCE,
-      expiresIn: TOKEN_TTL,
-    },
-  );
-}
-
-export function signPhysioToken(payload: {
-  physioId: number;
-  sessionVersion?: number;
-}): string {
-  return jwt.sign(
-    { ...payload, sessionVersion: payload.sessionVersion ?? 0, role: "physio", isAdmin: false },
     JWT_SECRET,
     {
       algorithm: "HS256",
@@ -150,15 +128,6 @@ function parseTokenPayload(value: unknown): AuthTokenPayload | null {
       role: "secretary",
       doctorId: payload.doctorId,
       secretaryId: payload.secretaryId,
-      isAdmin: false,
-      sessionVersion,
-    };
-  }
-
-  if (payload.role === "physio" && isPositiveInteger(payload.physioId)) {
-    return {
-      role: "physio",
-      physioId: payload.physioId,
       isAdmin: false,
       sessionVersion,
     };

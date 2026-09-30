@@ -3,7 +3,6 @@ import type { Request, Response, CookieOptions } from "express";
 export const SESSION_COOKIE_NAMES = {
   doctor: "docknee_session",
   secretary: "docknee_secretary_session",
-  physio: "docknee_physio_session",
   service: "docknee_service_session",
   patient: "docknee_patient_session",
 } as const;
@@ -27,8 +26,14 @@ function clearCookieOptions(): CookieOptions {
   return options;
 }
 
+/**
+ * Cookies of roles that no longer exist (the physiotherapist portal was
+ * removed). They are never read, only cleared so stale browsers drop them.
+ */
+const RETIRED_SESSION_COOKIE_NAMES = ["docknee_physio_session"] as const;
+
 export function clearAllSessionCookies(res: Response): void {
-  for (const cookieName of Object.values(SESSION_COOKIE_NAMES)) {
+  for (const cookieName of [...Object.values(SESSION_COOKIE_NAMES), ...RETIRED_SESSION_COOKIE_NAMES]) {
     res.clearCookie(cookieName, clearCookieOptions());
   }
 }

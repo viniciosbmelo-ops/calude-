@@ -148,7 +148,6 @@ app.post(
 const allowedOrigins = new Set<string>([
   "https://dockneeapp.com",
   "https://www.dockneeapp.com",
-  "https://fisio.dockneeapp.com",
 ]);
 // Adiciona domínios de preview da Replit dinamicamente
 for (const d of (process.env["REPLIT_DOMAINS"] ?? "").split(",")) {
