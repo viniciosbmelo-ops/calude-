@@ -407,6 +407,141 @@ describe.sequential("pre-consult API integration", () => {
     });
   });
 
+  it("uploads an exam through the storage flow with type, size and ownership checks, then the doctor reads it back", async () => {
+    const own = await createInvite(doctorAuth, patientId);
+    const other = await createInvite(otherDoctorAuth, otherPatientId);
+
+    const ownVerify = await patientRequest(own.token, "/verify", "POST", { cpf: "52998224725" });
+    const ownCookie = ownVerify.headers.get("set-cookie")?.split(";")[0];
+    const otherVerify = await patientRequest(other.token, "/verify", "POST", { cpf: "11144477735" });
+    const otherCookie = otherVerify.headers.get("set-cookie")?.split(";")[0];
+    expect(ownCookie).toBeTruthy();
+    expect(otherCookie).toBeTruthy();
+
+    const pngBytes = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("fictional exam image bytes"),
+    ]);
+    const requestUrl = (token: string, cookie: string | undefined, body: unknown) =>
+      patientRequest(token, "/uploads/request-url", "POST", body, cookie);
+
+    // Content-type allow-list and declared size limit (25 MB) are enforced
+    // before any signed URL is issued.
+    const badType = await requestUrl(own.token, ownCookie, {
+      name: "malware.exe", size: 10, mimeType: "application/x-msdownload",
+    });
+    expect(badType.status).toBe(400);
+    const tooBig = await requestUrl(own.token, ownCookie, {
+      name: "huge.pdf", size: 25 * 1024 * 1024 + 1, mimeType: "application/pdf",
+    });
+    expect(tooBig.status).toBe(400);
+
+    // Without a verified session bound to this token no URL is issued, and a
+    // session verified for another patient's link cannot be reused here.
+    const noSession = await requestUrl(own.token, undefined, {
+      name: "exam.png", size: pngBytes.byteLength, mimeType: "image/png",
+    });
+    expect(noSession.status).toBe(401);
+    const crossSession = await requestUrl(own.token, otherCookie, {
+      name: "exam.png", size: pngBytes.byteLength, mimeType: "image/png",
+    });
+    expect(crossSession.status).toBe(401);
+
+    const issue = async (body: unknown) => {
+      const response = await requestUrl(own.token, ownCookie, body);
+      expect(response.status).toBe(200);
+      const json = await response.json() as { uploadUrl: string; uploadToken: string };
+      const [grant] = await db
+        .select()
+        .from(uploadGrantsTable)
+        .where(eq(
+          uploadGrantsTable.tokenHash,
+          createHash("sha256").update(json.uploadToken).digest("hex"),
+        ));
+      uploadedObjectPaths.push(grant.objectPath);
+      return json;
+    };
+
+    // Real size differs from the authorised size -> rejected at registration.
+    const sizeMismatch = await issue({ name: "exam.png", size: pngBytes.byteLength + 5, mimeType: "image/png" });
+    expect((await fetch(sizeMismatch.uploadUrl, {
+      method: "PUT", headers: { "Content-Type": "image/png" }, body: pngBytes,
+    })).ok).toBe(true);
+    const sizeMismatchFinalize = await patientRequest(
+      own.token, "/attachments", "POST", { uploadToken: sizeMismatch.uploadToken }, ownCookie,
+    );
+    expect(sizeMismatchFinalize.status).toBe(400);
+
+    // Real Content-Type differs from the authorised MIME -> rejected.
+    const typeMismatch = await issue({ name: "exam.png", size: pngBytes.byteLength, mimeType: "image/png" });
+    expect((await fetch(typeMismatch.uploadUrl, {
+      method: "PUT", headers: { "Content-Type": "application/pdf" }, body: pngBytes,
+    })).ok).toBe(true);
+    const typeMismatchFinalize = await patientRequest(
+      own.token, "/attachments", "POST", { uploadToken: typeMismatch.uploadToken }, ownCookie,
+    );
+    expect(typeMismatchFinalize.status).toBe(400);
+
+    // Registering without having uploaded the bytes -> rejected.
+    const missing = await issue({ name: "exam.png", size: pngBytes.byteLength, mimeType: "image/png" });
+    const missingFinalize = await patientRequest(
+      own.token, "/attachments", "POST", { uploadToken: missing.uploadToken }, ownCookie,
+    );
+    expect(missingFinalize.status).toBe(400);
+
+    // Happy path.
+    const good = await issue({ name: "ressonancia-joelho.png", size: pngBytes.byteLength, mimeType: "image/png" });
+    const put = await fetch(good.uploadUrl, {
+      method: "PUT", headers: { "Content-Type": "image/png" }, body: pngBytes,
+    });
+    expect(put.ok).toBe(true);
+    // The signed URL is single-use for creation (ifGenerationMatch=0).
+    const overwrite = await fetch(good.uploadUrl, {
+      method: "PUT", headers: { "Content-Type": "image/png" }, body: Buffer.from("replaced"),
+    });
+    expect(overwrite.status).toBe(412);
+
+    // Another patient's verified session cannot register this patient's grant
+    // on its own pre-consultation.
+    const stolen = await patientRequest(
+      other.token, "/attachments", "POST", { uploadToken: good.uploadToken }, otherCookie,
+    );
+    expect(stolen.status).toBe(403);
+
+    const finalize = await patientRequest(
+      own.token, "/attachments", "POST", { uploadToken: good.uploadToken }, ownCookie,
+    );
+    expect(finalize.status).toBe(201);
+    await expect(finalize.json()).resolves.toMatchObject({
+      fileName: "ressonancia-joelho.png",
+      fileSize: pngBytes.byteLength,
+      mimeType: "image/png",
+    });
+
+    const doctorView = await doctorRequest(doctorAuth, `/regen-api/patients/${patientId}/pre-consult`);
+    expect(doctorView.status).toBe(200);
+    const doctorBody = await doctorView.json() as {
+      attachments: Array<{ fileName: string; fileSize: number; mimeType: string; url: string | null }>;
+    };
+    expect(doctorBody.attachments).toHaveLength(1);
+    expect(doctorBody.attachments[0]).toMatchObject({
+      fileName: "ressonancia-joelho.png",
+      fileSize: pngBytes.byteLength,
+      mimeType: "image/png",
+    });
+    const download = await fetch(doctorBody.attachments[0].url!);
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-type")).toBe("image/png");
+    expect(Buffer.from(await download.arrayBuffer()).equals(pngBytes)).toBe(true);
+
+    // The other doctor sees nothing of it.
+    const foreign = await doctorRequest(otherDoctorAuth, `/regen-api/patients/${patientId}/pre-consult`);
+    expect(foreign.status).toBe(404);
+    const otherOwn = await doctorRequest(otherDoctorAuth, `/regen-api/patients/${otherPatientId}/pre-consult`);
+    expect(otherOwn.status).toBe(200);
+    expect((await otherOwn.json() as { attachments: unknown[] }).attachments).toHaveLength(0);
+  });
+
   it("enforces physician ownership, token-bound sessions, revocation and privacy-safe persistence", async () => {
     const own = await createInvite(doctorAuth, patientId);
     const other = await createInvite(otherDoctorAuth, otherPatientId);

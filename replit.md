@@ -133,6 +133,13 @@ Cookies: `docregen_session`, `docregen_secretary_session`, `docregen_patient_ses
   at a disposable database with the schema applied, `DOCREGEN_SESSION_SECRET`, the Gemini
   integration variables; the pre-consultation upload test also needs object storage and
   `DOCREGEN_PRIVATE_OBJECT_DIR`). `pnpm test` runs web, DocKnee API and DocRegen API suites.
+- Outside Replit (no object-storage sidecar at `127.0.0.1:1106`) run the API suites with
+  `OBJECT_STORAGE_FAKE=1`: the vitest setup (`src/test-support/setupObjectStorage.ts` in each
+  API) starts a local fake of the sidecar + the GCS endpoints the client uses and points the
+  real storage client at it via `OBJECT_STORAGE_SIDECAR_ENDPOINT` / `OBJECT_STORAGE_API_ENDPOINT`
+  (both ignored when `NODE_ENV=production`). This proves the app's upload flow (signed URL →
+  PUT → register → doctor download, type/size/ownership checks) but not the Replit production
+  bucket configuration. End-to-end browser tests: see `e2e/README.md`.
 
 ### Deploying DocRegen (manual steps for the owner)
 

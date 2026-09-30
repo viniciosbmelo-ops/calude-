@@ -9,7 +9,21 @@ import {
   setObjectAclPolicy,
 } from "./objectAcl";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+const DEFAULT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+const DEFAULT_STORAGE_ORIGIN = "https://storage.googleapis.com";
+
+// Test-only overrides so the automated suites can point this client at a local
+// fake of the Replit sidecar + GCS API (see src/test-support/fakeObjectStorage.ts).
+// They are ignored in production, where the Replit sidecar is always used.
+const allowStorageOverrides = process.env["NODE_ENV"] !== "production";
+const REPLIT_SIDECAR_ENDPOINT =
+  (allowStorageOverrides && process.env["OBJECT_STORAGE_SIDECAR_ENDPOINT"]?.replace(/\/$/, "")) ||
+  DEFAULT_SIDECAR_ENDPOINT;
+const STORAGE_API_ENDPOINT =
+  (allowStorageOverrides && process.env["OBJECT_STORAGE_API_ENDPOINT"]?.replace(/\/$/, "")) ||
+  undefined;
+/** Origin of the URLs the signer returns (and that normalizeObjectEntityPath accepts). */
+const SIGNED_URL_ORIGIN = STORAGE_API_ENDPOINT ?? DEFAULT_STORAGE_ORIGIN;
 
 export const objectStorageClient = new Storage({
   credentials: {
@@ -27,6 +41,9 @@ export const objectStorageClient = new Storage({
     universe_domain: "googleapis.com",
   },
   projectId: "",
+  ...(STORAGE_API_ENDPOINT
+    ? { apiEndpoint: STORAGE_API_ENDPOINT, useAuthWithCustomEndpoint: true }
+    : {}),
 });
 
 export class ObjectNotFoundError extends Error {
@@ -175,7 +192,7 @@ export class ObjectStorageService {
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
+    if (!rawPath.startsWith(`${SIGNED_URL_ORIGIN}/`)) {
       return rawPath;
     }
 
