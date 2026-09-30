@@ -1,3 +1,5 @@
+import { applicationAnatomicalSite } from "@workspace/clinical/application-sites";
+
 export interface RegenApplicationSite {
   localAplicacao: string;
   guia: string;
@@ -6,6 +8,8 @@ export interface RegenApplicationSite {
    * Optional: rows saved before this field existed simply have no structure.
    */
   estruturaAnatomica?: string;
+  /** Free text for "Músculo (especificar)" / "Outro (especificar)". */
+  estruturaAnatomicaDetalhe?: string;
 }
 
 export const APPLICATION_SITES_KEY = "locaisAplicacao";
@@ -16,10 +20,12 @@ function asSite(value: unknown): RegenApplicationSite | null {
   const localAplicacao = typeof row.localAplicacao === "string" ? row.localAplicacao : "";
   const guia = typeof row.guia === "string" ? row.guia : "";
   const estruturaAnatomica = typeof row.estruturaAnatomica === "string" ? row.estruturaAnatomica : "";
+  const estruturaAnatomicaDetalhe = typeof row.estruturaAnatomicaDetalhe === "string" ? row.estruturaAnatomicaDetalhe : "";
   if (!localAplicacao.trim() && !guia.trim() && !estruturaAnatomica.trim()) return null;
-  return estruturaAnatomica.trim()
-    ? { localAplicacao, guia, estruturaAnatomica }
-    : { localAplicacao, guia };
+  if (!estruturaAnatomica.trim()) return { localAplicacao, guia };
+  return estruturaAnatomicaDetalhe.trim()
+    ? { localAplicacao, guia, estruturaAnatomica, estruturaAnatomicaDetalhe }
+    : { localAplicacao, guia, estruturaAnatomica };
 }
 
 /**
@@ -42,6 +48,7 @@ export function parseApplicationSites(value: unknown): RegenApplicationSite[] | 
     || typeof (item as Record<string, unknown>).localAplicacao !== "string"
     || typeof (item as Record<string, unknown>).guia !== "string"
     || !["undefined", "string"].includes(typeof (item as Record<string, unknown>).estruturaAnatomica)
+    || !["undefined", "string"].includes(typeof (item as Record<string, unknown>).estruturaAnatomicaDetalhe)
   ))) return null;
   const rows = parsed.map(asSite);
   if (rows.some(row => row === null)) return null;
@@ -76,4 +83,20 @@ export function synchronizeApplicationSiteLegacyFields(
     localAplicacao: sites[0].localAplicacao,
     guia: sites[0].guia,
   };
+}
+
+/**
+ * Catalog labels of the case's anatomical structures ("; "-separated, in the
+ * given locale), for the anonymised research export. Only catalog labels:
+ * the free-text complement and unknown values are never exported.
+ */
+export function anatomicalSiteLabelsForResearch(
+  productDetails: Record<string, string> | null | undefined,
+  locale: "pt-BR" | "es" = "pt-BR",
+): string {
+  const labels = applicationSitesForProductDetails(productDetails)
+    .map(site => applicationAnatomicalSite(site.estruturaAnatomica))
+    .filter((site): site is NonNullable<typeof site> => site !== null)
+    .map(site => site.label[locale]);
+  return [...new Set(labels)].join("; ");
 }

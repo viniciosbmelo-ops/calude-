@@ -3,7 +3,9 @@
  * Fictional data only; runs against the disposable stack from global-setup.ts.
  */
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
-import { DB, DOCREGEN_DOCTOR, DOCREGEN_OTHER_DOCTOR, RUN_ID } from "../support/env";
+import fs from "node:fs";
+import path from "node:path";
+import { DB, DOCREGEN_DOCTOR, DOCREGEN_OTHER_DOCTOR, RUN_ID, SCREENSHOT_DIR } from "../support/env";
 import {
   FICTIONAL_PNG, answerPreConsult, expectNoInvalidDate, fakeCpf, fillDate, failShot, fillVisibleFields, formatCpf, isoToBr, isoToday, shot, sql, trackPageErrors,
 } from "../support/helpers";
@@ -283,13 +285,13 @@ test("condral focal (no region) applied to the knee: SANE Joelho offered and ask
   condralCaseId = await createRegenCase("Outras regiões", /Lesão Condral Focal/, isoToBr(isoToday(-10)), async () => {
     await page.getByRole("button", { name: /^PRP/ }).first().click();
     const structure = page.getByTestId("application-structure-0");
-    await structure.selectOption("JOELHO");
-    await expect(structure).toHaveValue("JOELHO");
+    await structure.selectOption({ label: "Intra-articular (tibiofemoral)" });
+    await expect(structure).toHaveValue("JOELHO_TIBIOFEMORAL");
     await structure.scrollIntoViewIfNeeded();
     await shot(page, APP, "30-condral-application-site-knee");
   });
   expect(sql(DB.docregen, `SELECT condition_code FROM regen_cases WHERE id = '${condralCaseId}'`)).toBe("CONDRAL_FOCAL");
-  expect(sql(DB.docregen, `SELECT product_details->>'locaisAplicacao' FROM regen_cases WHERE id = '${condralCaseId}'`)).toContain('"estruturaAnatomica":"JOELHO"');
+  expect(sql(DB.docregen, `SELECT product_details->>'locaisAplicacao' FROM regen_cases WHERE id = '${condralCaseId}'`)).toContain('"estruturaAnatomica":"JOELHO_TIBIOFEMORAL"');
 
   // Clinician side: the schedule lists VAS + SANE Joelho.
   const startSchedule = page.getByRole("button", { name: /Iniciar Cronograma/ });
@@ -342,6 +344,81 @@ test("condral focal (no region) applied to the knee: SANE Joelho offered and ask
   await shot(page, APP, "32-condral-proms-sane-joelho");
 });
 
+let pulleyCaseId: string;
+
+test("tendinopathy applied to the A1 pulley: grouped anatomical select, patient link asks SANE Punho e Mão", async ({ browser }) => {
+  pulleyCaseId = await createRegenCase("Outras regiões", /^Tendinopatia$/, isoToBr(isoToday(-5)), async () => {
+    await page.getByRole("button", { name: /^PRP/ }).first().click();
+    const structure = page.getByTestId("application-structure-0");
+    // Region headers (optgroups) in display order; legacy codes are not offered.
+    expect(await structure.locator("optgroup").evaluateAll((groups) => groups.map((g) => (g as HTMLOptGroupElement).label))).toEqual([
+      "Ombro", "Cotovelo", "Punho e Mão", "Quadril", "Joelho", "Tornozelo e Pé", "Coluna", "Pelve", "Outros",
+    ]);
+    await expect(structure.locator('optgroup[label="Punho e Mão"] option')).toHaveText([
+      "Articulação radiocarpal", "1º compartimento extensor (De Quervain)", "Túnel do carpo",
+      "Articulação trapeziometacarpiana (rizartrose)", "Polia A1 (dedo em gatilho)", "Articulações interfalângicas/metacarpofalângicas",
+    ]);
+    await expect(structure.locator('option[value="JOELHO"]')).toHaveCount(0);
+    await structure.selectOption({ label: "Polia A1 (dedo em gatilho)" });
+    await expect(structure).toHaveValue("MAO_POLIA_A1");
+    // Screenshot of the grouped list: render the native select expanded inline.
+    await structure.scrollIntoViewIfNeeded();
+    await structure.evaluate((el) => { (el as HTMLSelectElement).size = 18; });
+    const dir = path.join(SCREENSHOT_DIR, APP);
+    fs.mkdirSync(dir, { recursive: true });
+    await structure.screenshot({ path: path.join(dir, "33-anatomical-structure-grouped-select.png") });
+    await shot(page, APP, "33b-anatomical-structure-grouped-select-page");
+    await structure.evaluate((el) => { (el as HTMLSelectElement).size = 0; });
+    // "Músculo"/"Outro" ask for free text; other structures do not.
+    await expect(page.getByTestId("application-structure-detail-0")).toHaveCount(0);
+  });
+  expect(sql(DB.docregen, `SELECT condition_code FROM regen_cases WHERE id = '${pulleyCaseId}'`)).toBe("TENDINOPATIA");
+  expect(sql(DB.docregen, `SELECT product_details->>'locaisAplicacao' FROM regen_cases WHERE id = '${pulleyCaseId}'`)).toContain('"estruturaAnatomica":"MAO_POLIA_A1"');
+  await expect(page.getByText(/Polia A1 \(dedo em gatilho\)/).filter({ visible: true }).first()).toBeVisible();
+
+  const startSchedule = page.getByRole("button", { name: /Iniciar Cronograma/ });
+  if (await startSchedule.waitFor({ timeout: 3_000 }).then(() => true, () => false)) await startSchedule.click();
+  await expect(page.getByText("SANE Punho e Mão").filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText("SANE Joelho")).toHaveCount(0);
+  const copyLink = page.getByRole("button", { name: /^Copiar link$/ }).first();
+  const prepared = page.waitForResponse((r) => /\/prepare-whatsapp$/.test(r.url()));
+  await copyLink.click();
+  const { link, message } = await (await prepared).json() as { link: string; message: string };
+  expect(message).toContain("SANE Punho e Mão");
+  expect(sql(DB.docregen, `SELECT DISTINCT array_to_string(scales, '|') FROM regen_followup_notifications WHERE case_id = '${pulleyCaseId}'`)).toBe("VAS Dor|SANE Punho e Mão");
+
+  const patientContext = await browser.newContext();
+  const patientPage = await patientContext.newPage();
+  try {
+    await patientPage.goto(new URL(link).pathname);
+    await patientPage.locator("#cpf").fill(formatCpf(PATIENT.cpf));
+    await patientPage.getByRole("button", { name: "Acessar questionários" }).click();
+    const vas = patientPage.getByRole("slider").first();
+    await expect(vas).toBeVisible();
+    await vas.focus();
+    await vas.press("Home");
+    for (let i = 0; i < 4; i++) await vas.press("ArrowRight");
+    await patientPage.getByRole("button", { name: /Próxima escala/ }).click();
+    await expect(patientPage.getByText("Avaliação do punho e mão (SANE)").first()).toBeVisible();
+    await expect(patientPage.getByText(/sendo 100 um punho\/uma mão completamente normal/).first()).toBeVisible();
+    const sane = patientPage.getByRole("slider").first();
+    await sane.focus();
+    await sane.press("Home");
+    for (let i = 0; i < 8; i++) await sane.press("PageUp");
+    await shot(patientPage, APP, "34-patient-sane-punho-mao-polia-a1");
+    await patientPage.getByRole("button", { name: /^Concluir$/ }).click();
+    await expect(patientPage.getByText("Tudo concluído!")).toBeVisible();
+  } catch (error) {
+    await failShot(patientPage, APP, "patient-polia-a1");
+    throw error;
+  } finally {
+    await patientContext.close();
+  }
+  const stored = sql(DB.docregen, `SELECT r.nome_escala FROM regen_scale_responses r
+    JOIN regen_followup_notifications n ON n.id = r.notification_id WHERE n.case_id = '${pulleyCaseId}' ORDER BY r.nome_escala`);
+  expect(stored.split("\n")).toEqual(["SANE Punho e Mão", "VAS Dor"]);
+});
+
 test("licensed scale names (KOOS) are rejected by the API", async () => {
   for (const instrument of ["KOOS", "WOMAC", "IKDC"]) {
     const response = await page.request.post(`/regen-api/regen/cases/${kneeCaseId}/proms`, {
@@ -382,7 +459,7 @@ test("agenda: create and edit an appointment with DD/MM/AAAA date and HH:MM time
 test("dashboard counts", async () => {
   await page.goto("/docregen/dashboard");
   const kpi = (label: string) => page.locator("div.rounded-2xl", { has: page.getByText(label, { exact: true }) }).first();
-  await expect(kpi("Casos regenerativos").locator("p.text-3xl")).toHaveText("3");
+  await expect(kpi("Casos regenerativos").locator("p.text-3xl")).toHaveText("4"); // knee, shoulder, condral focal, A1 pulley
   await expect(kpi("Consultas em 7 dias").locator("p.text-3xl")).toHaveText("1");
   await expectNoInvalidDate(page);
   await shot(page, APP, "20-dashboard");
@@ -420,11 +497,11 @@ test("research export CSV download contains the expected columns", async () => {
   const download = await downloadPromise;
   const csv = (await (await download.createReadStream()).toArray()).map(String).join("");
   const [header, ...lines] = csv.trim().split(/\r?\n/);
-  for (const column of ["id", "age", "sex", "imc", "condition", "status", "procedure_count", "adverse_events", "avg_vas", "created_at"]) {
+  for (const column of ["id", "age", "sex", "imc", "condition", "anatomical_sites", "status", "procedure_count", "adverse_events", "avg_vas", "created_at"]) {
     expect(header.split(",")).toContain(column);
   }
   expect(header).toMatch(/sane_knee_baseline|sane_joelho_baseline|_baseline/);
-  expect(lines).toHaveLength(3);
+  expect(lines).toHaveLength(4);
   expect(csv).toContain("OA_JOELHO_KL3");
   // The patient's own VAS (follow-up link) feeds avg_vas; the knee SANE the change columns.
   const cols = header.split(",");
@@ -436,6 +513,10 @@ test("research export CSV download contains the expected columns", async () => {
   expect(condral[cols.indexOf("condition")]).toBe("CONDRAL_FOCAL");
   expect(condral[cols.indexOf("sane_region")]).toBe("sane_joelho");
   expect(condral[cols.indexOf("sane_joelho_last")]).toBe("60");
+  expect(condral[cols.indexOf("anatomical_sites")]).toBe("Intra-articular (tibiofemoral)");
+  const pulley = lines.map((l) => l.split(",")).find((c) => c[cols.indexOf("id")] === pulleyCaseId)!;
+  expect(pulley[cols.indexOf("anatomical_sites")]).toBe("Polia A1 (dedo em gatilho)");
+  expect(pulley[cols.indexOf("sane_region")]).toBe("sane_punho_mao");
   expect(csv).not.toContain(PATIENT.nome);
   expect(csv).not.toContain(PATIENT.cpf);
 });

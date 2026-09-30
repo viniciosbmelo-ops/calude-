@@ -153,7 +153,7 @@ export function isSaneRegionInstrument(name: unknown): boolean {
 
 /**
  * Região anatômica (grupos do catálogo de condições) → SANE recomendado.
- * Cervical, torácica e lombar compartilham o SANE Coluna. Regiões sem
+ * Cervical, torácica, lombar e coluna sem nível compartilham o SANE Coluna. Regiões sem
  * articulação/segmento definido ("outras") não têm SANE: só VAS.
  */
 const BY_BODY_REGION: Readonly<Record<string, SaneRegionCode>> = {
@@ -165,7 +165,9 @@ const BY_BODY_REGION: Readonly<Record<string, SaneRegionCode>> = {
   punho_mao: 'SANE_PUNHO_MAO',
   coluna_cervical: 'SANE_COLUNA',
   coluna_toracica: 'SANE_COLUNA',
-  coluna_lombar: 'SANE_COLUNA'
+  coluna_lombar: 'SANE_COLUNA',
+  // Coluna sem nível definido (local de aplicação peridural/intradiscal).
+  coluna: 'SANE_COLUNA'
 };
 
 export function saneForBodyRegion(region: string | null | undefined): SaneRegionDef | null {

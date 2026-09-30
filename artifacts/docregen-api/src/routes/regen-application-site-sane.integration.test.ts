@@ -39,7 +39,7 @@ function call(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
-type Site = { localAplicacao?: string; guia?: string; estruturaAnatomica?: string };
+type Site = { localAplicacao?: string; guia?: string; estruturaAnatomica?: string; estruturaAnatomicaDetalhe?: string };
 const sites = (...rows: Site[]) => ({
   locaisAplicacao: JSON.stringify(rows.map((row) => ({ localAplicacao: "", guia: "", ...row }))),
 });
@@ -163,6 +163,42 @@ describe("schedule: region-less conditions take the application site's region SA
       conditionCode: "SINOVITE",
       productDetails: sites({ estruturaAnatomica: "JOELHO" }, { estruturaAnatomica: "SACROILIACA" }),
     })).toEqual(["VAS Dor"]);
+  });
+
+  it("expanded catalog: Polia A1 → Punho e Mão, Facetária lombar / peridural → Coluna, Sacroilíaca → VAS only", async () => {
+    expect(await scheduledScales({
+      conditionCode: "TENDINOPATIA",
+      productDetails: sites({ localAplicacao: "Tecido periarticular", guia: "Ultrassom", estruturaAnatomica: "MAO_POLIA_A1" }),
+    })).toEqual(["VAS Dor", "SANE Punho e Mão"]);
+    expect(await scheduledScales({
+      conditionCode: "CONDRAL_FOCAL",
+      productDetails: sites({ estruturaAnatomica: "COLUNA_FACETARIA_LOMBAR" }, { estruturaAnatomica: "COLUNA_PERIDURAL" }),
+    })).toEqual(["VAS Dor", "SANE Coluna"]);
+    expect(await scheduledScales({
+      conditionCode: "CONDRAL_FOCAL",
+      productDetails: sites({ estruturaAnatomica: "SACROILIACA" }),
+    })).toEqual(["VAS Dor"]);
+    // A legacy code and a new code in the same region still agree.
+    expect(await scheduledScales({
+      conditionCode: "CONDRAL_FOCAL",
+      productDetails: sites({ estruturaAnatomica: "MENISCO" }, { estruturaAnatomica: "JOELHO_MENISCO_LATERAL" }),
+    })).toEqual(["VAS Dor", "SANE Joelho"]);
+  });
+
+  it("accepts the free-text complement of 'Músculo (especificar)' and rejects a non-string one", async () => {
+    expect(await scheduledScales({
+      conditionCode: "TENDINOPATIA",
+      productDetails: sites({ estruturaAnatomica: "MUSCULO", estruturaAnatomicaDetalhe: "reto femoral" }),
+    })).toEqual(["VAS Dor"]);
+    const res = await call("/regen/cases", {
+      method: "POST",
+      body: JSON.stringify({
+        patientName: "Paciente Fictício Local",
+        conditionCode: "TENDINOPATIA",
+        productDetails: { locaisAplicacao: JSON.stringify([{ localAplicacao: "", guia: "", estruturaAnatomica: "MUSCULO", estruturaAnatomicaDetalhe: 3 }]) },
+      }),
+    });
+    expect(res.status).toBe(400);
   });
 
   it("a condition with a region keeps its own SANE whatever the site", async () => {
@@ -296,5 +332,29 @@ describe("research export: sane_region follows the same rule", () => {
     const line = lines.find((l) => l.startsWith(knee.id))!.split(",");
     expect(line[cols.indexOf("sane_region")]).toBe("sane_joelho");
     expect(csv).not.toContain("locaisAplicacao");
+  });
+
+  it("exports the anatomical labels (catalog labels only, never the free text)", async () => {
+    const pulley = await createCase({ conditionCode: "TENDINOPATIA", productDetails: sites({ estruturaAnatomica: "MAO_POLIA_A1" }) });
+    const legacy = await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "MENISCO" }, { estruturaAnatomica: "JOELHO_CISTO_BAKER" }) });
+    const muscle = await createCase({
+      conditionCode: "TENDINOPATIA",
+      productDetails: sites({ estruturaAnatomica: "MUSCULO", estruturaAnatomicaDetalhe: "Texto livre identificável" }),
+    });
+    const none = await createCase({ conditionCode: "OA_OMBRO" });
+    const rows = await j(await call(`/regen/research`));
+    const byId = new Map(rows.map((row: { id: string }) => [row.id, row]));
+    expect(byId.get(pulley.id)).toMatchObject({ anatomical_sites: "Polia A1 (dedo em gatilho)", sane_region: "sane_punho_mao" });
+    expect(byId.get(legacy.id)).toMatchObject({ anatomical_sites: "Menisco; Cisto de Baker", sane_region: "sane_joelho" });
+    expect(byId.get(muscle.id)).toMatchObject({ anatomical_sites: "Músculo (especificar)", sane_region: null });
+    expect(byId.get(none.id)).toMatchObject({ anatomical_sites: null });
+
+    const csv = await (await call(`/regen/research?format=csv`)).text();
+    const [header, ...lines] = csv.split("\r\n");
+    const cols = header!.split(",");
+    expect(cols.indexOf("anatomical_sites")).toBe(cols.indexOf("sane_region") + 1);
+    const line = lines.find((l) => l.startsWith(pulley.id))!.split(",");
+    expect(line[cols.indexOf("anatomical_sites")]).toBe("Polia A1 (dedo em gatilho)");
+    expect(csv).not.toContain("Texto livre identificável");
   });
 });

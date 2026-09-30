@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { REGEN_CONDITION_CATALOG, LEGACY_REGEN_CONDITIONS } from "./regen-conditions";
 import { SANE_REGIONS, saneDefForName, saneForCase, saneForCondition, saneLabel, saneQuestion } from "./regen-sane";
 import { syncApplicationSites } from "./regen-application-sites";
-import { APPLICATION_ANATOMICAL_SITES } from "@workspace/clinical/application-sites";
+import { APPLICATION_ANATOMICAL_SITES, LEGACY_APPLICATION_ANATOMICAL_SITES } from "@workspace/clinical/application-sites";
 import { buildPromTimeline, normalizePromInstrument, promSeries, scheduleRowsForCase } from "./regen-case-detail";
 import { assessChange, promDirection } from "./regen-knee-measures";
 import { getRegenScales } from "@/locales/regen-questionnaire";
@@ -39,10 +39,18 @@ describe("case SANE from the application sites (conditions without a region)", (
     expect(saneForCase("OA_OMBRO", details("JOELHO"))?.scale).toBe("SANE Ombro");
   });
 
+  it("new catalog codes: Polia A1 → Punho e Mão, Facetária lombar → Coluna, Sacroilíaca → VAS only", () => {
+    expect(saneForCase("TENDINOPATIA", details("MAO_POLIA_A1"))?.scale).toBe("SANE Punho e Mão");
+    expect(saneForCase("CONDRAL_FOCAL", details("COLUNA_FACETARIA_LOMBAR"))?.scale).toBe("SANE Coluna");
+    expect(saneForCase("CONDRAL_FOCAL", details("COLUNA_PERIDURAL"))?.scale).toBe("SANE Coluna");
+    expect(saneForCase("CONDRAL_FOCAL", details("SACROILIACA"))).toBeNull();
+    expect(saneForCase("CONDRAL_FOCAL", details("JOELHO_MENISCO_MEDIAL", "MENISCO"))?.scale).toBe("SANE Joelho");
+  });
+
   it("agrees with the API for every region-less condition × anatomical site, and for the schedule", () => {
     const regionless = [...REGEN_CONDITION_CATALOG.filter((c) => c.region === "outras").map((c) => c.code), ...Object.keys(LEGACY_REGEN_CONDITIONS)];
     for (const code of regionless) {
-      for (const site of APPLICATION_ANATOMICAL_SITES) {
+      for (const site of [...APPLICATION_ANATOMICAL_SITES, ...LEGACY_APPLICATION_ANATOMICAL_SITES]) {
         const pd = details(site.code);
         const web = saneForCase(code, pd)?.code ?? null;
         expect(web, `${code}/${site.code}`).toBe(apiSane.saneForCase(code, pd)?.code ?? null);

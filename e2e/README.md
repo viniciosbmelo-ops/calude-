@@ -53,8 +53,10 @@ resetting the databases.
   exam upload → doctor sees answers and downloads the exam; knee OA KL3 and shoulder
   regenerative cases; menu "Procedimentos" and case tab "Aplicações" (routes stay
   `/regen`); application; patient PROM link (VAS + region SANE) → PROMs tab and chart;
-  condral-focal case applied to the knee → patient link asks SANE Joelho; knee functional test; KOOS/WOMAC/IKDC rejected by the API; agenda
-  create/edit; dashboard counts; follow-up central dates; reports; research CSV;
+  condral-focal case applied to the knee → patient link asks SANE Joelho; grouped
+  "Estrutura anatômica" select (region headers) → tendinopathy on the A1 pulley → patient
+  link asks SANE Punho e Mão; knee functional test; KOOS/WOMAC/IKDC rejected by the API; agenda
+  create/edit; dashboard counts; follow-up central dates; reports; research CSV (incl. anatomical labels);
   secretary (isolation from another doctor); logout.
   `docregen/dates.en-us.ts`: the same date contract with an en-US browser.
 - **DocKnee** (`docknee/docknee.spec.ts`): login; patient; pré-consulta with upload;

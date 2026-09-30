@@ -29,6 +29,8 @@ interface ResearchRow {
   sex: string | null;
   imc: number | null;
   condition: string;
+  /** Catalog labels of the anatomical application sites ("; "-separated). */
+  anatomical_sites?: string | null;
   status: string;
   procedure_count: number;
   adverse_events: number;
@@ -266,7 +268,7 @@ export default function RegenPesquisa() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),...changeColumns.map(col => `Δ ${col.header}`),"DM",t("registration")].map(h => (
+                       {[t("age"),t("sex"),"IMC",t("diagnosis"),t("anatomicalStructure"),"Status","Proced.",t("adverseEvents"),t("averageVas"),...changeColumns.map(col => `Δ ${col.header}`),"DM",t("registration")].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -278,6 +280,7 @@ export default function RegenPesquisa() {
                         <td className="px-3 py-2 text-gray-700">{r.sex === "M" ? "M" : r.sex === "F" ? "F" : "—"}</td>
                         <td className="px-3 py-2 text-gray-700">{r.imc ?? "—"}</td>
                         <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{regenConditionLabel(r.condition, locale)}</td>
+                        <td className="px-3 py-2 text-gray-700" data-testid="research-anatomical-sites">{r.anatomical_sites || "—"}</td>
                         <td className="px-3 py-2">
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             r.status === "active" ? "bg-green-50 text-green-700" :

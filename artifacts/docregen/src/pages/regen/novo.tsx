@@ -50,14 +50,14 @@ import { complianceFlagText } from "@/locales/regen-compliance";
 import {
   APPLICATION_GUIDES,
   APPLICATION_SITE_LOCATIONS,
-  anatomicalSiteLabel,
-  APPLICATION_ANATOMICAL_SITES,
+  anatomicalSiteDisplay,
   emptyApplicationSite,
   parseApplicationSites,
   syncApplicationSites,
   type RegenApplicationSite,
 } from "@/lib/regen-application-sites";
 import { DateInput } from "@/components/ui/date-input";
+import { AnatomicalStructureSelect } from "@/components/anatomical-structure-select";
 import { TermsModal, useRegenTermsGate } from "@/components/regen-terms-modal";
 
 function authHdr() {
@@ -1997,20 +1997,23 @@ export default function RegenNovo() {
                        <div className="grid gap-3 sm:grid-cols-2">
                          <div className="flex flex-col gap-1 sm:col-span-2">
                            <label htmlFor={`application-structure-${index}`} className="text-xs font-medium text-gray-600">{t("anatomicalStructure")}</label>
-                           <select
-                             id={`application-structure-${index}`}
-                             data-testid={`application-structure-${index}`}
+                           <AnatomicalStructureSelect
+                             index={index}
                              value={site.estruturaAnatomica ?? ""}
-                             onChange={e => updateApplicationSites(applicationSites.map((current, siteIndex) =>
-                               siteIndex === index ? { ...current, estruturaAnatomica: e.target.value } : current,
+                             detail={site.estruturaAnatomicaDetalhe ?? ""}
+                             locale={locale}
+                             labels={{
+                               placeholder: t("selectDash"),
+                               previous: t("anatomicalStructurePrevious"),
+                               detail: t("anatomicalStructureDetail"),
+                             }}
+                             onChange={value => updateApplicationSites(applicationSites.map((current, siteIndex) =>
+                               siteIndex === index ? { ...current, estruturaAnatomica: value } : current,
                              ))}
-                             className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                           >
-                             <option value="">{t("selectDash")}</option>
-                             {APPLICATION_ANATOMICAL_SITES.map(option => (
-                               <option key={option.code} value={option.code}>{anatomicalSiteLabel(option.code, locale)}</option>
+                             onDetailChange={detail => updateApplicationSites(applicationSites.map((current, siteIndex) =>
+                               siteIndex === index ? { ...current, estruturaAnatomicaDetalhe: detail } : current,
                              ))}
-                           </select>
+                           />
                          </div>
                          <div className="flex flex-col gap-1">
                            <label className="text-xs font-medium text-gray-600">{t("anatomicalCompartment")}</label>
@@ -2336,7 +2339,7 @@ export default function RegenNovo() {
                        {parseApplicationSites(productDetails).map((site, index) => (
                          <div key={index} className={cn("space-y-1 px-4 py-2.5 text-sm", index % 2 === 0 ? "bg-white" : "bg-gray-50")}>
                            <span className="text-muted-foreground">{t("applicationSite", { count: index + 1 })}</span>
-                           {site.estruturaAnatomica && <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground">{t("anatomicalStructure")}</span><span className="font-medium text-gray-900 text-right">{anatomicalSiteLabel(site.estruturaAnatomica, locale)}</span></div>}
+                           {site.estruturaAnatomica && <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground">{t("anatomicalStructure")}</span><span className="font-medium text-gray-900 text-right">{anatomicalSiteDisplay(site, locale)}</span></div>}
                            {site.localAplicacao && <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground">{t("anatomicalLocation")}</span><span className="font-medium text-gray-900 text-right">{displayLabel(site.localAplicacao)}</span></div>}
                            {site.guia && <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground">{t("applicationGuide")}</span><span className="font-medium text-gray-900 text-right">{displayLabel(site.guia)}</span></div>}
                          </div>

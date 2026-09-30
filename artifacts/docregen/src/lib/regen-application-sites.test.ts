@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  APPLICATION_ANATOMICAL_SITE_GROUPS,
+  anatomicalSiteDisplay,
   anatomicalSiteLabel,
+  anatomicalSiteNeedsDetail,
+  isOfferedAnatomicalSite,
   parseApplicationSites,
   syncApplicationSites,
 } from "./regen-application-sites";
@@ -71,5 +75,43 @@ describe("regenerative application sites", () => {
     expect(anatomicalSiteLabel("TENDAO_AQUILES", "pt-BR")).toBe("Tendão de Aquiles");
     expect(anatomicalSiteLabel("TENDAO_AQUILES", "es")).toBe("Tendón de Aquiles");
     expect(anatomicalSiteLabel("Livre", "es")).toBe("Livre");
+  });
+
+  it("labels new codes and legacy aliases in pt-BR and es", () => {
+    expect(anatomicalSiteLabel("MAO_POLIA_A1", "pt-BR")).toBe("Polia A1 (dedo em gatilho)");
+    expect(anatomicalSiteLabel("MAO_POLIA_A1", "es")).toBe("Polea A1 (dedo en gatillo)");
+    expect(anatomicalSiteLabel("COLUNA_FACETARIA_LOMBAR", "es")).toBe("Facetaria lumbar");
+    expect(anatomicalSiteLabel("JOELHO", "pt-BR")).toBe("Joelho");
+    expect(anatomicalSiteLabel("MENISCO", "es")).toBe("Menisco");
+  });
+
+  it("offers only the current catalog; legacy/unknown values are kept apart", () => {
+    expect(isOfferedAnatomicalSite("")).toBe(true);
+    expect(isOfferedAnatomicalSite("JOELHO_TIBIOFEMORAL")).toBe(true);
+    expect(isOfferedAnatomicalSite("SACROILIACA")).toBe(true);
+    expect(isOfferedAnatomicalSite("JOELHO")).toBe(false);
+    expect(isOfferedAnatomicalSite("Texto antigo")).toBe(false);
+    expect(APPLICATION_ANATOMICAL_SITE_GROUPS.map(({ group, sites }) => [group.code, sites.length])).toEqual([
+      ["ombro", 6], ["cotovelo", 4], ["punho_mao", 6], ["quadril", 5], ["joelho", 11],
+      ["pe_tornozelo", 6], ["coluna", 5], ["pelve", 1], ["outros", 2],
+    ]);
+  });
+
+  it("keeps the free-text complement only for Músculo/Outro (especificar)", () => {
+    expect(anatomicalSiteNeedsDetail("MUSCULO")).toBe(true);
+    expect(anatomicalSiteNeedsDetail("OUTRO")).toBe(true);
+    expect(anatomicalSiteNeedsDetail("MAO_POLIA_A1")).toBe(false);
+    const result = syncApplicationSites({}, [
+      { localAplicacao: "", guia: "", estruturaAnatomica: "MUSCULO", estruturaAnatomicaDetalhe: " reto femoral " },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "MAO_POLIA_A1", estruturaAnatomicaDetalhe: "stale" },
+    ]);
+    expect(JSON.parse(result.locaisAplicacao)).toEqual([
+      { localAplicacao: "", guia: "", estruturaAnatomica: "MUSCULO", estruturaAnatomicaDetalhe: "reto femoral" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "MAO_POLIA_A1" },
+    ]);
+    const [muscle, pulley] = parseApplicationSites(result);
+    expect(anatomicalSiteDisplay(muscle, "pt-BR")).toBe("Músculo (especificar): reto femoral");
+    expect(anatomicalSiteDisplay(pulley, "es")).toBe("Polea A1 (dedo en gatillo)");
+    expect(anatomicalSiteDisplay({ localAplicacao: "Intra-articular", guia: "" }, "pt-BR")).toBe("");
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  anatomicalSiteLabelsForResearch,
   applicationSitesForProductDetails,
   hasValidApplicationSitesExtension,
   synchronizeApplicationSiteLegacyFields,
@@ -49,5 +50,31 @@ describe("regen application-site API boundary", () => {
       guia: "Fluoroscopia",
       observacoes: "Preservar",
     });
+  });
+});
+
+describe("anatomical structure fields", () => {
+  const details = (rows: Record<string, unknown>[]) => ({ locaisAplicacao: JSON.stringify(rows) });
+
+  it("keeps the free-text complement and validates its type", () => {
+    const pd = details([{ localAplicacao: "", guia: "", estruturaAnatomica: "OUTRO", estruturaAnatomicaDetalhe: "ligamento anular" }]);
+    expect(applicationSitesForProductDetails(pd)).toEqual([
+      { localAplicacao: "", guia: "", estruturaAnatomica: "OUTRO", estruturaAnatomicaDetalhe: "ligamento anular" },
+    ]);
+    expect(hasValidApplicationSitesExtension(details([{ localAplicacao: "", guia: "", estruturaAnatomica: "OUTRO", estruturaAnatomicaDetalhe: 1 }]))).toBe(false);
+  });
+
+  it("research labels: catalog labels in the doctor's language, legacy aliases included, free text and unknown values never", () => {
+    const pd = details([
+      { localAplicacao: "", guia: "", estruturaAnatomica: "MAO_POLIA_A1" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "PUNHO" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "OUTRO", estruturaAnatomicaDetalhe: "Nome do paciente" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "Valor desconhecido" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "MAO_POLIA_A1" },
+    ]);
+    expect(anatomicalSiteLabelsForResearch(pd)).toBe("Polia A1 (dedo em gatilho); Punho; Outro (especificar)");
+    expect(anatomicalSiteLabelsForResearch(pd, "es")).toBe("Polea A1 (dedo en gatillo); Muñeca; Otro (especificar)");
+    expect(anatomicalSiteLabelsForResearch({})).toBe("");
+    expect(anatomicalSiteLabelsForResearch(null)).toBe("");
   });
 });

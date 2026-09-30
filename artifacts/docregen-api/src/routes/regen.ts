@@ -39,6 +39,7 @@ import {
 } from "../lib/regen-knee-measures";
 import { SANE_REGIONS, saneForCase, saneRegionByInstrument, siteDerivedSane } from "../lib/regen-sane";
 import {
+  anatomicalSiteLabelsForResearch,
   applicationSitesForProductDetails,
   hasValidApplicationSitesExtension,
   synchronizeApplicationSiteLegacyFields,
@@ -978,8 +979,13 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
     // Region SANE the case asks (condition region, else the single region of
     // its application sites; see saneForCase), computed from current data.
     // product_details is only read here, never exported.
+    // anatomical_sites: catalog labels of the application sites in the
+    // doctor's language (never the free-text complement, which could
+    // identify the patient).
+    const researchLocale = rows.length ? await localeForDoctorId(req.doctorId) : "pt-BR";
     for (const row of rows as any[]) {
       row.sane_region = saneForCase(row.condition, row.product_details)?.researchKey ?? null;
+      row.anatomical_sites = anatomicalSiteLabelsForResearch(row.product_details, researchLocale) || null;
       delete row.product_details;
     }
 
@@ -1031,7 +1037,7 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
     }
 
     if (format === "csv") {
-      const cols = ["id","age","sex","imc","condition","sane_region","status","procedure_count",
+      const cols = ["id","age","sex","imc","condition","sane_region","anatomical_sites","status","procedure_count",
                     "adverse_events","avg_vas","dm","created_at",
                     ...RESEARCH_MEASURE_KEYS.flatMap(key => [`${key}_baseline`, `${key}_last`, `${key}_change`])];
       const header = cols.join(",");

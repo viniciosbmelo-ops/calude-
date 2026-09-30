@@ -10,6 +10,8 @@
 import {
   APPLICATION_ANATOMICAL_SITES,
   applicationAnatomicalSite,
+  applicationAnatomicalSiteLabel,
+  groupedApplicationAnatomicalSites,
 } from "@workspace/clinical/application-sites";
 
 export interface RegenApplicationSite {
@@ -17,20 +19,57 @@ export interface RegenApplicationSite {
   guia: string;
   /**
    * Anatomical site code (APPLICATION_ANATOMICAL_SITES in
-   * @workspace/clinical/application-sites). Optional: older rows have none.
+   * @workspace/clinical/application-sites, or a legacy alias). Optional:
+   * older rows have none.
    */
   estruturaAnatomica?: string;
+  /** Free text for "Músculo (especificar)" / "Outro (especificar)". */
+  estruturaAnatomicaDetalhe?: string;
 }
 
 export const APPLICATION_SITES_KEY = "locaisAplicacao";
 
 export { APPLICATION_ANATOMICAL_SITES };
 
-/** Display label of an anatomical site code in the given locale (unknown values as-is). */
+/** Current catalog grouped by region (select optgroups), in display order. */
+export const APPLICATION_ANATOMICAL_SITE_GROUPS = groupedApplicationAnatomicalSites();
+
+/**
+ * Display label of an anatomical site code (current or legacy alias) in the
+ * given locale; unknown values are returned as-is.
+ */
 export function anatomicalSiteLabel(value: string, locale: string): string {
-  const site = applicationAnatomicalSite(value);
-  if (!site) return value;
-  return locale.startsWith("es") ? site.label.es : site.label["pt-BR"];
+  return applicationAnatomicalSiteLabel(value, locale);
+}
+
+/** Localised label of an anatomical-site group (region header). */
+export function anatomicalSiteGroupLabel(
+  group: (typeof APPLICATION_ANATOMICAL_SITE_GROUPS)[number]["group"],
+  locale: string,
+): string {
+  return locale.startsWith("es") ? group.label.es : group.label["pt-BR"];
+}
+
+/** Whether the code asks for a free-text complement ("especificar"). */
+export function anatomicalSiteNeedsDetail(value: string | undefined): boolean {
+  return Boolean(value && applicationAnatomicalSite(value)?.freeText);
+}
+
+/**
+ * Whether a stored value is not offered by the current select (legacy alias or
+ * unknown text), so the form keeps it as an extra option instead of dropping it.
+ */
+export function isOfferedAnatomicalSite(value: string | undefined): boolean {
+  return !value || APPLICATION_ANATOMICAL_SITES.some(site => site.code === value);
+}
+
+/** Label plus the free-text complement, e.g. "Músculo (especificar): reto femoral". */
+export function anatomicalSiteDisplay(site: RegenApplicationSite, locale: string): string {
+  const structure = (site.estruturaAnatomica ?? "").trim();
+  if (!structure) return "";
+  const label = anatomicalSiteLabel(structure, locale);
+  const detail = (site.estruturaAnatomicaDetalhe ?? "").trim();
+  return detail ? `${label}: ${detail}` : label;
 }
 
 export const APPLICATION_SITE_LOCATIONS = [
@@ -58,10 +97,12 @@ function asSite(value: unknown): RegenApplicationSite | null {
   const localAplicacao = typeof row.localAplicacao === "string" ? row.localAplicacao : "";
   const guia = typeof row.guia === "string" ? row.guia : "";
   const estruturaAnatomica = typeof row.estruturaAnatomica === "string" ? row.estruturaAnatomica : "";
+  const estruturaAnatomicaDetalhe = typeof row.estruturaAnatomicaDetalhe === "string" ? row.estruturaAnatomicaDetalhe : "";
   if (!localAplicacao.trim() && !guia.trim() && !estruturaAnatomica.trim()) return null;
-  return estruturaAnatomica.trim()
-    ? { localAplicacao, guia, estruturaAnatomica }
-    : { localAplicacao, guia };
+  if (!estruturaAnatomica.trim()) return { localAplicacao, guia };
+  return estruturaAnatomicaDetalhe.trim()
+    ? { localAplicacao, guia, estruturaAnatomica, estruturaAnatomicaDetalhe }
+    : { localAplicacao, guia, estruturaAnatomica };
 }
 
 /**
@@ -105,10 +146,15 @@ export function syncApplicationSites(
   const rows = sites
     .map(site => {
       const estruturaAnatomica = (site.estruturaAnatomica ?? "").trim();
+      // The free-text complement only belongs to "especificar" structures.
+      const estruturaAnatomicaDetalhe = anatomicalSiteNeedsDetail(estruturaAnatomica)
+        ? (site.estruturaAnatomicaDetalhe ?? "").trim()
+        : "";
       return {
         localAplicacao: site.localAplicacao.trim(),
         guia: site.guia.trim(),
         ...(estruturaAnatomica ? { estruturaAnatomica } : {}),
+        ...(estruturaAnatomicaDetalhe ? { estruturaAnatomicaDetalhe } : {}),
       };
     })
     .filter(site => site.localAplicacao !== "" || site.guia !== "" || site.estruturaAnatomica !== undefined);

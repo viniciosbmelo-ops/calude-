@@ -48,7 +48,7 @@ import { sharePdfBlobOrDownload, handlePdfOpenClick } from "@/lib/pdf-share";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 import { complianceFlagText } from "@/locales/regen-compliance";
-import { anatomicalSiteLabel, parseApplicationSites } from "@/lib/regen-application-sites";
+import { anatomicalSiteDisplay, parseApplicationSites } from "@/lib/regen-application-sites";
 import { regenKneeMessages } from "@/locales/regen-knee";
 import { SANE_KNEE_CODE, assessChange, isKneeCondition, promDirection } from "@/lib/regen-knee-measures";
 import { KneeRecommendationHint, PerformanceTestsTab } from "@/components/regen-knee-measures";
@@ -3139,7 +3139,7 @@ export default function RegenCaso() {
                             <span className="text-gray-700 font-medium">{t("applicationSite", { count: index + 1 })}</span>
                             <span className="text-gray-500 text-right">
                               {[
-                                site.estruturaAnatomica ? anatomicalSiteLabel(site.estruturaAnatomica, locale) : "",
+                                anatomicalSiteDisplay(site, locale),
                                 ...[site.localAplicacao, site.guia].filter(Boolean).map(tr),
                               ].filter(Boolean).join(" · ")}
                             </span>
