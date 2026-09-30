@@ -20,6 +20,7 @@ import {
   isPreoperativePeriod,
 } from "./followup-schedule";
 import { resolveDoctorLocale } from "./locale";
+import { clinicToday } from "./calendar-date";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -78,7 +79,7 @@ interface ClaimedNotification {
  */
 export async function claimNextNotification(): Promise<ClaimedNotification | null> {
   while (true) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
     const now = new Date();
 
     const claimResult = await pool.query<{ id: number; surgeryId: number }>(
@@ -183,7 +184,7 @@ export async function claimNextNotification(): Promise<ClaimedNotification | nul
           .values({
             surgeryId: notif.surgeryId,
             tempo: notif.periodo,
-            dataAvaliacao: new Date().toISOString().slice(0, 10),
+            dataAvaliacao: clinicToday(),
             token,
             escalasEnviadas: filterSupportedFollowupScales(notif.scales),
           })

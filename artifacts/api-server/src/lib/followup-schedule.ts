@@ -1,3 +1,7 @@
+import { addDaysToCalendarDate, toCalendarDateKey } from "./calendar-date";
+
+const SURGERY_DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export interface ScheduleEntry {
   periodo: string;
   daysAfterSurgery: number;
@@ -86,6 +90,12 @@ export function resolveFollowupRegion(
 
 export function computeScheduledDate(dataCirurgia: string | null | undefined, daysAfterSurgery: number): string | null {
   if (!dataCirurgia) return null;
+  // Surgery dates are calendar dates ("YYYY-MM-DD"): pure calendar arithmetic,
+  // independent of the server timezone.
+  if (SURGERY_DATE_ONLY_RE.test(dataCirurgia.trim())) {
+    const key = toCalendarDateKey(dataCirurgia);
+    return key ? addDaysToCalendarDate(key, daysAfterSurgery, key) : null;
+  }
   const base = new Date(dataCirurgia);
   if (isNaN(base.getTime())) return null;
   const target = new Date(base);

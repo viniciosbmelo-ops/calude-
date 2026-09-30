@@ -13,6 +13,7 @@ import PDFDocument from "pdfkit";
 import { getBaseUrl } from "../lib/base-url";
 import { localeDate, localeForDoctorId, resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
+import { addDaysToCalendarDate, clinicToday, toCalendarDateKey } from "../lib/calendar-date";
 import { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
 import {
   applicationSitesForProductDetails,
@@ -490,7 +491,7 @@ const ProcedureBody = z.object({
   adverseEvent:      z.boolean().default(false),
   adverseEventDesc:  z.string().optional(),
   notes:             z.string().optional(),
-  performedAt:       z.string().optional(),
+  performedAt:       z.string().refine((v) => !Number.isNaN(Date.parse(v)), "invalid date").optional(),
   complianceResult:  z.record(z.string(), z.unknown()).optional(),
   biologicDetails:   z.record(z.string(), z.unknown()).optional(),
 });
@@ -550,6 +551,17 @@ router.post("/regen/cases/:caseId/procedures", requireAuth, async (req: any, res
 
 // ─── PROMs ───────────────────────────────────────────────────────────────────
 
+const PromBody = z.object({
+  instrument: z.string().trim().min(1),
+  timepoint:  z.string().trim().min(1),
+  answers:    z.record(z.string(), z.unknown()).optional(),
+  score:      z.number().finite().min(0).max(100).nullable().optional(),
+  answeredAt: z.string().datetime({ offset: true }).optional(),
+}).refine(
+  (body) => !/^vas$/i.test(body.instrument) || body.score == null || body.score <= 10,
+  { message: "VAS score must be between 0 and 10", path: ["score"] },
+);
+
 router.get("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => {
   try {
     const { rows: c } = await pool.query(
@@ -575,13 +587,15 @@ router.post("/regen/cases/:caseId/proms", requireAuth, async (req: any, res) => 
     );
     if (!c.length) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
 
-    const { instrument, timepoint, answers, score } = req.body;
-    if (!instrument || !timepoint || !answers) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing") });
+    // `answers` is optional: the case page records a total score only.
+    const parsed = PromBody.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: await requestMessage(req, "requiredFieldsMissing"), issues: parsed.error.issues });
+    const { instrument, timepoint, answers, score, answeredAt } = parsed.data;
 
     const { rows } = await pool.query(
-      `INSERT INTO regen_prom_responses (case_id, instrument, timepoint, answers, score)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [req.params.caseId, instrument, timepoint, JSON.stringify(answers), score ?? null]
+      `INSERT INTO regen_prom_responses (case_id, instrument, timepoint, answers, score, answered_at)
+       VALUES ($1,$2,$3,$4,$5,COALESCE($6::timestamptz, now())) RETURNING *`,
+      [req.params.caseId, instrument, timepoint, JSON.stringify(answers ?? {}), score ?? null, answeredAt ?? null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -629,7 +643,9 @@ router.post("/regen/cases/:caseId/labs", requireAuth, async (req: any, res) => {
         [
           req.params.caseId, r.analyte, r.value ?? null, r.unit ?? null,
           r.refMin ?? null, r.refMax ?? null, r.flag ?? null,
-          r.collectedAt ? new Date(r.collectedAt) : null,
+          // Calendar date as-is ("YYYY-MM-DD"): a JS Date would be serialised in
+          // the server timezone and could store the previous day.
+          r.collectedAt ? (toCalendarDateKey(r.collectedAt) ?? new Date(r.collectedAt)) : null,
         ]
       );
       inserted.push(rows[0]);
@@ -750,7 +766,7 @@ Seja objetivo, clínico, e destaque mudanças relevantes nos PROMs e na evoluç�
 Finalize com uma conclusão sobre o status atual.
 
 DADOS DO CASO:
-- Paciente: ${caso.patient_name} | Sexo: ${caso.patient_sex ?? "NI"} | Nascimento: ${caso.patient_dob ? new Date(caso.patient_dob).toLocaleDateString("pt-BR") : "NI"}
+- Paciente: ${caso.patient_name} | Sexo: ${caso.patient_sex ?? "NI"} | Nascimento: ${caso.patient_dob ? localeDate(caso.patient_dob, "pt-BR") || "NI" : "NI"}
 - IMC: ${caso.imc ?? "NI"} | Condição: ${caso.condition_code.replace(/_/g, " ")}${caso.condition_custom ? " — " + caso.condition_custom : ""}
 - Diabetes: ${caso.dm ? "Sim" + (caso.hba1c ? " (HbA1c " + caso.hba1c + "%)" : "") : "Não"} | Anticoagulante: ${caso.anticoagulant ? "Sim" : "Não"}
 - Objetivos: ${caso.goal_vev?.join(", ") ?? "não definidos"}
@@ -1169,7 +1185,7 @@ router.get("/regen/consent/:product", requireAuth, async (req: any, res) => {
       if (rows.length) {
         patientName = rows[0].patient_name ?? patientName;
         patientDob  = rows[0].patient_dob
-          ? new Date(rows[0].patient_dob).toLocaleDateString("pt-BR")
+          ? localeDate(rows[0].patient_dob, "pt-BR")
           : "";
       }
     }
@@ -3071,8 +3087,15 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     }
     locale = await localeForDoctorId(rows[0].doctor_id);
 
-    // Use provided date or today
-    const base = baseDate ? new Date(baseDate) : new Date();
+    // Base calendar date: explicit baseDate, else today on the clinic calendar
+    // (America/Sao_Paulo). Pure calendar arithmetic — no TZ math.
+    const today = clinicToday();
+    const base = typeof baseDate === "string" && baseDate.trim() ? toCalendarDateKey(baseDate) : null;
+    if (typeof baseDate === "string" && baseDate.trim() && !base) {
+      await client.query("ROLLBACK");
+      res.status(400).json({ error: message(locale, "invalidData") });
+      return;
+    }
 
     // Check if notifications already exist — only add missing ones
     const { rows: existing } = await client.query(
@@ -3084,12 +3107,10 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     const toInsert = REGEN_FOLLOWUP_SCHEDULE.filter(s => !existingPeriods.has(s.periodo));
 
     for (const slot of toInsert) {
-      const scheduledDate = new Date(base);
-      scheduledDate.setDate(scheduledDate.getDate() + slot.days);
       await client.query(
         `INSERT INTO regen_followup_notifications (case_id, periodo, days_after_procedure, scheduled_date, scales)
          VALUES ($1, $2, $3, $4, $5)`,
-        [req.params.id, slot.periodo, slot.days, scheduledDate.toISOString().split("T")[0], slot.scales]
+        [req.params.id, slot.periodo, slot.days, addDaysToCalendarDate(base, slot.days, today), slot.scales]
       );
     }
 
@@ -3193,7 +3214,9 @@ router.get("/regen/followup-overview", requireAuth, async (req: any, res) => {
   try {
     const did = req.doctorId;
     const locale = await localeForDoctorId(did);
-    const today = new Date().toISOString().slice(0, 10);
+    // Clinic calendar day; scheduled_date is compared as "YYYY-MM-DD" (a JS
+    // Date compared with a string was always false, so nothing was overdue).
+    const today = clinicToday();
 
     const { rows } = await pool.query(
       `SELECT
@@ -3227,7 +3250,7 @@ router.get("/regen/followup-overview", requireAuth, async (req: any, res) => {
         respondidos.push(r);
       } else if (r.status === "sent") {
         aguardando.push(r);
-      } else if (r.scheduled_date && r.scheduled_date <= today) {
+      } else if ((toCalendarDateKey(r.scheduled_date) ?? "9999-12-31") <= today) {
         vencidos.push(r);
       } else {
         agendados.push(r);

@@ -14,6 +14,7 @@ import {
 } from "@workspace/db";
 import app from "../app";
 import { hashPassword, signToken } from "../lib/auth";
+import { clinicToday } from "../lib/calendar-date";
 
 // Linhas antigas de scheduled_notifications podem listar escalas do joelho já retiradas.
 // Elas não devem chegar ao paciente nem à tela, mas o registro gravado não é alterado.
@@ -40,7 +41,7 @@ async function insertNotification(scales: string[]) {
     patientId,
     periodo: "3 meses",
     scales,
-    scheduledDate: new Date().toISOString().slice(0, 10),
+    scheduledDate: clinicToday(),
   }).returning();
   notificationIds.push(notification.id);
   return notification;

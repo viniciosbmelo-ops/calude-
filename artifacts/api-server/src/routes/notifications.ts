@@ -7,6 +7,7 @@ import { getBaseUrl } from "../lib/base-url";
 import { randomUUID } from "crypto";
 import { filterSupportedFollowupScales, hasFractureProcedure, isPreoperativePeriod } from "../lib/followup-schedule";
 import { resolveDoctorLocale } from "../lib/locale";
+import { clinicToday } from "../lib/calendar-date";
 import { localeForDoctorId } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
 import { classifyFollowupNotification, hasRecordedAssessment } from "../lib/followup-assessment";
@@ -110,7 +111,7 @@ async function dispatchNotification(
         .values({
           surgeryId: row.notif.surgeryId,
           tempo: row.notif.periodo,
-          dataAvaliacao: new Date().toISOString().slice(0, 10),
+          dataAvaliacao: clinicToday(),
           token,
           escalasEnviadas: filterSupportedFollowupScales(row.notif.scales),
         })
@@ -183,7 +184,7 @@ router.get("/notifications/pending", requireAuth, async (req, res): Promise<void
       .where(inArray(scheduledNotificationsTable.surgeryId, surgeryIds))
       .orderBy(scheduledNotificationsTable.scheduledDate);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
 
     const pending:   typeof rows = [];
     const upcoming:  typeof rows = [];
@@ -224,7 +225,7 @@ router.post("/notifications/dispatch-pending", requireAuth, async (req, res): Pr
   try {
     const doctorId = req.doctorId!;
     const locale = await localeForDoctorId(doctorId);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
     const filterSurgeryId: number | undefined = req.body?.surgeryId ? Number(req.body.surgeryId) : undefined;
 
     const [doctor] = await db
@@ -499,7 +500,7 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
     }
 
     const surgeryIds = surgeries.map(s => s.id);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
 
     const rows = await db
       .select({

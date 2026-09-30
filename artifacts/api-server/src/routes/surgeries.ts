@@ -25,6 +25,7 @@ import { getBaseUrl } from "../lib/base-url";
 import { randomUUID } from "crypto";
 import { z } from "zod/v4";
 import { resolveDoctorLocale } from "../lib/locale";
+import { clinicToday } from "../lib/calendar-date";
 import { localeForDoctorId } from "../lib/locale";
 import { message as localizedMessage } from "../lib/locale-catalog";
 import { loadClinicianScales, loadPatientScales } from "../lib/clinician-scales";
@@ -143,7 +144,7 @@ async function ensureFollowupForNotification(
       .values({
         surgeryId,
         tempo: notification.periodo,
-        dataAvaliacao: new Date().toISOString().slice(0, 10),
+        dataAvaliacao: clinicToday(),
         token: randomUUID(),
         escalasEnviadas: filterSupportedFollowupScales(notification.scales),
       })

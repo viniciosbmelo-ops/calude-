@@ -2,7 +2,24 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
 
-const { Pool } = pg;
+const { Pool, types } = pg;
+
+/**
+ * PostgreSQL `date` columns hold calendar dates, not instants. node-postgres
+ * parses them into a JS Date at local midnight, which the API then serialises
+ * as "2026-09-29T00:00:00.000Z" and browsers west of UTC render one day early.
+ * This pool keeps them as the raw "YYYY-MM-DD" string instead (drizzle queries
+ * already receive raw strings through their own per-query parsers). Per-pool,
+ * not a global `types.setTypeParser`, so nothing else sharing `pg` changes.
+ */
+export const PG_DATE_OID = 1082;
+const parseRawDate = (value: string): string => value;
+export const docKneeTypeParsers: pg.CustomTypesConfig = {
+  getTypeParser: ((oid: number, format?: "text" | "binary") =>
+    oid === PG_DATE_OID && format !== "binary"
+      ? parseRawDate
+      : types.getTypeParser(oid, format as "text")) as pg.CustomTypesConfig["getTypeParser"],
+};
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -35,6 +52,7 @@ export const pool = new Pool({
   // Sends SET statement_timeout once per connection on first use.
   // Guards against slow queries hanging the event loop.
   options: `--statement_timeout=${statementTimeoutMs}`,
+  types: docKneeTypeParsers,
 });
 
 // ── Pool-level error monitoring ───────────────────────────────────────────────

@@ -16,6 +16,7 @@ import {
 import app from "../app";
 import { hashPassword, signToken } from "../lib/auth";
 import { PREOPERATIVE_PERIOD } from "../lib/followup-schedule";
+import { clinicToday } from "../lib/calendar-date";
 
 let server: Server;
 let baseUrl: string;
@@ -301,7 +302,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         patientId,
         periodo: PREOPERATIVE_PERIOD,
         scales: ["VAS Dor"],
-        scheduledDate: new Date().toISOString().slice(0, 10),
+        scheduledDate: clinicToday(),
       })
       .returning();
 
@@ -331,7 +332,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         patientId,
         periodo: PREOPERATIVE_PERIOD,
         scales: ["VAS Dor"],
-        scheduledDate: new Date().toISOString().slice(0, 10),
+        scheduledDate: clinicToday(),
       })
       .returning();
 
@@ -359,7 +360,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         periodo: PREOPERATIVE_PERIOD,
         scales: ["VAS Dor"],
         status: "skipped",
-        scheduledDate: new Date().toISOString().slice(0, 10),
+        scheduledDate: clinicToday(),
       })
       .returning();
 
@@ -402,7 +403,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
         scales: ["VAS Dor"],
         status: "pending",
         followupId: followup.id,
-        scheduledDate: new Date().toISOString().slice(0, 10),
+        scheduledDate: clinicToday(),
       })
       .returning();
 
