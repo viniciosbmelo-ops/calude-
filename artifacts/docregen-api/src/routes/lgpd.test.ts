@@ -1,124 +1,65 @@
 /**
- * Tests for LGPD route helper functions — covers:
- *   - csvCell: safe escaping (RFC 4180 + control char stripping)
- *   - format validation logic
- *
- * Full route integration tests require a DB and are excluded here.
+ * Tests for the CSV helper shared by the LGPD portability export and the
+ * research export (lib/csv.ts): RFC 4180 escaping, control-character
+ * stripping and spreadsheet formula-injection protection.
+ * Route behaviour is covered by lgpd-integration.test.ts.
  */
 import { describe, it, expect } from "vitest";
-
-// ── Re-implement csvCell locally to test it in isolation ─────────────────────
-// (The route file doesn't export it, so we test the specification here and
-//  verify the lgpd.ts implementation matches via typecheck.)
-
-function csvCell(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const s = String(value)
-    .replace(/[\x00-\x1F\x7F]/g, " ")
-    .replace(/"/g, '""');
-  return `"${s}"`;
-}
+import { csvCell, csvDocument, csvRow } from "../lib/csv";
 
 describe("csvCell safety", () => {
-  it("wraps values in double quotes", () => {
-    expect(csvCell("hello")).toBe('"hello"');
+  it("leaves plain values unquoted and quotes when needed", () => {
+    expect(csvCell("hello")).toBe("hello");
+    expect(csvCell("a,b")).toBe('"a,b"');
   });
 
   it("escapes double-quotes per RFC 4180", () => {
     expect(csvCell('say "hi"')).toBe('"say ""hi"""');
   });
 
-  it("strips newline characters (formula injection prevention)", () => {
-    const result = csvCell("value\nwith\nnewlines");
-    expect(result).not.toContain("\n");
-    expect(result).toBe('"value with newlines"');
+  it("replaces newline, carriage return and tab characters", () => {
+    for (const value of ["value\nwith\nnewlines", "a\rb", "a\tb"]) {
+      const result = csvCell(value);
+      expect(result).not.toMatch(/[\x00-\x1F\x7F]/);
+    }
+    expect(csvCell("value\nwith\nnewlines")).toBe("value with newlines");
   });
 
-  it("strips carriage returns", () => {
-    const result = csvCell("value\rwith\rCR");
-    expect(result).not.toContain("\r");
+  it("neutralizes spreadsheet formulas (=, +, -, @) with a leading apostrophe", () => {
+    expect(csvCell("=cmd|' /C calc'!A0")).toBe("'=cmd|' /C calc'!A0");
+    expect(csvCell("+1+1")).toBe("'+1+1");
+    expect(csvCell("-2+3")).toBe("'-2+3");
+    expect(csvCell("@SUM(A1:A2)")).toBe("'@SUM(A1:A2)");
+    expect(csvCell("\t=1")).toBe('" =1"'); // leading tab → space: not a formula, quoted for the space
   });
 
-  it("strips tab characters", () => {
-    const result = csvCell("val\twith\ttabs");
-    expect(result).not.toContain("\t");
+  it("keeps numbers (including negative) numeric", () => {
+    expect(csvCell(42)).toBe("42");
+    expect(csvCell(0)).toBe("0");
+    expect(csvCell(-3.3)).toBe("-3.3");
+    expect(csvCell("-3.3")).toBe("-3.3");
   });
 
-  it("prevents CSV formula injection (=, +, -, @)", () => {
-    // Formula chars like = are kept but the value is wrapped in double-quotes,
-    // which causes Excel/LibreOffice to treat them as text rather than formulas.
-    // Single-quotes and ! are not control chars so they pass through unmodified.
-    const result = csvCell("=cmd|' /C calc'!A0");
-    // Must be quoted
-    expect(result.startsWith('"')).toBe(true);
-    expect(result.endsWith('"')).toBe(true);
-    // No control characters should be present
-    expect(result).not.toMatch(/[\x00-\x1F\x7F]/);
-  });
-
-  it("returns empty string for null", () => {
+  it("returns empty string for null / undefined / non-finite", () => {
     expect(csvCell(null)).toBe("");
-  });
-
-  it("returns empty string for undefined", () => {
     expect(csvCell(undefined)).toBe("");
-  });
-
-  it("handles numeric values", () => {
-    expect(csvCell(42)).toBe('"42"');
-  });
-
-  it("handles zero", () => {
-    expect(csvCell(0)).toBe('"0"');
+    expect(csvCell(Number.NaN)).toBe("");
   });
 });
 
-describe("LGPD CSV format", () => {
-  it("generates a valid CSV with proper header columns", () => {
-    // Simulate what the route produces
-    const header = "TIPO,ID,DESCRICAO,DATA,STATUS,DADO_EXTRA";
-    const row = [
-      csvCell("paciente"),
-      csvCell(1),
-      csvCell("João da Silva"),
-      csvCell("2024-01-15T00:00:00.000Z"),
-      csvCell("ativo"),
-      csvCell(""),
-    ].join(",");
-    const csv = [header, row].join("\r\n");
-
-    expect(csv).toContain("TIPO,ID,DESCRICAO,DATA,STATUS,DADO_EXTRA");
-    expect(csv).toContain('"paciente"');
-    expect(csv).toContain('"João da Silva"');
-  });
-
-  it("handles patient names with commas safely", () => {
+describe("CSV documents", () => {
+  it("round-trips names with commas and quotes", () => {
     const name = 'Silva, João "Zé" da';
     const cell = csvCell(name);
-    // Should be quoted and internal quotes doubled
     expect(cell).toBe('"Silva, João ""Zé"" da"');
-    // Parsing the cell manually (unwrap quotes, unescape "")
-    const inner = cell.slice(1, -1).replace(/""/g, '"');
-    expect(inner).toBe(name);
+    expect(cell.slice(1, -1).replace(/""/g, '"')).toBe(name);
   });
 
-  it("multiple surgery rows do not bleed into each other", () => {
-    const surgeries = [
-      { id: 1, tiposProcedimento: ["LCA", "menisco"], dataCirurgia: "2023-05-01", status: "completo", patientId: 10, createdAt: new Date("2023-05-01") },
-      { id: 2, tiposProcedimento: ["LCP"], dataCirurgia: null, status: "rascunho", patientId: 11, createdAt: new Date("2023-06-15") },
-    ];
-    const rows = surgeries.map(s =>
-      [
-        csvCell("cirurgia"),
-        csvCell(s.id),
-        csvCell((s.tiposProcedimento ?? []).join("|")),
-        csvCell(s.dataCirurgia ?? s.createdAt.toISOString()),
-        csvCell(s.status),
-        csvCell(`pacienteId=${s.patientId}`),
-      ].join(",")
-    );
-    expect(rows[0]).toContain('"LCA|menisco"');
-    expect(rows[1]).toContain('"LCP"');
-    expect(rows).toHaveLength(2);
+  it("rows never bleed into each other and the document has a BOM + CRLF", () => {
+    const doc = csvDocument(["a", "b"], [["x\r\ny", 1], ["=evil", null]]);
+    expect(doc.startsWith("﻿")).toBe(true);
+    const lines = doc.slice(1).split("\r\n");
+    expect(lines).toEqual(["a,b", "x  y,1", "'=evil,"]);
+    expect(csvRow([true, false])).toBe("true,false");
   });
 });

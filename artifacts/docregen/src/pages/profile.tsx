@@ -17,6 +17,7 @@ import { useLanguage, useScopedTranslations, type Locale } from "@/lib/i18n";
 import { profileMessages } from "@/locales/profile";
 import { sortByPtBrName } from "@/lib/utils";
 import { DateInput } from "@/components/ui/date-input";
+import { LgpdPrivacyCard } from "@/components/lgpd-privacy-card";
 
 function ContactSupportCard() {
   const { t } = useLanguage();
@@ -1079,6 +1080,7 @@ function ProfileInner({ user }: { user: any }) {
       {/* ── Suporte / Contato ──────────────────────────────────────────── */}
       <div className="px-4 md:px-8">
         <ContactSupportCard />
+        <LgpdPrivacyCard />
       </div>
 
       {/* ── Aparência ─────────────────────────────────────────────────── */}

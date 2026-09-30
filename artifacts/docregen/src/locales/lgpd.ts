@@ -1,0 +1,53 @@
+import type { ScopedMessages } from "@/lib/i18n";
+
+/**
+ * LGPD copy. Accuracy matters: the medical record is never deleted — the law
+ * (Lei 13.787/2018, CFM) requires 20 years of retention — so no text here may
+ * promise its deletion.
+ */
+export const lgpdMessages = {
+  "pt-BR": {
+    privacyTitle: "Privacidade e dados (LGPD)",
+    privacyDescription: "Exporte seus dados ou solicite a exclusão da conta.",
+    exportJson: "Exportar dados (JSON)",
+    exportCsv: "Exportar dados (CSV)",
+    exportError: "Não foi possível exportar os dados.",
+    requestDeletion: "Solicitar exclusão da conta",
+    requestDeletionTitle: "Solicitar exclusão da conta?",
+    requestDeletionDescription: "A solicitação é enviada ao responsável pela plataforma e respondida em até 15 dias. Os prontuários dos seus pacientes não são apagados: a lei exige a guarda do prontuário por 20 anos (Lei 13.787/2018 e normas do CFM). A exclusão abrange os dados da conta que não estão sujeitos a essa obrigação.",
+    confirmRequest: "Enviar solicitação",
+    cancel: "Cancelar",
+    requestError: "Não foi possível registrar a solicitação.",
+    requestStatus: "Situação da solicitação",
+    requestedOn: "Solicitada em {date}",
+    retentionNote: "Prontuários são mantidos por 20 anos por obrigação legal.",
+    anonymize: "Anonimizar dados identificáveis",
+    anonymizeTitle: "Anonimizar dados identificáveis do paciente?",
+    anonymizeDescription: "Nome, CPF, contatos, endereço, data de nascimento, carteirinha, anamnese, laudos e demais textos livres serão removidos; anexos serão excluídos e links enviados deixarão de funcionar. Os registros clínicos (procedimentos, escalas, exames) serão mantidos de forma desidentificada, conforme a obrigação legal de guarda do prontuário (20 anos). Esta ação não pode ser desfeita — exporte antes o que precisar.",
+    anonymizeConfirm: "Anonimizar",
+    anonymized: "Dados identificáveis anonimizados; registros clínicos mantidos conforme a obrigação legal de guarda.",
+    anonymizeError: "Não foi possível anonimizar o paciente.",
+  },
+  es: {
+    privacyTitle: "Privacidad y datos (LGPD)",
+    privacyDescription: "Exporte sus datos o solicite la eliminación de la cuenta.",
+    exportJson: "Exportar datos (JSON)",
+    exportCsv: "Exportar datos (CSV)",
+    exportError: "No fue posible exportar los datos.",
+    requestDeletion: "Solicitar eliminación de la cuenta",
+    requestDeletionTitle: "¿Solicitar la eliminación de la cuenta?",
+    requestDeletionDescription: "La solicitud se envía al responsable de la plataforma y se responde en un plazo de 15 días. Las historias clínicas de sus pacientes no se borran: la ley brasileña exige conservarlas durante 20 años (Ley 13.787/2018 y normas del CFM). La eliminación abarca los datos de la cuenta que no están sujetos a esa obligación.",
+    confirmRequest: "Enviar solicitud",
+    cancel: "Cancelar",
+    requestError: "No fue posible registrar la solicitud.",
+    requestStatus: "Estado de la solicitud",
+    requestedOn: "Solicitada el {date}",
+    retentionNote: "Las historias clínicas se conservan 20 años por obligación legal.",
+    anonymize: "Anonimizar datos identificables",
+    anonymizeTitle: "¿Anonimizar los datos identificables del paciente?",
+    anonymizeDescription: "Se eliminarán nombre, CPF, contactos, dirección, fecha de nacimiento, credencial, anamnesis, informes y demás textos libres; los adjuntos se borrarán y los enlaces enviados dejarán de funcionar. Los registros clínicos (procedimientos, escalas, exámenes) se conservarán sin identificación, conforme a la obligación legal de conservar la historia clínica (20 años). Esta acción no se puede deshacer — exporte antes lo que necesite.",
+    anonymizeConfirm: "Anonimizar",
+    anonymized: "Datos identificables anonimizados; registros clínicos conservados conforme a la obligación legal.",
+    anonymizeError: "No fue posible anonimizar al paciente.",
+  },
+} satisfies ScopedMessages<Record<string, string>>;

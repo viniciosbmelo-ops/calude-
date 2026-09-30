@@ -7,10 +7,13 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { doctorsTable } from "./doctors";
 
 export const whatsappOutboxTable = pgTable("whatsapp_outbox", {
   id: serial("id").primaryKey(),
   eventType: text("event_type").notNull(),
+  /** Doctor who queued the message (per-doctor rate limit, anonymization). */
+  doctorId: integer("doctor_id").references(() => doctorsTable.id, { onDelete: "cascade" }),
   idempotencyKey: text("idempotency_key").notNull(),
   recipient: text("recipient").notNull(),
   message: text("message").notNull(),
@@ -31,6 +34,7 @@ export const whatsappOutboxTable = pgTable("whatsapp_outbox", {
 }, (t) => [
   uniqueIndex("whatsapp_outbox_idempotency_key_unique").on(t.idempotencyKey),
   index("whatsapp_outbox_dispatch_idx").on(t.status, t.nextAttemptAt),
+  index("whatsapp_outbox_doctor_idx").on(t.doctorId, t.createdAt),
 ]);
 
 export const whatsappDeliveryAuditTable = pgTable("whatsapp_delivery_audit", {

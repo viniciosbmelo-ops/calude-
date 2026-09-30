@@ -16,13 +16,14 @@ import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { operationalPatientRecordMessages } from "@/locales/operational-patient-record";
 import { useAuth } from "@/lib/auth";
+import { lgpdMessages } from "@/locales/lgpd";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInYears } from "date-fns";
 import { formatCalendarDate, formatPersonName, parseCalendarDate } from "@/lib/utils";
 import { regenConditionLabel } from "@/lib/regen-conditions";
 import { es, ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
-import { ArrowLeft, Trash2, Plus, Save, Pencil, ClipboardList, Phone, FileDown, Building2, Paperclip, Upload, FileText, FileImage, Film, File, X, Download, AlertCircle, ExternalLink } from "lucide-react";
+import { UserX, ArrowLeft, Trash2, Plus, Save, Pencil, ClipboardList, Phone, FileDown, Building2, Paperclip, Upload, FileText, FileImage, Film, File, X, Download, AlertCircle, ExternalLink } from "lucide-react";
 import { generateProntuarioPDF } from "@/lib/prontuario-pdf";
 import { sharePdfOrDownload, handlePdfOpenClick } from "@/lib/pdf-share";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -80,6 +81,7 @@ export default function PatientDetail() {
   const { locale } = useLanguage();
   const t = useScopedTranslations(operationalCoreMessages);
   const tr = useScopedTranslations(operationalPatientRecordMessages);
+  const tl = useScopedTranslations(lgpdMessages);
   const params = useParams();
   const id = parseInt(params.id || "0");
   const [, setLocation] = useLocation();
@@ -246,6 +248,20 @@ export default function PatientDetail() {
       });
     }
   }, [patient]);
+
+  const handleAnonymize = async () => {
+    try {
+      const response = await fetch(`/regen-api/lgpd/anonimizar-paciente/${id}`, { method: "POST", credentials: "same-origin" });
+      if (!response.ok) throw new Error(String(response.status));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetPatientQueryKey(id) }),
+        queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() }),
+      ]);
+      toast({ title: tl("anonymized") });
+    } catch {
+      toast({ title: tl("anonymizeError"), variant: "destructive" });
+    }
+  };
 
   const handleDelete = () => {
     deleteMutation.mutate(
@@ -543,6 +559,23 @@ export default function PatientDetail() {
               <button onClick={() => setEditOpen(true)} title={tr("editRegistration")} aria-label={tr("editRegistration")} className="w-8 h-8 flex items-center justify-center shrink-0 rounded-full" style={{ background: "rgba(14,154,167,0.18)", border: "none", cursor: "pointer" }}>
                 <Pencil className="h-3.5 w-3.5" style={{ color: "#0E9AA7" }} />
               </button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button title={tl("anonymize")} aria-label={tl("anonymize")} className="w-8 h-8 flex items-center justify-center shrink-0 rounded-full" style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer" }}>
+                    <UserX className="h-4 w-4" style={{ color: "rgba(255,255,255,0.45)" }} />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{tl("anonymizeTitle")}</AlertDialogTitle>
+                    <AlertDialogDescription>{tl("anonymizeDescription")}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleAnonymize}>{tl("anonymizeConfirm")}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <button title={tr("delete")} aria-label={tr("delete")} className="w-8 h-8 flex items-center justify-center shrink-0 rounded-full" style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer" }}>

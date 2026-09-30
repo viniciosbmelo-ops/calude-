@@ -3,6 +3,7 @@ import { logger } from "./logger";
 import { getBaseUrl } from "./base-url";
 import { resolveDoctorLocale, type SupportedLocale } from "./locale";
 import { APP_BRAND_NAME, buildAppLink } from "./app-links";
+import { escapeHtml, identifierFingerprint } from "./redaction";
 
 function createTransporter() {
   const user = process.env["DOCREGEN_GMAIL_USER"];
@@ -58,7 +59,7 @@ export async function sendPasswordResetEmail(
        <p style="color:#5A8AA8;font-size:12px;margin:6px 0 0;">${copy.subtitle}</p>
     </div>
     <div style="padding:40px;">
-       <p style="color:#0F1F2B;font-size:15px;margin:0 0 8px;">${copy.greeting}, <strong>${nome}</strong>.</p>
+       <p style="color:#0F1F2B;font-size:15px;margin:0 0 8px;">${copy.greeting}, <strong>${escapeHtml(nome)}</strong>.</p>
       <p style="color:#4A6070;font-size:14px;line-height:1.65;margin:0 0 28px;">
          ${copy.request}
       </p>
@@ -95,5 +96,47 @@ export async function sendPasswordResetEmail(
     html,
   });
 
-  logger.info({ to, nome }, "Password reset email sent via Gmail");
+  logger.info({ to: identifierFingerprint(to) }, "Password reset email sent via Gmail");
+}
+
+/** Address that receives operator notifications (LGPD requests). */
+export function operatorContactEmail(): string | null {
+  const address = (process.env["DOCREGEN_CONTACT_EMAIL"] ?? "").trim();
+  return address || null;
+}
+
+/**
+ * Notifies the operator (DOCREGEN_CONTACT_EMAIL) that a doctor asked for the
+ * deletion of their account (LGPD Art. 18, VI). Handling is manual — see
+ * replit.md, "LGPD — solicitações de exclusão".
+ */
+export async function sendLgpdDeletionRequestEmail(request: {
+  requestId: number;
+  doctorId: number;
+  doctorName: string;
+  doctorEmail: string;
+  requestedAt: Date;
+}): Promise<void> {
+  const to = operatorContactEmail();
+  if (!to) throw new Error("DOCREGEN_CONTACT_EMAIL não configurado.");
+  const brand = APP_BRAND_NAME;
+  const html = `
+<div style="font-family:Arial,sans-serif;max-width:560px;padding:24px;border:1px solid #D8E6EE;border-radius:8px;">
+  <h2 style="margin:0 0 12px;">${escapeHtml(brand)} — solicitação de exclusão (LGPD)</h2>
+  <p><strong>Solicitação:</strong> #${request.requestId}</p>
+  <p><strong>Médico:</strong> ${escapeHtml(request.doctorName)} (id ${request.doctorId}, ${escapeHtml(request.doctorEmail)})</p>
+  <p><strong>Recebida em:</strong> ${request.requestedAt.toISOString()}</p>
+  <p>Prazo de resposta: 15 dias (LGPD Art. 19, II). Os prontuários dos pacientes
+  devem ser mantidos por 20 anos (Lei 13.787/2018) e não podem ser apagados; a
+  exclusão abrange os dados da conta que não estejam sujeitos a guarda legal.
+  Procedimento: replit.md → "LGPD — solicitações de exclusão".</p>
+</div>`.trim();
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: `"${brand}" <${process.env["DOCREGEN_GMAIL_USER"]}>`,
+    to,
+    subject: `[${brand}] Solicitação de exclusão de conta (LGPD) #${request.requestId}`,
+    html,
+  });
+  logger.info({ requestId: request.requestId, doctorId: request.doctorId }, "LGPD deletion request notified");
 }
