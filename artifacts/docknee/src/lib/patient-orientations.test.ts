@@ -53,6 +53,46 @@ describe("localized clinical orientation catalogues", () => {
   });
 });
 
+describe("orientation texts cite no licensed outcome scales", () => {
+  // Licensed questionnaires the app does not offer; matched as whole,
+  // case-sensitive words so ordinary prose ("dash", "Oxfordshire") is not hit.
+  const LICENSED = /(?<!\w)(QuickDASH|DASH|AOFAS|VISA-A|VISA-P|PRTEE|KOOS|WOMAC|IKDC|Oxford)(?!\w)/;
+
+  it.each(["pt-BR", "es"] as const)("%s protocol catalogue has no licensed-scale citation", (locale) => {
+    const content = getOrientationContent(locale);
+    const text = JSON.stringify(content);
+    expect(text).not.toMatch(LICENSED);
+    Object.values(content.data).forEach((protocol) => {
+      expect(protocol.escores.map((s) => s.nome)).toContain(locale === "es" ? "VAS (Dolor)" : "VAS (Dor)");
+    });
+  });
+
+  it("source files of the orientation pages and Spanish catalogue have no licensed-scale citation", () => {
+    [
+      "../pages/regen/orientacoes.tsx",
+      "../locales/regen-orientacoes-es.ts",
+      "../components/OrientacoesInline.tsx",
+      "../pages/patient/orientacoes-paciente.tsx",
+    ].forEach((file) => {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      expect(source, file).not.toMatch(LICENSED);
+    });
+  });
+
+  it("keeps the MRC muscle-strength credit in the muscular protocol", () => {
+    expect(getOrientationContent("pt-BR").data.prp_muscular.escores.map((s) => s.nome)).toContain("MRC (Força)");
+    expect(getOrientationContent("es").data.prp_muscular.escores.map((s) => s.nome)).toContain("MRC (Fuerza)");
+  });
+
+  it("the regex catches the scales it guards against", () => {
+    expect("VAS, DASH").toMatch(LICENSED);
+    expect("QuickDASH").toMatch(LICENSED);
+    expect("(VISA-A)").toMatch(LICENSED);
+    expect("KOOS-JR").toMatch(LICENSED);
+    expect("dash, Oxfordshire").not.toMatch(LICENSED);
+  });
+});
+
 describe("patient orientation route authority and locale lifecycle", () => {
   it("uses signed server proc/tab over tampered query values", () => {
     expect(resolveOrientationBootstrap("signed-token", "ctm_osso", "pre", {
