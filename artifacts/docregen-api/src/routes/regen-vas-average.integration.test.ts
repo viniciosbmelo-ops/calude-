@@ -83,13 +83,15 @@ describe("average VAS includes the patient's follow-up-link answers", () => {
     const stats = await call("/regen/stats");
     expect(Number(stats.avg_vas)).toBe(4);
 
-    const rows = await call("/regen/research");
-    expect(Number(rows.find((r: { id: string }) => r.id === created.id)?.avg_vas)).toBe(4);
+    // The export is pseudonymized: this doctor has this single case.
+    const { rows } = await call("/regen/research");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].avg_vas).toBe(4);
 
     const csv: string = await call("/regen/research?format=csv");
-    const [header, ...lines] = csv.split("\r\n");
+    const [header, ...lines] = csv.replace(/^\uFEFF/, "").split("\r\n");
     const cols = header!.split(",");
-    const line = lines.find((l) => l.startsWith(created.id))!.split(",");
-    expect(line[cols.indexOf("avg_vas")]).toBe("4.0");
+    expect(csv).not.toContain(created.id);
+    expect(lines[0]!.split(",")[cols.indexOf("avg_vas")]).toBe("4");
   });
 });

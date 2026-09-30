@@ -115,8 +115,129 @@ falls back to DocKnee's variables; it also refuses values equal to DocKnee's.
 | `DOCREGEN_WHATSAPP_ACCESS_TOKEN`, `DOCREGEN_WHATSAPP_PHONE_NUMBER_ID` | WhatsApp fallback | Meta WhatsApp Business API |
 | `AI_INTEGRATIONS_GEMINI_BASE_URL`, `AI_INTEGRATIONS_GEMINI_API_KEY` | no (regen AI) | Replit-managed Gemini integration (provider credentials, no app data). Optional: without them the API still starts and the AI summary answers 503 "IA não configurada" |
 
+| `DOCREGEN_ALLOWED_ORIGINS` | no | Extra CORS/CSRF origins, comma-separated (e.g. `https://dockneeapp.com` while DocRegen is still served there). Default allowlist: origin of `DOCREGEN_APP_URL` + `REPLIT_DOMAINS` (+ localhost outside production); DocKnee's domain is **not** included by default |
+| `DOCREGEN_AI_DAILY_LIMIT` | no | AI summaries per doctor per 24 h (default 20; DB-backed, 429 when exceeded) |
+| `DOCREGEN_WHATSAPP_HOURLY_LIMIT` | no | Messages per doctor per hour through the platform WhatsApp number (default 60; DB-backed) |
+| `DB_POOL_MAX`, `DB_POOL_MIN` | no | PostgreSQL pool size (defaults 10 / 2) |
+| `DB_CONN_TIMEOUT_MS`, `DB_IDLE_TIMEOUT_MS`, `DB_STMT_TIMEOUT_MS` | no | Pool connect timeout (10 000), idle timeout (30 000), server-side statement timeout (30 000) |
+| `PDF_TEMP_TTL_SECONDS` | no | Lifetime of temporary shared PDFs (default 1800) |
+| `PDF_TEMP_MAX_BYTES` | no | Max size of one temporary PDF (default 20 MB) |
+| `PDF_TEMP_MAX_PER_DOCTOR`, `PDF_TEMP_MAX_BYTES_PER_DOCTOR` | no | Live temporary PDFs per doctor (default 10 files / 60 MB; 429 beyond) |
+| `PDF_TEMP_MAX_TOTAL_BYTES` | no | Live temporary PDFs overall (default 512 MB; 503 beyond). `PDF_TEMP_MAX_ENTRIES` (in-memory store) no longer exists |
+| `LOG_LEVEL` | no | pino log level (default `info`) |
+| `TZ` | no | Process timezone. Calendar logic uses America/Sao_Paulo explicitly; the test suite runs in UTC and in São Paulo |
+| `OBJECT_STORAGE_FAKE` | tests only | `1` starts the local object-storage fake in the API test suites (ignored in production) |
+| `DOCREGEN_ENFORCE_RATE_LIMITS` | tests only | `1` re-enables the per-IP limiters under `NODE_ENV=test` (they are skipped in tests/E2E because every request comes from 127.0.0.1) |
+
 Cookies: `docregen_session`, `docregen_secretary_session`, `docregen_patient_session`
-(path `/regen-api`). JWT issuer/audience `docregen-api` / `docregen-web`.
+(path `/regen-api`). JWT issuer/audience `docregen-api` / `docregen-web`. Logout bumps
+the account's `session_version`, so every token of that doctor/secretary stops working.
+
+### Security controls (DocRegen API)
+
+- **Rate limits** (table `rate_limit_buckets`, shared by all instances): per IP, 10 failed
+  attempts / 15 min on every credential endpoint (`/auth/login`, `/auth/change-password`,
+  `/secretary-auth/login`, `/patient/regen/:token/verify`, `/pre-consult/:token/verify`);
+  password reset 5 / 15 min; registration 3 / h; PDF upload 20 / 15 min per doctor;
+  AI summaries and WhatsApp sends per doctor (see env vars). The global 300 req/min per IP
+  limiter is in memory (per instance) on purpose.
+- **Account lockout** (table `auth_lockouts`, key = SHA-256 of role + normalized e-mail/CPF):
+  10 failed logins within 15 min lock the doctor or secretary account for 15 min, whatever
+  the IP (429 `ACCOUNT_LOCKED`). The public follow-up/pré-consulta links keep their own
+  lockout (`patient_verification_attempts`, 5 attempts per IP+link).
+- **E-mails** are stored lowercase; `lower(email)` is unique for doctors and secretaries.
+  Passwords: ≥ 8 characters everywhere (registration, reset, change, secretaries).
+- **Secretaries** receive a front-desk projection of patients (id, name, phone, e-mail,
+  birth date, registro) and a regenerative-case summary without diagnosis; every clinical
+  route is doctor-only.
+- **Redaction** (`src/lib/redaction.ts`) is applied to `page_visits`, `audit_logs`, pino
+  request logs and security events: SPA base stripped, pré-consulta / follow-up /
+  orientation tokens and temporary-PDF ids replaced by placeholders, secret query values
+  masked. Security events and alert e-mails carry only SHA-256 fingerprints of e-mails/CPFs.
+- **Audit trail** (`audit_logs`): `actor_role` (`doctor` | `secretary` | `patient_link` |
+  `anonymous`), `doctor_id` (the owning doctor, also for secretaries), `secretary_id`,
+  `patient_link_hash` (SHA-256 of the public link token), resource type/id.
+- **AI summary**: the prompt carries age in years, sex, coded condition, products, relative
+  days, scores and lab values — never name, birth date, CPF, contacts, calendar dates or
+  free text. The AI tab tells the doctor that an external provider processes the data.
+- **Research export**: per-export random pseudonyms, month/year, 5-year age bands, 5-unit
+  BMI bands, coded values only; k<5 groups (age band × sex × BMI band, or an export with
+  fewer than 5 cases) are flagged (`smallGroupWarning`, header `X-Research-Warning`, UI
+  banner) and lose the anatomical-site column.
+- **Body size**: JSON 1 MB by default; only `/regen-api/pdf/temp` (base64 variant) accepts
+  30 MB. Malformed JSON → 400.
+- **Temporary PDFs** are stored in the database (`temp_pdfs`) with TTL and quotas.
+- **Health checks**: `/regen-api/healthz` = liveness (no I/O) — use it as the hosting
+  platform's health check; `/regen-api/readyz` = readiness (`SELECT 1`, 2 s timeout, 503) —
+  use it for uptime monitoring / load-balancer readiness.
+
+### LGPD (DocRegen)
+
+**Medical records are retained for 20 years** (Lei 13.787/2018; CFM Res. 1.821/2007 and
+2.218/2018). No LGPD feature deletes a patient's clinical record, and the UI never says so.
+`regen_cases.doctor_id` references `doctors` with `ON DELETE RESTRICT`: a doctor account
+that owns cases cannot be deleted while the records must be kept.
+
+**Patient anonymization** (`POST /regen-api/lgpd/anonimizar-paciente/:id`, button
+"Anonimizar dados identificáveis" in the patient record) runs in one transaction
+(`src/lib/patientAnonymization.ts`):
+
+| Removed | Kept (de-identified) |
+|---------|---------------------|
+| patient name (→ `PACIENTE ANONIMIZADO #<hash>`), CPF, e-mail, phone, birth date, address, city/state/country, CEP, health plan, card number, "indicado por", anamnesis, reports | internal record number (`numero_registro`), sex, side, activity level |
+| `regen_cases`: name snapshot, phone; birth date generalized to 1 January of the birth year; custom goal; free text inside `anamnese_regen` / `plano_otimizacao` (only numbers, booleans and short coded values survive) | condition, laterality, comorbidity flags, BMI, products, planned products, dates of care |
+| procedure notes | products, doses, lots, adverse-event flag and description, compliance data |
+| free text inside PROM answers, patient scale answers and pré-consulta answers | scores (VAS, SANE), coded pré-consulta answers |
+| AI summaries (may quote the patient) | — |
+| agenda notes; WhatsApp messages to the patient (recipient + text; pending ones cancelled) | appointment dates/status |
+| attachments: rows deleted and files queued in `storage_cleanup_jobs` (deleted from object storage, retried until done) | lab results, performance tests |
+| active follow-up tokens (set to NULL) and pré-consulta invites (revoked) | follow-up schedule and status |
+
+Anonymization cannot be undone: export first when the record may still be needed in
+identifiable form (the legal retention duty stays with the physician/clinic).
+Residual note: `DELETE /regen-api/patients/:id` (patient "Excluir" button) still deletes the
+patient together with its regenerative cases; the owner should decide whether to restrict it
+given the 20-year retention duty.
+
+**Account deletion requests** (`DELETE /regen-api/lgpd/solicitar-exclusao`, profile →
+"Privacidade e dados") create a row in `lgpd_requests`, set `doctors.deletion_requested_at`
+and e-mail `DOCREGEN_CONTACT_EMAIL` (via `DOCREGEN_GMAIL_*`). The doctor sees the real
+status: `notified`, or `notification_failed` when the e-mail could not be sent (retried on
+the next request). Operator procedure (manual, answer within 15 days — LGPD Art. 19, II):
+1. Find open requests: `SELECT * FROM lgpd_requests WHERE status IN ('pending','notified','notification_failed');`
+2. Confirm the requester's identity through the account e-mail.
+3. Export the doctor's data if requested (`GET /regen-api/lgpd/exportar`, JSON or CSV).
+4. Delete/anonymize account data not subject to retention: secretaries, appointments,
+   consents, contact messages, Stripe subscription, sessions (`session_version`++ and
+   `aprovado=false`), and the doctor's personal fields not needed to identify the author of
+   clinical records. **Do not delete patients' clinical records** (regen cases, procedures,
+   scores, labs) during the 20-year retention period — keep them (RESTRICT FK) and transfer
+   custody if the clinic requires it.
+5. Close the request: `UPDATE lgpd_requests SET status='completed' (or 'rejected'),
+   resolved_at=now(), resolution_note='…' WHERE id=…;` — the note is shown to the doctor.
+
+**Portability** (`GET /regen-api/lgpd/exportar?formato=json|csv`, profile card): patients,
+cases, procedures, PROMs, labs, performance tests, follow-ups, scale responses, AI
+summaries, pré-consultas, all attachments (metadata + 15-minute signed URLs), appointments,
+secretaries (no password hashes), consent and LGPD requests. Link tokens are never exported.
+
+### Hosting recommendations (decisions for the owner)
+
+- **Autoscale vs Reserved VM (#12).** After these changes the security-relevant state is in
+  PostgreSQL (rate limits, account lockout, temporary PDFs, WhatsApp outbox with leases,
+  storage-cleanup queue), so several instances are safe. Still instance-local: the global
+  300 req/min limiter, the security-monitor alert counters (e-mail alerts per instance), the
+  WhatsApp outbox worker and the hourly cleanup timers (each instance runs them; the outbox
+  uses row leases, cleanups are idempotent), and `node-cron` schedules. With autoscale
+  scaled to zero, background work only runs while an instance is up — prefer a Reserved VM
+  (or minimum 1 instance) if WhatsApp delivery and cleanups must run continuously.
+- **Own domain (#15).** Serve DocRegen on its own subdomain/domain (e.g.
+  `app.docregen.com.br`) instead of `dockneeapp.com/docregen`, set `DOCREGEN_APP_URL` to it
+  and `DOCREGEN_FRONTEND_BASE_PATH=` (empty) if served at the root. The CORS/CSRF allowlist
+  no longer includes `dockneeapp.com` by default: **while DocRegen is still served under
+  dockneeapp.com, set `DOCREGEN_APP_URL=https://dockneeapp.com` (or
+  `DOCREGEN_ALLOWED_ORIGINS=https://dockneeapp.com,https://www.dockneeapp.com`)**, otherwise
+  browser writes are rejected with 403. Remove those origins once the move is done.
 
 ### Running DocRegen
 
@@ -156,7 +277,12 @@ Cookies: `docregen_session`, `docregen_secretary_session`, `docregen_patient_ses
    (`DOCREGEN_GMAIL_*`, `DOCREGEN_CONTACT_EMAIL`) and WhatsApp (`DOCREGEN_EVOLUTION_*`,
    `DOCREGEN_WHATSAPP_*`) credentials.
 5. Publish: the `artifacts/docregen-api` artifact builds and serves `/regen-api`
-   (health check `/regen-api/healthz`) next to DocKnee's `/api`.
+   (health check `/regen-api/healthz`; readiness `/regen-api/readyz`) next to DocKnee's `/api`.
+6. Apply the schema changes of this release to the production DocRegen database
+   (`push`, reviewed): new tables `rate_limit_buckets`, `auth_lockouts`, `temp_pdfs`,
+   `lgpd_requests`; new columns `audit_logs.actor_role/secretary_id/patient_link_hash`,
+   `whatsapp_outbox.doctor_id`; unique indexes on `lower(email)` (doctors, secretaries);
+   FK `regen_cases.doctor_id → doctors (RESTRICT)`. The server refuses to start until they exist.
 
 ## DB Schema
 

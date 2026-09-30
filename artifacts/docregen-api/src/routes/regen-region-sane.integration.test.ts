@@ -187,20 +187,22 @@ describe("research export has baseline/last/change per region SANE", () => {
       [notif.id, at("2026-04-10")],
     );
 
-    const rows = await j(await call(`/regen/research?condition=TENDINOPATIA_OMBRO`));
-    const row = rows.find((r: { id: string }) => r.id === created.id);
+    // Pseudonymized export: the case is the TENDINOPATIA_OMBRO row with these answers.
+    const { rows } = await j(await call(`/regen/research?condition=TENDINOPATIA_OMBRO`));
+    const row = rows.find((r: Record<string, unknown>) => r.sane_ombro_last === 80);
     expect(row).toMatchObject({
       sane_ombro_baseline: 35, sane_ombro_last: 80, sane_ombro_change: 45,
       sane_joelho_baseline: null, sane_coluna_change: null,
     });
 
     const csv = await (await call(`/regen/research?condition=TENDINOPATIA_OMBRO&format=csv`)).text();
-    const [header, ...lines] = csv.split("\r\n");
+    const [header, ...lines] = csv.replace(/^\uFEFF/, "").split("\r\n");
     const cols = header!.split(",");
     for (const key of ["sane_ombro", "sane_joelho", "sane_quadril", "sane_cotovelo", "sane_tornozelo_pe", "sane_punho_mao", "sane_coluna"]) {
       expect(cols).toEqual(expect.arrayContaining([`${key}_baseline`, `${key}_last`, `${key}_change`]));
     }
-    const line = lines.find((l) => l.startsWith(created.id))!.split(",");
+    expect(csv).not.toContain(created.id);
+    const line = lines.map((l) => l.split(",")).find((l) => l[cols.indexOf("sane_ombro_last")] === "80")!;
     expect(line[cols.indexOf("sane_ombro_change")]).toBe("45");
   });
 });

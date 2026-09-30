@@ -56,8 +56,9 @@ resetting the databases.
   condral-focal case applied to the knee → patient link asks SANE Joelho; grouped
   "Estrutura anatômica" select (region headers) → tendinopathy on the A1 pulley → patient
   link asks SANE Punho e Mão; knee functional test; KOOS/WOMAC/IKDC rejected by the API; agenda
-  create/edit; dashboard counts; follow-up central dates; reports; research CSV (incl. anatomical labels);
-  secretary (isolation from another doctor); logout.
+  create/edit; dashboard counts; follow-up central dates; reports; research CSV (pseudonymized:
+  no case UUID or exact dates, k<5 warning, anatomical labels once groups reach 5);
+  secretary (isolation from another doctor; no CPF, anamnesis, reports or diagnosis); logout.
   `docregen/dates.en-us.ts`: the same date contract with an en-US browser.
 - **DocKnee** (`docknee/docknee.spec.ts`): login; patient; pré-consulta with upload;
   rotator-cuff surgery (wizard, required clinical fields) with follow-up schedule

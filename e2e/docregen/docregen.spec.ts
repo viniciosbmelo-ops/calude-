@@ -487,38 +487,90 @@ test("reports page", async () => {
   await shot(page, APP, "22-reports");
 });
 
-test("research export CSV download contains the expected columns", async () => {
-  await page.goto("/docregen/regen/pesquisa");
-  await page.getByRole("button", { name: /Buscar/ }).click();
-  await expect(page.getByText("OA_JOELHO_KL3").or(page.getByText(/Kellgren-Lawrence III/)).filter({ visible: true }).first()).toBeVisible();
-  await shot(page, APP, "23-research");
+/** Minimal RFC 4180 parser (quoted cells may hold commas). */
+function parseCsv(text: string): string[][] {
+  return text.replace(/^\uFEFF/, "").trim().split(/\r?\n/).map((line) => {
+    const cells: string[] = [];
+    let cell = "";
+    let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]!;
+      if (quoted) {
+        if (ch === '"' && line[i + 1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else cell += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ",") { cells.push(cell); cell = ""; }
+      else cell += ch;
+    }
+    cells.push(cell);
+    return cells;
+  });
+}
+
+async function downloadResearchCsv(): Promise<string> {
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Exportar CSV/ }).click();
   const download = await downloadPromise;
-  const csv = (await (await download.createReadStream()).toArray()).map(String).join("");
-  const [header, ...lines] = csv.trim().split(/\r?\n/);
-  for (const column of ["id", "age", "sex", "imc", "condition", "anatomical_sites", "status", "procedure_count", "adverse_events", "avg_vas", "created_at"]) {
-    expect(header.split(",")).toContain(column);
+  return (await (await download.createReadStream()).toArray()).map(String).join("");
+}
+
+test("research export: pseudonymized CSV (no case UUID, no exact dates), k<5 warning", async () => {
+  await page.goto("/docregen/regen/pesquisa");
+  await page.getByRole("button", { name: /Buscar/ }).click();
+  await expect(page.getByText(/Kellgren-Lawrence III/).filter({ visible: true }).first()).toBeVisible();
+  // Four cases: every demographic group is below k=5 → warning banner.
+  await expect(page.getByTestId("research-small-group-warning")).toBeVisible();
+  await shot(page, APP, "23-research");
+  const csv = await downloadResearchCsv();
+  const [cols, ...rows] = parseCsv(csv);
+  for (const column of ["pseudo_id", "age_band", "sex", "bmi_band", "condition", "anatomical_sites", "status", "procedure_count", "adverse_events", "avg_vas", "case_month"]) {
+    expect(cols).toContain(column);
   }
-  expect(header).toMatch(/sane_knee_baseline|sane_joelho_baseline|_baseline/);
-  expect(lines).toHaveLength(4);
-  expect(csv).toContain("OA_JOELHO_KL3");
+  for (const removed of ["id", "age", "imc", "created_at"]) expect(cols).not.toContain(removed);
+  expect(cols.join(",")).toMatch(/_baseline/);
+  expect(rows).toHaveLength(4);
+  // No case UUID, no exact date, no identity.
+  for (const id of [kneeCaseId, condralCaseId, pulleyCaseId]) expect(csv).not.toContain(id);
+  expect(csv).not.toMatch(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/);
+  expect(csv).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  expect(csv).not.toContain(PATIENT.nome);
+  expect(csv).not.toContain(PATIENT.cpf);
+  for (const row of rows) {
+    expect(row[cols.indexOf("pseudo_id")]).toMatch(/^R-[0-9a-f]{8}$/);
+    expect(row[cols.indexOf("case_month")]).toMatch(/^\d{4}-\d{2}$/);
+    // k<5: the descriptive column is suppressed.
+    expect(row[cols.indexOf("anatomical_sites")]).toBe("");
+  }
   // The patient's own VAS (follow-up link) feeds avg_vas; the knee SANE the change columns.
-  const cols = header.split(",");
-  const knee = lines.map((l) => l.split(",")).find((c) => c[cols.indexOf("id")] === kneeCaseId)!;
+  const knee = rows.find((c) => c[cols.indexOf("condition")] === "OA_JOELHO_KL3")!;
   expect(knee[cols.indexOf("avg_vas")]).toBe("2.5"); // patient 3 (link) + clinician 2
   expect(knee[cols.indexOf("sane_joelho_last")]).toBe("70");
   expect(knee[cols.indexOf("sane_region")]).toBe("sane_joelho");
-  const condral = lines.map((l) => l.split(",")).find((c) => c[cols.indexOf("id")] === condralCaseId)!;
-  expect(condral[cols.indexOf("condition")]).toBe("CONDRAL_FOCAL");
+  const condral = rows.find((c) => c[cols.indexOf("condition")] === "CONDRAL_FOCAL")!;
   expect(condral[cols.indexOf("sane_region")]).toBe("sane_joelho");
   expect(condral[cols.indexOf("sane_joelho_last")]).toBe("60");
-  expect(condral[cols.indexOf("anatomical_sites")]).toBe("Intra-articular (tibiofemoral)");
-  const pulley = lines.map((l) => l.split(",")).find((c) => c[cols.indexOf("id")] === pulleyCaseId)!;
-  expect(pulley[cols.indexOf("anatomical_sites")]).toBe("Polia A1 (dedo em gatilho)");
+  const pulley = rows.find((c) => c[cols.indexOf("condition")] === "TENDINOPATIA")!;
   expect(pulley[cols.indexOf("sane_region")]).toBe("sane_punho_mao");
-  expect(csv).not.toContain(PATIENT.nome);
-  expect(csv).not.toContain(PATIENT.cpf);
+
+  // With enough comparable cases (≥5 per group) the anatomical labels are exported.
+  const doctorId = sql(DB.docregen, `SELECT id FROM doctors WHERE email = '${DOCREGEN_DOCTOR.email}'`);
+  const clone = `INSERT INTO regen_cases (doctor_id, patient_name, patient_dob, patient_sex, weight_kg, height_cm, imc, condition_code, product_details, status, created_at)
+    SELECT doctor_id, 'E2E CLONE', patient_dob, patient_sex, weight_kg, height_cm, imc, condition_code, product_details, status, created_at
+      FROM regen_cases WHERE doctor_id = ${doctorId} AND patient_name <> 'E2E CLONE'`;
+  for (let i = 0; i < 4; i++) sql(DB.docregen, clone);
+  try {
+    await page.getByRole("button", { name: /Buscar/ }).click();
+    await expect(page.getByTestId("research-small-group-warning")).toHaveCount(0);
+    const [cols2, ...rows2] = parseCsv(await downloadResearchCsv());
+    const sites = rows2.map((row) => row[cols2.indexOf("anatomical_sites")]);
+    expect(sites).toContain("Intra-articular (tibiofemoral)");
+    expect(sites).toContain("Polia A1 (dedo em gatilho)");
+    // Pseudonyms are unique within an export.
+    expect(new Set(rows2.map((row) => row[cols2.indexOf("pseudo_id")])).size).toBe(rows2.length);
+  } finally {
+    sql(DB.docregen, `DELETE FROM regen_cases WHERE doctor_id = ${doctorId} AND patient_name = 'E2E CLONE'`);
+  }
 });
 
 test("secretary: created by the doctor, logs in, sees agenda/patients/regen/alerts, never another doctor's data", async ({ browser, playwright }) => {
@@ -538,6 +590,9 @@ test("secretary: created by the doctor, logs in, sees agenda/patients/regen/aler
   expect(otherPatient.status(), await otherPatient.text()).toBe(201);
   const otherPatientId = (await otherPatient.json() as { id: number }).id;
   await other.dispose();
+
+  // Clinical free text on the patient record must never reach the front desk.
+  sql(DB.docregen, `UPDATE patients SET anamnese = 'ANAMNESE E2E SIGILOSA', laudos = 'LAUDO E2E SIGILOSO' WHERE id = ${patientId}`);
 
   // The doctor creates the secretary in the profile page.
   const secretary = { nome: "Secretaria Ficticia", email: `secretaria.${RUN_ID}@docregen.e2e.test`, senha: "SenhaSec!2026" };
@@ -567,9 +622,13 @@ test("secretary: created by the doctor, logs in, sees agenda/patients/regen/aler
     await sec.getByRole("button", { name: /^Pacientes/ }).click();
     await expect(sec.getByText(new RegExp(PATIENT.nome, "i")).first()).toBeVisible();
     await expect(sec.getByText(/Paciente Outro Medico/i)).toHaveCount(0);
+    // The front desk never sees the CPF.
+    await expect(sec.getByText(formatCpf(PATIENT.cpf))).toHaveCount(0);
     await shot(sec, APP, "26-secretary-patients");
     await sec.getByRole("button", { name: /^Procedimentos/ }).click();
-    await expect(sec.getByText(/Kellgren-Lawrence III/).first()).toBeVisible();
+    await expect(sec.getByText(new RegExp(PATIENT.nome, "i")).first()).toBeVisible();
+    // …nor the diagnosis of the regenerative cases.
+    await expect(sec.getByText(/Kellgren-Lawrence/)).toHaveCount(0);
     await shot(sec, APP, "27-secretary-regen");
     await sec.getByRole("button", { name: /^Alertas/ }).click();
     await expectNoInvalidDate(sec);
@@ -579,11 +638,22 @@ test("secretary: created by the doctor, logs in, sees agenda/patients/regen/aler
     const probe = await sec.request.get(`/regen-api/patients/${otherPatientId}`);
     expect([401, 403, 404], `${probe.status()} ${await probe.text()}`).toContain(probe.status());
     const list = await sec.request.get("/regen-api/patients");
-    expect(JSON.stringify(await list.json())).not.toContain("Outro Medico");
+    const patients = await list.json() as Array<Record<string, unknown>>;
+    const listText = JSON.stringify(patients);
+    expect(listText).not.toContain("Outro Medico");
+    // Secretary projection: no CPF, anamnesis, reports or health-plan card.
+    expect(listText).not.toContain(PATIENT.cpf);
+    expect(listText).not.toContain(formatCpf(PATIENT.cpf));
+    expect(listText).not.toContain("ANAMNESE E2E SIGILOSA");
+    expect(listText).not.toContain("LAUDO E2E SIGILOSO");
+    for (const field of ["cpf", "anamnese", "laudos", "numeroCarteirinha", "endereco", "cep"]) {
+      expect(patients.every((p) => !(field in p)), field).toBe(true);
+    }
     const cases = await sec.request.get("/regen-api/secretary/regen-cases");
     expect(cases.ok()).toBe(true);
     const casesBody = JSON.stringify(await cases.json());
     expect(casesBody).toContain(kneeCaseId);
+    expect(casesBody).not.toContain("OA_JOELHO_KL3");
     // Secretary cannot use doctor-only research export.
     const research = await sec.request.get("/regen-api/regen/research");
     expect(research.status()).toBeGreaterThanOrEqual(400);
