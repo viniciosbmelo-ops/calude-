@@ -1,5 +1,5 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
-import { useEffect, type ComponentType } from "react";
+import { Suspense, lazy, useEffect, type ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
@@ -11,35 +11,44 @@ import { SecretaryAuthProvider } from "@/lib/secretary-auth";
 import { AppLayout } from "@/components/layout/app-layout";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
-import Register from "@/pages/register";
-import Dashboard from "@/pages/dashboard";
-import PatientsList from "@/pages/patients";
-import NewPatient from "@/pages/patients/new";
-import PatientDetail from "@/pages/patients/[id]";
-import PendingApproval from "@/pages/pending-approval";
-import Profile from "@/pages/profile";
-import RegenPatientPage from "@/pages/patient/regen-token";
-import OrientacoesPaciente from "@/pages/patient/orientacoes-paciente";
-import PreConsultPatientFlow from "@/pages/pre-consulta/[token]";
-import ForgotPassword from "@/pages/forgot-password";
-import ResetPasswordToken from "@/pages/reset-password-token";
-import Sucesso from "@/pages/sucesso";
-import AssinaturaCancelada from "@/pages/assinatura-cancelada";
-import RegenDashboard from "@/pages/regen/index";
-import RegenNovo from "@/pages/regen/novo";
-import RegenCaso from "@/pages/regen/caso";
-import RegenPesquisa from "@/pages/regen/pesquisa";
-import RegenConsentimento from "@/pages/regen/consentimento";
-import RegenOrientacoes from "@/pages/regen/orientacoes";
-import FollowupCentral from "@/pages/followup-central";
-import Reports from "@/pages/reports";
-import AgendaPage from "@/pages/agenda";
-import SecretaryLogin from "@/pages/secretary/login";
-import SecretaryDashboard from "@/pages/secretary/dashboard";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { ProductAnalytics } from "@/components/ProductAnalytics";
 import { PdfViewerOverlay } from "@/components/pdf-viewer-overlay";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
+
+// Route-level code splitting: every page is its own chunk, so public patient
+// pages (pré-consulta, follow-up link, orientations) never download the doctor
+// app, and PDF/report code (jsPDF, html2canvas, charts) loads only on the
+// pages that use it. Login stays in the entry chunk (first paint).
+const Register = lazy(() => import("@/pages/register"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const PatientsList = lazy(() => import("@/pages/patients"));
+const NewPatient = lazy(() => import("@/pages/patients/new"));
+const PatientDetail = lazy(() => import("@/pages/patients/[id]"));
+const PendingApproval = lazy(() => import("@/pages/pending-approval"));
+const Profile = lazy(() => import("@/pages/profile"));
+const RegenPatientPage = lazy(() => import("@/pages/patient/regen-token"));
+const OrientacoesPaciente = lazy(() => import("@/pages/patient/orientacoes-paciente"));
+const PreConsultPatientFlow = lazy(() => import("@/pages/pre-consulta/[token]"));
+const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
+const ResetPasswordToken = lazy(() => import("@/pages/reset-password-token"));
+const Sucesso = lazy(() => import("@/pages/sucesso"));
+const AssinaturaCancelada = lazy(() => import("@/pages/assinatura-cancelada"));
+const RegenDashboard = lazy(() => import("@/pages/regen/index"));
+const RegenNovo = lazy(() => import("@/pages/regen/novo"));
+const RegenCaso = lazy(() => import("@/pages/regen/caso"));
+const RegenPesquisa = lazy(() => import("@/pages/regen/pesquisa"));
+const RegenConsentimento = lazy(() => import("@/pages/regen/consentimento"));
+const RegenOrientacoes = lazy(() => import("@/pages/regen/orientacoes"));
+const FollowupCentral = lazy(() => import("@/pages/followup-central"));
+const Reports = lazy(() => import("@/pages/reports"));
+const AgendaPage = lazy(() => import("@/pages/agenda"));
+const SecretaryLogin = lazy(() => import("@/pages/secretary/login"));
+const SecretaryDashboard = lazy(() => import("@/pages/secretary/dashboard"));
+
+function PageFallback() {
+  return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Carregando...</div>;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,7 +105,9 @@ function ProtectedRoute({ component: Component, allowPending = false }: { compon
   return (
     <AppLayout>
       <RouteErrorBoundary>
-        <Component />
+        <Suspense fallback={<PageFallback />}>
+          <Component />
+        </Suspense>
       </RouteErrorBoundary>
     </AppLayout>
   );
@@ -112,6 +123,7 @@ function RootRedirect() {
 
 function Router() {
   return (
+    <Suspense fallback={<PageFallback />}>
     <Switch>
       <Route path="/" component={RootRedirect} />
       <Route path="/login" component={Login} />
@@ -151,6 +163,7 @@ function Router() {
 
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 

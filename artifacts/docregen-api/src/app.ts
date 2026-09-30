@@ -144,10 +144,10 @@ app.post(
 );
 
 // CORS — permite apenas origens conhecidas. DOCREGEN_ALLOWED_ORIGINS (lista
-// separada por vírgulas) substitui a lista padrão. Sem ela, em produção só a
-// origem de DOCREGEN_APP_URL é aceita (o domínio do DocKnee não entra por
-// padrão); fora de produção, também localhost e os domínios de preview
-// (REPLIT_DOMAINS). Ver replit.md → "DocRegen: domínio e CORS".
+// separada por vírgulas) acrescenta origens explícitas. Padrão: a origem de
+// DOCREGEN_APP_URL e os domínios da própria Repl (REPLIT_DOMAINS); fora de
+// produção, também localhost. O domínio do DocKnee (dockneeapp.com) NÃO entra
+// por padrão. Ver replit.md → "DocRegen: domínio e CORS".
 export function buildAllowedOrigins(env: NodeJS.ProcessEnv = process.env): Set<string> {
   const origins = new Set<string>();
   const addOrigin = (value: string, label: string) => {
@@ -160,18 +160,18 @@ export function buildAllowedOrigins(env: NodeJS.ProcessEnv = process.env): Set<s
   const configured = (env["DOCREGEN_ALLOWED_ORIGINS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean);
   for (const origin of configured) addOrigin(origin, "DOCREGEN_ALLOWED_ORIGINS");
   if (env["DOCREGEN_APP_URL"]) addOrigin(env["DOCREGEN_APP_URL"], "DOCREGEN_APP_URL");
-  // Preview domains of the Replit workspace (dev only; deployments set
-  // DOCREGEN_APP_URL / DOCREGEN_ALLOWED_ORIGINS instead).
-  if (env["NODE_ENV"] !== "production") {
-    for (const d of (env["REPLIT_DOMAINS"] ?? "").split(",")) {
-      const h = d.trim();
-      if (h) origins.add(`https://${h}`);
-    }
+  // Replit-owned domains of this Repl/deployment (previews, *.replit.app).
+  for (const d of (env["REPLIT_DOMAINS"] ?? "").split(",")) {
+    const h = d.trim();
+    if (h) origins.add(`https://${h}`);
   }
   return origins;
 }
 
 const allowedOrigins = buildAllowedOrigins();
+if (process.env["NODE_ENV"] === "production" && allowedOrigins.size === 0) {
+  logger.warn("CORS: nenhuma origem permitida — defina DOCREGEN_APP_URL ou DOCREGEN_ALLOWED_ORIGINS (o navegador não conseguirá usar a API)");
+}
 
 function isAllowedOrigin(origin: string): boolean {
   if (allowedOrigins.has(origin)) return true;
