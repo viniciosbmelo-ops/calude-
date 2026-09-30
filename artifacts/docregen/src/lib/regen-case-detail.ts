@@ -3,6 +3,8 @@
  * follow-up schedule). Kept free of React so they are unit-tested.
  */
 
+import { saneDefForName } from "./regen-sane";
+
 // ─── Follow-up schedule (mirrors docregen-api lib/regen-followup-schedule) ───
 
 export interface RegenScheduleRow {
@@ -27,20 +29,23 @@ export const REGEN_SCHEDULE_META: readonly RegenScheduleRow[] = [
 /**
  * Schedule rows that apply to a case. Product-specific rows are shown only
  * when the case uses the product — or when a notification for that period
- * already exists (older schedules created before this rule). Knee cases also
- * ask the SANE-joelho question at every slot (mirrors the API).
+ * already exists (older schedules created before this rule). Cases with a
+ * body region also ask that region's SANE at every slot (mirrors the API):
+ * pass the SANE follow-up scale name ("SANE Ombro", …); `true` keeps meaning
+ * the knee ("SANE Joelho"); `false`/null = VAS only.
  */
 export function scheduleRowsForCase(
   productCodes: Iterable<string | null | undefined>,
   existingPeriods: Iterable<string> = [],
-  kneeCase = false,
+  saneScale: string | boolean | null = false,
 ): RegenScheduleRow[] {
+  const extra = saneScale === true ? "SANE Joelho" : saneScale || null;
   const used = new Set<string>();
   for (const code of productCodes) if (code) used.add(code.toUpperCase());
   const existing = new Set(existingPeriods);
   return REGEN_SCHEDULE_META.filter(
     (row) => !row.products || row.products.some((code) => used.has(code)) || existing.has(row.periodo),
-  ).map((row) => (kneeCase ? { ...row, scales: [...row.scales, "SANE Joelho"] } : row));
+  ).map((row) => (extra ? { ...row, scales: [...row.scales, extra] } : row));
 }
 
 // ─── PROMs ──────────────────────────────────────────────────────────────────
@@ -74,13 +79,14 @@ export interface PromPoint {
 
 /**
  * Same instrument under both naming schemes ("VAS" manual, "VAS Dor"
- * follow-up; "SANE_JOELHO" manual, "SANE Joelho" follow-up).
+ * follow-up; "SANE_JOELHO" manual, "SANE Joelho" follow-up; likewise
+ * "SANE_OMBRO" / "SANE Ombro" and every other region SANE).
  */
 export function normalizePromInstrument(name: string): string {
   const trimmed = name.trim();
   if (/^(vas|eva)(\s+(dor|dolor))?$/i.test(trimmed)) return "VAS";
   if (/^sane[\s_-]+(joelho|rodilla)$/i.test(trimmed)) return "SANE Joelho";
-  return trimmed;
+  return saneDefForName(trimmed)?.scale ?? trimmed;
 }
 
 const TIMEPOINT_DAYS: Record<string, number> = {

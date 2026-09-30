@@ -52,6 +52,9 @@ import { parseApplicationSites } from "@/lib/regen-application-sites";
 import { regenKneeMessages } from "@/locales/regen-knee";
 import { SANE_KNEE_CODE, assessChange, isKneeCondition, promDirection } from "@/lib/regen-knee-measures";
 import { KneeRecommendationHint, PerformanceTestsTab } from "@/components/regen-knee-measures";
+import { SaneRecommendationHint, SaneValidationNote } from "@/components/regen-sane";
+import { regenSaneMessages } from "@/locales/regen-sane";
+import { saneDefForName, saneForCondition, saneLabel, saneQuestion, type SaneRegionDef } from "@/lib/regen-sane";
 import { DateInput } from "@/components/ui/date-input";
 
 type RegenMessageKey = keyof typeof regenCoreMessages["pt-BR"];
@@ -901,16 +904,22 @@ function ProcedureForm({ caseId, onSaved }: { caseId: string; onSaved: () => voi
 }
 
 // ─── PROM instruments ─────────────────────────────────────────────────────────
-// Questionários licenciados do joelho (KOOS, WOMAC, IKDC, Oxford, Lysholm…) não
-// são usados: dor (VAS) para todos; casos de joelho também SANE-joelho (0–100).
+// Questionários licenciados (KOOS, WOMAC, IKDC, Oxford, Lysholm, ASES, DASH…) não
+// são usados: dor (VAS) para todos + o SANE da região da condição (0–100):
+// joelho, ombro, quadril, cotovelo, tornozelo/pé, punho/mão ou coluna.
 const TIMEPOINTS = ["Pré-operatório / Basal", "1 mês", "3 meses", "6 meses", "12 meses", "24 meses"];
 
-function PromForm({ caseId, kneeCase, onSaved }: { caseId: string; kneeCase: boolean; onSaved: () => void }) {
+function PromForm({ caseId, sane, onSaved }: { caseId: string; sane: SaneRegionDef | null; onSaved: () => void }) {
   const t = useScopedTranslations(regenCoreMessages);
   const tk = useScopedTranslations(regenKneeMessages);
+  const ts = useScopedTranslations(regenSaneMessages);
   const tr = useCaseTranslations();
-  const PROMS = kneeCase ? ["VAS", SANE_KNEE_CODE] : ["VAS"];
-  const promLabel = (p: string) => (p === SANE_KNEE_CODE ? tk("saneKnee") : p);
+  const { locale } = useLanguage();
+  // One SANE per case: the one of the condition's region (none → VAS only).
+  const PROMS = sane ? ["VAS", sane.code] : ["VAS"];
+  const kneeSane = sane?.code === SANE_KNEE_CODE;
+  const saneText = sane ? (kneeSane ? tk("saneKnee") : saneLabel(sane, locale)) : "";
+  const promLabel = (p: string) => (sane && p === sane.code ? saneText : p);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [instrument, setInstrument] = useState("VAS");
@@ -920,9 +929,11 @@ function PromForm({ caseId, kneeCase, onSaved }: { caseId: string; kneeCase: boo
 
   const handleSave = async () => {
     if (!instrument || !timepoint) return alert(t("selectPromFields"));
-    if (instrument === SANE_KNEE_CODE) {
+    if (sane && instrument === sane.code) {
       const n = Number(score);
-      if (score.trim() === "" || !Number.isInteger(n) || n < 0 || n > 100) return alert(tk("saneIntegerError"));
+      if (score.trim() === "" || !Number.isInteger(n) || n < 0 || n > 100) {
+        return alert(kneeSane ? tk("saneIntegerError") : ts("saneIntegerError", { label: saneText }));
+      }
     }
     setSaving(true);
     try {
@@ -988,7 +999,13 @@ function PromForm({ caseId, kneeCase, onSaved }: { caseId: string; kneeCase: boo
               ))}
             </div>
           </div>
-          {instrument === SANE_KNEE_CODE && <p className="text-xs text-gray-500" data-testid="sane-knee-help">{tk("saneKneeHelp")}</p>}
+          {kneeSane && instrument === SANE_KNEE_CODE && <p className="text-xs text-gray-500" data-testid="sane-knee-help">{tk("saneKneeHelp")}</p>}
+          {sane && !kneeSane && instrument === sane.code && (
+            <div className="space-y-1">
+              <p className="text-xs text-gray-500" data-testid="sane-help">{saneQuestion(sane, locale)}</p>
+              <SaneValidationNote def={sane} className="text-[11px] text-gray-400 italic" />
+            </div>
+          )}
           <Field label={t("totalScore")} value={score} onChange={setScore} type="number" placeholder={instrument === "VAS" ? "0–10" : "0–100"} />
           <Field label={t("promDateLabel")} value={answeredOn} onChange={setAnsweredOn} type="date" />
           <div className="flex gap-2">
@@ -1052,7 +1069,6 @@ function PatientPhoneField({ caseId, initial }: { caseId: string; initial: strin
 
 // ─── Regen Follow-up Timeline ─────────────────────────────────────────────────
 const BASE_SCALES = ["VAS Dor"];
-const KNEE_SCALES = ["VAS Dor", "SANE Joelho"];
 type PreparedRegenFollowup = { link: string; message: string };
 
 function showPopupStatus(popup: Window, message: string) {
@@ -1065,13 +1081,18 @@ function showPopupStatus(popup: Window, message: string) {
   }
 }
 
-function RegenFollowupTimeline({ caseId, patientPhone, productCodes, kneeCase = false }: { caseId: string; patientPhone?: string; productCodes: string[]; kneeCase?: boolean }) {
+function RegenFollowupTimeline({ caseId, patientPhone, productCodes, sane = null }: { caseId: string; patientPhone?: string; productCodes: string[]; sane?: SaneRegionDef | null }) {
   const t = useScopedTranslations(regenCoreMessages);
   const tk = useScopedTranslations(regenKneeMessages);
-  const ALL_SCALES = kneeCase ? KNEE_SCALES : BASE_SCALES;
-  const scaleLabel = (s: string) => (s === "SANE Joelho" ? tk("saneKnee") : tr(s));
+  // VAS + the SANE of the case's region (one per case), as the API schedules.
+  const ALL_SCALES = sane ? [...BASE_SCALES, sane.scale] : BASE_SCALES;
   const tr = useCaseTranslations();
   const { locale } = useLanguage();
+  const scaleLabel = (s: string) => {
+    if (s === "SANE Joelho") return tk("saneKnee");
+    const def = saneDefForName(s);
+    return def ? saneLabel(def, locale) : tr(s);
+  };
   const [notifs, setNotifs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [initing, setIniting] = useState(false);
@@ -1241,7 +1262,7 @@ function RegenFollowupTimeline({ caseId, patientPhone, productCodes, kneeCase = 
               </tr>
             </thead>
             <tbody>
-              {scheduleRowsForCase(productCodes, notifs.map(n => String(n.periodo)), kneeCase).map((row, i) => {
+              {scheduleRowsForCase(productCodes, notifs.map(n => String(n.periodo)), sane?.scale ?? null).map((row, i) => {
                 const notif = notifs.find(n => n.periodo === row.periodo);
                 return (
                   <tr key={row.periodo} className={i % 2 === 0 ? "bg-white" : "bg-amber-50/30"}>
@@ -2590,8 +2611,13 @@ function PromsTab({ caseId, conditionCode, proms, onRefresh, onGoToTests }: { ca
   const tk = useScopedTranslations(regenKneeMessages);
   const tr = useCaseTranslations();
   const kneeCase = isKneeCondition(conditionCode);
-  const instrumentLabel = useCallback((name: string) => (name === "SANE Joelho" ? tk("saneKnee") : name), [tk]);
+  const sane = saneForCondition(conditionCode);
   const { locale, formatDate } = useLanguage();
+  const instrumentLabel = useCallback((name: string) => {
+    if (name === "SANE Joelho") return tk("saneKnee");
+    const def = saneDefForName(name);
+    return def ? saneLabel(def, locale) : name;
+  }, [tk, locale]);
   const [notifications, setNotifications] = useState<FollowupNotificationLike[]>([]);
 
   useEffect(() => {
@@ -2620,8 +2646,8 @@ function PromsTab({ caseId, conditionCode, proms, onRefresh, onGoToTests }: { ca
 
   return (
     <div className="space-y-4">
-      {kneeCase && <KneeRecommendationHint conditionCode={conditionCode} onGoToTests={onGoToTests} />}
-      <PromForm caseId={caseId} kneeCase={kneeCase} onSaved={onRefresh} />
+      {kneeCase ? <KneeRecommendationHint conditionCode={conditionCode} onGoToTests={onGoToTests} /> : <SaneRecommendationHint conditionCode={conditionCode} />}
+      <PromForm caseId={caseId} sane={sane} onSaved={onRefresh} />
 
       {series.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -2661,6 +2687,7 @@ function PromsTab({ caseId, conditionCode, proms, onRefresh, onGoToTests }: { ca
                     {instrumentLabel(instrument)}{" "}
                     <span className="font-normal text-gray-500">({promScaleMax(instrument) === 10 ? "0–10" : "0–100"})</span>
                   </p>
+                  <SaneValidationNote def={saneDefForName(instrument)} className="text-[10px] text-gray-400 italic" />
                   {data.length < 2 ? (
                     <p className="text-[11px] text-gray-400 text-center py-4">{t("promTwoPoints")}</p>
                   ) : (
@@ -3219,7 +3246,7 @@ export default function RegenCaso() {
             caseId={caseId}
             patientPhone={c?.patient_phone ?? undefined}
             productCodes={[...(c.planned_products ?? []), ...procedures.map(p => p.product_code)]}
-            kneeCase={isKneeCondition(c.condition_code)}
+            sane={saneForCondition(c.condition_code)}
           />
         </div>
 

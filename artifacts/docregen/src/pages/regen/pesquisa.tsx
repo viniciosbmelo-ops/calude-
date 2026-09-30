@@ -14,6 +14,7 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 import { regenKneeMessages } from "@/locales/regen-knee";
 import { KNEE_PERFORMANCE_BY_CODE, assessChange } from "@/lib/regen-knee-measures";
+import { SANE_REGIONS, saneLabel } from "@/lib/regen-sane";
 
 function authHeaders() {
   return {};
@@ -34,9 +35,20 @@ interface ResearchRow {
   avg_vas: number | null;
   dm: boolean;
   created_at: string;
-  /** Knee measures: `<key>_baseline`, `<key>_last`, `<key>_change` (SANE-joelho, OARSI tests, ROM per side). */
+  /**
+   * Measures: `<key>_baseline`, `<key>_last`, `<key>_change` — one set per
+   * region SANE (sane_ombro, sane_joelho, …) plus knee OARSI tests / ROM per side.
+   */
   [measureColumn: string]: unknown;
 }
+
+/**
+ * Region SANEs other than the knee (always shown with the knee measures): a
+ * table column appears only when some row has data for it; the CSV carries
+ * every region's baseline/last/change columns.
+ */
+const OTHER_SANE_COLUMNS = SANE_REGIONS.filter(d => d.code !== "SANE_JOELHO")
+  .map(d => ({ key: d.researchKey, def: d, better: "higher" as const }));
 
 /** Knee measure change columns shown in the table (the CSV carries every measure). */
 const KNEE_RESEARCH_COLUMNS = [
@@ -72,6 +84,12 @@ export default function RegenPesquisa() {
   const [rows,    setRows]    = useState<ResearchRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+
+  const saneColumns = OTHER_SANE_COLUMNS.filter(col => (rows ?? []).some(r => typeof r[`${col.key}_change`] === "number"));
+  const changeColumns = [
+    ...KNEE_RESEARCH_COLUMNS.map(col => ({ ...col, header: kneeHeaders[col.key]! })),
+    ...saneColumns.map(col => ({ key: col.key, better: col.better, header: saneLabel(col.def, locale) })),
+  ];
 
   function buildQS(extra?: Record<string, string>) {
     const p: Record<string, string> = {};
@@ -248,7 +266,7 @@ export default function RegenPesquisa() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),...KNEE_RESEARCH_COLUMNS.map(col => `Δ ${kneeHeaders[col.key]}`),"DM",t("registration")].map(h => (
+                       {[t("age"),t("sex"),"IMC",t("diagnosis"),"Status","Proced.",t("adverseEvents"),t("averageVas"),...changeColumns.map(col => `Δ ${col.header}`),"DM",t("registration")].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -274,7 +292,7 @@ export default function RegenPesquisa() {
                             : <span className="text-gray-400">0</span>}
                         </td>
                         <td className="px-3 py-2 text-center text-gray-700">{r.avg_vas ?? "—"}</td>
-                        {KNEE_RESEARCH_COLUMNS.map(col => {
+                        {changeColumns.map(col => {
                           const change = r[`${col.key}_change`];
                           if (typeof change !== "number") return <td key={col.key} className="px-3 py-2 text-center text-gray-400">—</td>;
                           const assessment = assessChange(col.better, change);
