@@ -56,6 +56,7 @@ import {
   type RegenApplicationSite,
 } from "@/lib/regen-application-sites";
 import { DateInput } from "@/components/ui/date-input";
+import { TermsModal, useRegenTermsGate } from "@/components/regen-terms-modal";
 
 function authHdr() {
   return {
@@ -667,6 +668,9 @@ export default function RegenNovo() {
     regenConditionLabel(condition.code, locale) || condition.name, [locale]);
   const [, navigate] = useLocation();
   const { canWrite, loading: subLoading } = useSubscriptionStatus();
+  // Reached directly from the sidebar / patient pages: the API rejects new
+  // cases until the regenerative terms are accepted, so ask for them here too.
+  const termsGate = useRegenTermsGate();
 
   const [step, setStep]     = useState(0);
   const [saving, setSaving] = useState(false);
@@ -1078,6 +1082,7 @@ export default function RegenNovo() {
   /* ─── Render ─────────────────────────────────────────────────────────────── */
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 w-full overflow-x-hidden sm:overflow-visible">
+      {termsGate.needsAcceptance && <TermsModal onAccept={termsGate.accept} loading={termsGate.accepting} />}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

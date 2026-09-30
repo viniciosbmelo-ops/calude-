@@ -9,6 +9,7 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 import { formatPersonName, parseCalendarDate } from "@/lib/utils";
 import { regenConditionLabel } from "@/lib/regen-conditions";
+import { TermsModal } from "@/components/regen-terms-modal";
 import {
   Plus, FlaskConical, AlertCircle, CheckCircle2, Clock,
   Activity, ChevronRight, FileText, ClipboardList,
@@ -17,49 +18,6 @@ import {
 } from "lucide-react";
 
 function authHeaders() { return { "Content-Type": "application/json" }; }
-
-// ─── Terms Modal (mantém dark — diálogo sobre overlay) ──────────────────────
-function TermsModal({ onAccept, loading }: { onAccept: () => void; loading: boolean }) {
-  const t = useScopedTranslations(regenCoreMessages);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50 shrink-0">
-            <Shield className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-900 text-base">{t("termsTitle")}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{t("termsVersion")}</p>
-          </div>
-        </div>
-        {/* Body */}
-        <div className="px-6 py-5 space-y-3 max-h-64 overflow-y-auto text-sm text-gray-700">
-          <p>{t("termsIntro")}</p>
-          <ul className="list-disc pl-5 space-y-1.5">
-            <li>{t("termsBullet1")}</li>
-            <li>{t("termsBullet2")}</li>
-            <li>{t("termsBullet3")}</li>
-            <li>{t("termsBullet4")}</li>
-            <li>{t("termsBullet5")}</li>
-          </ul>
-        </div>
-        {/* Footer */}
-        <div className="px-6 pb-6 pt-3">
-          <button
-            onClick={onAccept}
-            disabled={loading}
-            className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            {t("termsAccept")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Stat card (tema claro — igual ao Dashboard) ──────────────────────────────
 function StatCard({ label, value, icon: Icon, color, bg, onClick, active }: {
