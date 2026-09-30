@@ -14,7 +14,12 @@ import {
   processStorageCleanupJobs,
 } from "../lib/storageCleanup";
 import { localeForDoctorId } from "../lib/locale";
-import { clinicToday } from "../lib/regen-followup-schedule";
+import { calendarDateParam, clinicToday } from "../lib/regen-followup-schedule";
+
+/** Birth date must be a real calendar day when given (no "2026-13-45" / "2026-02-30"). */
+function hasValidBirthDate(data: { dataNascimento?: string | null }): boolean {
+  return data.dataNascimento === undefined || calendarDateParam(data.dataNascimento) !== undefined;
+}
 import { message } from "../lib/locale-catalog";
 
 const router: IRouter = Router();
@@ -61,7 +66,7 @@ router.get("/patients", requireDoctorOrSecretary, async (req, res): Promise<void
 router.post("/patients", requireDoctorOrSecretary, async (req, res): Promise<void> => {
   const locale = await localeForDoctorId(req.doctorId);
   const parsed = CreatePatientBody.safeParse(req.body);
-  if (!parsed.success) {
+  if (!parsed.success || !hasValidBirthDate(parsed.data)) {
     res.status(400).json({ error: message(locale, "invalidPatientData") });
     return;
   }
@@ -116,7 +121,7 @@ router.patch("/patients/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(raw, 10);
 
   const parsed = UpdatePatientBody.safeParse(req.body);
-  if (!parsed.success) {
+  if (!parsed.success || !hasValidBirthDate(parsed.data)) {
     res.status(400).json({ error: message(locale, "invalidPatientData") });
     return;
   }

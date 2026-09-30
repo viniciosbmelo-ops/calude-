@@ -5,6 +5,7 @@ import { assertRequiredSchema } from "./lib/schema-guard";
 import { initRegenData } from "./routes/regen";
 import { purgeExpiredGrants } from "./lib/uploadGrants";
 import { processStorageCleanupJobs } from "./lib/storageCleanup";
+import { purgeExpiredPdfs } from "./lib/tempPdfStore";
 import { startWhatsAppOutboxWorker } from "./services/whatsappOutbox";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,6 +62,9 @@ export async function startServer(): Promise<void> {
     logger.warn({ err }, "Falha na limpeza inicial de arquivos excluídos");
   });
   const uploadCleanupTimer = setInterval(() => {
+    void purgeExpiredPdfs().catch((err) => {
+      logger.warn({ err }, "Falha na limpeza periódica de PDFs temporários");
+    });
     void purgeExpiredGrants().catch((err) => {
       logger.warn({ err }, "Falha na limpeza periódica de uploads expirados");
     });

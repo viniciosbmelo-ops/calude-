@@ -2,8 +2,9 @@ import { API_PREFIX } from "../lib/api-prefix";
 import { Router, type IRouter } from "express";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { requireAuth } from "../middlewares/requireAuth";
-import { storePdf, getPdf, MAX_PDF_BYTES } from "../lib/tempPdfStore";
+import { storePdf, getPdf, MAX_PDF_BYTES, tempPdfLimits } from "../lib/tempPdfStore";
 import { getBaseUrl } from "../lib/base-url";
+import { PostgresRateLimitStore, rateLimitsDisabled } from "../lib/dbRateLimit";
 
 const router: IRouter = Router();
 
@@ -20,14 +21,18 @@ const pdfUploadLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Limite de uploads de PDF atingido. Tente novamente em 15 minutos.", code: "PDF_RATE_LIMIT" },
   keyGenerator: (req) => req.doctorId ? `pdf:${req.doctorId}` : ipKeyGenerator(req.ip ?? ""),
-  skip: () => process.env["NODE_ENV"] === "test",
+  store: new PostgresRateLimitStore("pdf-upload"),
+  passOnStoreError: true,
+  skip: rateLimitsDisabled,
 });
 
 /**
  * POST /regen-api/pdf/temp
  * Auth required. Accepts raw PDF bytes (Content-Type: application/pdf) or
  * a JSON body with { data: base64string, filename: string }.
- * Stores the PDF for up to 30 min and returns { url, path, expiresIn }.
+ * Stores the PDF (database, shared by all instances) for up to
+ * PDF_TEMP_TTL_SECONDS (30 min) and returns { url, path, expiresIn }.
+ * Per-doctor quota: 429 when exceeded; global cap: 503.
  *
  * The returned URL uses the trusted base URL from env/REPLIT_DOMAINS (not
  * reconstructed from request headers, to prevent Host header injection in
@@ -84,13 +89,15 @@ router.post("/pdf/temp", requireAuth, pdfUploadLimiter, async (req, res): Promis
       return;
     }
 
-    const result = storePdf(buffer, filename);
+    const result = await storePdf(req.doctorId!, buffer, filename);
 
     if ("error" in result) {
       if (result.error === "invalid_pdf") {
         res.status(400).json({ error: "O arquivo enviado não é um PDF válido" });
       } else if (result.error === "too_large") {
         res.status(413).json({ error: "PDF excede o tamanho máximo permitido" });
+      } else if (result.error === "doctor_quota") {
+        res.status(429).json({ error: "Limite de PDFs temporários atingido. Aguarde alguns minutos e tente novamente.", code: "PDF_TEMP_QUOTA" });
       } else if (result.error === "store_full") {
         res.status(503).json({ error: "Serviço temporariamente indisponível. Tente novamente em instantes." });
       } else {
@@ -105,7 +112,7 @@ router.post("/pdf/temp", requireAuth, pdfUploadLimiter, async (req, res): Promis
     const path = `${API_PREFIX}/pdf/temp/${result.id}`;
     const url = `${base}${path}`;
 
-    res.json({ url, path, expiresIn: Math.floor(Number(process.env["PDF_TEMP_TTL_SECONDS"] ?? 1800)) });
+    res.json({ url, path, expiresIn: tempPdfLimits().ttlSeconds });
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code === "PDF_TOO_LARGE") {
       // Socket was already destroyed; can't write a full HTTP response.
@@ -131,11 +138,11 @@ router.post("/pdf/temp", requireAuth, pdfUploadLimiter, async (req, res): Promis
  * Responds with Content-Disposition: inline so Safari opens a PDF viewer
  * (not a download) and the user can tap the native iOS Share button.
  */
-router.get("/pdf/temp/:id", (req, res): void => {
+router.get("/pdf/temp/:id", async (req, res): Promise<void> => {
   const rawId = req.params["id"] ?? "";
 
   // getPdf already validates the format (32-char hex); return 404 for anything else
-  const entry = getPdf(rawId);
+  const entry = await getPdf(rawId);
   if (!entry) {
     res.status(404).json({ error: "PDF não encontrado ou expirado" });
     return;

@@ -84,7 +84,8 @@ function RegenNotifCard({
       const sendRes = await fetch("/regen-api/notifications/send-text", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        // One send per follow-up per day: a double click never sends twice.
+        headers: { "Content-Type": "application/json", "Idempotency-Key": `regen-followup:${row.notif_id}:${today}` },
         body: JSON.stringify({ phone: data.phone, text: data.message }),
       });
 

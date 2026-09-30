@@ -229,13 +229,22 @@ router.get("/regen/conditions", requireAuth, async (req: any, res) => {
 
 // ─── Cases ───────────────────────────────────────────────────────────────────
 
+/** Optional calendar date ("YYYY-MM-DD", a real day) or empty. */
+const CalendarDate = z.string().refine((value) => calendarDateParam(value) !== undefined, "data inválida (AAAA-MM-DD)");
+
+/** Instant: ISO timestamp or calendar day; the calendar part must be a real day (no 2026-02-30 roll-over). */
+const InstantString = z.string().refine(
+  (value) => !Number.isNaN(Date.parse(value)) && (!/^\d{4}-\d{2}-\d{2}/.test(value.trim()) || calendarDateParam(value.trim().slice(0, 10)) !== undefined),
+  "invalid date",
+);
+
 // Condition codes must come from the DocRegen catalog (or a legacy code).
 const RegenConditionCode = z.string().min(1).refine(isKnownRegenConditionCode, "condição desconhecida");
 
 const CaseBody = z.object({
   patientId:        z.number().optional(),
   patientName:      z.string().min(1),
-  patientDob:       z.string().optional(),
+  patientDob:       CalendarDate.optional(),
   patientSex:       z.string().optional(),
   patientPhone:     z.string().optional(),
   weightKg:         z.number().optional(),
@@ -244,7 +253,7 @@ const CaseBody = z.object({
   conditionCustom:  z.string().optional(),
   ladoArticulacao:  z.string().optional(),
   hospitalLocal:    z.string().optional(),
-  dataCaso:         z.string().optional(),
+  dataCaso:         CalendarDate.optional(),
   dm:               z.boolean().default(false),
   hba1c:            z.number().optional(),
   anticoagulant:    z.boolean().default(false),
@@ -268,7 +277,7 @@ const CaseBody = z.object({
 const CasePatchBody = z.object({
   patientId:         z.number().optional(),
   patientName:       z.string().min(1).optional(),
-  patientDob:        z.string().optional(),
+  patientDob:        CalendarDate.optional(),
   patientSex:        z.string().optional(),
   patientPhone:      z.string().optional(),
   weightKg:          z.number().optional(),
@@ -277,7 +286,7 @@ const CasePatchBody = z.object({
   conditionCustom:   z.string().optional(),
   ladoArticulacao:   z.string().optional(),
   hospitalLocal:     z.string().optional(),
-  dataCaso:          z.string().optional(),
+  dataCaso:          CalendarDate.optional(),
   dm:                z.boolean().optional(),
   hba1c:             z.number().optional(),
   anticoagulant:     z.boolean().optional(),
@@ -505,7 +514,7 @@ const ProcedureBody = z.object({
   adverseEvent:      z.boolean().default(false),
   adverseEventDesc:  z.string().optional(),
   notes:             z.string().optional(),
-  performedAt:       z.string().refine((v) => !Number.isNaN(Date.parse(v)), "invalid date").optional(),
+  performedAt:       InstantString.optional(),
   complianceResult:  z.record(z.string(), z.unknown()).optional(),
   biologicDetails:   z.record(z.string(), z.unknown()).optional(),
 });
@@ -736,6 +745,17 @@ router.get("/regen/cases/:caseId/labs", requireAuth, async (req: any, res) => {
   }
 });
 
+const LabResultBody = z.object({
+  analyte:     z.string().trim().min(1).max(120),
+  value:       z.number().finite().nullable().optional(),
+  unit:        z.string().trim().max(40).nullable().optional(),
+  refMin:      z.number().finite().nullable().optional(),
+  refMax:      z.number().finite().nullable().optional(),
+  flag:        z.string().trim().max(20).nullable().optional(),
+  collectedAt: z.string().nullable().optional(),
+});
+const LabsBody = z.object({ results: z.array(LabResultBody).min(1).max(100) });
+
 router.post("/regen/cases/:caseId/labs", requireAuth, async (req: any, res) => {
   try {
     const { rows: c } = await pool.query(
@@ -744,29 +764,47 @@ router.post("/regen/cases/:caseId/labs", requireAuth, async (req: any, res) => {
     );
     if (!c.length) return res.status(404).json({ error: await requestMessage(req, "caseNotFound") });
 
-    const results: any[] = req.body.results ?? [];
-    if (!Array.isArray(results) || !results.length) return res.status(400).json({ error: await requestMessage(req, "labResultsRequired") });
+    const parsed = LabsBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const empty = Array.isArray((req.body as { results?: unknown } | undefined)?.results) && !(req.body as { results: unknown[] }).results.length;
+      return res.status(400).json({
+        error: await requestMessage(req, empty || !(req.body as { results?: unknown } | undefined)?.results ? "labResultsRequired" : "invalidData"),
+        issues: parsed.error.issues,
+      });
+    }
+    const results = parsed.data.results;
 
     // collected_at is a `date` column: pass the calendar day as a string
     // (never `new Date("YYYY-MM-DD")`, which shifts a day west of UTC).
-    const collectedDates = results.map(r => calendarDateParam(r?.collectedAt));
+    const collectedDates = results.map(r => calendarDateParam(r.collectedAt));
     if (collectedDates.some(d => d === undefined)) {
       return res.status(400).json({ error: await requestMessage(req, "invalidData") });
     }
 
+    // All rows or none.
+    const client = await pool.connect();
     const inserted = [];
-    for (const [i, r] of results.entries()) {
-      const { rows } = await pool.query(
-        `INSERT INTO regen_lab_results
-           (case_id, analyte, value_num, unit, ref_min, ref_max, flag, collected_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-        [
-          req.params.caseId, r.analyte, r.value ?? null, r.unit ?? null,
-          r.refMin ?? null, r.refMax ?? null, r.flag ?? null,
-          collectedDates[i],
-        ]
-      );
-      inserted.push(rows[0]);
+    try {
+      await client.query("BEGIN");
+      for (const [i, r] of results.entries()) {
+        const { rows } = await client.query(
+          `INSERT INTO regen_lab_results
+             (case_id, analyte, value_num, unit, ref_min, ref_max, flag, collected_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+          [
+            req.params.caseId, r.analyte, r.value ?? null, r.unit ?? null,
+            r.refMin ?? null, r.refMax ?? null, r.flag ?? null,
+            collectedDates[i],
+          ]
+        );
+        inserted.push(rows[0]);
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
     }
     res.status(201).json(inserted);
   } catch (e) {
@@ -3215,7 +3253,12 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
   const client = await pool.connect();
   let locale = await localeForDoctorId(req.doctorId);
   try {
-    const { baseDate } = req.body as { baseDate?: string };
+    const rawBaseDate = (req.body as { baseDate?: unknown } | undefined)?.baseDate;
+    const baseDate = calendarDateParam(rawBaseDate);
+    if (baseDate === undefined) {
+      res.status(400).json({ error: message(locale, "invalidData"), field: "baseDate" });
+      return;
+    }
 
     await client.query("BEGIN");
     await client.query(
@@ -3237,7 +3280,7 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     // Base calendar date: explicit baseDate, else today on the clinic calendar
     // (America/Sao_Paulo). Pure calendar arithmetic — no TZ math.
     const today = clinicToday();
-    const base = typeof baseDate === "string" && baseDate.trim() ? baseDate : null;
+    const base = baseDate;
 
     // Product-specific checkpoints (e.g. the 6-week HA review) only apply when
     // the case plans or has performed that product.
@@ -3493,9 +3536,13 @@ router.get("/regen/stats/outcomes", requireAuth, async (req: any, res) => {
 });
 
 // PATCH /regen/cases/:id/notifications/:notifId — atualiza status
+const NotificationStatusBody = z.object({ status: z.enum(["pending", "sent", "completed"]) });
+
 router.patch("/regen/cases/:id/notifications/:notifId", requireAuth, async (req: any, res) => {
   try {
-    const { status } = req.body as { status: string };
+    const parsed = NotificationStatusBody.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: await requestMessage(req, "invalidData") });
+    const { status } = parsed.data;
     await pool.query(
       `UPDATE regen_followup_notifications SET status = $1, sent_at = CASE WHEN $1 = 'sent' THEN now() ELSE sent_at END
        WHERE id = $2 AND case_id = $3

@@ -62,18 +62,22 @@ function secretaryValidationError(
   return message(locale, "secretaryRequiredFields");
 }
 
+/** Real calendar day "YYYY-MM-DD" (no 2026-02-30 roll-over). */
+const AppointmentDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => Boolean(calendarDateParam(value)), "data inválida");
+const AppointmentTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "hora inválida (HH:MM)");
+
 const CreateAppointmentBody = z.object({
   patientId: z.number().int().positive(),
-  data: z.string(),
-  hora: z.string(),
+  data: AppointmentDate,
+  hora: AppointmentTime,
   tipo: z.string().default("consulta"),
   observacoes: z.string().optional(),
   status: z.string().default("agendado"),
 });
 
 const UpdateAppointmentBody = z.object({
-  data: z.string().optional(),
-  hora: z.string().optional(),
+  data: AppointmentDate.optional(),
+  hora: AppointmentTime.optional(),
   tipo: z.string().optional(),
   observacoes: z.string().optional(),
   status: z.string().optional(),
