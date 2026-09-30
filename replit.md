@@ -132,7 +132,9 @@ Cookies: `docregen_session`, `docregen_secretary_session`, `docregen_patient_ses
 - `pnpm run test:docregen-api` — DocRegen API tests (need `DOCREGEN_DATABASE_URL` pointing
   at a disposable database with the schema applied, `DOCREGEN_SESSION_SECRET`, the Gemini
   integration variables; the pre-consultation upload test also needs object storage and
-  `DOCREGEN_PRIVATE_OBJECT_DIR`). `pnpm test` runs web, DocKnee API and DocRegen API suites.
+  `DOCREGEN_PRIVATE_OBJECT_DIR`). `pnpm run test:docregen-api:tz` runs the same suite with
+  `TZ=America/Sao_Paulo` (calendar dates must not depend on the server timezone).
+  `pnpm test` runs web, DocKnee API and DocRegen API suites (DocRegen in UTC/host TZ and São Paulo).
 - Outside Replit (no object-storage sidecar at `127.0.0.1:1106`) run the API suites with
   `OBJECT_STORAGE_FAKE=1`: the vitest setup (`src/test-support/setupObjectStorage.ts` in each
   API) starts a local fake of the sidecar + the GCS endpoints the client uses and points the

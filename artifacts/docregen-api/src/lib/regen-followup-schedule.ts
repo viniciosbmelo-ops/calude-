@@ -123,3 +123,46 @@ export function clinicToday(now: Date = new Date()): string {
     day: "2-digit",
   }).format(now);
 }
+
+/**
+ * Normalises a client value for a PostgreSQL `date` column into a calendar
+ * date string ("YYYY-MM-DD"), independent of the server timezone.
+ *
+ * Never pass `new Date("YYYY-MM-DD")` to a `date` column: that is midnight
+ * UTC, node-postgres serialises it in the server's local time and PostgreSQL
+ * keeps the local day, so a server west of UTC (America/Sao_Paulo) stores the
+ * previous day.
+ *
+ * - null/undefined/"" → null (no date);
+ * - "YYYY-MM-DD" (a real calendar day) → as is;
+ * - a full ISO timestamp → its day on the clinic calendar (America/Sao_Paulo);
+ * - anything else → undefined (invalid: the caller answers 400).
+ */
+export function calendarDateParam(value: unknown): string | null | undefined {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = DATE_ONLY_RE.exec(trimmed);
+  if (match) {
+    const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+    const utc = new Date(Date.UTC(year, month - 1, day));
+    const valid = utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day;
+    return valid ? trimmed : undefined;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return undefined;
+  const instant = new Date(trimmed);
+  return Number.isNaN(instant.getTime()) ? undefined : clinicToday(instant);
+}
+
+/**
+ * Instant for a timestamp column from a client value: a bare calendar date
+ * ("YYYY-MM-DD") becomes noon of that day on the clinic calendar
+ * (America/Sao_Paulo, UTC−03:00, no DST since 2019), so it never renders as
+ * the previous day; any other parseable value is used as the instant it is.
+ */
+export function instantParam(value: string): Date {
+  const trimmed = value.trim();
+  if (DATE_ONLY_RE.test(trimmed) && calendarDateParam(trimmed)) return new Date(`${trimmed}T12:00:00-03:00`);
+  return new Date(trimmed);
+}

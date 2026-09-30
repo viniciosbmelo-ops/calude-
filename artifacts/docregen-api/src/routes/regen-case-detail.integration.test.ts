@@ -188,6 +188,41 @@ describe("procedures, PROMs and labs for the case detail tabs", () => {
     const labRows = await j(await call(`/regen/cases/${created.id}/labs`));
     expect(labRows[0].collected_at).toBe("2026-09-20");
   });
+
+  it("keeps calendar days whatever the server timezone (labs and date-only procedures)", async () => {
+    const created = await createCase({ conditionCode: "OA_JOELHO_KL2", plannedProducts: ["PRP"] });
+
+    const labs = await call(`/regen/cases/${created.id}/labs`, {
+      method: "POST",
+      body: JSON.stringify({ results: [
+        { analyte: "Plaquetas", value: 250, collectedAt: "2026-01-01" },
+        // Full instant: the clinic-calendar day (23:30 in São Paulo = 02:30Z next day).
+        { analyte: "Leucócitos", value: 7, collectedAt: "2026-09-21T02:30:00.000Z" },
+        { analyte: "Hemoglobina", value: 14 },
+      ] }),
+    });
+    expect(labs.status).toBe(201);
+    const byAnalyte = Object.fromEntries(
+      (await j(await call(`/regen/cases/${created.id}/labs`))).map((r: any) => [r.analyte, r.collected_at]),
+    );
+    expect(byAnalyte).toEqual({ Plaquetas: "2026-01-01", "Leucócitos": "2026-09-20", Hemoglobina: null });
+
+    for (const collectedAt of ["2026-02-30", "20/09/2026", 20260920]) {
+      const invalid = await call(`/regen/cases/${created.id}/labs`, {
+        method: "POST", body: JSON.stringify({ results: [{ analyte: "Plaquetas", value: 1, collectedAt }] }),
+      });
+      expect(invalid.status, String(collectedAt)).toBe(400);
+    }
+
+    const proc = await call(`/regen/cases/${created.id}/procedures`, {
+      method: "POST",
+      body: JSON.stringify({ productCode: "PRP", guidanceMode: "ultrassom", performedAt: "2026-09-29" }),
+    });
+    expect(proc.status).toBe(201);
+    const [procedure] = await j(await call(`/regen/cases/${created.id}/procedures`));
+    // Noon on the clinic calendar, not midnight UTC (21:00 of the previous day in São Paulo).
+    expect(new Date(procedure.performed_at).toISOString()).toBe("2026-09-29T15:00:00.000Z");
+  });
 });
 
 describe("knee conditions catalog", () => {

@@ -16,7 +16,9 @@ import {
 } from "../lib/regen-conditions";
 import {
   addDaysToCalendarDate,
+  calendarDateParam,
   clinicToday,
+  instantParam,
   REGEN_PROM_INSTRUMENTS,
   effectiveRegenPatientScales,
   regenFollowupScheduleFor,
@@ -537,7 +539,7 @@ router.post("/regen/cases/:caseId/procedures", requireAuth, async (req: any, res
         id, req.params.caseId, req.doctorId, body.productCode, body.guidanceMode,
         body.accessRoute ?? null, body.localAnesthesia, body.anesthesiaAgent ?? null,
         body.adverseEvent, body.adverseEventDesc ?? null, body.notes ?? null,
-        body.performedAt ? new Date(body.performedAt) : new Date(),
+        body.performedAt ? instantParam(body.performedAt) : new Date(),
         JSON.stringify(body.complianceResult ?? {}),
         JSON.stringify(body.biologicDetails ?? {}),
       ]
@@ -735,8 +737,15 @@ router.post("/regen/cases/:caseId/labs", requireAuth, async (req: any, res) => {
     const results: any[] = req.body.results ?? [];
     if (!Array.isArray(results) || !results.length) return res.status(400).json({ error: await requestMessage(req, "labResultsRequired") });
 
+    // collected_at is a `date` column: pass the calendar day as a string
+    // (never `new Date("YYYY-MM-DD")`, which shifts a day west of UTC).
+    const collectedDates = results.map(r => calendarDateParam(r?.collectedAt));
+    if (collectedDates.some(d => d === undefined)) {
+      return res.status(400).json({ error: await requestMessage(req, "invalidData") });
+    }
+
     const inserted = [];
-    for (const r of results) {
+    for (const [i, r] of results.entries()) {
       const { rows } = await pool.query(
         `INSERT INTO regen_lab_results
            (case_id, analyte, value_num, unit, ref_min, ref_max, flag, collected_at)
@@ -744,7 +753,7 @@ router.post("/regen/cases/:caseId/labs", requireAuth, async (req: any, res) => {
         [
           req.params.caseId, r.analyte, r.value ?? null, r.unit ?? null,
           r.refMin ?? null, r.refMax ?? null, r.flag ?? null,
-          r.collectedAt ? new Date(r.collectedAt) : null,
+          collectedDates[i],
         ]
       );
       inserted.push(rows[0]);

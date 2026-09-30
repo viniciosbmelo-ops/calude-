@@ -5,7 +5,9 @@ import {
   REGEN_PROM_INSTRUMENTS,
   isRegenPatientScale,
   addDaysToCalendarDate,
+  calendarDateParam,
   clinicToday,
+  instantParam,
   effectiveRegenPatientScales,
   regenFollowupScheduleFor,
 } from "./regen-followup-schedule";
@@ -147,5 +149,32 @@ describe("region SANE from the application sites (conditions without a region)",
     // Conditions with their own region keep their stored rows unchanged.
     expect(siteDerivedSane("OA_OMBRO", knee)).toBeNull();
     expect(siteDerivedSane("CONDRAL_FOCAL", knee)?.scale).toBe("SANE Joelho");
+  });
+});
+
+describe("calendar-date parameters (server-timezone independent)", () => {
+  it.each([
+    [undefined, null],
+    [null, null],
+    ["", null],
+    ["  ", null],
+    ["2026-09-20", "2026-09-20"],
+    [" 2026-01-01 ", "2026-01-01"],
+    ["2024-02-29", "2024-02-29"],
+    ["2026-09-21T02:30:00.000Z", "2026-09-20"],
+    ["2026-09-20T12:00:00-03:00", "2026-09-20"],
+    ["2026-02-30", undefined],
+    ["2026-13-01", undefined],
+    ["20/09/2026", undefined],
+    ["2026-09-20Tgarbage", undefined],
+    [20260920, undefined],
+  ])("calendarDateParam(%j) → %j", (value, expected) => {
+    expect(calendarDateParam(value)).toBe(expected);
+  });
+
+  it("instantParam: a bare calendar day is noon in São Paulo; instants are kept", () => {
+    expect(instantParam("2026-09-29").toISOString()).toBe("2026-09-29T15:00:00.000Z");
+    expect(instantParam("2026-09-29T15:00:00.000Z").toISOString()).toBe("2026-09-29T15:00:00.000Z");
+    expect(instantParam("2026-09-29T23:30:00-03:00").toISOString()).toBe("2026-09-30T02:30:00.000Z");
   });
 });
