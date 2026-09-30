@@ -50,6 +50,11 @@ export const REQUIRED_TABLES: string[] = [
   "regen_schema_migrations",
   "whatsapp_outbox",
   "whatsapp_delivery_audit",
+  "audit_logs",
+  "rate_limit_buckets",
+  "auth_lockouts",
+  "temp_pdfs",
+  "lgpd_requests",
 ];
 
 /**
@@ -63,6 +68,9 @@ export const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "doctors", column: "pais_origem" },
   { table: "doctors", column: "last_login_at" },
   { table: "doctors", column: "session_version" },
+  { table: "audit_logs", column: "actor_role" },
+  { table: "audit_logs", column: "secretary_id" },
+  { table: "audit_logs", column: "patient_link_hash" },
   { table: "secretaries", column: "session_version" },
   { table: "page_visits", column: "access_type" },
   { table: "page_visits", column: "country_code" },

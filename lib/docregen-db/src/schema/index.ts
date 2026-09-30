@@ -19,3 +19,5 @@ export * from "./regen";
 export * from "./analytics";
 export * from "./whatsapp-outbox";
 export * from "./stripe-webhook-events";
+export * from "./security";
+export * from "./lgpd-requests";

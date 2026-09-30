@@ -1,4 +1,5 @@
-import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -47,7 +48,11 @@ export const doctorsTable = pgTable("doctors", {
   totpRecoveryCodesHash: text("totp_recovery_codes_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  // E-mails are stored lowercase; this index also rejects legacy mixed-case
+  // duplicates ("A@x" vs "a@x") that could shadow an account at login.
+  uniqueIndex("doctors_email_lower_unique").on(sql`lower(${t.email})`),
+]);
 
 export const insertDoctorSchema = createInsertSchema(doctorsTable).omit({
   id: true,

@@ -8,20 +8,32 @@ import { establishSession } from "../lib/session";
 import { localeForDoctorId } from "../lib/locale";
 import { regenPeriodForLocale } from "../lib/regen-labels";
 import { message } from "../lib/locale-catalog";
-import { clinicToday } from "../lib/regen-followup-schedule";
+import { calendarDateParam, clinicToday } from "../lib/regen-followup-schedule";
+import {
+  accountLockRemainingMs,
+  clearAccountFailures,
+  lockoutMessage,
+  normalizeEmail,
+  recordAccountFailure,
+} from "../lib/accountLockout";
+import { recordSecurityEvent } from "../lib/securityMonitor";
+import { identifierFingerprint } from "../lib/redaction";
+
+/** Same minimum as doctor registration / password reset / password change. */
+const MIN_SECRETARY_PASSWORD = 8;
 
 const router: IRouter = Router();
 
 const CreateSecretaryBody = z.object({
   nome: z.string().min(2),
   email: z.string().email(),
-  senha: z.string().min(6),
+  senha: z.string().min(MIN_SECRETARY_PASSWORD),
 });
 
 const UpdateSecretaryBody = z.object({
   nome: z.string().min(2).optional(),
   email: z.string().email().optional(),
-  senha: z.string().min(6).optional(),
+  senha: z.string().min(MIN_SECRETARY_PASSWORD).optional(),
   ativo: z.boolean().optional(),
 });
 
@@ -36,7 +48,7 @@ function normalizeSecretaryInput(input: unknown): unknown {
   return {
     ...data,
     ...(typeof data.nome === "string" ? { nome: data.nome.trim() } : {}),
-    ...(typeof data.email === "string" ? { email: data.email.trim() } : {}),
+    ...(typeof data.email === "string" ? { email: normalizeEmail(data.email) } : {}),
   };
 }
 
@@ -76,7 +88,18 @@ router.post("/secretary-auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email, senha } = parsed.data;
+  const { senha } = parsed.data;
+  const email = normalizeEmail(parsed.data.email);
+  const fingerprint = identifierFingerprint(email);
+
+  const lockedMs = await accountLockRemainingMs("secretary", email);
+  if (lockedMs > 0) {
+    recordSecurityEvent("auth_failure", `login secretária bloqueado id=${fingerprint}`);
+    res.setHeader("Retry-After", String(Math.ceil(lockedMs / 1000)));
+    res.status(429).json({ error: lockoutMessage(lockedMs), code: "ACCOUNT_LOCKED" });
+    return;
+  }
+
   const [account] = await db
     .select({
       secretary: secretariesTable,
@@ -85,20 +108,23 @@ router.post("/secretary-auth/login", async (req, res): Promise<void> => {
     })
     .from(secretariesTable)
     .innerJoin(doctorsTable, eq(secretariesTable.doctorId, doctorsTable.id))
-    .where(sql`lower(${secretariesTable.email}) = ${email.toLowerCase().trim()}`)
+    .where(eq(secretariesTable.email, email))
     .limit(1);
   const secretary = account?.secretary;
 
-  if (!secretary || !secretary.ativo || !account.doctorApproved) {
+  const valid = secretary ? await comparePassword(senha, secretary.senhaHash) : false;
+  if (!secretary || !valid || !secretary.ativo || !account.doctorApproved) {
+    recordSecurityEvent("auth_failure", `login secretária id=${fingerprint}`);
+    const nowLockedMs = await recordAccountFailure("secretary", email);
+    if (nowLockedMs > 0) {
+      res.setHeader("Retry-After", String(Math.ceil(nowLockedMs / 1000)));
+      res.status(429).json({ error: lockoutMessage(nowLockedMs), code: "ACCOUNT_LOCKED" });
+      return;
+    }
     res.status(401).json({ error: "Credenciais inválidas" });
     return;
   }
-
-  const valid = await comparePassword(senha, secretary.senhaHash);
-  if (!valid) {
-    res.status(401).json({ error: "Credenciais inválidas" });
-    return;
-  }
+  await clearAccountFailures("secretary", email);
 
   const token = signSecretaryToken({
     secretaryId: secretary.id,
@@ -153,7 +179,7 @@ router.post("/secretaries", requireAuth, async (req, res): Promise<void> => {
   const { nome, email, senha } = parsed.data;
 
   const [existing] = await db.select({ id: secretariesTable.id })
-    .from(secretariesTable).where(sql`lower(${secretariesTable.email}) = ${email.toLowerCase()}`).limit(1);
+    .from(secretariesTable).where(eq(secretariesTable.email, email)).limit(1);
   if (existing) {
     res.status(409).json({ error: message(locale, "secretaryEmailExists") });
     return;
@@ -163,7 +189,7 @@ router.post("/secretaries", requireAuth, async (req, res): Promise<void> => {
   const [secretary] = await db.insert(secretariesTable).values({
     doctorId: req.doctorId!,
     nome,
-    email: email.toLowerCase(),
+    email,
     senhaHash,
     ativo: true,
   }).returning();
@@ -188,9 +214,18 @@ router.patch("/secretaries/:id", requireAuth, async (req, res): Promise<void> =>
     return;
   }
 
+  if (parsed.data.email && parsed.data.email !== sec.email) {
+    const [taken] = await db.select({ id: secretariesTable.id })
+      .from(secretariesTable).where(eq(secretariesTable.email, parsed.data.email)).limit(1);
+    if (taken && taken.id !== sec.id) {
+      res.status(409).json({ error: message(locale, "secretaryEmailExists") });
+      return;
+    }
+  }
+
   const updates: Partial<typeof secretariesTable.$inferInsert> = {};
   if (parsed.data.nome) updates.nome = parsed.data.nome;
-  if (parsed.data.email) updates.email = parsed.data.email.toLowerCase();
+  if (parsed.data.email) updates.email = parsed.data.email;
   if (typeof parsed.data.ativo === "boolean") updates.ativo = parsed.data.ativo;
   if (parsed.data.senha) updates.senhaHash = await hashPassword(parsed.data.senha);
 
@@ -328,8 +363,6 @@ type RegenCaseSummaryRow = {
   patient_id: number | null;
   patient_nome: string | null;
   patient_telefone: string | null;
-  condition_code: string;
-  lado_articulacao: string | null;
   status: string | null;
   data_caso: string | null;
   created_at: Date | string | null;
@@ -348,9 +381,10 @@ function toIso(value: Date | string | null): string | null {
 /**
  * GET /secretary/regen-cases — regenerative cases of the doctor the caller
  * belongs to, reduced to what the front desk needs to schedule procedure
- * sessions: patient, condition, status, session counts and the next pending
- * follow-up / scheduled session. No clinical content (anamnesis, PROM scores,
- * labs, products, notes or consent) is exposed, and there is no write access:
+ * sessions: patient, case date, status, session counts and the next pending
+ * follow-up / scheduled session. No clinical content (diagnosis/condition,
+ * side, anamnesis, PROM scores, labs, products, notes or consent) is exposed
+ * — LGPD minimization for the front desk — and there is no write access:
  * sessions are scheduled through the regular /appointments endpoints.
  */
 router.get("/secretary/regen-cases", requireDoctorOrSecretary, async (req, res): Promise<void> => {
@@ -362,8 +396,6 @@ router.get("/secretary/regen-cases", requireDoctorOrSecretary, async (req, res):
       p.id AS patient_id,
       COALESCE(p.nome, c.patient_name) AS patient_nome,
       COALESCE(p.telefone, c.patient_phone) AS patient_telefone,
-      c.condition_code,
-      c.lado_articulacao,
       c.status,
       to_char(c.data_caso, 'YYYY-MM-DD') AS data_caso,
       c.created_at,
@@ -401,8 +433,6 @@ router.get("/secretary/regen-cases", requireDoctorOrSecretary, async (req, res):
     patientId: row.patient_id === null ? null : Number(row.patient_id),
     patientNome: row.patient_nome,
     patientTelefone: row.patient_telefone,
-    conditionCode: row.condition_code,
-    ladoArticulacao: row.lado_articulacao,
     status: row.status,
     dataCaso: row.data_caso,
     createdAt: toIso(row.created_at),

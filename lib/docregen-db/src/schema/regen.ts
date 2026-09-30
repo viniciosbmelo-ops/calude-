@@ -14,6 +14,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { doctorsTable } from "./doctors";
 
 /**
  * DocSholder Regenerativa — regen_* schema.
@@ -72,9 +73,14 @@ export const regenTermsAcceptanceTable = pgTable(
 // active_infection / malignancy are intentionally nullable with NO default:
 // the ad-hoc DDL dropped their defaults so NULL = "not yet confirmed",
 // false = "confirmed absent", true = "present".
+// doctor_id → doctors ON DELETE RESTRICT: clinical records must be kept for
+// 20 years (Lei 13.787/2018, CFM), so a doctor account that owns cases cannot
+// be deleted by accident (see replit.md, "LGPD").
 export const regenCasesTable = pgTable("regen_cases", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  doctorId: integer("doctor_id").notNull(),
+  doctorId: integer("doctor_id")
+    .notNull()
+    .references(() => doctorsTable.id, { onDelete: "restrict" }),
   // Optional soft link. Legacy cases remain clinically useful through their
   // patient snapshot fields even when the original patient row no longer exists.
   patientId: integer("patient_id"),

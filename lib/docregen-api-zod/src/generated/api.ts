@@ -19,18 +19,21 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Register a new doctor
  */
+
+export const registerDoctorBodySenhaMin = 8;
+
 export const registerDoctorBodyIdiomaDefault = `pt-BR`;
 
 export const RegisterDoctorBody = zod.object({
-  "nome": zod.string(),
-  "email": zod.string(),
-  "senha": zod.string(),
+  "nome": zod.string().min(1),
+  "email": zod.string().email(),
+  "senha": zod.string().min(registerDoctorBodySenhaMin).describe('At least 8 characters (same rule as password reset\/change)'),
+  "cpf": zod.string().optional().describe('Valid Brazilian CPF (checksum verified server-side); required for Brazilian doctors'),
   "estrangeiro": zod.boolean().optional(),
   "paisOrigem": zod.string().optional(),
   "crm": zod.string().optional(),
   "crmEstado": zod.string().optional(),
   "telefone": zod.string().optional(),
-  "cpf": zod.string().optional(),
   "dataNascimento": zod.string().nullish().describe('Data de nascimento (YYYY-MM-DD)'),
   "endereco": zod.string().optional(),
   "cidade": zod.string().optional(),

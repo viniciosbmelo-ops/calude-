@@ -3,6 +3,7 @@ import { verifyToken, type AuthTokenPayload } from "../lib/auth";
 import { validateCurrentAccount } from "../lib/sessionAccountStore";
 import { recordSecurityEvent } from "../lib/securityMonitor";
 import { getSessionCookie, type SessionRole } from "../lib/session";
+import { redactPath } from "../lib/redaction";
 
 declare global {
   namespace Express {
@@ -59,11 +60,11 @@ async function authenticate(
       req.originalUrl,
     );
     if (!isSessionProbe) {
-      recordSecurityEvent("forbidden", `${req.method} ${req.originalUrl} — sem sessão`);
+      recordSecurityEvent("forbidden", `${req.method} ${redactPath(req.originalUrl)} — sem sessão`);
     }
     res.status(401).json({ error: "Não autenticado" });
   } else {
-    recordSecurityEvent("auth_failure", `${req.method} ${req.originalUrl} — token inválido/expirado`);
+    recordSecurityEvent("auth_failure", `${req.method} ${redactPath(req.originalUrl)} — token inválido/expirado`);
     res.status(401).json({ error: "Token inválido ou expirado" });
   }
 }
@@ -92,7 +93,7 @@ export function optionalDoctorAuth(req: Request, res: Response, next: NextFuncti
     const currentPayload =
       payload?.role === "doctor" ? await validateCurrentAccount(payload) : null;
     if (!currentPayload) {
-      recordSecurityEvent("auth_failure", `${req.method} ${req.originalUrl} — sessão opcional inválida`);
+      recordSecurityEvent("auth_failure", `${req.method} ${redactPath(req.originalUrl)} — sessão opcional inválida`);
       res.status(401).json({ error: "Token inválido ou expirado" });
       return;
     }

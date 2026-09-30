@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { type Request, type Response, type NextFunction } from "express";
 import { db, auditLogsTable } from "@workspace/docregen-db";
 import { logger } from "../lib/logger";
+import { publicLinkToken, redactPath, sha256Hex } from "../lib/redaction";
+import { API_PREFIX } from "../lib/api-prefix";
 
 // Fields whose values are always redacted, at any nesting depth
 const SENSITIVE_FIELDS = new Set([
@@ -40,39 +42,82 @@ function hashBody(body: unknown): string | null {
   }
 }
 
+/** Endpoint as persisted in audit_logs: no query string, public-link tokens redacted. */
 export function privacySafeAuditPath(path: string): string {
-  return path.replace(
-    /^(\/regen-api)?\/pre-consult\/[^/]+/,
-    (_match, apiPrefix: string | undefined) => `${apiPrefix ?? ""}/pre-consult/:token`,
-  ).replace(
-    /^(\/regen-api)?\/patient-orientations\/[^/]+/,
-    (_match, apiPrefix: string | undefined) => `${apiPrefix ?? ""}/patient-orientations/:token`,
-  );
+  return redactPath(path) ?? "";
 }
 
-function extractResource(path: string): { resourceType: string | null; resourceId: string | null } {
-  const match = path.match(/^\/regen-api\/([a-z-]+)(?:\/([^/]+))?/);
-  if (!match) return { resourceType: null, resourceId: null };
-  const resourceType = match[1] ?? null;
-  const candidate = match[2] ?? null;
-  const resourceId = candidate && /^\d+$/.test(candidate) ? candidate : null;
+const ID_SEGMENT = /^(?:\d+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
+/**
+ * Resource type/id from a (redacted) endpoint, with or without the API prefix:
+ *   /regen-api/patients/12            → patients / 12
+ *   /regen/cases/<uuid>/procedures    → regen/cases / <uuid>
+ *   /secretaries/3                    → secretaries / 3
+ *   /pre-consult/:token/answers       → pre-consult / null
+ */
+export function extractResource(path: string): { resourceType: string | null; resourceId: string | null } {
+  const withoutPrefix = path.startsWith(`${API_PREFIX}/`) ? path.slice(API_PREFIX.length) : path;
+  const segments = withoutPrefix.split("?")[0]!.split("/").filter(Boolean);
+  if (!segments.length || !/^[a-z][a-z-]*$/.test(segments[0]!)) {
+    return { resourceType: null, resourceId: null };
+  }
+  let typeSegments = 1;
+  // Namespaced collections: /regen/cases/:id, /patient/regen/:token, /secretary/regen-cases
+  if (
+    segments.length > 1 &&
+    ["regen", "patient", "secretary", "lgpd", "stats"].includes(segments[0]!) &&
+    /^[a-z][a-z-]*$/.test(segments[1]!)
+  ) {
+    typeSegments = 2;
+  }
+  const resourceType = segments.slice(0, typeSegments).join("/");
+  const candidate = segments[typeSegments] ?? null;
+  const resourceId = candidate && ID_SEGMENT.test(candidate) ? candidate : null;
   return { resourceType, resourceId };
 }
 
-const SKIP_PATHS = new Set(["/regen-api/healthz", "/regen-api/health"]);
+export type AuditActorRole = "doctor" | "secretary" | "patient_link" | "anonymous";
+
+export function auditActor(req: Pick<Request, "role" | "doctorId" | "secretaryId" | "originalUrl">): {
+  actorRole: AuditActorRole;
+  doctorId: number | null;
+  secretaryId: number | null;
+  patientLinkHash: string | null;
+} {
+  if (req.role === "secretary") {
+    return { actorRole: "secretary", doctorId: req.doctorId ?? null, secretaryId: req.secretaryId ?? null, patientLinkHash: null };
+  }
+  if (req.role === "doctor" && req.doctorId) {
+    return { actorRole: "doctor", doctorId: req.doctorId, secretaryId: null, patientLinkHash: null };
+  }
+  const token = publicLinkToken(req.originalUrl ?? "");
+  if (token) {
+    return { actorRole: "patient_link", doctorId: null, secretaryId: null, patientLinkHash: sha256Hex(token) };
+  }
+  return { actorRole: "anonymous", doctorId: null, secretaryId: null, patientLinkHash: null };
+}
+
+const SKIP_PATHS = new Set([`${API_PREFIX}/healthz`, `${API_PREFIX}/health`, `${API_PREFIX}/readyz`]);
 
 /**
  * Write an audit entry. Observable failure: logs a structured warning but
  * never throws or leaks PHI.
  */
 async function writeAuditEntry(req: Request, statusCode: number, durationMs: number): Promise<void> {
-  const endpoint = privacySafeAuditPath(req.path);
+  // originalUrl keeps the API prefix whatever router the request ended in
+  // (req.path is relative to the mount point and lost the prefix).
+  const endpoint = privacySafeAuditPath(req.originalUrl);
   const { resourceType, resourceId } = extractResource(endpoint);
   const bodyHash = req.method !== "GET" ? hashBody(req.body) : null;
+  const actor = auditActor(req);
 
   try {
     await db.insert(auditLogsTable).values({
-      doctorId: req.doctorId ?? null,
+      doctorId: actor.doctorId,
+      actorRole: actor.actorRole,
+      secretaryId: actor.secretaryId,
+      patientLinkHash: actor.patientLinkHash,
       method: req.method,
       endpoint,
       resourceType,
@@ -98,7 +143,7 @@ async function writeAuditEntry(req: Request, statusCode: number, durationMs: num
 }
 
 export function auditLog(req: Request, res: Response, next: NextFunction): void {
-  if (SKIP_PATHS.has(req.path) || req.method === "OPTIONS") {
+  if (SKIP_PATHS.has(redactPath(req.originalUrl) ?? "") || req.method === "OPTIONS") {
     next();
     return;
   }

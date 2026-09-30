@@ -180,7 +180,9 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
   "VAS Dor": (a) => {
     const v = a["vas"];
     if (v === undefined || !isFinite(v)) throw new Error("VAS: resposta 'vas' ausente ou inválida");
-    return Math.max(0, Math.min(10, v));
+    // Out-of-range values are rejected (never silently clamped).
+    if (v < 0 || v > 10) throw new Error("VAS: resposta fora da faixa 0–10");
+    return v;
   },
   // SANE por região (joelho, ombro, quadril, cotovelo, tornozelo/pé,
   // punho/mão, coluna): pergunta única, inteiro 0–100 (100 = região normal).
@@ -197,11 +199,21 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
  * - Throws for any scale without a server-side calculator.
  * Returns { score } or throws with a user-readable message.
  */
+/** Answer keys that must be real numbers (a boolean is not a pain score). */
+const NUMERIC_ANSWER_KEYS: Record<string, string> = {
+  "VAS Dor": "vas",
+  ...Object.fromEntries(SANE_REGIONS.map((d) => [d.scale, "sane"])),
+};
+
 function computeScore(
   escala: string,
   respostas: Record<string, unknown>,
 ): number {
   const calc = SERVER_SCORE_CALCULATORS[escala];
+  const numericKey = NUMERIC_ANSWER_KEYS[escala];
+  if (numericKey && typeof respostas[numericKey] !== "number") {
+    throw new Error(`${escala}: resposta '${numericKey}' deve ser numérica`);
+  }
   if (calc) {
     const answers = extractNumericAnswers(respostas);
     const raw = calc(answers); // throws on missing/invalid answers
@@ -275,10 +287,10 @@ router.get("/patient/regen/:token", async (req: Request, res: Response): Promise
  */
 router.post("/patient/regen/:token/verify", async (req: Request, res: Response): Promise<void> => {
   const token = req.params["token"] as string;
-  const { cpf } = req.body as { cpf?: string };
+  const cpf: unknown = (req.body as { cpf?: unknown } | undefined)?.cpf;
   const locale = await localeForRegenToken(token);
 
-  if (!cpf || !cpf.trim()) {
+  if (typeof cpf !== "string" || !cpf.trim()) {
     res.status(400).json({ error: message(locale, "cpfRequired") });
     return;
   }

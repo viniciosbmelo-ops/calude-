@@ -12,6 +12,36 @@
 
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
+import { escapeHtml, identifierFingerprint } from "./redaction";
+
+const EMAIL_RE = /[^\s@<>"'=]+@[^\s@<>"'=]+\.[^\s@<>"'=]+/g;
+const CPF_RE = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g;
+
+/**
+ * Defense in depth: any e-mail or CPF that reaches a security event is
+ * replaced by a short SHA-256 fingerprint before it is logged or e-mailed.
+ */
+export function scrubSecurityDetails(details: string): string {
+  return details
+    .replace(EMAIL_RE, (match) => `email#${identifierFingerprint(match)}`)
+    .replace(CPF_RE, (match) => `cpf#${identifierFingerprint(match.replace(/\D/g, ""))}`)
+    .slice(0, 500);
+}
+
+export function buildSecurityAlertHtml(eventType: string, count: number, details: string, at = new Date()): string {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;">
+      <h2 style="color:#856404;margin:0 0 12px;">⚠️ Alerta de Segurança — DocRegen</h2>
+      <p><strong>Evento:</strong> ${escapeHtml(eventType)}</p>
+      <p><strong>Ocorrências:</strong> ${count} nos últimos 5 minutos</p>
+      <p><strong>Detalhes:</strong> ${escapeHtml(details)}</p>
+      <p style="color:#6c757d;font-size:12px;margin-top:16px;">
+        Horário: ${at.toISOString()}<br/>
+        Se isso é legítimo, ignore. Caso contrário, acesse o painel e revise os logs.
+      </p>
+    </div>
+  `.trim();
+}
 
 interface EventBucket {
   count: number;
@@ -56,18 +86,7 @@ async function sendAlert(eventType: string, count: number, details: string): Pro
   if (!transporter) return;
 
   const subject = `[DocRegen] Alerta de segurança: ${eventType}`;
-  const html = `
-    <div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;">
-      <h2 style="color:#856404;margin:0 0 12px;">⚠️ Alerta de Segurança — DocRegen</h2>
-      <p><strong>Evento:</strong> ${eventType}</p>
-      <p><strong>Ocorrências:</strong> ${count} nos últimos 5 minutos</p>
-      <p><strong>Detalhes:</strong> ${details}</p>
-      <p style="color:#6c757d;font-size:12px;margin-top:16px;">
-        Horário: ${new Date().toISOString()}<br/>
-        Se isso é legítimo, ignore. Caso contrário, acesse o painel e revise os logs.
-      </p>
-    </div>
-  `.trim();
+  const html = buildSecurityAlertHtml(eventType, count, details);
 
   try {
     await transporter.sendMail({
@@ -92,6 +111,7 @@ export function recordSecurityEvent(
 ): void {
   const threshold = THRESHOLDS[eventType];
   if (threshold === undefined) return;
+  details = scrubSecurityDetails(details);
 
   const bucket = getBucket(eventType);
   bucket.count += 1;

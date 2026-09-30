@@ -10,6 +10,7 @@ import { eq, and, desc, isNotNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { verifyToken } from "../lib/auth";
 import { getSessionCookie } from "../lib/session";
+import { validateCurrentAccount } from "../lib/sessionAccountStore";
 
 const router: IRouter = Router();
 
@@ -23,25 +24,24 @@ router.post("/admin/contact", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Mensagem é obrigatória." });
     return;
   }
-  // Try to extract doctorId from JWT if present (optional auth)
+  // Optional auth: attribute the message to a doctor only when the session is
+  // still valid against the database (revoked/blocked sessions are ignored).
   let doctorId: number | null = null;
-  try {
-    const authHeader = req.headers.authorization;
-    const token =
-      getSessionCookie(req, "doctor") ??
-      getSessionCookie(req, "secretary") ??
-      (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null);
-    if (token) {
-      const payload = verifyToken(token);
-      if (
-        payload &&
-        (payload.role === "doctor" || payload.role === "secretary") &&
-        !payload.isAdmin
-      ) {
-        doctorId = payload.doctorId;
-      }
+  const authHeader = req.headers.authorization;
+  const candidates = [
+    getSessionCookie(req, "doctor"),
+    getSessionCookie(req, "secretary"),
+    authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null,
+  ].filter((token): token is string => Boolean(token));
+  for (const token of candidates) {
+    const payload = verifyToken(token);
+    if (!payload) continue;
+    const current = await validateCurrentAccount(payload).catch(() => null);
+    if (current && !current.isAdmin) {
+      doctorId = current.doctorId;
+      break;
     }
-  } catch {}
+  }
 
   const [msg] = await db.insert(adminContactMessages).values({
     doctorId,

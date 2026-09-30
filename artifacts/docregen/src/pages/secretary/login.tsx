@@ -29,7 +29,7 @@ export default function SecretaryLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (senha.length > 0 && senha.length < 6) {
+    if (senha.length > 0 && senha.length < 8) {
       setPasswordWarning(true);
       return;
     }
@@ -97,7 +97,7 @@ export default function SecretaryLogin() {
                     onChange={e => {
                       const value = e.target.value;
                       setSenha(value);
-                      setPasswordWarning(value.length > 0 && value.length < 6);
+                      setPasswordWarning(value.length > 0 && value.length < 8);
                     }}
                     required
                     aria-describedby="secretary-password-hint"

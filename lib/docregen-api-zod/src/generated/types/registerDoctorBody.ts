@@ -8,15 +8,21 @@
 import type { RegisterDoctorBodyIdioma } from './registerDoctorBodyIdioma';
 
 export interface RegisterDoctorBody {
+  /** @minLength 1 */
   nome: string;
   email: string;
+  /**
+     * At least 8 characters (same rule as password reset/change)
+     * @minLength 8
+     */
   senha: string;
+  /** Valid Brazilian CPF (checksum verified server-side); required for Brazilian doctors */
+  cpf?: string;
   estrangeiro?: boolean;
   paisOrigem?: string;
   crm?: string;
   crmEstado?: string;
   telefone?: string;
-  cpf?: string;
   /** Data de nascimento (YYYY-MM-DD) */
   dataNascimento?: string | null;
   endereco?: string;

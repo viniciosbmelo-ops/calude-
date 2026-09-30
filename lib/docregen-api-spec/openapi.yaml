@@ -293,10 +293,17 @@ components:
       properties:
         nome:
           type: string
+          minLength: 1
         email:
           type: string
+          format: email
         senha:
           type: string
+          minLength: 8
+          description: At least 8 characters (same rule as password reset/change)
+        cpf:
+          type: string
+          description: Valid Brazilian CPF (checksum verified server-side); required for Brazilian doctors
         estrangeiro:
           type: boolean
         paisOrigem:
@@ -306,8 +313,6 @@ components:
         crmEstado:
           type: string
         telefone:
-          type: string
-        cpf:
           type: string
         dataNascimento:
           type: string

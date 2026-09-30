@@ -146,7 +146,7 @@ export default function Register() {
       toast({ title: copy.enterOriginCountry, variant: "destructive" });
       return;
     }
-    if (formData.senha.length < 6) {
+    if (formData.senha.length < 8) {
       toast({ title: copy.passwordMin6Error, variant: "destructive" });
       return;
     }

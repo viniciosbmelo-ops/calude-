@@ -281,7 +281,7 @@ function SecretariesSection({ doctorId }: { doctorId: number }) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ title: p("secretaryEmailInvalid"), variant: "destructive" }); return;
     }
-    if ((!editing && form.senha.length < 6) || (Boolean(editing) && form.senha.length > 0 && form.senha.length < 6)) {
+    if ((!editing && form.senha.length < 8) || (Boolean(editing) && form.senha.length > 0 && form.senha.length < 8)) {
       toast({ title: p("secretaryPasswordMin6"), variant: "destructive" }); return;
     }
     setSaving(true);
@@ -418,7 +418,7 @@ function SecretariesSection({ doctorId }: { doctorId: number }) {
                 <Input type={showPwd ? "text" : "password"} value={form.senha}
                   onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
                   placeholder={editing ? "••••••" : p("min6")}
-                  minLength={editing ? undefined : 6}
+                  minLength={editing ? undefined : 8}
                   required={!editing}
                   className="pr-10"
                 />

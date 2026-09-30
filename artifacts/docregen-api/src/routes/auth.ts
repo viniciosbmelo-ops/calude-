@@ -1,16 +1,29 @@
 import { Router, type IRouter } from "express";
 import { db, doctorsTable, adminContactMessages } from "@workspace/docregen-db";
 import { eq, and, sql } from "drizzle-orm";
-import { hashPassword, comparePassword, signToken } from "../lib/auth";
+import { hashPassword, comparePassword, signToken, verifyToken } from "../lib/auth";
 import { optionalDoctorAuth, requireAuth } from "../middlewares/requireAuth";
 import { createResetToken, resetPasswordWithToken } from "../lib/passwordResetStore";
 import { sendPasswordResetEmail } from "../lib/mailer";
 import { recordSecurityEvent } from "../lib/securityMonitor";
-import { clearAllSessionCookies, establishSession } from "../lib/session";
+import { clearAllSessionCookies, establishSession, getSessionCookie } from "../lib/session";
 import {
   RegisterDoctorBody,
   LoginDoctorBody,
+  isValidCpf,
+  normalizeCpf,
 } from "@workspace/docregen-api-zod";
+import {
+  accountLockRemainingMs,
+  clearAccountFailures,
+  lockoutMessage,
+  normalizeEmail,
+  recordAccountFailure,
+} from "../lib/accountLockout";
+import { identifierFingerprint } from "../lib/redaction";
+import { secretariesTable } from "@workspace/docregen-db";
+
+export const MIN_PASSWORD_LENGTH = 8;
 import { serializeDoctor } from "../lib/doctorSerializer";
 import {
   attachAnalyticsActor,
@@ -27,15 +40,43 @@ const VALID_UF = new Set([
 const router: IRouter = Router();
 
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const parsed = RegisterDoctorBody.safeParse(req.body);
+  const parsed = RegisterDoctorBody.safeParse(
+    req.body && typeof req.body === "object" && typeof req.body.email === "string"
+      ? { ...req.body, email: req.body.email.trim() }
+      : req.body,
+  );
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    const field = parsed.error.issues[0]?.path[0];
+    const error = field === "senha"
+      ? `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+      : field === "email"
+        ? "Informe um e-mail válido."
+        : field === "nome"
+          ? "Nome é obrigatório."
+          : "Dados de cadastro inválidos.";
+    res.status(400).json({ error, field: typeof field === "string" ? field : undefined });
     return;
   }
 
-  const { email, senha, nome, crm, crmEstado, cpf, telefone, dataNascimento, endereco, cidade, estado, cep, especialidade, estrangeiro, paisOrigem, idioma } = parsed.data;
+  const { senha, nome, crm, crmEstado, telefone, dataNascimento, endereco, cidade, estado, cep, especialidade, estrangeiro, paisOrigem, idioma } = parsed.data;
+  // E-mails are stored normalized (trimmed, lowercase); see doctors_email_lower_unique.
+  const email = normalizeEmail(parsed.data.email);
+  const cpf = parsed.data.cpf?.trim() ? normalizeCpf(parsed.data.cpf) : undefined;
 
   const isForeign = estrangeiro === true;
+
+  if (!nome.trim()) {
+    res.status(400).json({ error: "Nome é obrigatório." });
+    return;
+  }
+  if (senha.length < MIN_PASSWORD_LENGTH) {
+    res.status(400).json({ error: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` });
+    return;
+  }
+  if (!isForeign && cpf !== undefined && !isValidCpf(cpf)) {
+    res.status(400).json({ error: "CPF inválido." });
+    return;
+  }
 
   // Validate CRM state (Brazilian doctors only)
   if (!isForeign) {
@@ -65,7 +106,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   // Check for existing email
   const [byEmail] = await db.select({ id: doctorsTable.id }).from(doctorsTable)
-    .where(eq(doctorsTable.email, email)).limit(1);
+    .where(sql`lower(${doctorsTable.email}) = ${email}`).limit(1);
   if (byEmail) {
     res.status(409).json({ error: "Email já cadastrado" });
     return;
@@ -85,7 +126,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const senhaHash = await hashPassword(senha);
 
   const [doctor] = await db.insert(doctorsTable).values({
-    nome,
+    nome: nome.trim(),
     email,
     senhaHash,
     crm: isForeign ? null : (crm ?? null),
@@ -137,35 +178,50 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   const { email: identificadorRaw, senha } = parsed.data;
-  const identificador = identificadorRaw.trim().toLowerCase();
+  const identificador = normalizeEmail(identificadorRaw);
 
   // Support login by email OR CPF (CPF: 11 numeric digits optionally formatted)
   const isCpf = /^[\d.\-]+$/.test(identificador) && identificador.replace(/\D/g, "").length === 11;
   const normalizedCpf = identificador.replace(/\D/g, "");
+  // Lockout key: the normalized identifier the caller typed (e-mail or CPF digits).
+  const lockIdentifier = isCpf ? `cpf:${normalizedCpf}` : identificador;
+  const fingerprint = identifierFingerprint(lockIdentifier);
+
+  const lockedMs = await accountLockRemainingMs("doctor", lockIdentifier);
+  if (lockedMs > 0) {
+    recordSecurityEvent("auth_failure", `login médico bloqueado id=${fingerprint}`);
+    res.setHeader("Retry-After", String(Math.ceil(lockedMs / 1000)));
+    res.status(429).json({ error: lockoutMessage(lockedMs), code: "ACCOUNT_LOCKED" });
+    return;
+  }
 
   let doctor: typeof doctorsTable.$inferSelect | undefined;
   if (isCpf) {
-    const [byRaw] = await db.select().from(doctorsTable).where(eq(doctorsTable.cpf, identificador)).limit(1);
-    const [byNorm] = byRaw ? [byRaw] : await db.select().from(doctorsTable).where(eq(doctorsTable.cpf, normalizedCpf)).limit(1);
-    doctor = byRaw ?? byNorm;
+    const [byCpf] = await db.select().from(doctorsTable)
+      .where(sql`${doctorsTable.cpf} IN (${identificador}, ${normalizedCpf})`)
+      .orderBy(doctorsTable.id)
+      .limit(1);
+    doctor = byCpf;
   }
   if (!doctor) {
-    const [byEmail] = await db.select().from(doctorsTable).where(sql`lower(${doctorsTable.email}) = ${identificador}`).limit(1);
+    // Exact match on the normalized e-mail (stored lowercase; unique on lower(email)).
+    const [byEmail] = await db.select().from(doctorsTable).where(eq(doctorsTable.email, identificador)).limit(1);
     doctor = byEmail;
   }
 
-  if (!doctor) {
-    recordSecurityEvent("auth_failure", `identificador=${identificador}`);
+  const valid = doctor ? await comparePassword(senha, doctor.senhaHash) : false;
+  if (!doctor || !valid || !doctor.aprovado) {
+    recordSecurityEvent("auth_failure", `login médico id=${fingerprint}`);
+    const nowLockedMs = await recordAccountFailure("doctor", lockIdentifier);
+    if (nowLockedMs > 0) {
+      res.setHeader("Retry-After", String(Math.ceil(nowLockedMs / 1000)));
+      res.status(429).json({ error: lockoutMessage(nowLockedMs), code: "ACCOUNT_LOCKED" });
+      return;
+    }
     res.status(401).json({ error: "Credenciais inválidas" });
     return;
   }
-
-  const valid = await comparePassword(senha, doctor.senhaHash);
-  if (!valid || !doctor.aprovado) {
-    recordSecurityEvent("auth_failure", `identificador=${identificador}`);
-    res.status(401).json({ error: "Credenciais inválidas" });
-    return;
-  }
+  await clearAccountFailures("doctor", lockIdentifier);
 
   // Keep access tracking independent from patients or procedures.
   const [loggedInDoctor] = await db
@@ -175,7 +231,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .returning();
 
   if (!loggedInDoctor) {
-    recordSecurityEvent("auth_failure", `identificador=${identificador}`);
+    recordSecurityEvent("auth_failure", `login médico id=${fingerprint}`);
     res.status(401).json({ error: "Credenciais inválidas" });
     return;
   }
@@ -202,7 +258,30 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   });
 });
 
-router.post("/auth/logout", (_req, res): void => {
+/**
+ * POST /auth/logout — ends the doctor and/or secretary session: bumps the
+ * account's sessionVersion (so a copied token/cookie stops working at once)
+ * and clears every session cookie.
+ */
+router.post("/auth/logout", async (req, res): Promise<void> => {
+  const tokens = [
+    getSessionCookie(req, "doctor"),
+    getSessionCookie(req, "secretary"),
+    req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7).trim() : null,
+  ].filter((token): token is string => Boolean(token));
+  for (const token of tokens) {
+    const payload = verifyToken(token);
+    if (!payload) continue;
+    if (payload.role === "doctor") {
+      await db.update(doctorsTable)
+        .set({ sessionVersion: sql`${doctorsTable.sessionVersion} + 1` })
+        .where(and(eq(doctorsTable.id, payload.doctorId), eq(doctorsTable.sessionVersion, payload.sessionVersion)));
+    } else {
+      await db.update(secretariesTable)
+        .set({ sessionVersion: sql`${secretariesTable.sessionVersion} + 1` })
+        .where(and(eq(secretariesTable.id, payload.secretaryId), eq(secretariesTable.sessionVersion, payload.sessionVersion)));
+    }
+  }
   clearAllSessionCookies(res);
   res.json({ success: true });
 });
@@ -230,12 +309,12 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     return;
   }
 
-  const emailNorm = email.trim().toLowerCase();
+  const emailNorm = normalizeEmail(email);
   const requestedLocale = idioma === "es" || idioma === "pt-BR" ? idioma : undefined;
   const [doctor] = await db
     .select()
     .from(doctorsTable)
-    .where(sql`lower(${doctorsTable.email}) = ${emailNorm}`)
+    .where(eq(doctorsTable.email, emailNorm))
     .limit(1);
 
   if (doctor?.aprovado) {
@@ -277,8 +356,8 @@ router.post("/auth/reset-password-token", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Link inválido ou expirado. Solicite um novo link." });
     return;
   }
-  if (String(novaSenha).length < 8) {
-    res.status(400).json({ error: "A senha deve ter pelo menos 8 caracteres." });
+  if (String(novaSenha).length < MIN_PASSWORD_LENGTH) {
+    res.status(400).json({ error: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` });
     return;
   }
 
@@ -312,8 +391,8 @@ router.post("/auth/change-password", requireAuth, async (req, res): Promise<void
     res.status(400).json({ error: "Senha atual e nova senha são obrigatórias." });
     return;
   }
-  if (String(novaSenha).length < 8) {
-    res.status(400).json({ error: "A nova senha deve ter pelo menos 8 caracteres." });
+  if (String(novaSenha).length < MIN_PASSWORD_LENGTH) {
+    res.status(400).json({ error: `A nova senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` });
     return;
   }
 

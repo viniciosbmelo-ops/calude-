@@ -1,13 +1,17 @@
 import { Router, type IRouter } from "express";
 import { db, pageVisitsTable } from "@workspace/docregen-db";
 import { classifyVisitPath, resolveAccessGeography } from "../lib/accessGeography";
+import { redactPath } from "../lib/redaction";
 
 const router: IRouter = Router();
 
-function privacySafeVisitPath(raw: unknown): string | null {
+/**
+ * Page path as stored in page_visits: SPA base ("/docregen") stripped, query
+ * and fragment dropped, public-link tokens replaced (shared redaction).
+ */
+export function privacySafeVisitPath(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  const path = raw.split("?")[0]!.split("#")[0]!.slice(0, 255);
-  if (/^\/pre-consulta\/[^/]+$/.test(path)) return "/pre-consulta/:token";
+  const path = redactPath(raw.slice(0, 2048), { stripBase: true })?.slice(0, 255) ?? null;
   return path || null;
 }
 

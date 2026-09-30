@@ -37,19 +37,22 @@ import { auditLog } from "./middlewares/auditLog";
 import { processStripeWebhook } from "./lib/webhookHandlers";
 import { recordSecurityEvent } from "./lib/securityMonitor";
 import { hasAnySessionCookie } from "./lib/session";
+import { redactPath, redactUrlForLog } from "./lib/redaction";
+import { PostgresRateLimitStore, rateLimitsDisabled } from "./lib/dbRateLimit";
 
+/** Request path without query string and with public-link tokens redacted. */
 export function privacySafeRequestPath(value: string | undefined): string | undefined {
   if (!value) return value;
-  return value
-    .split("?")[0]
-    .replace(
-      /^(\/regen-api)?\/pre-consult\/[^/]+/,
-      (_match, apiPrefix: string | undefined) => `${apiPrefix ?? ""}/pre-consult/:token`,
-    )
-    .replace(
-      /^(\/regen-api)?\/patient-orientations\/[^/]+/,
-      (_match, apiPrefix: string | undefined) => `${apiPrefix ?? ""}/patient-orientations/:token`,
-    );
+  return redactPath(value) ?? undefined;
+}
+
+/** pino-http request serializer: public-link tokens and secret query values never reach the logs. */
+export function serializeRequestForLog(req: { id?: unknown; method?: string; url?: string }) {
+  return {
+    id: req.id,
+    method: req.method,
+    url: redactUrlForLog(req.url),
+  };
 }
 
 const app: Express = express();
@@ -62,13 +65,7 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: privacySafeRequestPath(req.url),
-        };
-      },
+      req: serializeRequestForLog,
       res(res) {
         return {
           statusCode: res.statusCode,
@@ -146,26 +143,35 @@ app.post(
   },
 );
 
-// CORS — permite apenas origens conhecidas. O frontend DocRegen é servido em
-// /docregen no mesmo domínio publicado (hoje dockneeapp.com) ou no domínio
-// configurado em DOCREGEN_APP_URL; previews Replit entram via REPLIT_DOMAINS.
-const allowedOrigins = new Set<string>([
-  "https://dockneeapp.com",
-  "https://www.dockneeapp.com",
-]);
-const docregenAppUrl = process.env["DOCREGEN_APP_URL"];
-if (docregenAppUrl) {
-  try {
-    allowedOrigins.add(new URL(docregenAppUrl).origin);
-  } catch {
-    logger.warn("DOCREGEN_APP_URL inválida; ignorada na lista de origens");
+// CORS — permite apenas origens conhecidas. DOCREGEN_ALLOWED_ORIGINS (lista
+// separada por vírgulas) substitui a lista padrão. Sem ela, em produção só a
+// origem de DOCREGEN_APP_URL é aceita (o domínio do DocKnee não entra por
+// padrão); fora de produção, também localhost e os domínios de preview
+// (REPLIT_DOMAINS). Ver replit.md → "DocRegen: domínio e CORS".
+export function buildAllowedOrigins(env: NodeJS.ProcessEnv = process.env): Set<string> {
+  const origins = new Set<string>();
+  const addOrigin = (value: string, label: string) => {
+    try {
+      origins.add(new URL(value.trim()).origin);
+    } catch {
+      logger.warn({ label }, "Origem inválida ignorada na lista de CORS");
+    }
+  };
+  const configured = (env["DOCREGEN_ALLOWED_ORIGINS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+  for (const origin of configured) addOrigin(origin, "DOCREGEN_ALLOWED_ORIGINS");
+  if (env["DOCREGEN_APP_URL"]) addOrigin(env["DOCREGEN_APP_URL"], "DOCREGEN_APP_URL");
+  // Preview domains of the Replit workspace (dev only; deployments set
+  // DOCREGEN_APP_URL / DOCREGEN_ALLOWED_ORIGINS instead).
+  if (env["NODE_ENV"] !== "production") {
+    for (const d of (env["REPLIT_DOMAINS"] ?? "").split(",")) {
+      const h = d.trim();
+      if (h) origins.add(`https://${h}`);
+    }
   }
+  return origins;
 }
-// Adiciona domínios de preview da Replit dinamicamente
-for (const d of (process.env["REPLIT_DOMAINS"] ?? "").split(",")) {
-  const h = d.trim();
-  if (h) allowedOrigins.add(`https://${h}`);
-}
+
+const allowedOrigins = buildAllowedOrigins();
 
 function isAllowedOrigin(origin: string): boolean {
   if (allowedOrigins.has(origin)) return true;
@@ -232,20 +238,48 @@ app.use(API_PREFIX, (req: Request, res: Response, next: NextFunction) => {
   res.status(403).json({ error: "Origem da requisição não autorizada." });
 });
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// Body size: 1 MB by default. Only the temporary-PDF upload (JSON base64
+// variant) needs more; the raw application/pdf variant is streamed with its
+// own cap in routes/pdf.ts.
+const PDF_JSON_BODY_LIMIT = "30mb";
+app.use(`${API_PREFIX}/pdf/temp`, express.json({ limit: PDF_JSON_BODY_LIMIT }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-// 1) Global limiter — 300 req/min per IP (DDoS / scraping protection)
+// Malformed / oversized bodies are client errors (400/413), never 500 and
+// never counted as server errors by the security monitor.
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  const bodyError = err as { type?: string; status?: number } | null;
+  if (bodyError?.type === "entity.parse.failed") {
+    res.status(400).json({ error: "JSON inválido no corpo da requisição.", code: "INVALID_JSON" });
+    return;
+  }
+  if (bodyError?.type === "entity.too.large") {
+    res.status(413).json({ error: "Corpo da requisição excede o tamanho máximo permitido.", code: "PAYLOAD_TOO_LARGE" });
+    return;
+  }
+  if (typeof bodyError?.status === "number" && bodyError.status >= 400 && bodyError.status < 500 && bodyError.type) {
+    res.status(bodyError.status).json({ error: "Requisição inválida." });
+    return;
+  }
+  next(err);
+});
+
+// 1) Global limiter — 300 req/min per IP (DDoS / scraping protection).
+// Instance-local (memory) on purpose: a DB write per request would cost more
+// than it protects; the security-relevant limiters below are DB-backed.
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 300,
   standardHeaders: "draft-6",
   legacyHeaders: false,
   message: { error: "Muitas requisições. Tente novamente em instantes.", code: "RATE_LIMIT" },
-  skip: () => process.env["NODE_ENV"] === "test",
+  skip: rateLimitsDisabled,
 });
 
-// 2) Auth limiter — 10 failed attempts / 15 min per IP (brute-force protection)
+// 2) Auth limiter — 10 failed attempts / 15 min per IP, shared by every
+// credential endpoint (doctor/secretary login, password change, patient CPF
+// verification on public links). DB-backed (autoscale-safe).
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -253,7 +287,9 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Muitas tentativas de autenticação. Tente novamente em 15 minutos.", code: "AUTH_RATE_LIMIT" },
   skipSuccessfulRequests: true,
-  skip: () => process.env["NODE_ENV"] === "test",
+  store: new PostgresRateLimitStore("auth"),
+  passOnStoreError: true,
+  skip: rateLimitsDisabled,
 });
 
 // 3) Password reset limiter — all attempts count because the endpoint always
@@ -264,7 +300,9 @@ const passwordResetLimiter = rateLimit({
   standardHeaders: "draft-6",
   legacyHeaders: false,
   message: { error: "Muitas tentativas. Tente novamente em 15 minutos.", code: "PASSWORD_RESET_RATE_LIMIT" },
-  skip: () => process.env["NODE_ENV"] === "test",
+  store: new PostgresRateLimitStore("pwreset"),
+  passOnStoreError: true,
+  skip: rateLimitsDisabled,
 });
 
 // 4) Register limiter — 3 registrations / hour per IP (spam / bot protection)
@@ -274,14 +312,25 @@ const registerLimiter = rateLimit({
   standardHeaders: "draft-6",
   legacyHeaders: false,
   message: { error: "Limite de registros atingido. Tente novamente em 1 hora.", code: "REGISTER_RATE_LIMIT" },
-  skip: () => process.env["NODE_ENV"] === "test",
+  store: new PostgresRateLimitStore("register"),
+  passOnStoreError: true,
+  skip: rateLimitsDisabled,
 });
 
+/** Credential-checking endpoints guarded by the per-IP auth limiter. */
+export const AUTH_LIMITED_ROUTES = [
+  `${API_PREFIX}/auth/login`,
+  `${API_PREFIX}/auth/change-password`,
+  `${API_PREFIX}/secretary-auth/login`,
+  `${API_PREFIX}/patient/regen/:token/verify`,
+  `${API_PREFIX}/pre-consult/:token/verify`,
+] as const;
+
 app.use(API_PREFIX, globalLimiter);
-app.use(`${API_PREFIX}/auth/login`, authLimiter);
-app.use(`${API_PREFIX}/auth/forgot-password`, passwordResetLimiter);
-app.use(`${API_PREFIX}/auth/reset-password-token`, passwordResetLimiter);
-app.use(`${API_PREFIX}/auth/register`, registerLimiter);
+for (const route of AUTH_LIMITED_ROUTES) app.post(route, authLimiter);
+app.post(`${API_PREFIX}/auth/forgot-password`, passwordResetLimiter);
+app.post(`${API_PREFIX}/auth/reset-password-token`, passwordResetLimiter);
+app.post(`${API_PREFIX}/auth/register`, registerLimiter);
 
 app.use(API_PREFIX, auditLog);
 app.use(API_PREFIX, router);
