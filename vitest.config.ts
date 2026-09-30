@@ -7,7 +7,7 @@ export default defineConfig({
       {
         test: {
           name: 'docknee',
-          include: ['artifacts/docknee/src/lib/**/*.test.ts'],
+          include: ['artifacts/docknee/src/lib/**/*.test.ts', 'artifacts/docknee/src/components/**/*.test.tsx'],
           environment: 'node',
           // DocKnee users are in Brazil (UTC-3): run the web tests there so
           // calendar dates that would shift a day west of UTC are caught.
@@ -22,7 +22,7 @@ export default defineConfig({
       {
         test: {
           name: 'docregen',
-          include: ['artifacts/docregen/src/**/*.test.ts'],
+          include: ['artifacts/docregen/src/**/*.test.ts', 'artifacts/docregen/src/**/*.test.tsx'],
           environment: 'node',
           // DocRegen users are in Brazil (UTC-3): run the web tests there so
           // calendar dates that would shift a day west of UTC are caught.

@@ -36,6 +36,7 @@ import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import { useCreatePreConsultInvite } from "@/hooks/use-pre-consult";
 import { isValidCpf, normalizeCpf } from "../../../../../lib/api-zod/src/cpf";
+import { DateInput } from "@/components/ui/date-input";
 
 const ESTADOS_BR = [
   { uf: "AC", nome: "Acre" },
@@ -240,7 +241,7 @@ export default function NewPatient() {
 
                 <div className="space-y-2">
                   <Label htmlFor="dataNascimento">{tr("birthDate")}</Label>
-                  <Input id="dataNascimento" type="date" value={formData.dataNascimento} onChange={e => set("dataNascimento", e.target.value)} />
+                  <DateInput id="dataNascimento" value={formData.dataNascimento} onValueChange={(v) => set("dataNascimento", v)} />
                 </div>
 
                 <div className="space-y-2">

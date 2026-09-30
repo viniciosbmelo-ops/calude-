@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth";
 import { sortByPtBrName } from "@/lib/utils";
 import { useWhatsappBroadcastTranslations } from "@/locales/whatsapp-broadcast";
 import { CASE_TYPE_BY_KEY, CASE_TYPES } from "@workspace/clinical/web";
+import { DateInput } from "@/components/ui/date-input";
 
 const WA_GREEN = "#25D366";
 
@@ -329,10 +330,9 @@ export default function WhatsappBroadcast() {
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{t("surgeryDateFrom")}</span>
               </Label>
-              <Input
-                type="date"
+              <DateInput
                 value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
+                onValueChange={(v) => setDateFrom(v)}
                 className="text-sm"
               />
             </div>
@@ -342,10 +342,9 @@ export default function WhatsappBroadcast() {
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{t("surgeryDateTo")}</span>
               </Label>
-              <Input
-                type="date"
+              <DateInput
                 value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
+                onValueChange={(v) => setDateTo(v)}
                 className="text-sm"
               />
             </div>

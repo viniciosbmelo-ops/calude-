@@ -32,6 +32,7 @@ import { buildPreopPayload, emptyPreopState, preopStateFromPayload, visiblePreop
 import { cn, sortByPtBrName } from "@/lib/utils";
 import { useScopedTranslations } from "@/lib/i18n";
 import { surgeryShoulderMessages } from "@/locales/surgery-shoulder";
+import { DateInput } from "@/components/ui/date-input";
 
 type Obj = Record<string, any>;
 type Side = "Direito" | "Esquerdo" | "";
@@ -350,7 +351,7 @@ export default function NewShoulderSurgery() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sx-date">{t("procedureDate")}</Label>
-                  <Input id="sx-date" type="date" value={dataCirurgia} onChange={(e) => setDataCirurgia(e.target.value)} />
+                  <DateInput id="sx-date" value={dataCirurgia} onValueChange={(v) => setDataCirurgia(v)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sx-side">{t("side")} *</Label>

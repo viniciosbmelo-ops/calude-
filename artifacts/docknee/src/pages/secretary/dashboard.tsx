@@ -16,6 +16,7 @@ import AgendaCirurgica from "@/pages/agenda-cirurgica";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { consoleMessages } from "@/locales/console";
+import { DateInput, TimeInput } from "@/components/ui/date-input";
 
 type Patient = { id: number; nome: string; telefone: string | null; email: string | null; dataNascimento: string | null };
 type Appointment = {
@@ -583,11 +584,11 @@ export default function SecretaryDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>{t("date")} *</Label>
-                <Input type="date" value={newAppt.data} onChange={e => setNewAppt(a => ({ ...a, data: e.target.value }))} />
+                <DateInput value={newAppt.data} onValueChange={(v) => setNewAppt(a => ({ ...a, data: v }))} />
               </div>
               <div className="space-y-1">
                 <Label>{t("time")} *</Label>
-                <Input type="time" value={newAppt.hora} onChange={e => setNewAppt(a => ({ ...a, hora: e.target.value }))} />
+                <TimeInput value={newAppt.hora} onValueChange={(v) => setNewAppt(a => ({ ...a, hora: v }))} />
               </div>
             </div>
             <div className="space-y-1">
@@ -646,7 +647,7 @@ export default function SecretaryDashboard() {
               </div>
               <div className="space-y-1">
                 <Label>{t("birthDate")}</Label>
-                <Input type="date" value={newPatient.dataNascimento} onChange={e => setNewPatient(v => ({ ...v, dataNascimento: e.target.value }))} />
+                <DateInput value={newPatient.dataNascimento} onValueChange={(val) => setNewPatient(p => ({ ...p, dataNascimento: val }))} />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

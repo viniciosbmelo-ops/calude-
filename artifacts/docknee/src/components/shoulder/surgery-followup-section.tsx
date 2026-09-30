@@ -27,6 +27,7 @@ import {
   type ScaleDraft,
 } from "./clinician-scales";
 import { followupPainDisplay, followupPatientSane } from "./followup-patient-scales";
+import { DateInput } from "@/components/ui/date-input";
 
 type ScheduledNotif = { id: number; periodo: string; scheduledDate: string | null; sentAt: string | null; scales: string[]; status: string; daysAfterSurgery: number | null; notes: string | null };
 export type SurgeryFollowup = {
@@ -371,7 +372,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="fu-data">{t("evaluationDate")}</Label>
-                <Input id="fu-data" type="date" value={form.dataAvaliacao} onChange={(e) => setForm({ ...form, dataAvaliacao: e.target.value })} />
+                <DateInput id="fu-data" value={form.dataAvaliacao} onValueChange={(v) => setForm({ ...form, dataAvaliacao: v })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="fu-vas">{t("vasPain")}</Label>

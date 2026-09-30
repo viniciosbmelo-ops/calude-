@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FlaskConical } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 
 type RegenFilters = { produto: string; status: string; dataInicio: string; dataFim: string };
 
@@ -152,11 +153,11 @@ export default function Reports() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">{tx("fromDate")}</Label>
-                <Input type="date" className="h-8 text-xs" value={regenFilters.dataInicio} onChange={e => setRegenFilters(f => ({ ...f, dataInicio: e.target.value }))} />
+                <DateInput className="h-8 text-xs" value={regenFilters.dataInicio} onValueChange={(v) => setRegenFilters(f => ({ ...f, dataInicio: v }))} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">{tx("toDate")}</Label>
-                <Input type="date" className="h-8 text-xs" value={regenFilters.dataFim} onChange={e => setRegenFilters(f => ({ ...f, dataFim: e.target.value }))} />
+                <DateInput className="h-8 text-xs" value={regenFilters.dataFim} onValueChange={(v) => setRegenFilters(f => ({ ...f, dataFim: v }))} />
               </div>
             </div>
           </div>

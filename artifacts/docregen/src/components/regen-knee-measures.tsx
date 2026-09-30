@@ -25,6 +25,7 @@ import {
   type KneePerformanceMeasure,
   type PerformanceTestRow,
 } from "@/lib/regen-knee-measures";
+import { DateInput } from "@/components/ui/date-input";
 
 type KneeKey = keyof typeof regenKneeMessages["pt-BR"];
 type T = ReturnType<typeof useScopedTranslations<typeof regenKneeMessages["pt-BR"]>>;
@@ -214,7 +215,7 @@ function PerformanceTestForm({
             </label>
             <label className="space-y-1 block">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("colDate")}</span>
-              <input type="date" value={measuredOn} onChange={(e) => setMeasuredOn(e.target.value)}
+              <DateInput value={measuredOn} onValueChange={(v) => setMeasuredOn(v)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-blue-400" />
             </label>
             {def.perSide && (

@@ -13,6 +13,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Announcement, Campaign, Faq, FeatureFlag } from "../types";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { adminConsoleMessages } from "@/locales/admin-console";
+import { DateTimeInput } from "@/components/ui/date-input";
 
 function toDateTimeLocal(value: string | null | undefined): string {
   if (!value) return "";
@@ -373,8 +374,8 @@ export function GrowthContent() {
               <p className="text-[11px] text-muted-foreground mt-1">{t("explicit.066")}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="text-xs font-semibold">{t("explicit.067")}</label><input type="datetime-local" name="startsAt" defaultValue={toDateTimeLocal(editingCampaign.startsAt)} className="w-full border rounded p-2 text-sm mt-1" /></div>
-              <div><label className="text-xs font-semibold">{t("explicit.068")}</label><input type="datetime-local" name="endsAt" defaultValue={toDateTimeLocal(editingCampaign.endsAt)} className="w-full border rounded p-2 text-sm mt-1" /></div>
+              <div><label className="text-xs font-semibold">{t("explicit.067")}</label><DateTimeInput key={`startsAt-${editingCampaign.id ?? "new"}`} className="mt-1" name="startsAt" aria-label={t("explicit.067")} defaultValue={toDateTimeLocal(editingCampaign.startsAt)} /></div>
+              <div><label className="text-xs font-semibold">{t("explicit.068")}</label><DateTimeInput key={`endsAt-${editingCampaign.id ?? "new"}`} className="mt-1" name="endsAt" aria-label={t("explicit.068")} defaultValue={toDateTimeLocal(editingCampaign.endsAt)} /></div>
             </div>
             <div><label className="text-xs font-semibold">{t("explicit.044")}</label><textarea name="description" defaultValue={editingCampaign.description ?? ""} className="w-full border rounded p-2 text-sm mt-1" rows={2}></textarea></div>
             <div><label className="text-xs font-semibold">{t("explicit.069")}</label><textarea name="notes" defaultValue={editingCampaign.notes ?? ""} className="w-full border rounded p-2 text-sm mt-1" rows={2}></textarea></div>

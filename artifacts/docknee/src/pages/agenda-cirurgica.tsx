@@ -21,6 +21,7 @@ import { useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import jsPDF from "jspdf";
 import { handlePdfOpenClick, sharePdfOrDownload } from "@/lib/pdf-share";
+import { DateInput, TimeInput } from "@/components/ui/date-input";
 
 type CodigoCbhpm = { codigo: string; descricao: string; quantidade: number };
 type Material = { nome: string; quantidade: number; fornecedor: string };
@@ -590,11 +591,11 @@ export default function AgendaCirurgica() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>{t("agendaDate")} *</Label>
-                <Input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
+                <DateInput value={form.data} onValueChange={(v) => setForm(f => ({ ...f, data: v }))} />
               </div>
               <div className="space-y-1">
                 <Label>{t("agendaTime")} *</Label>
-                <Input type="time" value={form.hora} onChange={e => setForm(f => ({ ...f, hora: e.target.value }))} />
+                <TimeInput value={form.hora} onValueChange={(v) => setForm(f => ({ ...f, hora: v }))} />
               </div>
             </div>
 

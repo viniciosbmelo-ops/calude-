@@ -20,6 +20,7 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { handlePdfOpenClick, sharePdfOrDownload } from "@/lib/pdf-share";
 import { generateShoulderReportPDF, reportFilename } from "@/lib/shoulder-report-pdf";
 import { surgeryViewMessages } from "@/locales/surgery-view";
+import { DateInput } from "@/components/ui/date-input";
 
 const mobileButton = { display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, padding: "8px 12px", borderRadius: 10, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "none", cursor: "pointer" } as const;
 
@@ -252,8 +253,8 @@ export default function SurgeryDetail() {
                   <p className="text-sm font-medium text-muted-foreground">{t("t_procedureDate")}</p>
                   {editingData ? (
                     <div className="flex items-center gap-1.5 mt-1">
-                      <input type="date" aria-label={t("t_procedureDate")} value={dataValue} onChange={(e) => setDataValue(e.target.value)}
-                        className="h-7 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                      <DateInput aria-label={t("t_procedureDate")} value={dataValue} onValueChange={(v) => setDataValue(v)}
+                        className="h-7 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" wrapperClassName="w-40" />
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={savingData || !dataValue} onClick={() => saveData(dataValue)}>
                         {savingData ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 text-primary" />}
                       </Button>

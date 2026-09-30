@@ -3,7 +3,7 @@
  * Tabs: Visão geral | Procedimentos | PROMs | Exames laboratoriais | IA e laudos
  * Tema claro — igual ao Dashboard principal
  */
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   ArrowLeft, Plus, AlertCircle, AlertTriangle, Info,
@@ -51,6 +51,7 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 import { complianceFlagText } from "@/locales/regen-compliance";
 import { parseApplicationSites } from "@/lib/regen-application-sites";
+import { DateInput } from "@/components/ui/date-input";
 
 type RegenMessageKey = keyof typeof regenCoreMessages["pt-BR"];
 const REGEN_SOURCE_KEYS = Object.fromEntries(
@@ -178,13 +179,17 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Light input field ────────────────────────────────────────────────────────
 function Field({ label, value, onChange, type = "text", placeholder = "", unit = "" }: any) {
+  const id = useId();
+  const cls = "w-full px-3 py-2 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none border border-gray-200 bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-50";
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</label>
+      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</label>
       <div className="relative">
-        <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-          lang={type === "date" && typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined}
-          className="w-full px-3 py-2 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none border border-gray-200 bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-50" />
+        {type === "date" ? (
+          <DateInput id={id} value={value} onValueChange={onChange} placeholder={placeholder || undefined} className={cls + " h-auto pr-9"} />
+        ) : (
+          <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
+        )}
         {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{unit}</span>}
       </div>
     </div>
@@ -415,12 +420,11 @@ function LabsTab({ caseId, labs, onRefresh }: { caseId: string; labs: LabResult[
                         </span>
                       )}
                     </div>
-                    <input
-                      type="date"
-                      lang={typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined}
+                    <DateInput
                       value={date[a.name] ?? ""}
-                      onChange={e => setDate(d => ({ ...d, [a.name]: e.target.value }))}
-                      className="px-2 py-1.5 rounded-lg text-xs border border-gray-200 bg-white text-gray-600 outline-none focus:border-blue-400 w-[110px] shrink-0"
+                      onValueChange={(v) => setDate(d => ({ ...d, [a.name]: v }))}
+                      className="h-auto px-2 py-1.5 pr-8 rounded-lg text-xs border border-gray-200 bg-white text-gray-600 outline-none focus:border-blue-400"
+                      wrapperClassName="w-[136px] shrink-0"
                     />
                     <button
                       onClick={() => handleSave(a.name, panel)}

@@ -16,6 +16,7 @@ import { getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
 import { sortByPtBrName } from "@/lib/utils";
 import { useLanguage, useScopedTranslations, type Locale } from "@/lib/i18n";
 import { profileMessages } from "@/locales/profile";
+import { DateInput } from "@/components/ui/date-input";
 
 function ContactSupportCard() {
   const { t } = useLanguage();
@@ -1081,11 +1082,10 @@ function ProfileInner({ user }: { user: any }) {
             </div>
             <div className="space-y-1">
               <Label htmlFor="dataNascimento" className="text-sm font-medium">{p("birthDate")}</Label>
-              <Input
+              <DateInput
                 id="dataNascimento"
-                type="date"
                 value={form.dataNascimento}
-                onChange={e => set("dataNascimento", e.target.value)}
+                onValueChange={(v) => set("dataNascimento", v)}
               />
             </div>
             <div className="space-y-1">

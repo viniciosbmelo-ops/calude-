@@ -13,6 +13,7 @@ import { CalendarDays, Plus, Phone, Pencil, Trash2, User } from "lucide-react";
 import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalAgendaMessages } from "@/locales/operational-agenda";
+import { DateInput, TimeInput } from "@/components/ui/date-input";
 
 type Appointment = {
   id: number; patientId: number; data: string; hora: string; tipo: string;
@@ -338,11 +339,11 @@ export default function AgendaPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>{t("date")} *</Label>
-                <Input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
+                <DateInput value={form.data} onValueChange={(v) => setForm(f => ({ ...f, data: v }))} />
               </div>
               <div className="space-y-1">
                 <Label>{t("time")} *</Label>
-                <Input type="time" value={form.hora} onChange={e => setForm(f => ({ ...f, hora: e.target.value }))} />
+                <TimeInput value={form.hora} onValueChange={(v) => setForm(f => ({ ...f, hora: v }))} />
               </div>
             </div>
             <div className="space-y-1">

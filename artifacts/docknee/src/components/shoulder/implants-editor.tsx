@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { parseGs1, type ClinicalImplant } from "@workspace/clinical/web";
 import { IMPLANT_CATEGORIES, canAddImplant, emptyImplantDraft, implantSummary } from "./implant-draft";
+import { DateInput } from "@/components/ui/date-input";
 
 export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalImplant[]; onChange(v: ClinicalImplant[]): void; readOnly?: boolean }) {
   const [draft, setDraft] = useState<ClinicalImplant | null>(null);
@@ -79,7 +80,7 @@ export function ImplantsEditor({ value, onChange, readOnly }: { value: ClinicalI
             <div className="space-y-2"><Label htmlFor="imp-tamanho">Tamanho</Label><Input id="imp-tamanho" maxLength={40} placeholder="ex.: 4,75 mm" value={draft.tamanho ?? ""} onChange={(e) => upd({ tamanho: e.target.value || undefined })} /></div>
             <div className="space-y-2"><Label htmlFor="imp-lote">Lote</Label><Input id="imp-lote" maxLength={60} value={draft.lote ?? ""} onChange={(e) => upd({ lote: e.target.value || undefined })} /></div>
             <div className="space-y-2"><Label htmlFor="imp-serie">Série</Label><Input id="imp-serie" maxLength={60} value={draft.serie ?? ""} onChange={(e) => upd({ serie: e.target.value || undefined })} /></div>
-            <div className="space-y-2"><Label htmlFor="imp-validade">Validade</Label><Input id="imp-validade" type="date" value={draft.validade ?? ""} onChange={(e) => upd({ validade: e.target.value || undefined })} /></div>
+            <div className="space-y-2"><Label htmlFor="imp-validade">Validade</Label><DateInput id="imp-validade" value={draft.validade ?? ""} onValueChange={(v) => upd({ validade: v || undefined })} /></div>
             <div className="space-y-2 sm:col-span-2"><Label htmlFor="imp-local">Localização</Label><Input id="imp-local" maxLength={120} placeholder="ex.: fileira medial" value={draft.localizacao ?? ""} onChange={(e) => upd({ localizacao: e.target.value || undefined })} /></div>
           </div>
           {!draft.lote && (

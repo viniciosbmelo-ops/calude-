@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserPlus, X, Copy, Check, Eye, EyeOff, CheckCircle, RefreshCw, KeyRound, Pencil } from "lucide-react";
 import { useScopedTranslations } from "@/lib/i18n";
 import { adminConsoleMessages } from "@/locales/admin-console";
+import { DateInput } from "@/components/ui/date-input";
 
 const UF_LIST = [
   "AC","AL","AM","AP","BA","CE","DF","ES","GO",
@@ -459,7 +460,7 @@ export function AdminEditDoctorDialog({
                 </div>
                 <div>
                   <label className={labelCls}>{t("dialog.birthDate")}</label>
-                  <input className={inputCls} type="date" value={form.dataNascimento} onChange={(e) => set("dataNascimento", e.target.value)} />
+                  <DateInput className={inputCls} value={form.dataNascimento} onValueChange={(v) => set("dataNascimento", v)} />
                 </div>
                 <div>
                   <label className={labelCls}>{t("dialog.phone")}</label>

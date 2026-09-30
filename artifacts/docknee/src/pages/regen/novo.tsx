@@ -54,6 +54,7 @@ import {
   syncApplicationSites,
   type RegenApplicationSite,
 } from "@/lib/regen-application-sites";
+import { DateInput } from "@/components/ui/date-input";
 
 function authHdr() {
   return {
@@ -1239,7 +1240,7 @@ export default function RegenNovo() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                    <Label>{t("caseDate")}</Label>
-                  <Input type="date" value={dataCaso} onChange={e => setDataCaso(e.target.value)} />
+                  <DateInput value={dataCaso} onValueChange={(v) => setDataCaso(v)} />
                 </div>
                 <div className="space-y-2">
                    <Label>{t("jointSide")}</Label>

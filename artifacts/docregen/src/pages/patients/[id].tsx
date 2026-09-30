@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PreConsultTab } from "@/components/patient/pre-consult-tab";
+import { DateInput } from "@/components/ui/date-input";
 
 const AVATAR_COLORS = [
   "linear-gradient(135deg,#0B1F4B,#0E9AA7)",
@@ -1251,11 +1252,10 @@ export default function PatientDetail() {
             </div>
             <div className="space-y-1.5 min-w-0">
               <Label htmlFor="edit-nascimento" className="text-sm font-medium">{tr("birthDate")}</Label>
-              <Input
+              <DateInput
                 id="edit-nascimento"
-                type="date"
                 value={editForm.dataNascimento}
-                onChange={e => setEditForm(f => ({ ...f, dataNascimento: e.target.value }))}
+                onValueChange={(v) => setEditForm(f => ({ ...f, dataNascimento: v }))}
               />
             </div>
           </div>

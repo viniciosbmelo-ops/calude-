@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { LABELS, diagnosesFor, toIssues, type Region, type ValidationIssue } from "@workspace/clinical/web";
 import { validators } from "@workspace/clinical/validators";
 import { ClockFace } from "./clock-face";
+import { DateInput, DateTimeInput } from "@/components/ui/date-input";
 
 type Obj = Record<string, any>;
 const L = LABELS as unknown as Record<string, Record<string, string>>;
@@ -210,9 +211,9 @@ function Field({ name, schema, path, value, ctx, required, onChange }: { name: s
       </div>
     );
   } else if (schema.type === "string" && schema.format === "date") {
-    control = <Input type="date" value={value ?? ""} disabled={ro} onChange={(e) => onChange(e.target.value || undefined)} aria-label={label} />;
+    control = <DateInput value={value ?? ""} disabled={ro} onValueChange={(v) => onChange(v || undefined)} aria-label={label} />;
   } else if (schema.type === "string" && schema.format === "date-time") {
-    control = <Input type="datetime-local" value={value ? isoToLocal(value) : ""} disabled={ro} onChange={(e) => onChange(e.target.value ? localToIso(e.target.value) : undefined)} aria-label={label} />;
+    control = <DateTimeInput value={value ? isoToLocal(value) : ""} disabled={ro} onValueChange={(v) => onChange(v ? localToIso(v) : undefined)} aria-label={label} />;
   } else if (schema.type === "string" && (schema.maxLength ?? 0) > 120) {
     control = <Textarea rows={3} value={value ?? ""} maxLength={schema.maxLength} disabled={ro} onChange={(e) => onChange(e.target.value || undefined)} aria-label={label} />;
   } else {

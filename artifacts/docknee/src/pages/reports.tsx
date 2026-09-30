@@ -25,6 +25,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { DateInput } from "@/components/ui/date-input";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const CASE_TYPE_OPTIONS = CASE_TYPES.filter((c) => !c.freeOnly);
@@ -801,12 +802,12 @@ export default function Reports() {
                     {/* Data início */}
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">{tx("fromDate")}</Label>
-                      <Input type="date" className="h-8 text-xs" value={regenFilters.dataInicio} onChange={e => setRegenFilters(f => ({ ...f, dataInicio: e.target.value }))} />
+                      <DateInput className="h-8 text-xs" value={regenFilters.dataInicio} onValueChange={(v) => setRegenFilters(f => ({ ...f, dataInicio: v }))} />
                     </div>
                     {/* Data fim */}
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">{tx("toDate")}</Label>
-                      <Input type="date" className="h-8 text-xs" value={regenFilters.dataFim} onChange={e => setRegenFilters(f => ({ ...f, dataFim: e.target.value }))} />
+                      <DateInput className="h-8 text-xs" value={regenFilters.dataFim} onValueChange={(v) => setRegenFilters(f => ({ ...f, dataFim: v }))} />
                     </div>
                   </div>
                 </div>
@@ -872,11 +873,11 @@ export default function Reports() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">{tx("surgeryFrom")}</Label>
-              <Input type="date" className="h-8 text-xs" value={filters.dataInicio} onChange={e => setFilter("dataInicio", e.target.value)} />
+              <DateInput className="h-8 text-xs" value={filters.dataInicio} onValueChange={(v) => setFilter("dataInicio", v)} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">{tx("surgeryTo")}</Label>
-              <Input type="date" className="h-8 text-xs" value={filters.dataFim} onChange={e => setFilter("dataFim", e.target.value)} />
+              <DateInput className="h-8 text-xs" value={filters.dataFim} onValueChange={(v) => setFilter("dataFim", v)} />
             </div>
           </FilterSection>
 
@@ -1435,7 +1436,7 @@ export default function Reports() {
             )}
             <div className="space-y-1">
               <Label className="text-sm font-medium">{tx("assessmentDate")}</Label>
-              <Input type="date" value={sf.dataAvaliacao} onChange={e => setSf("dataAvaliacao", e.target.value)} />
+              <DateInput value={sf.dataAvaliacao} onValueChange={(v) => setSf("dataAvaliacao", v)} />
             </div>
 
             <div>
