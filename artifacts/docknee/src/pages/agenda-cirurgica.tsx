@@ -322,7 +322,7 @@ export function generateAgendaPDF(items: CirurgiaAgendada[], titulo: string, doc
 
   return {
     doc,
-    filename: `agenda-cirurgica-${new Date().toISOString().split("T")[0]}.pdf`,
+    filename: `agenda-cirurgica-${formatLocalDate()}.pdf`,
   };
 }
 

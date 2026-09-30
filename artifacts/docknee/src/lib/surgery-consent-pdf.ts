@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import type { Locale } from "./i18n";
 import { documentDate, documentText } from "@/locales/document-locales";
 import { CASE_TYPE_BY_KEY } from "@workspace/clinical/web";
+import { formatLocalDate } from "./utils";
 
 export type SurgicalConsentDoctor = {
   nome?: string | null;
@@ -378,7 +379,7 @@ async function generateSurgicalConsentPDFLegacy(
 
   return {
     doc,
-    filename: `termo_consentimento_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `termo_consentimento_${safeName}_${formatLocalDate()}.pdf`,
   };
 }
 
@@ -606,6 +607,6 @@ export async function generateSurgicalConsentPDF(
 
   return {
     doc,
-    filename: `termo_consentimento_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `termo_consentimento_${safeName}_${formatLocalDate()}.pdf`,
   };
 }
