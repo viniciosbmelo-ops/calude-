@@ -48,13 +48,13 @@ import { sharePdfBlobOrDownload, handlePdfOpenClick } from "@/lib/pdf-share";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenCoreMessages } from "@/locales/regen-core";
 import { complianceFlagText } from "@/locales/regen-compliance";
-import { parseApplicationSites } from "@/lib/regen-application-sites";
+import { anatomicalSiteLabel, parseApplicationSites } from "@/lib/regen-application-sites";
 import { regenKneeMessages } from "@/locales/regen-knee";
 import { SANE_KNEE_CODE, assessChange, isKneeCondition, promDirection } from "@/lib/regen-knee-measures";
 import { KneeRecommendationHint, PerformanceTestsTab } from "@/components/regen-knee-measures";
 import { SaneRecommendationHint, SaneValidationNote } from "@/components/regen-sane";
 import { regenSaneMessages } from "@/locales/regen-sane";
-import { saneDefForName, saneForCondition, saneLabel, saneQuestion, type SaneRegionDef } from "@/lib/regen-sane";
+import { saneDefForName, saneForCase, saneLabel, saneQuestion, type SaneRegionDef } from "@/lib/regen-sane";
 import { DateInput } from "@/components/ui/date-input";
 
 type RegenMessageKey = keyof typeof regenCoreMessages["pt-BR"];
@@ -2606,12 +2606,13 @@ function promScaleMax(instrument: string): number {
   return instrument === "VAS" ? 10 : 100;
 }
 
-function PromsTab({ caseId, conditionCode, proms, onRefresh, onGoToTests }: { caseId: string; conditionCode: string; proms: PromResponse[]; onRefresh: () => void; onGoToTests?: () => void }) {
+function PromsTab({ caseId, conditionCode, productDetails, proms, onRefresh, onGoToTests }: { caseId: string; conditionCode: string; productDetails?: Record<string, string>; proms: PromResponse[]; onRefresh: () => void; onGoToTests?: () => void }) {
   const t = useScopedTranslations(regenCoreMessages);
   const tk = useScopedTranslations(regenKneeMessages);
   const tr = useCaseTranslations();
   const kneeCase = isKneeCondition(conditionCode);
-  const sane = saneForCondition(conditionCode);
+  // Condition region SANE; for region-less conditions, the application sites' region.
+  const sane = saneForCase(conditionCode, productDetails);
   const { locale, formatDate } = useLanguage();
   const instrumentLabel = useCallback((name: string) => {
     if (name === "SANE Joelho") return tk("saneKnee");
@@ -2646,7 +2647,7 @@ function PromsTab({ caseId, conditionCode, proms, onRefresh, onGoToTests }: { ca
 
   return (
     <div className="space-y-4">
-      {kneeCase ? <KneeRecommendationHint conditionCode={conditionCode} onGoToTests={onGoToTests} /> : <SaneRecommendationHint conditionCode={conditionCode} />}
+      {kneeCase ? <KneeRecommendationHint conditionCode={conditionCode} onGoToTests={onGoToTests} /> : <SaneRecommendationHint def={sane} />}
       <PromForm caseId={caseId} sane={sane} onSaved={onRefresh} />
 
       {series.length > 0 && (
@@ -3137,7 +3138,10 @@ export default function RegenCaso() {
                           <div key={index} className="flex flex-wrap justify-between items-start gap-x-4 gap-y-1 text-sm">
                             <span className="text-gray-700 font-medium">{t("applicationSite", { count: index + 1 })}</span>
                             <span className="text-gray-500 text-right">
-                              {[site.localAplicacao, site.guia].filter(Boolean).map(tr).join(" · ")}
+                              {[
+                                site.estruturaAnatomica ? anatomicalSiteLabel(site.estruturaAnatomica, locale) : "",
+                                ...[site.localAplicacao, site.guia].filter(Boolean).map(tr),
+                              ].filter(Boolean).join(" · ")}
                             </span>
                           </div>
                         ))}
@@ -3246,7 +3250,7 @@ export default function RegenCaso() {
             caseId={caseId}
             patientPhone={c?.patient_phone ?? undefined}
             productCodes={[...(c.planned_products ?? []), ...procedures.map(p => p.product_code)]}
-            sane={saneForCondition(c.condition_code)}
+            sane={saneForCase(c.condition_code, c.product_details)}
           />
         </div>
 
@@ -3258,7 +3262,7 @@ export default function RegenCaso() {
       </TabsContent>
 
       <TabsContent value="proms" className="py-4 md:py-6">
-        <PromsTab caseId={caseId} conditionCode={c.condition_code} proms={proms} onRefresh={fetchProms}
+        <PromsTab caseId={caseId} conditionCode={c.condition_code} productDetails={c.product_details} proms={proms} onRefresh={fetchProms}
           onGoToTests={kneeCase ? () => setTab("functional") : undefined} />
       </TabsContent>
 

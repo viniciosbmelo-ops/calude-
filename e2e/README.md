@@ -51,8 +51,9 @@ resetting the databases.
 - **DocRegen** (`docregen/docregen.spec.ts`): sign-up (approval/subscription gate
   set by SQL), patient with DD/MM/AAAA birth date, pré-consulta link → CPF → 6 steps →
   exam upload → doctor sees answers and downloads the exam; knee OA KL3 and shoulder
-  regenerative cases; procedure; patient PROM link (VAS + region SANE) → PROMs tab
-  and chart; knee functional test; KOOS/WOMAC/IKDC rejected by the API; agenda
+  regenerative cases; menu "Procedimentos" and case tab "Aplicações" (routes stay
+  `/regen`); application; patient PROM link (VAS + region SANE) → PROMs tab and chart;
+  condral-focal case applied to the knee → patient link asks SANE Joelho; knee functional test; KOOS/WOMAC/IKDC rejected by the API; agenda
   create/edit; dashboard counts; follow-up central dates; reports; research CSV;
   secretary (isolation from another doctor); logout.
   `docregen/dates.en-us.ts`: the same date contract with an en-US browser.

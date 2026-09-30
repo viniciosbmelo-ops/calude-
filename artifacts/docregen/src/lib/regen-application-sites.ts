@@ -7,12 +7,31 @@
  * The first row is mirrored to the legacy keys by syncApplicationSites.
  */
 
+import {
+  APPLICATION_ANATOMICAL_SITES,
+  applicationAnatomicalSite,
+} from "@workspace/clinical/application-sites";
+
 export interface RegenApplicationSite {
   localAplicacao: string;
   guia: string;
+  /**
+   * Anatomical site code (APPLICATION_ANATOMICAL_SITES in
+   * @workspace/clinical/application-sites). Optional: older rows have none.
+   */
+  estruturaAnatomica?: string;
 }
 
 export const APPLICATION_SITES_KEY = "locaisAplicacao";
+
+export { APPLICATION_ANATOMICAL_SITES };
+
+/** Display label of an anatomical site code in the given locale (unknown values as-is). */
+export function anatomicalSiteLabel(value: string, locale: string): string {
+  const site = applicationAnatomicalSite(value);
+  if (!site) return value;
+  return locale.startsWith("es") ? site.label.es : site.label["pt-BR"];
+}
 
 export const APPLICATION_SITE_LOCATIONS = [
   "Intra-articular",
@@ -31,15 +50,18 @@ export const APPLICATION_GUIDES = [
   "Outro",
 ] as const;
 
-const emptySite = (): RegenApplicationSite => ({ localAplicacao: "", guia: "" });
+const emptySite = (): RegenApplicationSite => ({ localAplicacao: "", guia: "", estruturaAnatomica: "" });
 
 function asSite(value: unknown): RegenApplicationSite | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   const localAplicacao = typeof row.localAplicacao === "string" ? row.localAplicacao : "";
   const guia = typeof row.guia === "string" ? row.guia : "";
-  if (!localAplicacao.trim() && !guia.trim()) return null;
-  return { localAplicacao, guia };
+  const estruturaAnatomica = typeof row.estruturaAnatomica === "string" ? row.estruturaAnatomica : "";
+  if (!localAplicacao.trim() && !guia.trim() && !estruturaAnatomica.trim()) return null;
+  return estruturaAnatomica.trim()
+    ? { localAplicacao, guia, estruturaAnatomica }
+    : { localAplicacao, guia };
 }
 
 /**
@@ -81,11 +103,15 @@ export function syncApplicationSites(
   sites: RegenApplicationSite[],
 ): Record<string, string> {
   const rows = sites
-    .map(site => ({
-      localAplicacao: site.localAplicacao.trim(),
-      guia: site.guia.trim(),
-    }))
-    .filter(site => site.localAplicacao !== "" || site.guia !== "");
+    .map(site => {
+      const estruturaAnatomica = (site.estruturaAnatomica ?? "").trim();
+      return {
+        localAplicacao: site.localAplicacao.trim(),
+        guia: site.guia.trim(),
+        ...(estruturaAnatomica ? { estruturaAnatomica } : {}),
+      };
+    })
+    .filter(site => site.localAplicacao !== "" || site.guia !== "" || site.estruturaAnatomica !== undefined);
   const next = { ...productDetails };
 
   if (rows.length > 0) {

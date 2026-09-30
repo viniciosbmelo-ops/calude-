@@ -201,7 +201,7 @@ export default function RegenDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Regenerativa</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">{t("regenerative")}</h1>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-blue-100 text-blue-600">BETA</span>
               </div>
                <p className="text-muted-foreground text-sm mt-0.5">{t("dashboardSubtitle", { name: user?.nome ?? "" })}</p>
@@ -326,7 +326,7 @@ export default function RegenDashboard() {
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 truncate">
                         {regenConditionLabel(c.condition_code, locale, c.condition_custom)}
-                         {c.procedure_count > 0 && ` · ${t("procedureCount", { count: c.procedure_count, suffix: c.procedure_count !== 1 ? "s" : "" })}`}
+                         {c.procedure_count > 0 && ` · ${t(c.procedure_count === 1 ? "procedureCount" : "procedureCountPlural", { count: c.procedure_count })}`}
                       </p>
                     </div>
                     {/* Status + chevron */}

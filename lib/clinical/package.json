@@ -11,6 +11,7 @@
     "./catalog": "./src/catalog/pathologies.ts",
     "./knee-function": "./src/proms/kneeFunction.ts",
     "./region-sane": "./src/proms/regionSane.ts",
+    "./application-sites": "./src/proms/applicationSites.ts",
     "./validators": "./src/generated/validators.js",
     "./web": "./src/web.ts"
   },

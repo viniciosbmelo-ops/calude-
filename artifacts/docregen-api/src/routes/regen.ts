@@ -18,6 +18,7 @@ import {
   addDaysToCalendarDate,
   clinicToday,
   REGEN_PROM_INSTRUMENTS,
+  effectiveRegenPatientScales,
   regenFollowupScheduleFor,
 } from "../lib/regen-followup-schedule";
 import PDFDocument from "pdfkit";
@@ -34,7 +35,7 @@ import {
   performanceResearchKey,
   type MeasurePoint,
 } from "../lib/regen-knee-measures";
-import { SANE_REGIONS, saneRegionByInstrument } from "../lib/regen-sane";
+import { SANE_REGIONS, saneForCase, saneRegionByInstrument, siteDerivedSane } from "../lib/regen-sane";
 import {
   applicationSitesForProductDetails,
   hasValidApplicationSitesExtension,
@@ -125,6 +126,19 @@ async function hasAcceptedTerms(doctorId: number): Promise<boolean> {
 
 async function requestMessage(req: any, key: Parameters<typeof message>[1]) {
   return message(await localeForDoctorId(req.doctorId), key);
+}
+
+/**
+ * Follow-up row with the scales the patient link actually asks (stored scales
+ * plus, for conditions without a region, the SANE of the current application
+ * sites; see effectiveRegenPatientScales).
+ * Rows whose stored list holds retired scales keep them for display.
+ */
+function withCaseScales(row: any, sane: ReturnType<typeof siteDerivedSane>) {
+  if (!Array.isArray(row.scales)) return row;
+  const effective = effectiveRegenPatientScales(row.scales, row.status, sane);
+  const added = effective.filter((scale) => !row.scales.includes(scale));
+  return added.length ? { ...row, scales: [...row.scales, ...added] } : row;
 }
 
 function regenNotificationForLocale(row: any, locale: "pt-BR" | "es") {
@@ -942,7 +956,8 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
             WHERE fn.case_id = c.id AND sr.nome_escala = 'VAS Dor'
          ) v) AS avg_vas,
         c.dm, c.imc AS bmi, c.goal_vev,
-        c.created_at
+        c.created_at,
+        c.product_details
       FROM regen_cases c
       ${procJoin}
       WHERE ${wheres.join(" AND ")}
@@ -950,6 +965,14 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
       LIMIT 500`;
 
     const { rows } = await pool.query(sql, params);
+
+    // Region SANE the case asks (condition region, else the single region of
+    // its application sites; see saneForCase), computed from current data.
+    // product_details is only read here, never exported.
+    for (const row of rows as any[]) {
+      row.sane_region = saneForCase(row.condition, row.product_details)?.researchKey ?? null;
+      delete row.product_details;
+    }
 
     // Outcome measures: region SANEs (manual + patient follow-up; one column
     // set per region) and the knee OARSI performance tests / ROM → baseline,
@@ -999,7 +1022,7 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
     }
 
     if (format === "csv") {
-      const cols = ["id","age","sex","imc","condition","status","procedure_count",
+      const cols = ["id","age","sex","imc","condition","sane_region","status","procedure_count",
                     "adverse_events","avg_vas","dm","created_at",
                     ...RESEARCH_MEASURE_KEYS.flatMap(key => [`${key}_baseline`, `${key}_last`, `${key}_change`])];
       const header = cols.join(",");
@@ -3154,7 +3177,12 @@ router.get("/regen/cases/:id/notifications", requireAuth, async (req: any, res) 
        ORDER BY n.days_after_procedure`,
       [req.params.id, req.doctorId]
     );
-    res.json(notifs.map((notif: any) => regenNotificationForLocale(notif, locale)));
+    const { rows: caseRows } = await pool.query(
+      `SELECT condition_code, product_details FROM regen_cases WHERE id = $1 AND doctor_id = $2`,
+      [req.params.id, req.doctorId]
+    );
+    const sane = caseRows.length ? siteDerivedSane(caseRows[0].condition_code, caseRows[0].product_details) : null;
+    res.json(notifs.map((notif: any) => regenNotificationForLocale(withCaseScales(notif, sane), locale)));
   } catch (e) {
     console.error("[regen/notifications GET]", e);
     res.status(500).json({ error: message(await localeForDoctorId(req.doctorId), "internalError") });
@@ -3199,7 +3227,8 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     const schedule = regenFollowupScheduleFor([
       ...((rows[0].planned_products as string[] | null) ?? []),
       ...performed.map((r: any) => r.product_code as string),
-    ], rows[0].condition_code);
+    ], rows[0].condition_code, rows[0].product_details);
+    const caseSane = siteDerivedSane(rows[0].condition_code, rows[0].product_details);
 
     // Check if notifications already exist — only add missing ones
     const { rows: existing } = await client.query(
@@ -3229,7 +3258,7 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
       [req.params.id]
     );
     await client.query("COMMIT");
-    res.json(notifs.map((notif: any) => regenNotificationForLocale(notif, locale)));
+    res.json(notifs.map((notif: any) => regenNotificationForLocale(withCaseScales(notif, caseSane), locale)));
   } catch (e) {
     await client.query("ROLLBACK").catch(() => undefined);
     console.error("[regen/notifications/init]", e);
@@ -3245,7 +3274,7 @@ router.post("/regen/cases/:id/notifications/:notifId/prepare-whatsapp", requireA
   let locale = await localeForDoctorId(req.doctorId);
   try {
     const { rows: notifRows } = await pool.query(
-      `SELECT n.*, c.patient_name, c.patient_phone, c.condition_code,
+      `SELECT n.*, c.patient_name, c.patient_phone, c.condition_code, c.product_details,
               c.doctor_id AS owner_doctor_id, p.cpf AS patient_cpf
        FROM regen_followup_notifications n
        JOIN regen_cases c ON c.id = n.case_id
@@ -3283,7 +3312,7 @@ router.post("/regen/cases/:id/notifications/:notifId/prepare-whatsapp", requireA
     locale = resolveDoctorLocale(doctorRows[0]?.idioma);
 
     const link = buildAppLink(getBaseUrl(req), `/patient/regen/${token}`);
-    const scalesText = notif.scales
+    const scalesText = effectiveRegenPatientScales(notif.scales, notif.status, siteDerivedSane(notif.condition_code, notif.product_details))
       .map((scale: unknown) => regenScaleForLocale(scale, locale))
       .join(", ");
     const preparedMessage = message(locale, "regenFollowup", {

@@ -6,8 +6,10 @@ import {
   isRegenPatientScale,
   addDaysToCalendarDate,
   clinicToday,
+  effectiveRegenPatientScales,
   regenFollowupScheduleFor,
 } from "./regen-followup-schedule";
+import { saneForCase, siteDerivedSane } from "./regen-sane";
 import { localeDate } from "./locale";
 
 describe("regenerative follow-up schedule", () => {
@@ -111,5 +113,39 @@ describe("every case asks VAS + the SANE of its condition region", () => {
       "SANE_QUADRIL", "SANE_TORNOZELO_PE", "VAS",
     ]);
     for (const name of ["KOOS", "WOMAC", "IKDC", "ASES", "DASH", "SANE"]) expect(isRegenPatientScale(name)).toBe(false);
+  });
+});
+
+describe("region SANE from the application sites (conditions without a region)", () => {
+  const knee = { locaisAplicacao: JSON.stringify([{ localAplicacao: "Intra-articular", guia: "", estruturaAnatomica: "JOELHO" }]) };
+  const kneeAndShoulder = {
+    locaisAplicacao: JSON.stringify([
+      { localAplicacao: "", guia: "", estruturaAnatomica: "JOELHO" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "OMBRO" },
+    ]),
+  };
+
+  it("schedules the site SANE only when every site maps to one region", () => {
+    expect(regenFollowupScheduleFor(["PRP"], "CONDRAL_FOCAL", knee).every((s) => s.scales.join("|") === "VAS Dor|SANE Joelho")).toBe(true);
+    expect(regenFollowupScheduleFor(["PRP"], "CONDRAL_FOCAL", kneeAndShoulder).every((s) => s.scales.join("|") === "VAS Dor")).toBe(true);
+    expect(regenFollowupScheduleFor(["PRP"], "CONDRAL_FOCAL", {}).every((s) => s.scales.join("|") === "VAS Dor")).toBe(true);
+    expect(regenFollowupScheduleFor(["PRP"], "OA_OMBRO", knee).every((s) => s.scales.join("|") === "VAS Dor|SANE Ombro")).toBe(true);
+    // Legacy singular field (rows saved before the repeatable extension).
+    expect(saneForCase("TENDINOPATIA", { localAplicacao: "Tendão patelar", guia: "Ultrassom" })?.scale).toBe("SANE Joelho");
+    expect(saneForCase("TENDINOPATIA", null)).toBeNull();
+    expect(saneForCase("TENDINOPATIA", "not-an-object")).toBeNull();
+  });
+
+  it("extends stored VAS-only follow-ups at read time, never completed or already-SANE rows", () => {
+    const sane = saneForCase("CONDRAL_FOCAL", knee);
+    expect(effectiveRegenPatientScales(["VAS Dor"], "pending", sane)).toEqual(["VAS Dor", "SANE Joelho"]);
+    expect(effectiveRegenPatientScales(["VAS Dor"], "sent", sane)).toEqual(["VAS Dor", "SANE Joelho"]);
+    expect(effectiveRegenPatientScales(["VAS Dor"], "completed", sane)).toEqual(["VAS Dor"]);
+    expect(effectiveRegenPatientScales(["VAS Dor", "SANE Ombro"], "pending", sane)).toEqual(["VAS Dor", "SANE Ombro"]);
+    expect(effectiveRegenPatientScales(["VAS Dor", "KOOS"], "pending", null)).toEqual(["VAS Dor"]);
+    expect(effectiveRegenPatientScales(["KOOS"], "pending", sane)).toEqual([]);
+    // Conditions with their own region keep their stored rows unchanged.
+    expect(siteDerivedSane("OA_OMBRO", knee)).toBeNull();
+    expect(siteDerivedSane("CONDRAL_FOCAL", knee)?.scale).toBe("SANE Joelho");
   });
 });

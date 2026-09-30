@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  anatomicalSiteLabel,
   parseApplicationSites,
   syncApplicationSites,
 } from "./regen-application-sites";
@@ -54,5 +55,21 @@ describe("regenerative application sites", () => {
     expect(result.localAplicacao).toBe("");
     expect(result.guia).toBe("");
     expect(result.observacoes).toBe("Sem dados adicionais");
+  });
+
+  it("persists and reads back the optional anatomical structure per row", () => {
+    const result = syncApplicationSites({}, [
+      { localAplicacao: "Intra-articular", guia: "Ultrassom", estruturaAnatomica: " JOELHO " },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "TENDAO_AQUILES" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "" },
+    ]);
+    expect(JSON.parse(result.locaisAplicacao)).toEqual([
+      { localAplicacao: "Intra-articular", guia: "Ultrassom", estruturaAnatomica: "JOELHO" },
+      { localAplicacao: "", guia: "", estruturaAnatomica: "TENDAO_AQUILES" },
+    ]);
+    expect(parseApplicationSites(result).map((site) => site.estruturaAnatomica)).toEqual(["JOELHO", "TENDAO_AQUILES"]);
+    expect(anatomicalSiteLabel("TENDAO_AQUILES", "pt-BR")).toBe("Tendão de Aquiles");
+    expect(anatomicalSiteLabel("TENDAO_AQUILES", "es")).toBe("Tendón de Aquiles");
+    expect(anatomicalSiteLabel("Livre", "es")).toBe("Livre");
   });
 });

@@ -33,10 +33,25 @@ import {
 import { logger } from "../lib/logger";
 import { resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
-import { filterRegenPatientScales } from "../lib/regen-followup-schedule";
+import { effectiveRegenPatientScales } from "../lib/regen-followup-schedule";
+import { siteDerivedSane } from "../lib/regen-sane";
 import { regenPeriodForLocale } from "../lib/regen-labels";
 
 const router: IRouter = Router();
+
+/**
+ * Scales of a regen follow-up row joined with its case (`status`,
+ * `condition_code`, `product_details`): the stored scales plus, for
+ * conditions without a region, the SANE of the case's current application
+ * sites (see effectiveRegenPatientScales).
+ */
+function patientScales(n: { scales?: unknown; status?: unknown; condition_code?: unknown; product_details?: unknown }): string[] {
+  return effectiveRegenPatientScales(
+    Array.isArray(n.scales) ? n.scales : [],
+    n.status,
+    siteDerivedSane(n.condition_code, n.product_details),
+  );
+}
 
 async function localeForRegenToken(token: string) {
   // regen_followup_notifications.token is a uuid column: querying it with a
@@ -215,7 +230,8 @@ router.get("/patient/regen/:token", async (req: Request, res: Response): Promise
     return;
   }
   const { rows } = await pool.query(
-    `SELECT n.id, n.periodo, n.scales, d.idioma AS doctor_locale
+    `SELECT n.id, n.periodo, n.scales, n.status, c.condition_code, c.product_details,
+            d.idioma AS doctor_locale
      FROM regen_followup_notifications n
      JOIN regen_cases c ON c.id = n.case_id
      LEFT JOIN doctors d ON d.id = c.doctor_id
@@ -243,9 +259,9 @@ router.get("/patient/regen/:token", async (req: Request, res: Response): Promise
     // response writes. This label is strictly presentation-only.
     periodo: n.periodo,
     periodoLabel: regenPeriodForLocale(n.periodo, locale),
-    scales: filterRegenPatientScales(n.scales),
+    scales: patientScales(n),
     completedScales: respRows.rows.map((r: Record<string, string>) => r.nome_escala),
-    noScales: filterRegenPatientScales(n.scales).length === 0,
+    noScales: patientScales(n).length === 0,
     isRegen: true,
     doctorLocale: locale,
   });
@@ -287,7 +303,8 @@ router.post("/patient/regen/:token/verify", async (req: Request, res: Response):
   }
 
   const { rows } = await pool.query(
-    `SELECT n.id, n.periodo, n.scales, n.scheduled_date,
+    `SELECT n.id, n.periodo, n.scales, n.scheduled_date, n.status,
+            c.condition_code, c.product_details,
             p.cpf AS patient_cpf
      FROM regen_followup_notifications n
      JOIN regen_cases c ON c.id = n.case_id
@@ -333,9 +350,9 @@ router.post("/patient/regen/:token/verify", async (req: Request, res: Response):
     doctorLocale: locale,
     periodo: n.periodo,
     periodoLabel: regenPeriodForLocale(n.periodo, locale),
-    scales: filterRegenPatientScales(n.scales),
+    scales: patientScales(n),
     completedScales: respRows.rows.map((r: Record<string, string>) => r.nome_escala),
-    noScales: filterRegenPatientScales(n.scales).length === 0,
+    noScales: patientScales(n).length === 0,
     scheduledDate: n.scheduled_date,
     isRegen: true,
   });
@@ -373,7 +390,10 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
   }
 
   const { rows } = await pool.query(
-    `SELECT n.id, n.scales FROM regen_followup_notifications n WHERE n.token = $1`,
+    `SELECT n.id, n.scales, n.status, c.condition_code, c.product_details
+       FROM regen_followup_notifications n
+       JOIN regen_cases c ON c.id = n.case_id
+      WHERE n.token = $1`,
     [token]
   );
   if (!rows.length) {
@@ -384,7 +404,8 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
   const n = rows[0];
 
   // Only scales this module offers; legacy rows may still list retired ones.
-  if (!filterRegenPatientScales(n.scales).includes(escala)) {
+  const scales = patientScales(n);
+  if (!scales.includes(escala)) {
     res.status(400).json({ error: message(locale, "requestedScaleNotFound") });
     return;
   }
@@ -442,12 +463,18 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
     [n.id]
   );
   const completedScales = all.map((r: Record<string, string>) => r.nome_escala);
-  const allCompleted = filterRegenPatientScales(n.scales).every((s: string) => completedScales.includes(s));
+  const allCompleted = scales.every((s: string) => completedScales.includes(s));
 
   if (allCompleted) {
+    // A SANE derived at read time (see patientScales) is recorded on the row
+    // it completes, so the completed follow-up keeps listing what was answered.
+    const stored: unknown[] = Array.isArray(n.scales) ? n.scales : [];
+    const added = scales.filter((scale) => !stored.includes(scale));
     await pool.query(
-      `UPDATE regen_followup_notifications SET status = 'completed' WHERE id = $1`,
-      [n.id]
+      `UPDATE regen_followup_notifications
+          SET status = 'completed', scales = CASE WHEN cardinality($2::text[]) > 0 THEN scales || $2::text[] ELSE scales END
+        WHERE id = $1`,
+      [n.id, added]
     );
   }
 

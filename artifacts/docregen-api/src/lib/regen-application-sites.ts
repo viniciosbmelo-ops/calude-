@@ -1,6 +1,11 @@
 export interface RegenApplicationSite {
   localAplicacao: string;
   guia: string;
+  /**
+   * Anatomical site code (catalog in @workspace/clinical/application-sites).
+   * Optional: rows saved before this field existed simply have no structure.
+   */
+  estruturaAnatomica?: string;
 }
 
 export const APPLICATION_SITES_KEY = "locaisAplicacao";
@@ -10,8 +15,11 @@ function asSite(value: unknown): RegenApplicationSite | null {
   const row = value as Record<string, unknown>;
   const localAplicacao = typeof row.localAplicacao === "string" ? row.localAplicacao : "";
   const guia = typeof row.guia === "string" ? row.guia : "";
-  if (!localAplicacao.trim() && !guia.trim()) return null;
-  return { localAplicacao, guia };
+  const estruturaAnatomica = typeof row.estruturaAnatomica === "string" ? row.estruturaAnatomica : "";
+  if (!localAplicacao.trim() && !guia.trim() && !estruturaAnatomica.trim()) return null;
+  return estruturaAnatomica.trim()
+    ? { localAplicacao, guia, estruturaAnatomica }
+    : { localAplicacao, guia };
 }
 
 /**
@@ -33,6 +41,7 @@ export function parseApplicationSites(value: unknown): RegenApplicationSite[] | 
     || Array.isArray(item)
     || typeof (item as Record<string, unknown>).localAplicacao !== "string"
     || typeof (item as Record<string, unknown>).guia !== "string"
+    || !["undefined", "string"].includes(typeof (item as Record<string, unknown>).estruturaAnatomica)
   ))) return null;
   const rows = parsed.map(asSite);
   if (rows.some(row => row === null)) return null;

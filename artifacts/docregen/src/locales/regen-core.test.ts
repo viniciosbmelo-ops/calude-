@@ -28,4 +28,18 @@ describe("regenerative core locale catalogue", () => {
     expect(regenCoreMessages.es.warningNotExpected).toContain("evaluación médica inmediata");
     expect(regenCoreMessages["pt-BR"].newRegenCase).toBe("Novo Caso Regenerativa");
   });
+
+  it("names the cases area 'Procedimentos' and the case's applications tab 'Aplicações'", () => {
+    expect(regenCoreMessages["pt-BR"].regenerative).toBe("Procedimentos");
+    expect(regenCoreMessages.es.regenerative).toBe("Procedimientos");
+    expect(regenCoreMessages["pt-BR"].caseTabProcedures).toBe("Aplicações");
+    expect(regenCoreMessages.es.caseTabProcedures).toBe("Aplicaciones");
+    expect(regenCoreMessages["pt-BR"].registerProcedure).toBe("Registrar aplicação");
+    expect(regenCoreMessages.es.registerProcedure).toBe("Registrar aplicación");
+    expect(regenCoreMessages["pt-BR"].proceduresEmpty).toBe("Nenhuma aplicação registrada neste caso.");
+    expect(regenCoreMessages.es.proceduresEmpty).toBe("No hay aplicaciones registradas en este caso.");
+    expect(regenCoreMessages["pt-BR"].procedureCountPlural).toBe("{count} aplicações");
+    // The medical concept keeps its wording.
+    expect(regenCoreMessages["pt-BR"].regenerativeCase).toBe("Caso Regenerativo");
+  });
 });

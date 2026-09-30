@@ -6,7 +6,7 @@
 import { Info } from "lucide-react";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { regenSaneMessages } from "@/locales/regen-sane";
-import { saneForCondition, saneLabel, type SaneRegionDef } from "@/lib/regen-sane";
+import { saneLabel, type SaneRegionDef } from "@/lib/regen-sane";
 
 export function SaneValidationNote({ def, className }: { def: SaneRegionDef | null | undefined; className?: string }) {
   const t = useScopedTranslations(regenSaneMessages);
@@ -18,10 +18,10 @@ export function SaneValidationNote({ def, className }: { def: SaneRegionDef | nu
   );
 }
 
-export function SaneRecommendationHint({ conditionCode }: { conditionCode: string | null | undefined }) {
+/** `def`: the case's SANE (`saneForCase`: condition region, else application sites). */
+export function SaneRecommendationHint({ def }: { def: SaneRegionDef | null | undefined }) {
   const t = useScopedTranslations(regenSaneMessages);
   const { locale } = useLanguage();
-  const def = saneForCondition(conditionCode);
   if (!def) return null;
   const label = saneLabel(def, locale);
   return (

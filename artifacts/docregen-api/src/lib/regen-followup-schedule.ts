@@ -6,7 +6,7 @@
  * 6-week hyaluronic-acid review ("6 semanas (HA)") belongs to viscosupplement
  * cases and must never appear for PRP-only (or other biologic) cases.
  */
-import { SANE_INSTRUMENT_NAMES, SANE_SCALES, saneForCondition } from "./regen-sane";
+import { SANE_INSTRUMENT_NAMES, SANE_SCALES, saneForCase, type SaneRegionDef } from "./regen-sane";
 
 export type RegenFollowupSlot = {
   periodo: string;
@@ -31,19 +31,21 @@ export const REGEN_FOLLOWUP_SCHEDULE: readonly RegenFollowupSlot[] = [
 
 /**
  * Follow-up slots that apply to a case using the given product codes. Cases
- * whose condition has a body region also ask the patient that region's SANE
- * single question at every slot (VAS + e.g. SANE Joelho / SANE Ombro); cases
- * without a region ("outras", unknown codes) ask VAS only.
+ * with a region SANE (the condition's region, or — for conditions without a
+ * region — the single region of all application sites; see `saneForCase`)
+ * also ask the patient that SANE single question at every slot (VAS + e.g.
+ * SANE Joelho / SANE Ombro); otherwise VAS only.
  */
 export function regenFollowupScheduleFor(
   productCodes: Iterable<string | null | undefined>,
   conditionCode?: string | null,
+  productDetails?: unknown,
 ): RegenFollowupSlot[] {
   const used = new Set<string>();
   for (const code of productCodes) {
     if (typeof code === "string" && code.trim()) used.add(code.trim().toUpperCase());
   }
-  const sane = saneForCondition(conditionCode);
+  const sane = saneForCase(conditionCode, productDetails);
   return REGEN_FOLLOWUP_SCHEDULE.filter(
     (slot) => !slot.products || slot.products.some((code) => used.has(code)),
   ).map((slot) => (sane ? { ...slot, scales: [...slot.scales, sane.scale] } : slot));
@@ -69,6 +71,27 @@ export function isRegenPatientScale(scale: unknown): scale is string {
 /** Legacy notifications may list retired scales: never ask the patient for them. */
 export function filterRegenPatientScales(scales: readonly unknown[] | null | undefined): string[] {
   return [...new Set((scales ?? []).filter(isRegenPatientScale))];
+}
+
+const SANE_SCALE_SET: ReadonlySet<string> = new Set(SANE_SCALES);
+
+/**
+ * Scales a follow-up actually asks, computed from the case's current data at
+ * read time (no migration): the stored scales (filtered), plus the case's
+ * region SANE when the stored list has no SANE yet — e.g. an "outras"
+ * condition scheduled before its application site mapped to a region. Only
+ * current-format rows (with "VAS Dor") are extended, and a completed
+ * follow-up is never reopened.
+ */
+export function effectiveRegenPatientScales(
+  storedScales: readonly unknown[] | null | undefined,
+  status: unknown,
+  sane: SaneRegionDef | null,
+): string[] {
+  const scales = filterRegenPatientScales(storedScales);
+  if (!sane || status === "completed" || !scales.includes("VAS Dor")
+    || scales.some((scale) => SANE_SCALE_SET.has(scale))) return scales;
+  return [...scales, sane.scale];
 }
 
 /**

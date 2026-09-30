@@ -28,7 +28,8 @@ describe("console localization catalog", () => {
   });
 
   it("offers the regenerative cases and alerts tabs with DocRegen reminders", () => {
-    expect(consoleMessages["pt-BR"].regenTab).toBe("Regenerativa");
+    expect(consoleMessages["pt-BR"].regenTab).toBe("Procedimentos");
+    expect(consoleMessages.es.regenTab).toBe("Procedimientos");
     expect(consoleMessages["pt-BR"].alertsTab).toBe("Alertas");
     for (const messages of [consoleMessages["pt-BR"], consoleMessages.es]) {
       expect(messages.regenAlertWhatsappMessage).toContain("{name}");

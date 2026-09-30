@@ -120,7 +120,7 @@ test("doctor sees the pré-consulta answers and downloads the exam", async () =>
 let kneeCaseId: string;
 let shoulderCaseId: string;
 
-async function createRegenCase(regionLabel: string, conditionLabel: RegExp, caseDate: string): Promise<string> {
+async function createRegenCase(regionLabel: string, conditionLabel: RegExp, caseDate: string, planning?: () => Promise<void>): Promise<string> {
   await page.goto("/docregen/regen/caso/novo");
   // First visit straight from the sidebar shortcut: the regenerative terms
   // must be offered here (the API refuses cases without them).
@@ -136,8 +136,10 @@ async function createRegenCase(regionLabel: string, conditionLabel: RegExp, case
   await fillDate(page, page.locator("input[placeholder='DD/MM/AAAA']").first(), caseDate);
   await page.getByRole("button", { name: new RegExp(`^${regionLabel}`) }).click();
   await page.getByRole("button", { name: conditionLabel }).click();
-  await shot(page, APP, `09-new-case-${regionLabel.toLowerCase()}`);
+  await shot(page, APP, `09-new-case-${regionLabel.toLowerCase().replace(/\W+/g, "-")}`);
   for (let step = 0; step < 5; step++) {
+    // Step 5 of 6 is the product planning (planned products + application sites).
+    if (step === 4 && planning) await planning();
     await page.getByRole("button", { name: /^Próximo/ }).click();
   }
   await page.getByRole("button", { name: /Salvar Caso/ }).click();
@@ -161,10 +163,25 @@ test("create regenerative cases: knee OA Kellgren-Lawrence III and shoulder", as
   await shot(page, APP, "11-shoulder-case");
 });
 
-test("register a procedure on the knee case", async () => {
+test("navigation names the cases area 'Procedimentos' (routes stay /regen)", async () => {
+  await page.goto("/docregen/dashboard");
+  const nav = page.getByRole("link", { name: /^Procedimentos$/ }).filter({ visible: true }).first();
+  await expect(nav).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Regenerativa$/ })).toHaveCount(0);
+  await shot(page, APP, "11b-sidebar-procedimentos");
+  await nav.click();
+  await page.waitForURL(/\/docregen\/regen$/);
+  await expect(page.getByRole("heading", { name: "Procedimentos" }).filter({ visible: true })).toBeVisible();
+
+  await page.goto(`/docregen/regen/caso/${kneeCaseId}`);
+  await expect(page.getByTestId("case-tab-procedures")).toHaveText(/^Aplicações/);
+});
+
+test("register an application on the knee case (tab 'Aplicações')", async () => {
   await page.goto(`/docregen/regen/caso/${kneeCaseId}`);
   await page.getByTestId("case-tab-procedures").click();
-  await page.getByRole("button", { name: /Registrar procedimento/ }).click();
+  await expect(page.locator("[role=tabpanel][data-state=active]")).toContainText("Nenhuma aplicação registrada neste caso.");
+  await page.getByRole("button", { name: /Registrar aplicação/ }).click();
   const procedureDate = isoToBr(isoToday(-7));
   await fillDate(page, page.locator("[role=tabpanel][data-state=active] input[placeholder='DD/MM/AAAA']").first(), procedureDate);
   await page.getByRole("button", { name: /^PRP — Plasma Rico em Plaquetas/ }).click();
@@ -174,6 +191,7 @@ test("register a procedure on the knee case", async () => {
   await expect(page.getByTestId("case-tab-procedures")).toContainText("(1)");
   await expect(page.locator("[role=tabpanel][data-state=active]")).toContainText(procedureDate);
   expect(sql(DB.docregen, `SELECT (performed_at AT TIME ZONE 'America/Sao_Paulo')::date::text FROM regen_procedures WHERE case_id = '${kneeCaseId}'`)).toBe(isoToday(-7));
+  await expect(page.getByTestId("case-tab-procedures")).toHaveText("Aplicações (1)");
   await shot(page, APP, "12-procedure");
 });
 
@@ -259,6 +277,71 @@ test("functional tests entry on the knee case", async () => {
   await shot(page, APP, "17-functional-tests");
 });
 
+let condralCaseId: string;
+
+test("condral focal (no region) applied to the knee: SANE Joelho offered and asked in the patient link", async ({ browser }) => {
+  condralCaseId = await createRegenCase("Outras regiões", /Lesão Condral Focal/, isoToBr(isoToday(-10)), async () => {
+    await page.getByRole("button", { name: /^PRP/ }).first().click();
+    const structure = page.getByTestId("application-structure-0");
+    await structure.selectOption("JOELHO");
+    await expect(structure).toHaveValue("JOELHO");
+    await structure.scrollIntoViewIfNeeded();
+    await shot(page, APP, "30-condral-application-site-knee");
+  });
+  expect(sql(DB.docregen, `SELECT condition_code FROM regen_cases WHERE id = '${condralCaseId}'`)).toBe("CONDRAL_FOCAL");
+  expect(sql(DB.docregen, `SELECT product_details->>'locaisAplicacao' FROM regen_cases WHERE id = '${condralCaseId}'`)).toContain('"estruturaAnatomica":"JOELHO"');
+
+  // Clinician side: the schedule lists VAS + SANE Joelho.
+  const startSchedule = page.getByRole("button", { name: /Iniciar Cronograma/ });
+  if (await startSchedule.waitFor({ timeout: 3_000 }).then(() => true, () => false)) await startSchedule.click();
+  await expect(page.getByText("SANE Joelho").filter({ visible: true }).first()).toBeVisible();
+  const copyLink = page.getByRole("button", { name: /^Copiar link$/ }).first();
+  const prepared = page.waitForResponse((r) => /\/prepare-whatsapp$/.test(r.url()));
+  await copyLink.click();
+  const { link, message } = await (await prepared).json() as { link: string; message: string };
+  expect(message).toContain("SANE Joelho");
+  expect(sql(DB.docregen, `SELECT DISTINCT array_to_string(scales, '|') FROM regen_followup_notifications WHERE case_id = '${condralCaseId}'`)).toBe("VAS Dor|SANE Joelho");
+
+  const patientContext = await browser.newContext();
+  const patientPage = await patientContext.newPage();
+  try {
+    await patientPage.goto(new URL(link).pathname);
+    await patientPage.locator("#cpf").fill(formatCpf(PATIENT.cpf));
+    await patientPage.getByRole("button", { name: "Acessar questionários" }).click();
+    const vas = patientPage.getByRole("slider").first();
+    await expect(vas).toBeVisible();
+    await vas.focus();
+    await vas.press("Home");
+    for (let i = 0; i < 5; i++) await vas.press("ArrowRight");
+    await patientPage.getByRole("button", { name: /Próxima escala/ }).click();
+    await expect(patientPage.getByText("Avaliação do joelho (SANE)").first()).toBeVisible();
+    await expect(patientPage.getByText(/sendo 100 um joelho completamente normal/).first()).toBeVisible();
+    const sane = patientPage.getByRole("slider").first();
+    await sane.focus();
+    await sane.press("Home");
+    for (let i = 0; i < 6; i++) await sane.press("PageUp");
+    await shot(patientPage, APP, "31-patient-sane-joelho-condral");
+    await patientPage.getByRole("button", { name: /^Concluir$/ }).click();
+    await expect(patientPage.getByText("Tudo concluído!")).toBeVisible();
+  } catch (error) {
+    await failShot(patientPage, APP, "patient-condral");
+    throw error;
+  } finally {
+    await patientContext.close();
+  }
+  const stored = sql(DB.docregen, `SELECT r.nome_escala || '=' || r.score::int FROM regen_scale_responses r
+    JOIN regen_followup_notifications n ON n.id = r.notification_id WHERE n.case_id = '${condralCaseId}' ORDER BY r.nome_escala`);
+  expect(stored.split("\n")).toEqual(["SANE Joelho=60", "VAS Dor=5"]);
+
+  // PROMs tab: the SANE Joelho is the one offered for this case.
+  await page.reload();
+  await page.getByTestId("case-tab-proms").click();
+  const proms = page.locator("[role=tabpanel][data-state=active]");
+  await expect(proms.getByTestId("sane-recommendation")).toContainText("SANE Joelho");
+  await expect(proms).toContainText("Evolução · SANE-joelho60");
+  await shot(page, APP, "32-condral-proms-sane-joelho");
+});
+
 test("licensed scale names (KOOS) are rejected by the API", async () => {
   for (const instrument of ["KOOS", "WOMAC", "IKDC"]) {
     const response = await page.request.post(`/regen-api/regen/cases/${kneeCaseId}/proms`, {
@@ -299,7 +382,7 @@ test("agenda: create and edit an appointment with DD/MM/AAAA date and HH:MM time
 test("dashboard counts", async () => {
   await page.goto("/docregen/dashboard");
   const kpi = (label: string) => page.locator("div.rounded-2xl", { has: page.getByText(label, { exact: true }) }).first();
-  await expect(kpi("Casos regenerativos").locator("p.text-3xl")).toHaveText("2");
+  await expect(kpi("Casos regenerativos").locator("p.text-3xl")).toHaveText("3");
   await expect(kpi("Consultas em 7 dias").locator("p.text-3xl")).toHaveText("1");
   await expectNoInvalidDate(page);
   await shot(page, APP, "20-dashboard");
@@ -341,13 +424,18 @@ test("research export CSV download contains the expected columns", async () => {
     expect(header.split(",")).toContain(column);
   }
   expect(header).toMatch(/sane_knee_baseline|sane_joelho_baseline|_baseline/);
-  expect(lines).toHaveLength(2);
+  expect(lines).toHaveLength(3);
   expect(csv).toContain("OA_JOELHO_KL3");
   // The patient's own VAS (follow-up link) feeds avg_vas; the knee SANE the change columns.
   const cols = header.split(",");
   const knee = lines.map((l) => l.split(",")).find((c) => c[cols.indexOf("id")] === kneeCaseId)!;
   expect(knee[cols.indexOf("avg_vas")]).toBe("2.5"); // patient 3 (link) + clinician 2
   expect(knee[cols.indexOf("sane_joelho_last")]).toBe("70");
+  expect(knee[cols.indexOf("sane_region")]).toBe("sane_joelho");
+  const condral = lines.map((l) => l.split(",")).find((c) => c[cols.indexOf("id")] === condralCaseId)!;
+  expect(condral[cols.indexOf("condition")]).toBe("CONDRAL_FOCAL");
+  expect(condral[cols.indexOf("sane_region")]).toBe("sane_joelho");
+  expect(condral[cols.indexOf("sane_joelho_last")]).toBe("60");
   expect(csv).not.toContain(PATIENT.nome);
   expect(csv).not.toContain(PATIENT.cpf);
 });
@@ -399,7 +487,7 @@ test("secretary: created by the doctor, logs in, sees agenda/patients/regen/aler
     await expect(sec.getByText(new RegExp(PATIENT.nome, "i")).first()).toBeVisible();
     await expect(sec.getByText(/Paciente Outro Medico/i)).toHaveCount(0);
     await shot(sec, APP, "26-secretary-patients");
-    await sec.getByRole("button", { name: /^Regenerativa/ }).click();
+    await sec.getByRole("button", { name: /^Procedimentos/ }).click();
     await expect(sec.getByText(/Kellgren-Lawrence III/).first()).toBeVisible();
     await shot(sec, APP, "27-secretary-regen");
     await sec.getByRole("button", { name: /^Alertas/ }).click();
