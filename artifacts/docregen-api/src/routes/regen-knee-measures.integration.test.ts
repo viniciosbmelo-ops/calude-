@@ -241,8 +241,13 @@ describe("research export includes the knee measures", () => {
     await postTest(created.id, { measure: "KNEE_FLEXION", value: 100, side: "E", measuredAt: at("2026-01-10") });
     await postTest(created.id, { measure: "KNEE_FLEXION", value: 118, side: "E", timepoint: "3 meses", measuredAt: at("2026-04-10") });
 
-    const rows = await j(await call(`/regen/research?condition=OA_JOELHO_KL4`));
-    const row = rows.find((r: any) => r.id === created.id);
+    const payload = await j(await call(`/regen/research?condition=OA_JOELHO_KL4`));
+    // One case for this filter: pseudonymized row + small-group (k<5) warning.
+    expect(payload.rows).toHaveLength(1);
+    expect(payload.smallGroupWarning).toBe(true);
+    const row = payload.rows[0];
+    expect(row).not.toHaveProperty("id");
+    expect(row.pseudo_id).toMatch(/^R-[0-9a-f]{8}$/);
     expect(row).toMatchObject({
       sane_joelho_baseline: 40, sane_joelho_last: 70, sane_joelho_change: 30,
       tug_baseline: 12.4, tug_last: 9.1, tug_change: -3.3,
@@ -251,12 +256,13 @@ describe("research export includes the knee measures", () => {
     });
 
     const csv = await (await call(`/regen/research?condition=OA_JOELHO_KL4&format=csv`)).text();
-    const [header, ...lines] = csv.split("\r\n");
+    const [header, ...lines] = csv.replace(/^\uFEFF/, "").split("\r\n");
     const cols = header!.split(",");
     expect(cols).toEqual(expect.arrayContaining([
       "sane_joelho_baseline", "walk_40m_change", "stair_climb_last", "knee_extension_deficit_d_change",
     ]));
-    const line = lines.find((l) => l.startsWith(created.id))!.split(",");
+    expect(csv).not.toContain(created.id);
+    const line = lines[0]!.split(",");
     expect(line[cols.indexOf("tug_change")]).toBe("-3.3");
   });
 });

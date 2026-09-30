@@ -23,25 +23,36 @@ function authHeaders() {
 const CONDITIONS = REGEN_CONDITION_CATALOG.map(condition => condition.code);
 const PRODUCTS = ["PRP","LP_PRP","LR_PRP","BMAC","MFAT","AH","COLAGENO","LISADO"];
 
+/** One pseudonymized row of GET /regen/research (no case id, banded values). */
 interface ResearchRow {
-  id: string;
-  age: number | null;
+  /** Random per export: cannot be linked to the case or to another export. */
+  pseudo_id: string;
+  age_band: string | null;
   sex: string | null;
-  imc: number | null;
+  bmi_band: string | null;
   condition: string;
-  /** Catalog labels of the anatomical application sites ("; "-separated). */
+  /** Catalog labels of the anatomical application sites ("; "-separated); null in small groups. */
   anatomical_sites?: string | null;
   status: string;
   procedure_count: number;
   adverse_events: number;
   avg_vas: number | null;
   dm: boolean;
-  created_at: string;
+  /** "YYYY-MM" (clinic calendar). */
+  case_month: string | null;
+  small_group: boolean;
   /**
    * Measures: `<key>_baseline`, `<key>_last`, `<key>_change` — one set per
    * region SANE (sane_ombro, sane_joelho, …) plus knee OARSI tests / ROM per side.
    */
   [measureColumn: string]: unknown;
+}
+
+interface ResearchResponse {
+  rows: ResearchRow[];
+  total: number;
+  minGroupSize: number;
+  smallGroupWarning: boolean;
 }
 
 /**
@@ -84,6 +95,7 @@ export default function RegenPesquisa() {
   const [imcMax,    setImcMax]    = useState("");
 
   const [rows,    setRows]    = useState<ResearchRow[] | null>(null);
+  const [smallGroup, setSmallGroup] = useState<{ warning: boolean; k: number }>({ warning: false, k: 5 });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
@@ -111,7 +123,9 @@ export default function RegenPesquisa() {
     try {
       const res = await fetch(`/regen-api/regen/research?${buildQS()}`, { credentials: "same-origin", headers: authHeaders() });
       if (!res.ok) throw new Error(await res.text());
-      setRows(await res.json());
+      const payload = await res.json() as ResearchResponse;
+      setRows(payload.rows);
+      setSmallGroup({ warning: payload.smallGroupWarning, k: payload.minGroupSize });
     } catch (e: any) {
       setError(t("searchError", { message: e.message }));
     } finally {
@@ -138,6 +152,7 @@ export default function RegenPesquisa() {
     setSex(""); setCondition(""); setProcedure("");
     setAgeMin(""); setAgeMax(""); setImcMin(""); setImcMax("");
     setRows(null);
+    setSmallGroup({ warning: false, k: 5 });
   };
 
   const hasFilters = sex || condition || procedure || ageMin || ageMax || imcMin || imcMax;
@@ -257,6 +272,14 @@ export default function RegenPesquisa() {
               </div>
                <p className="text-xs text-gray-400">{t("anonymizedData")}</p>
             </div>
+            <p className="px-4 pt-2 text-[11px] text-gray-500">{t("researchPrivacyNote")}</p>
+            {smallGroup.warning && (
+              <div role="alert" data-testid="research-small-group-warning"
+                className="mx-4 mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>{t("researchSmallGroupWarning", { k: smallGroup.k })}</span>
+              </div>
+            )}
 
             {rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
@@ -275,10 +298,10 @@ export default function RegenPesquisa() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {rows.map((r, i) => (
-                      <tr key={r.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                        <td className="px-3 py-2 text-gray-700">{r.age ?? "—"}</td>
+                      <tr key={r.pseudo_id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.age_band ?? "—"}</td>
                         <td className="px-3 py-2 text-gray-700">{r.sex === "M" ? "M" : r.sex === "F" ? "F" : "—"}</td>
-                        <td className="px-3 py-2 text-gray-700">{r.imc ?? "—"}</td>
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.bmi_band ?? "—"}</td>
                         <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{regenConditionLabel(r.condition, locale)}</td>
                         <td className="px-3 py-2 text-gray-700" data-testid="research-anatomical-sites">{r.anatomical_sites || "—"}</td>
                         <td className="px-3 py-2">
@@ -308,7 +331,10 @@ export default function RegenPesquisa() {
                         })}
                          <td className="px-3 py-2 text-center text-gray-700">{r.dm ? t("yes") : t("no")}</td>
                         <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
-                           {new Date(r.created_at).toLocaleDateString(locale)}
+                           {r.case_month
+                             ? new Intl.DateTimeFormat(locale, { month: "2-digit", year: "numeric", timeZone: "UTC" })
+                                 .format(new Date(`${r.case_month}-01T12:00:00Z`))
+                             : "—"}
                         </td>
                       </tr>
                     ))}

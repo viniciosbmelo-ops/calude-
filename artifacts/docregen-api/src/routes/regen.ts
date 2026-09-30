@@ -9,6 +9,13 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { z } from "zod/v4";
 import { randomUUID } from "crypto";
 import { getGeminiClient } from "../lib/gemini";
+import { csvDocument } from "../lib/csv";
+import {
+  RESEARCH_EXPORT_COLUMNS,
+  RESEARCH_MIN_GROUP_SIZE,
+  buildResearchRows,
+  researchPrivacySummary,
+} from "../lib/research-export";
 import {
   REGEN_CONDITION_CATALOG,
   isKnownRegenConditionCode,
@@ -931,6 +938,13 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
     const { sex, condition, procedure, format,
             age_min, age_max, imc_min, imc_max } = req.query as Record<string, string>;
 
+    const numericFilters = { age_min, age_max, imc_min, imc_max };
+    for (const [name, value] of Object.entries(numericFilters)) {
+      if (value !== undefined && value !== "" && !Number.isFinite(Number(value))) {
+        return res.status(400).json({ error: await requestMessage(req, "invalidData"), field: name });
+      }
+    }
+
     const wheres: string[] = ["c.doctor_id = $1"];
     const params: any[] = [req.doctorId];
     let idx = 2;
@@ -953,20 +967,20 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
         c.id,
         EXTRACT(YEAR FROM AGE(c.patient_dob))::int AS age,
         c.patient_sex AS sex,
-        ROUND(c.imc::numeric, 1) AS imc,
+        c.imc::float8 AS imc,
         c.condition_code AS condition,
         c.status,
         (SELECT COUNT(*)::int FROM regen_procedures p WHERE p.case_id = c.id) AS procedure_count,
         (SELECT COUNT(*)::int FROM regen_procedures p WHERE p.case_id = c.id AND p.adverse_event = true) AS adverse_events,
-        (SELECT ROUND(AVG(v.score)::numeric,1) FROM (
+        (SELECT ROUND(AVG(v.score)::numeric,1)::float8 FROM (
            SELECT pr.score FROM regen_prom_responses pr WHERE pr.case_id = c.id AND pr.instrument = 'VAS'
            UNION ALL
            SELECT sr.score FROM regen_scale_responses sr
              JOIN regen_followup_notifications fn ON fn.id = sr.notification_id
             WHERE fn.case_id = c.id AND sr.nome_escala = 'VAS Dor'
          ) v) AS avg_vas,
-        c.dm, c.imc AS bmi, c.goal_vev,
-        c.created_at,
+        c.dm,
+        to_char(c.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM') AS case_month,
         c.product_details
       FROM regen_cases c
       ${procJoin}
@@ -974,25 +988,14 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
       ORDER BY c.created_at DESC
       LIMIT 500`;
 
-    const { rows } = await pool.query(sql, params);
-
-    // Region SANE the case asks (condition region, else the single region of
-    // its application sites; see saneForCase), computed from current data.
-    // product_details is only read here, never exported.
-    // anatomical_sites: catalog labels of the application sites in the
-    // doctor's language (never the free-text complement, which could
-    // identify the patient).
-    const researchLocale = rows.length ? await localeForDoctorId(req.doctorId) : "pt-BR";
-    for (const row of rows as any[]) {
-      row.sane_region = saneForCase(row.condition, row.product_details)?.researchKey ?? null;
-      row.anatomical_sites = anatomicalSiteLabelsForResearch(row.product_details, researchLocale) || null;
-      delete row.product_details;
-    }
+    const { rows: raw } = await pool.query(sql, params);
 
     // Outcome measures: region SANEs (manual + patient follow-up; one column
     // set per region) and the knee OARSI performance tests / ROM → baseline,
-    // last and change per case.
-    const caseIds = rows.map((r: any) => r.id);
+    // last and change per case. Computed on the internal case id, which is
+    // then replaced by a per-export pseudonym.
+    const caseIds = raw.map((r: any) => r.id);
+    const pointsByCase = new Map<string, MeasurePoint[]>();
     if (caseIds.length) {
       const [perf, saneManual, saneFollowup] = await Promise.all([
         pool.query(
@@ -1008,7 +1011,6 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
             WHERE n.case_id = ANY($1::uuid[]) AND r.nome_escala = ANY($2::text[]) AND r.score IS NOT NULL`,
           [caseIds, SANE_REGIONS.map((d) => d.scale)]),
       ]);
-      const pointsByCase = new Map<string, MeasurePoint[]>();
       const push = (caseId: string, point: MeasurePoint) => {
         const list = pointsByCase.get(caseId) ?? [];
         list.push(point);
@@ -1026,33 +1028,52 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
         const key = saneRegionByInstrument(r.nome_escala)?.researchKey;
         if (key) push(r.case_id, { key, value: Number(r.score), at: r.completado_em });
       }
-      for (const row of rows as any[]) {
-        const changes = baselineToLast(pointsByCase.get(row.id) ?? []);
-        for (const key of RESEARCH_MEASURE_KEYS) {
-          row[`${key}_baseline`] = changes[key]?.baseline ?? null;
-          row[`${key}_last`] = changes[key]?.last ?? null;
-          row[`${key}_change`] = changes[key]?.change ?? null;
-        }
-      }
     }
+
+    // Region SANE the case asks (condition region, else the single region of
+    // its application sites; see saneForCase). anatomical_sites: catalog
+    // labels only (never the free-text complement). product_details itself
+    // is never exported.
+    const researchLocale = raw.length ? await localeForDoctorId(req.doctorId) : "pt-BR";
+    const rows = buildResearchRows(raw.map((r: any) => {
+      const changes = baselineToLast(pointsByCase.get(r.id) ?? []);
+      const measures: Record<string, number | null> = {};
+      for (const key of RESEARCH_MEASURE_KEYS) {
+        measures[`${key}_baseline`] = changes[key]?.baseline ?? null;
+        measures[`${key}_last`] = changes[key]?.last ?? null;
+        measures[`${key}_change`] = changes[key]?.change ?? null;
+      }
+      return {
+        age: r.age === null ? null : Number(r.age),
+        sex: r.sex ?? null,
+        imc: r.imc === null ? null : Number(r.imc),
+        condition: r.condition,
+        sane_region: saneForCase(r.condition, r.product_details)?.researchKey ?? null,
+        anatomical_sites: anatomicalSiteLabelsForResearch(r.product_details, researchLocale) || null,
+        status: r.status,
+        procedure_count: Number(r.procedure_count),
+        adverse_events: Number(r.adverse_events),
+        avg_vas: r.avg_vas === null ? null : Number(r.avg_vas),
+        dm: Boolean(r.dm),
+        case_month: r.case_month,
+        measures,
+      };
+    }));
+    const privacy = researchPrivacySummary(rows);
 
     if (format === "csv") {
-      const cols = ["id","age","sex","imc","condition","sane_region","anatomical_sites","status","procedure_count",
-                    "adverse_events","avg_vas","dm","created_at",
+      const cols = [...RESEARCH_EXPORT_COLUMNS,
                     ...RESEARCH_MEASURE_KEYS.flatMap(key => [`${key}_baseline`, `${key}_last`, `${key}_change`])];
-      const header = cols.join(",");
-      const lines  = rows.map(r => cols.map(c => {
-        const v = r[c];
-        if (v === null || v === undefined) return "";
-        const s = String(v);
-        return s.includes(",") ? `"${s}"` : s;
-      }).join(","));
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="regen-research-${Date.now()}.csv"`);
-      return res.send([header, ...lines].join("\r\n"));
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `attachment; filename="regen-research-${clinicToday().slice(0, 7)}.csv"`);
+      res.setHeader("X-Research-Pseudonymized", "true");
+      if (privacy.smallGroupWarning) res.setHeader("X-Research-Warning", `k<${RESEARCH_MIN_GROUP_SIZE}`);
+      return res.send(csvDocument(cols, rows.map((r) => cols.map((c) => (r as Record<string, any>)[c] ?? null))));
     }
 
-    res.json(rows);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ rows, ...privacy });
   } catch (e) {
     console.error("[regen/research]", e);
     res.status(500).json({ error: await requestMessage(req, "internalError") });

@@ -314,47 +314,61 @@ describe("patient link: condral focal on the knee asks SANE Joelho", () => {
 });
 
 describe("research export: sane_region follows the same rule", () => {
+  // The export is pseudonymized (no case id): rows are matched by content.
+  type ResearchRow = Record<string, any>;
+  const research = async (qs = ""): Promise<ResearchRow[]> => (await j(await call(`/regen/research${qs}`))).rows;
+  const regionsOf = (rows: ResearchRow[], condition: string) =>
+    rows.filter((row) => row.condition === condition).map((row) => row.sane_region);
+
   it("exports the derived SANE key per case", async () => {
-    const knee = await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "JOELHO" }) });
-    const multi = await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "JOELHO" }, { estruturaAnatomica: "PUNHO" }) });
-    const shoulder = await createCase({ conditionCode: "OA_OMBRO" });
-    const rows = await j(await call(`/regen/research`));
-    const byId = new Map(rows.map((row: { id: string }) => [row.id, row]));
-    expect(byId.get(knee.id)).toMatchObject({ sane_region: "sane_joelho" });
-    expect(byId.get(multi.id)).toMatchObject({ sane_region: null });
-    expect(byId.get(shoulder.id)).toMatchObject({ sane_region: "sane_ombro" });
-    for (const row of rows) expect(row).not.toHaveProperty("product_details");
+    const before = await research();
+    await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "JOELHO" }) });
+    await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "JOELHO" }, { estruturaAnatomica: "PUNHO" }) });
+    await createCase({ conditionCode: "OA_OMBRO" });
+    const rows = await research();
+    const added = (condition: string, region: string | null) =>
+      regionsOf(rows, condition).filter((r) => r === region).length - regionsOf(before, condition).filter((r) => r === region).length;
+    expect(added("CONDRAL_FOCAL", "sane_joelho")).toBe(1);
+    expect(added("CONDRAL_FOCAL", null)).toBe(1);
+    expect(added("OA_OMBRO", "sane_ombro")).toBe(1);
+    for (const row of rows) {
+      expect(row).not.toHaveProperty("product_details");
+      expect(row).not.toHaveProperty("id");
+    }
 
     const csv = await (await call(`/regen/research?format=csv`)).text();
-    const [header, ...lines] = csv.split("\r\n");
+    const [header, ...lines] = csv.replace(/^\uFEFF/, "").split("\r\n");
     const cols = header!.split(",");
     expect(cols).toContain("sane_region");
-    const line = lines.find((l) => l.startsWith(knee.id))!.split(",");
-    expect(line[cols.indexOf("sane_region")]).toBe("sane_joelho");
+    const shoulder = lines.map((l) => l.split(",")).filter((l) => l[cols.indexOf("condition")] === "OA_OMBRO");
+    expect(shoulder.some((l) => l[cols.indexOf("sane_region")] === "sane_ombro")).toBe(true);
     expect(csv).not.toContain("locaisAplicacao");
   });
 
   it("exports the anatomical labels (catalog labels only, never the free text)", async () => {
-    const pulley = await createCase({ conditionCode: "TENDINOPATIA", productDetails: sites({ estruturaAnatomica: "MAO_POLIA_A1" }) });
-    const legacy = await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "MENISCO" }, { estruturaAnatomica: "JOELHO_CISTO_BAKER" }) });
-    const muscle = await createCase({
+    await createCase({ conditionCode: "TENDINOPATIA", productDetails: sites({ estruturaAnatomica: "MAO_POLIA_A1" }) });
+    await createCase({ conditionCode: "CONDRAL_FOCAL", productDetails: sites({ estruturaAnatomica: "MENISCO" }, { estruturaAnatomica: "JOELHO_CISTO_BAKER" }) });
+    await createCase({
       conditionCode: "TENDINOPATIA",
       productDetails: sites({ estruturaAnatomica: "MUSCULO", estruturaAnatomicaDetalhe: "Texto livre identificável" }),
     });
-    const none = await createCase({ conditionCode: "OA_OMBRO" });
-    const rows = await j(await call(`/regen/research`));
-    const byId = new Map(rows.map((row: { id: string }) => [row.id, row]));
-    expect(byId.get(pulley.id)).toMatchObject({ anatomical_sites: "Polia A1 (dedo em gatilho)", sane_region: "sane_punho_mao" });
-    expect(byId.get(legacy.id)).toMatchObject({ anatomical_sites: "Menisco; Cisto de Baker", sane_region: "sane_joelho" });
-    expect(byId.get(muscle.id)).toMatchObject({ anatomical_sites: "Músculo (especificar)", sane_region: null });
-    expect(byId.get(none.id)).toMatchObject({ anatomical_sites: null });
+    await createCase({ conditionCode: "OA_OMBRO" });
+    const payload = await j(await call(`/regen/research`));
+    const rows: ResearchRow[] = payload.rows;
+    // Enough cases in the same demographic group: labels are not suppressed.
+    expect(rows.length).toBeGreaterThanOrEqual(5);
+    const labels = rows.map((row) => [row.condition, row.anatomical_sites, row.sane_region]);
+    expect(labels).toContainEqual(["TENDINOPATIA", "Polia A1 (dedo em gatilho)", "sane_punho_mao"]);
+    expect(labels).toContainEqual(["CONDRAL_FOCAL", "Menisco; Cisto de Baker", "sane_joelho"]);
+    expect(labels).toContainEqual(["TENDINOPATIA", "Músculo (especificar)", null]);
+    expect(labels).toContainEqual(["OA_OMBRO", null, "sane_ombro"]);
 
     const csv = await (await call(`/regen/research?format=csv`)).text();
-    const [header, ...lines] = csv.split("\r\n");
+    const [header, ...lines] = csv.replace(/^\uFEFF/, "").split("\r\n");
     const cols = header!.split(",");
     expect(cols.indexOf("anatomical_sites")).toBe(cols.indexOf("sane_region") + 1);
-    const line = lines.find((l) => l.startsWith(pulley.id))!.split(",");
-    expect(line[cols.indexOf("anatomical_sites")]).toBe("Polia A1 (dedo em gatilho)");
+    expect(lines.some((l) => l.split(",")[cols.indexOf("anatomical_sites")] === "Polia A1 (dedo em gatilho)")).toBe(true);
     expect(csv).not.toContain("Texto livre identificável");
   });
 });
+
