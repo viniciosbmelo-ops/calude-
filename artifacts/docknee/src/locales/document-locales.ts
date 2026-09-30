@@ -1,5 +1,5 @@
 import type { Locale, ScopedMessages } from "@/lib/i18n";
-import { toDisplayDate } from "@/lib/utils";
+import { formatCalendarDate, safeFormatDate } from "@/lib/utils";
 
 export const documentMessages = {
   "pt-BR": {
@@ -79,7 +79,12 @@ export function documentText(locale: Locale, key: DocumentMessageKey, params?: R
 }
 
 export function documentDate(locale: Locale, value: Date | string | number, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat(locale, options).format(toDisplayDate(value));
+  return safeFormatDate(value, locale, options, "");
+}
+
+/** Calendar dates (birth date…) in documents — never timezone-shifted. */
+export function documentCalendarDate(locale: Locale, value: Date | string | null | undefined, options: Intl.DateTimeFormatOptions) {
+  return formatCalendarDate(value, locale, options, "");
 }
 
 /**

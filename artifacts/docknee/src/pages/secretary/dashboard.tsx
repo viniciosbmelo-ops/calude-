@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays, Users, Bell, LogOut, Plus, Pencil, Trash2, Phone, Sun, Moon, CheckCircle2, Clock, AlertTriangle, Send, Scissors, ClipboardList } from "lucide-react";
-import { cn, formatLocalDate, sortByPtBrName, toDisplayDate } from "@/lib/utils";
+import { cn, formatLocalDate, parseCalendarDate, sortByPtBrName } from "@/lib/utils";
 import AgendaCirurgica from "@/pages/agenda-cirurgica";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
@@ -42,7 +42,8 @@ function statusColor(status: string) {
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
-  const d = toDisplayDate(dateStr);
+  const d = parseCalendarDate(dateStr);
+  if (!d) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((d.getTime() - today.getTime()) / 86400000);
@@ -74,7 +75,7 @@ export default function SecretaryDashboard() {
   const [, navigate] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
-  const { formatDate, setLanguage } = useLanguage();
+  const { formatDate, formatCalendarDate, setLanguage } = useLanguage();
   const t = useScopedTranslations(consoleMessages);
 
   const [tab, setTab] = useState<"agenda" | "cirurgia" | "patients" | "alerts">("agenda");
@@ -95,7 +96,7 @@ export default function SecretaryDashboard() {
   const [preConsultPatientId, setPreConsultPatientId] = useState<number | null>(null);
 
   const openWaConfirm = (phone: string, nome: string, data: string, hora: string, tipo: string) => {
-    const dataFormatada = formatDate(`${data}T12:00:00`, { weekday: "long", day: "numeric", month: "long" });
+    const dataFormatada = formatCalendarDate(data, { weekday: "long", day: "numeric", month: "long" });
     const msg = t("appointmentWhatsappMessage", { name: nome, type: appointmentLabel(tipo), date: dataFormatada, time: hora });
     setWaDialog({ phone: cleanPhone(phone), msg, label: nome });
   };
@@ -296,7 +297,7 @@ export default function SecretaryDashboard() {
   function formatDayHeader(dateStr: string) {
     if (dateStr === todayStr) return t("today");
     if (dateStr === tomorrowStr) return t("tomorrow");
-    return formatDate(`${dateStr}T12:00:00`, { weekday: "long", day: "numeric", month: "short" });
+    return formatCalendarDate(dateStr, { weekday: "long", day: "numeric", month: "short" });
   }
 
   const apptsByDay = upcomingAppts.reduce((acc, a) => {
@@ -531,7 +532,7 @@ export default function SecretaryDashboard() {
                                 {t("followup")}: <span className="font-medium text-foreground">{a.periodo}</span>
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {t("estimatedDate")} {a.scheduledDate ? formatDate(`${a.scheduledDate}T12:00:00`) : "—"}
+                                {t("estimatedDate")} {formatCalendarDate(a.scheduledDate)}
                                 {days !== null && (
                                   <span className={cn("ml-2 font-semibold", isOverdue ? "text-red-500" : isUrgent ? "text-amber-600" : "text-blue-600")}>
                                     {isOverdue ? t("overdue", { days: Math.abs(days) }) : days === 0 ? t("today") : t("inDays", { days, suffix: days !== 1 ? "s" : "" })}

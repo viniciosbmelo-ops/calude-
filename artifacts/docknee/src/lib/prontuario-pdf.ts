@@ -1,7 +1,8 @@
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import type { Locale } from "./i18n";
-import { documentDate, documentText } from "@/locales/document-locales";
+import { documentCalendarDate, documentDate, documentText } from "@/locales/document-locales";
+import { toDisplayDate } from "./utils";
 
 type DocTipo = "receita" | "laudo" | "atestado";
 
@@ -102,7 +103,7 @@ export async function generateProntuarioPDF(opts: ProntuarioPDFOptions, locale: 
 
   if (hasDob) {
     gap(5);
-    const dobFormatted = documentDate(locale, opts.pacienteDataNascimento!, { day: "2-digit", month: "long", year: "numeric" });
+    const dobFormatted = documentCalendarDate(locale, opts.pacienteDataNascimento!, { day: "2-digit", month: "long", year: "numeric" });
     txt(`${documentText(locale, "birthDate").toUpperCase()}: ${dobFormatted.toUpperCase()}`, margin + 6, 8, { color: C.muted });
   }
 
@@ -208,7 +209,9 @@ export async function generateProntuarioPDF(opts: ProntuarioPDFOptions, locale: 
   // ── FILENAME ──────────────────────────────────────────────────────────────
   const tipoSlug = opts.tipo;
   const nomePaciente = opts.pacienteNome.split(" ")[0].toLowerCase();
-  const dataSlug = format(new Date(opts.data), "dd-MM-yyyy");
+  // Date-only values ("2026-08-24") are calendar days: never shift them via UTC.
+  const slugDate = toDisplayDate(opts.data);
+  const dataSlug = Number.isNaN(slugDate.getTime()) ? "sem-data" : format(slugDate, "dd-MM-yyyy");
   const filename = `${tipoSlug}-${nomePaciente}-${dataSlug}.pdf`;
   return { doc, filename };
 }

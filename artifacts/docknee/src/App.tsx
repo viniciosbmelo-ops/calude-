@@ -60,6 +60,7 @@ import ServiceDashboard from "@/pages/service/dashboard";
 import AgendaPage from "@/pages/agenda";
 import AgendaCirurgica from "@/pages/agenda-cirurgica";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { ProductAnalytics } from "@/components/ProductAnalytics";
 import { PdfViewerOverlay } from "@/components/pdf-viewer-overlay";
@@ -110,7 +111,9 @@ function ProtectedRoute({ component: Component, adminOnly = false, allowPending 
 
   return (
     <AppLayout>
-      <Component />
+      <RouteErrorBoundary>
+        <Component />
+      </RouteErrorBoundary>
     </AppLayout>
   );
 }
@@ -208,7 +211,9 @@ function App() {
                   <ServiceAuthProvider>
                     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                       <ProductAnalytics />
-                      <Router />
+                      <RouteErrorBoundary>
+                        <Router />
+                      </RouteErrorBoundary>
                     </WouterRouter>
                   </ServiceAuthProvider>
                 </PhysioAuthProvider>

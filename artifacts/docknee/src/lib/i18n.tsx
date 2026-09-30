@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetCurrentDoctorQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "./auth";
-import { toDisplayDate } from "./utils";
+import { formatCalendarDate, safeFormatDate } from "./utils";
 
 export const SUPPORTED_LOCALES = ["pt-BR", "es"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
@@ -243,7 +243,10 @@ interface LanguageContextValue {
   t: (key: TranslationKey, params?: TranslationParams) => string;
   setLanguage: (locale: Locale) => Promise<void>;
   beginTemporaryDisplayLanguage: (locale: Locale) => () => void;
-  formatDate: (value: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
+  /** Timestamps/instants (and date-only strings as calendar dates). Never throws: "—" for invalid input. */
+  formatDate: (value: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) => string;
+  /** Calendar dates (birth, case, scheduled dates) — never timezone-shifted. "—" for invalid input. */
+  formatCalendarDate: (value: Date | string | null | undefined, options?: Intl.DateTimeFormatOptions) => string;
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   formatCurrency: (value: number, currency?: string) => string;
 }
@@ -314,7 +317,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     t: (key, params) => interpolate(messages[locale][key] ?? messages[DEFAULT_LOCALE][key] ?? key, params),
     setLanguage,
     beginTemporaryDisplayLanguage,
-    formatDate: (value, options) => new Intl.DateTimeFormat(locale, options).format(toDisplayDate(value)),
+    formatDate: (value, options) => safeFormatDate(value, locale, options),
+    formatCalendarDate: (value, options) => formatCalendarDate(value, locale, options),
     formatNumber: (value, options) => new Intl.NumberFormat(locale, options).format(value),
     formatCurrency: (value, currency = "BRL") => new Intl.NumberFormat(locale, { style: "currency", currency }).format(value),
   }), [beginTemporaryDisplayLanguage, locale, setLanguage]);

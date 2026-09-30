@@ -21,7 +21,7 @@ import { surgeryCaseTypeChips } from "@/lib/surgery-case-chips";
 import { useAuth } from "@/lib/auth";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInYears } from "date-fns";
-import { toDisplayDate } from "@/lib/utils";
+import { formatCalendarDate, toDisplayDate } from "@/lib/utils";
 import { es, ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Save, Pencil, ClipboardList, Phone, FileDown, Building2, Paperclip, Upload, FileText, FileImage, Film, File, X, Download, AlertCircle, Activity, ExternalLink } from "lucide-react";
@@ -875,7 +875,7 @@ export default function PatientDetail() {
                               </span>
                             </div>
                             {rc.data_caso && (
-                              <span className="text-xs text-muted-foreground">{rc.data_caso.slice(0, 10)}</span>
+                              <span className="text-xs text-muted-foreground">{formatCalendarDate(rc.data_caso, locale)}</span>
                             )}
                             {(rc.planned_products ?? []).length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-0.5">

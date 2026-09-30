@@ -9,6 +9,9 @@ export default defineConfig({
           name: 'docknee',
           include: ['artifacts/docknee/src/lib/**/*.test.ts'],
           environment: 'node',
+          // DocKnee users are in Brazil (UTC-3): run the web tests there so
+          // calendar dates that would shift a day west of UTC are caught.
+          env: { TZ: 'America/Sao_Paulo' },
         },
         resolve: {
           alias: {

@@ -38,7 +38,7 @@ import {
   getRegenPlanningPayload,
   removeProductFromPlanning,
 } from "@/lib/regen-case-payload";
-import { cn, formatDateOnly, sortByPtBrName } from "@/lib/utils";
+import { cn, formatCalendarDate, formatLocalDate, sortByPtBrName, toCalendarDateKey } from "@/lib/utils";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import OrientacoesInline from "@/components/OrientacoesInline";
@@ -665,7 +665,7 @@ function PatientSelector({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
-                <p className="text-xs text-gray-500">{formatDateOnly(p.data_nascimento, locale, undefined, p.data_nascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
+                <p className="text-xs text-gray-500">{formatCalendarDate(p.data_nascimento, locale, undefined, p.data_nascimento ?? "")}{p.sexo ? ` · ${p.sexo === "M" ? t("masculineShort") : t("feminineShort")}` : ""}</p>
               </div>
             </button>
           ))}
@@ -726,7 +726,7 @@ export default function RegenNovo() {
 
   /* ── Step 1: Dados Básicos ── */
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
-  const [dataCaso,        setDataCaso]        = useState(new Date().toISOString().slice(0, 10));
+  const [dataCaso,        setDataCaso]        = useState(() => formatLocalDate());
   const [lado,            setLado]            = useState("");
   const [hospital,        setHospital]        = useState("");
   const [weightKg,        setWeightKg]        = useState("");
@@ -836,7 +836,7 @@ export default function RegenNovo() {
 
       if (draft && draftId) {
         setCaseId(draftId);
-        setDataCaso(draft.data_caso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+        setDataCaso(toCalendarDateKey(draft.data_caso) ?? formatLocalDate());
         setLado(draft.lado_articulacao ?? "");
         setHospital(draft.hospital_local ?? "");
         setWeightKg(draft.weight_kg != null ? String(draft.weight_kg) : "");

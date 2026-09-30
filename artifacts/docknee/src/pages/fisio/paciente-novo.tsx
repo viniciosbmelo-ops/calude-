@@ -16,6 +16,7 @@ import { assessmentLabel } from "@/lib/rehab-assessments";
 import { Trash2, Plus, CheckCircle2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useScopedTranslations } from "@/lib/i18n";
+import { formatLocalDate } from "@/lib/utils";
 import { physioMessages, usePhysioClinicalLabel } from "@/locales/physio";
 
 interface ProtocolOption {
@@ -203,7 +204,7 @@ export default function FisioPacienteNovo() {
             onClick={() =>
               setPreview((prev) => [
                 ...prev!,
-                { phase: null, title: t("newFollowup"), requiredAssessments: [], dueDate: new Date().toISOString().slice(0, 10) },
+                { phase: null, title: t("newFollowup"), requiredAssessments: [], dueDate: formatLocalDate() },
               ])
             }
             data-testid="preview-add"

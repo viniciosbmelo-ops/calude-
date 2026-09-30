@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
+import { formatLocalDate, parseCalendarDate } from "@/lib/utils";
 import { surgeryViewMessages } from "@/locales/surgery-view";
 import { ClinicianScalesFields } from "./clinician-scales-fields";
 import {
@@ -60,7 +61,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
 }) {
   const t = useScopedTranslations(surgeryViewMessages);
   const tk = (key: string) => t(key as MessageKey);
-  const { formatDate } = useLanguage();
+  const { formatDate, formatCalendarDate } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createFollowup = useCreateFollowup();
@@ -246,7 +247,9 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
           </div>
           <div className="space-y-1.5">
             {schedule.map((notif) => {
-              const scheduled = notif.scheduledDate ? new Date(`${notif.scheduledDate}T12:00:00`) : null;
+              // Calendar date (either serialisation) at local noon, as before.
+              const scheduledDay = parseCalendarDate(notif.scheduledDate);
+              const scheduled = scheduledDay ? new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate(), 12) : null;
               const sentAt = notif.sentAt ? new Date(notif.sentAt) : null;
               const sentLate = notif.status === "sent" && sentAt && now - sentAt.getTime() > 7 * 86400000;
               const overdue = scheduled && scheduled.getTime() < now && notif.status === "pending";
@@ -307,7 +310,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
 
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h3 className="text-base font-medium">{t("ts_postoperativeEvaluations")}</h3>
-        <Button size="sm" className="gap-1" onClick={() => { setForm({ ...EMPTY_FORM, dataAvaliacao: new Date().toISOString().slice(0, 10) }); setScaleDrafts(emptyDrafts(clinicianScales)); setFormError(null); setFormOpen(true); }}>
+        <Button size="sm" className="gap-1" onClick={() => { setForm({ ...EMPTY_FORM, dataAvaliacao: formatLocalDate() }); setScaleDrafts(emptyDrafts(clinicianScales)); setFormError(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4" /> {t("newEvaluation")}
         </Button>
       </div>
@@ -323,7 +326,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
             <li key={f.id} className="rounded-xl border p-3 text-sm space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-semibold">{periodLabel(f.tempo)}</span>
-                <span className="text-xs text-muted-foreground">{formatDate(f.dataAvaliacao ? `${f.dataAvaliacao}T12:00:00` : f.createdAt)}</span>
+                <span className="text-xs text-muted-foreground">{f.dataAvaliacao ? formatCalendarDate(f.dataAvaliacao) : formatDate(f.createdAt)}</span>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 {pain.kind === "both" ? (

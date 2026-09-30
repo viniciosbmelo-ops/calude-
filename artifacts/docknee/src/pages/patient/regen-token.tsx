@@ -216,7 +216,7 @@ function ScaleForm({
 export default function RegenPatientPage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
-  const { beginTemporaryDisplayLanguage, formatDate, locale } = useLanguage();
+  const { beginTemporaryDisplayLanguage, formatCalendarDate, locale } = useLanguage();
   const t = useScopedTranslations(publicPatientFlowMessages);
 
   const [info, setInfo] = useState<PatientInfo | null>(null);
@@ -435,7 +435,7 @@ export default function RegenPatientPage() {
           <h1 className="text-xl font-bold text-foreground">DocSholder</h1>
           <p className="text-xs text-muted-foreground">
              {t("assessment", { period: info.periodoLabel ?? info.periodo })}
-            {info.scheduledDate && ` · ${formatDate(info.scheduledDate, { dateStyle: "short" })}`}
+            {info.scheduledDate && ` · ${formatCalendarDate(info.scheduledDate, { dateStyle: "short" })}`}
           </p>
         </div>
 

@@ -14,7 +14,7 @@ import {
   Plus, Pencil, Trash2, Settings, Send, Calendar, Clock, Hospital, User,
   CreditCard, Package, Phone, X, ChevronDown, ChevronUp, MessageSquare, FileDown
 } from "lucide-react";
-import { cn, sortByPtBrName } from "@/lib/utils";
+import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useLanguage, type Locale } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
@@ -106,11 +106,12 @@ function fmtDateFull(d: string, locale: Locale) {
   return new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(parseLocalDate(d));
 }
 
-function todayStr() { return new Date().toISOString().split("T")[0]; }
+// Local calendar day (the UTC date is already "tomorrow" after 21:00 in Brazil).
+function todayStr() { return formatLocalDate(); }
 function weekEnd() {
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  return d.toISOString().split("T")[0];
+  return formatLocalDate(d);
 }
 
 function buildWaMsg(c: CirurgiaAgendada, locale: Locale) {

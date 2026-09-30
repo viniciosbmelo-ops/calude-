@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Send, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Phone, AlertTriangle, Zap, FlaskConical, MessageSquare, Bot, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
-import { cn } from "@/lib/utils";
+import { cn, formatLocalDate, toCalendarDateKey } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/route-error-boundary";
 import {
   reportFollowupPeriodLabel,
   reportScaleLabels,
@@ -99,11 +100,14 @@ export function formatCentralFollowupValues(locale: Locale, periodo: string, sca
 
 function StatusChip({ status, scheduledDate }: { status: string; scheduledDate: string | null }) {
   const t = useScopedTranslations(operationalCoreMessages);
-  const today = new Date().toISOString().slice(0, 10);
+  // Calendar comparison on the user's local day; accepts "YYYY-MM-DD" and
+  // serialised timestamps alike.
+  const today = formatLocalDate();
+  const scheduledKey = toCalendarDateKey(scheduledDate);
   if (status === "sent" || status === "completed") return <Badge className="bg-green-100 text-green-800 border-green-200 gap-1"><CheckCircle2 className="h-3 w-3" /> {t("followupSent")}</Badge>;
   if (status === "failed") return <Badge className="bg-red-100 text-red-800 border-red-200 gap-1"><XCircle className="h-3 w-3" /> {t("followupFailed")}</Badge>;
-  if (scheduledDate && scheduledDate < today) return <Badge className="bg-orange-100 text-orange-800 border-orange-200 gap-1"><AlertTriangle className="h-3 w-3" /> {t("followupOverdue")}</Badge>;
-  if (scheduledDate === today) return <Badge className="bg-blue-100 text-blue-800 border-blue-200 gap-1"><Zap className="h-3 w-3" /> {t("followupToday")}</Badge>;
+  if (scheduledKey && scheduledKey < today) return <Badge className="bg-orange-100 text-orange-800 border-orange-200 gap-1"><AlertTriangle className="h-3 w-3" /> {t("followupOverdue")}</Badge>;
+  if (scheduledKey === today) return <Badge className="bg-blue-100 text-blue-800 border-blue-200 gap-1"><Zap className="h-3 w-3" /> {t("followupToday")}</Badge>;
   return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> {t("followupScheduled")}</Badge>;
 }
 
@@ -119,7 +123,7 @@ function NotifCard({
   onSent?: (id: number) => void;
 }) {
   const t = useScopedTranslations(operationalCoreMessages);
-  const { formatDate, locale } = useLanguage();
+  const { formatDate, formatCalendarDate, locale } = useLanguage();
   const { notif, patient, surgery } = row;
   const [sending, setSending] = useState(false);
   const [localStatus, setLocalStatus] = useState(notif.status);
@@ -168,7 +172,7 @@ function NotifCard({
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {notif.scheduledDate ? formatDate(notif.scheduledDate + "T00:00:00") : "—"}
+            {formatCalendarDate(notif.scheduledDate)}
           </span>
           <span className="font-medium text-foreground/70">{presentation.periodo}</span>
           {surgery.diagnostico && <span className="truncate max-w-28">{surgery.diagnostico}</span>}
@@ -240,12 +244,15 @@ function RegenNotifCard({
   onSent: (caseId: string, notifId: string) => void;
 }) {
   const t = useScopedTranslations(operationalCoreMessages);
-  const { formatDate, locale } = useLanguage();
+  const { formatDate, formatCalendarDate, locale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
-  const isOverdue = row.scheduled_date && row.scheduled_date <= today && row.status === "pending";
-  const isToday   = row.scheduled_date === today;
+  const today = formatLocalDate();
+  // scheduled_date is a calendar date; accept both "YYYY-MM-DD" and a
+  // serialised timestamp so an API format change can never break this card.
+  const scheduledKey = toCalendarDateKey(row.scheduled_date);
+  const isOverdue = !!scheduledKey && scheduledKey <= today && row.status === "pending";
+  const isToday   = scheduledKey === today;
 
   // Send via DocSholder number (Evolution API) — primary
   const handleSendDocSholder = async () => {
@@ -367,7 +374,7 @@ function RegenNotifCard({
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {row.scheduled_date ? formatDate(row.scheduled_date + "T00:00:00") : "—"}
+            {formatCalendarDate(row.scheduled_date)}
           </span>
           <span className="font-medium text-foreground/70">{reportFollowupPeriodLabel(locale, row.periodo)}</span>
           {row.condition_code && <span className="truncate max-w-28 text-violet-600">{row.condition_code}</span>}
@@ -644,12 +651,13 @@ function RegenFollowupTab({ doctorNome }: { doctorNome: string }) {
               </CardHeader>
               <CardContent className="space-y-1 pt-0">
                 {selectedCat.rows.map(row => (
-                  <RegenNotifCard
-                    key={row.notif_id}
-                    row={row}
-                    doctorNome={doctorNome}
-                    onSent={handleSent}
-                  />
+                  <ErrorBoundary key={row.notif_id} inline>
+                    <RegenNotifCard
+                      row={row}
+                      doctorNome={doctorNome}
+                      onSent={handleSent}
+                    />
+                  </ErrorBoundary>
                 ))}
               </CardContent>
             </Card>
@@ -738,8 +746,9 @@ export default function FollowupCentral() {
   }, []);
 
   const pendingCount = data?.pending.length ?? 0;
-  const overdueCount = data?.pending.filter(r => r.notif.scheduledDate && r.notif.scheduledDate < new Date().toISOString().slice(0, 10)).length ?? 0;
-  const todayCount = data?.pending.filter(r => r.notif.scheduledDate === new Date().toISOString().slice(0, 10)).length ?? 0;
+  const todayKey = formatLocalDate();
+  const overdueCount = data?.pending.filter(r => { const k = toCalendarDateKey(r.notif.scheduledDate); return !!k && k < todayKey; }).length ?? 0;
+  const todayCount = data?.pending.filter(r => toCalendarDateKey(r.notif.scheduledDate) === todayKey).length ?? 0;
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in space-y-6 px-4 py-6 md:px-8">
@@ -925,7 +934,7 @@ export default function FollowupCentral() {
                     </CardHeader>
                     <CardContent className="space-y-1 pt-0">
                       {data.pending.map(row => (
-                        <NotifCard key={row.notif.id} row={row} doctorNome={doctorNome} onSent={handleNotifSent} />
+                        <ErrorBoundary key={row.notif.id} inline><NotifCard row={row} doctorNome={doctorNome} onSent={handleNotifSent} /></ErrorBoundary>
                       ))}
                     </CardContent>
                   </Card>
@@ -950,7 +959,7 @@ export default function FollowupCentral() {
                     </CardHeader>
                     <CardContent className="space-y-1 pt-0">
                       {data.upcoming.map(row => (
-                        <NotifCard key={row.notif.id} row={row} doctorNome={doctorNome} onSent={handleNotifSent} />
+                        <ErrorBoundary key={row.notif.id} inline><NotifCard row={row} doctorNome={doctorNome} onSent={handleNotifSent} /></ErrorBoundary>
                       ))}
                     </CardContent>
                   </Card>
@@ -974,7 +983,7 @@ export default function FollowupCentral() {
                     </CardHeader>
                     <CardContent className="space-y-1 pt-0">
                       {data.failed.map(row => (
-                        <NotifCard key={row.notif.id} row={row} doctorNome={doctorNome} onReset={handleReset} />
+                        <ErrorBoundary key={row.notif.id} inline><NotifCard row={row} doctorNome={doctorNome} onReset={handleReset} /></ErrorBoundary>
                       ))}
                     </CardContent>
                   </Card>
@@ -997,7 +1006,7 @@ export default function FollowupCentral() {
                     </CardHeader>
                     <CardContent className="space-y-1 pt-0">
                       {data.sent.map(row => (
-                        <NotifCard key={row.notif.id} row={row} doctorNome={doctorNome} />
+                        <ErrorBoundary key={row.notif.id} inline><NotifCard row={row} doctorNome={doctorNome} /></ErrorBoundary>
                       ))}
                     </CardContent>
                   </Card>

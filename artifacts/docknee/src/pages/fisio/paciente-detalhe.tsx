@@ -23,6 +23,7 @@ import {
 import { ArrowLeft, Plus, ClipboardList, Activity, AlertTriangle, CheckCircle2, CircleDashed } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
+import { formatLocalDate } from "@/lib/utils";
 import { physioMessages, usePhysioClinicalLabel } from "@/locales/physio";
 
 interface Patient {
@@ -197,7 +198,7 @@ export default function FisioPacienteDetalhe() {
   const isOutro = patient.diagnosisCode === "outro";
   const pending = followups.filter((f) => f.status === "pending");
   const doneOrSkipped = followups.filter((f) => f.status !== "pending");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatLocalDate();
 
   return (
     <FisioShell>

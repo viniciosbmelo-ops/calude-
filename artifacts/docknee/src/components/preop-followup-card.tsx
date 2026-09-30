@@ -109,7 +109,7 @@ function PreopCardView({
   onOpenConsent,
   accent,
 }: CardViewProps) {
-  const { formatDate } = useLanguage();
+  const { formatCalendarDate } = useLanguage();
   const t = useScopedTranslations(operationalCoreMessages);
   const isBlue = accent === "blue";
   const date = notification?.scheduledDate ?? notification?.scheduled_date;
@@ -150,7 +150,7 @@ function PreopCardView({
               <p className="text-sm font-semibold text-foreground">{notification.periodo}</p>
               {date && (
                 <span className="text-xs text-muted-foreground">
-                  {formatDate(`${date}T12:00:00`)}
+                  {formatCalendarDate(date)}
                 </span>
               )}
             </div>
