@@ -26,7 +26,7 @@ describe("regenerative core locale catalogue", () => {
     expect(regenCoreMessages.es.deleteCaseTitle).toBe("¿Eliminar el caso regenerativo?");
     expect(regenCoreMessages.es.preChecklist).toContain("preprocedimiento");
     expect(regenCoreMessages.es.warningNotExpected).toContain("evaluación médica inmediata");
-    expect(regenCoreMessages["pt-BR"].newRegenCase).toBe("Novo Caso Regenerativa");
+    expect(regenCoreMessages["pt-BR"].newRegenCase).toBe("Novo Caso Regenerativo");
   });
 
   it("names the cases area 'Procedimentos' and the case's applications tab 'Aplicações'", () => {

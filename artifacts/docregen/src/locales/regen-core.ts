@@ -73,7 +73,7 @@ export const regenCoreMessages = {
     authorizedAnalgesia: "Para dor — analgesia autorizada:", seekHelp: "Procure ajuda imediata se:",
     preparingPatientLink: "Preparando link seguro para o paciente…", patientLinkError: "Não foi possível preparar o link seguro.",
     documentationBrand: "Documentação Cirúrgica",
-    newRegenCase: "Novo Caso Regenerativa", draftSaved: "Rascunho salvo",
+    newRegenCase: "Novo Caso Regenerativo", draftSaved: "Rascunho salvo",
     basicData: "Dados Básicos", history: "Anamnese", labTests: "Exames Lab.", therapeuticPlan: "Plano Terapêutico",
     procedurePlanning: "Planejamento do Procedimento", report: "Relatório", patientLoading: "Carregando pacientes…",
     noPatients: "Nenhum paciente cadastrado. Vá em Pacientes para cadastrar primeiro.",
