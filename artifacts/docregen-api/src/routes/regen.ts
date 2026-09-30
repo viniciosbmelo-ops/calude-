@@ -793,12 +793,23 @@ router.get("/regen/stats", requireAuth, async (req: any, res) => {
          FROM regen_procedures p JOIN regen_cases c ON c.id = p.case_id
          WHERE c.doctor_id = $1 AND p.adverse_event = true`, [did]),
       pool.query(
+        // Clinician-entered PROMs plus the patient's own follow-up-link
+        // answers: the link's pain scale is "VAS Dor" and counts as VAS.
         `SELECT
           instrument,
           ROUND(AVG(score)::numeric, 1) AS avg_score
-         FROM regen_prom_responses r
-         JOIN regen_cases c ON c.id = r.case_id
-         WHERE c.doctor_id = $1
+         FROM (
+           SELECT r.instrument, r.score
+             FROM regen_prom_responses r
+             JOIN regen_cases c ON c.id = r.case_id
+            WHERE c.doctor_id = $1
+           UNION ALL
+           SELECT 'VAS' AS instrument, s.score
+             FROM regen_scale_responses s
+             JOIN regen_followup_notifications n ON n.id = s.notification_id
+             JOIN regen_cases c ON c.id = n.case_id
+            WHERE c.doctor_id = $1 AND s.nome_escala = 'VAS Dor'
+         ) all_proms
          GROUP BY instrument`, [did]),
     ]);
 
@@ -923,7 +934,13 @@ router.get("/regen/research", requireAuth, async (req: any, res) => {
         c.status,
         (SELECT COUNT(*)::int FROM regen_procedures p WHERE p.case_id = c.id) AS procedure_count,
         (SELECT COUNT(*)::int FROM regen_procedures p WHERE p.case_id = c.id AND p.adverse_event = true) AS adverse_events,
-        (SELECT ROUND(AVG(pr.score)::numeric,1) FROM regen_prom_responses pr WHERE pr.case_id = c.id AND pr.instrument = 'VAS') AS avg_vas,
+        (SELECT ROUND(AVG(v.score)::numeric,1) FROM (
+           SELECT pr.score FROM regen_prom_responses pr WHERE pr.case_id = c.id AND pr.instrument = 'VAS'
+           UNION ALL
+           SELECT sr.score FROM regen_scale_responses sr
+             JOIN regen_followup_notifications fn ON fn.id = sr.notification_id
+            WHERE fn.case_id = c.id AND sr.nome_escala = 'VAS Dor'
+         ) v) AS avg_vas,
         c.dm, c.imc AS bmi, c.goal_vev,
         c.created_at
       FROM regen_cases c
