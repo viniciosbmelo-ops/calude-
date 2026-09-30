@@ -174,7 +174,7 @@ describe.sequential("follow-up WhatsApp Spanish defaults", () => {
     expectSpanishDefaults(mockSendWhatsAppText.mock.calls[0]![1] as string);
   });
 
-  it("send-scales drops retired knee scales and rejects a body with only unsupported scales", async () => {
+  it("send-scales rejects retired or licensed scales and accepts only the offered ones", async () => {
     const [followup] = await db.insert(followupTable).values({ surgeryId, tempo: "3 meses" }).returning();
     const post = (body: unknown) => fetch(`${baseUrl}/api/followup/${followup.id}/send-scales`, {
       method: "POST",
@@ -182,15 +182,26 @@ describe.sequential("follow-up WhatsApp Spanish defaults", () => {
       body: JSON.stringify(body),
     });
 
+    const empty = await post({ escalasEnviadas: [] });
+    expect(empty.status).toBe(400);
+    expect(await empty.json()).toEqual({ error: "Seleccione al menos una escala" });
+
     const onlyKnee = await post({ escalasEnviadas: ["IKDC", "Lysholm"] });
     expect(onlyKnee.status).toBe(400);
-    expect(await onlyKnee.json()).toEqual({ error: "Seleccione al menos una escala" });
+    expect(await onlyKnee.json()).toEqual({ error: "Escala no disponible." });
 
-    const mixed = await post({ escalasEnviadas: ["IKDC", "VAS Dor"] });
-    expect(mixed.status).toBe(200);
-    expect((await mixed.json() as { escalasEnviadas: string[] }).escalasEnviadas).toEqual(["VAS Dor"]);
+    for (const name of ["KOOS", "WOMAC", "IKDC", "ASES", "DASH"]) {
+      const mixed = await post({ escalasEnviadas: [name, "VAS Dor"] });
+      expect(mixed.status, name).toBe(400);
+    }
+    const [untouched] = await db.select().from(followupTable).where(eq(followupTable.id, followup.id));
+    expect(untouched!.escalasEnviadas ?? []).toEqual([]);
+
+    const offered = await post({ escalasEnviadas: ["VAS Dor", "SANE"] });
+    expect(offered.status).toBe(200);
+    expect((await offered.json() as { escalasEnviadas: string[] }).escalasEnviadas).toEqual(["VAS Dor", "SANE"]);
     const [stored] = await db.select().from(followupTable).where(eq(followupTable.id, followup.id));
-    expect(stored!.escalasEnviadas).toEqual(["VAS Dor"]);
+    expect(stored!.escalasEnviadas).toEqual(["VAS Dor", "SANE"]);
   });
 
   it("prepare-whatsapp omits retired knee scales stored on a legacy follow-up", async () => {

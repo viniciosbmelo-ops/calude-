@@ -208,6 +208,21 @@ describe.sequential("clinician scales on follow-up", () => {
     expect(ases).toHaveLength(0);
   });
 
+  it("rejects licensed or retired scale names sent as clinician scales", async () => {
+    const [existing] = await followupsOf(cuffSurgeryId);
+    for (const name of ["KOOS", "WOMAC", "IKDC", "DASH", "QUICKDASH", "OSS", "MEPS"]) {
+      const put = await api(`/api/followup/${existing.id}/clinician-scales`, "PUT", {
+        escalasClinicas: { [name]: { q1: 1 } },
+      });
+      expect(put.status, name).toBe(422);
+    }
+    const stored = await db
+      .select({ nomeEscala: scaleResponsesTable.nomeEscala })
+      .from(scaleResponsesTable)
+      .where(eq(scaleResponsesTable.followupId, existing.id));
+    expect(stored.every((r) => r.nomeEscala === "CONSTANT" || r.nomeEscala === "ROWE")).toBe(true);
+  });
+
   it("rejects invalid answers with the failing field", async () => {
     const res = await api("/api/followup", "POST", {
       surgeryId: cuffSurgeryId,

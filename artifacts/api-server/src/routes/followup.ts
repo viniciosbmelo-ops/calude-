@@ -9,6 +9,7 @@ import { getBaseUrl } from "../lib/base-url";
 import {
   filterSupportedFollowupScales,
   hasFractureProcedure,
+  isSupportedFollowupScale,
   isPreoperativePeriod,
 } from "../lib/followup-schedule";
 import { resolveDoctorLocale } from "../lib/locale";
@@ -275,15 +276,17 @@ router.post("/followup/:id/send-scales", requireAuth, async (req, res): Promise<
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
   const requested = (req.body as { escalasEnviadas?: unknown } | undefined)?.escalasEnviadas;
-  // Escalas retiradas (ex.: do joelho) são descartadas; se nada suportado sobrar, é como não escolher nenhuma.
-  const escalasEnviadas = Array.isArray(requested)
-    ? filterSupportedFollowupScales(requested.filter((s): s is string => typeof s === "string"))
-    : [];
-
-  if (escalasEnviadas.length === 0) {
+  if (!Array.isArray(requested) || requested.length === 0) {
     res.status(400).json({ error: message(locale, "selectAtLeastOneScale") });
     return;
   }
+  // Só as escalas que o app oferece (VAS Dor, SANE). Nomes retirados ou
+  // licenciados (KOOS, IKDC, ASES, DASH…) são rejeitados, nunca gravados.
+  if (requested.some((s) => typeof s !== "string" || !isSupportedFollowupScale(s))) {
+    res.status(400).json({ error: message(locale, "scaleNotAvailable") });
+    return;
+  }
+  const escalasEnviadas = filterSupportedFollowupScales(requested as string[]);
 
   const [pointer] = await db
     .select({ surgeryId: followupTable.surgeryId })

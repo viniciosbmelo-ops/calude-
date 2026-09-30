@@ -21,21 +21,9 @@ import {
   synchronizeApplicationSiteLegacyFields,
 } from "../lib/regen-application-sites";
 
-export { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
+import { REGEN_FOLLOWUP_SCHEDULE, REGEN_PROM_INSTRUMENTS } from "../lib/regen-scales";
 
-// ─── Regen follow-up schedule ─────────────────────────────────────────────────
-// Escalas do joelho (WOMAC, IKDC, KOOS-12, Tegner) retiradas; só dor (VAS)
-// até as escalas de ombro/cotovelo serem definidas.
-const REGEN_FOLLOWUP_SCHEDULE = [
-  { periodo: "Pré-op (Baseline)",  days: 0,    scales: ["VAS Dor"] },
-  { periodo: "1 mês",              days: 30,   scales: ["VAS Dor"] },
-  { periodo: "6 semanas (HA)",     days: 42,   scales: ["VAS Dor"] },
-  { periodo: "3 meses",            days: 90,   scales: ["VAS Dor"] },
-  { periodo: "6 meses ★",          days: 180,  scales: ["VAS Dor"] },
-  { periodo: "12 meses",           days: 365,  scales: ["VAS Dor"] },
-  { periodo: "24 meses",           days: 730,  scales: ["VAS Dor"] },
-  { periodo: "4 anos",             days: 1460, scales: ["VAS Dor"] },
-];
+export { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
 
 const router: IRouter = Router();
 
@@ -552,13 +540,14 @@ router.post("/regen/cases/:caseId/procedures", requireAuth, async (req: any, res
 // ─── PROMs ───────────────────────────────────────────────────────────────────
 
 const PromBody = z.object({
-  instrument: z.string().trim().min(1),
+  // Only the scales this module offers; licensed/retired names are rejected.
+  instrument: z.string().trim().pipe(z.enum(REGEN_PROM_INSTRUMENTS)),
   timepoint:  z.string().trim().min(1),
   answers:    z.record(z.string(), z.unknown()).optional(),
   score:      z.number().finite().min(0).max(100).nullable().optional(),
   answeredAt: z.string().datetime({ offset: true }).optional(),
 }).refine(
-  (body) => !/^vas$/i.test(body.instrument) || body.score == null || body.score <= 10,
+  (body) => body.instrument !== "VAS" || body.score == null || body.score <= 10,
   { message: "VAS score must be between 0 and 10", path: ["score"] },
 );
 

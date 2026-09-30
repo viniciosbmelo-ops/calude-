@@ -20,7 +20,6 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/docregen-db";
-import { scoreSANE } from "@workspace/clinical";
 import { scoreSANEKnee } from "@workspace/clinical/knee-function";
 import { eq, sql } from "drizzle-orm";
 import {
@@ -34,6 +33,7 @@ import {
 import { logger } from "../lib/logger";
 import { resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
+import { filterRegenPatientScales } from "../lib/regen-followup-schedule";
 import { regenPeriodForLocale } from "../lib/regen-labels";
 
 const router: IRouter = Router();
@@ -129,7 +129,6 @@ function validateRespostas(
 // WOMAC) foram retiradas. Escalas de ombro/cotovelo entram aqui com o cálculo.
 const SCALE_SCORE_RANGES: Record<string, [number, number]> = {
   "VAS Dor":  [0, 10],
-  "SANE":     [0, 100],
   "SANE Joelho": [0, 100],
 };
 
@@ -167,13 +166,6 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
     if (v === undefined || !isFinite(v)) throw new Error("VAS: resposta 'vas' ausente ou inválida");
     return Math.max(0, Math.min(10, v));
   },
-  // SANE (0–100, % do normal): pontuado pelo núcleo clínico, que rejeita
-  // resposta ausente, não inteira ou fora de 0–100 (sem clamp silencioso).
-  "SANE": (a) => {
-    const v = a["sane"];
-    if (v === undefined) throw new Error("SANE: resposta 'sane' ausente");
-    return scoreSANE({ value: v }).score;
-  },
   // SANE-joelho: mesma pergunta única (0–100, 100 = joelho normal), mesmo escore.
   "SANE Joelho": (a) => {
     const v = a["sane"];
@@ -184,14 +176,13 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
 
 /**
  * Compute server-authoritative score.
- * - For known scales: throws on invalid/missing answers (no silent fallback).
- * - For unknown scales: validates client score is finite and in 0-100.
+ * - Throws on invalid/missing answers (no silent fallback).
+ * - Throws for any scale without a server-side calculator.
  * Returns { score } or throws with a user-readable message.
  */
 function computeScore(
   escala: string,
   respostas: Record<string, unknown>,
-  clientScore: unknown,
 ): number {
   const calc = SERVER_SCORE_CALCULATORS[escala];
   if (calc) {
@@ -201,15 +192,9 @@ function computeScore(
     return clampScore(escala, raw);
   }
 
-  // Unknown scale — use client-supplied score but validate it
-  const cs = Number(clientScore);
-  if (!isFinite(cs) || isNaN(cs)) {
-    throw new Error(`Score ausente ou inválido para escala desconhecida "${escala}"`);
-  }
-  if (cs < 0 || cs > 100) {
-    throw new Error(`Score fora da faixa permitida (0–100) para escala "${escala}"`);
-  }
-  return cs;
+  // Only scales with a server-side calculator are ever accepted: a client
+  // score for any other (retired or licensed) name is never trusted.
+  throw new Error(`Escala não suportada "${escala}"`);
 }
 
 // ─── Regen followup routes ────────────────────────────────────────────────────
@@ -256,9 +241,9 @@ router.get("/patient/regen/:token", async (req: Request, res: Response): Promise
     // response writes. This label is strictly presentation-only.
     periodo: n.periodo,
     periodoLabel: regenPeriodForLocale(n.periodo, locale),
-    scales: n.scales ?? [],
+    scales: filterRegenPatientScales(n.scales),
     completedScales: respRows.rows.map((r: Record<string, string>) => r.nome_escala),
-    noScales: !(n.scales?.length),
+    noScales: filterRegenPatientScales(n.scales).length === 0,
     isRegen: true,
     doctorLocale: locale,
   });
@@ -346,9 +331,9 @@ router.post("/patient/regen/:token/verify", async (req: Request, res: Response):
     doctorLocale: locale,
     periodo: n.periodo,
     periodoLabel: regenPeriodForLocale(n.periodo, locale),
-    scales: n.scales ?? [],
+    scales: filterRegenPatientScales(n.scales),
     completedScales: respRows.rows.map((r: Record<string, string>) => r.nome_escala),
-    noScales: !(n.scales?.length),
+    noScales: filterRegenPatientScales(n.scales).length === 0,
     scheduledDate: n.scheduled_date,
     isRegen: true,
   });
@@ -376,10 +361,7 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
     return;
   }
 
-  const { respostas, score: clientScore } = req.body as {
-    respostas?: unknown;
-    score?: unknown;
-  };
+  const { respostas } = req.body as { respostas?: unknown };
 
   // 2. Validate respostas structure
   const validationError = validateRespostas(respostas);
@@ -399,7 +381,8 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
   }
   const n = rows[0];
 
-  if (!n.scales?.includes(escala)) {
+  // Only scales this module offers; legacy rows may still list retired ones.
+  if (!filterRegenPatientScales(n.scales).includes(escala)) {
     res.status(400).json({ error: message(locale, "requestedScaleNotFound") });
     return;
   }
@@ -407,7 +390,7 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
   // 3. Compute authoritative score
   let score: number;
   try {
-    score = computeScore(escala, respostas as Record<string, unknown>, clientScore);
+    score = computeScore(escala, respostas as Record<string, unknown>);
   } catch (err) {
     res.status(400).json({
       error: message(locale, "scoreCalculationFailed"),
@@ -457,7 +440,7 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
     [n.id]
   );
   const completedScales = all.map((r: Record<string, string>) => r.nome_escala);
-  const allCompleted = (n.scales || []).every((s: string) => completedScales.includes(s));
+  const allCompleted = filterRegenPatientScales(n.scales).every((s: string) => completedScales.includes(s));
 
   if (allCompleted) {
     await pool.query(

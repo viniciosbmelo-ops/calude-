@@ -17,6 +17,7 @@ import {
 import {
   addDaysToCalendarDate,
   clinicToday,
+  REGEN_PROM_INSTRUMENTS,
   regenFollowupScheduleFor,
 } from "../lib/regen-followup-schedule";
 import PDFDocument from "pdfkit";
@@ -540,13 +541,14 @@ router.post("/regen/cases/:caseId/procedures", requireAuth, async (req: any, res
 // ─── PROMs ───────────────────────────────────────────────────────────────────
 
 const PromBody = z.object({
-  instrument: z.string().trim().min(1),
+  // Only the scales this module offers; licensed/retired names are rejected.
+  instrument: z.string().trim().pipe(z.enum(REGEN_PROM_INSTRUMENTS)),
   timepoint:  z.string().trim().min(1),
   answers:    z.record(z.string(), z.unknown()).optional(),
   score:      z.number().finite().min(0).max(100).nullable().optional(),
   answeredAt: z.string().datetime({ offset: true }).optional(),
 }).refine(
-  (body) => !/^vas$/i.test(body.instrument) || body.score == null || body.score <= 10,
+  (body) => body.instrument !== "VAS" || body.score == null || body.score <= 10,
   { message: "VAS score must be between 0 and 10", path: ["score"] },
 ).refine(
   // SANE-joelho: single question, integer 0–100 (% of a normal knee), required.

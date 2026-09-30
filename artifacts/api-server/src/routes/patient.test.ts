@@ -195,6 +195,10 @@ describe.sequential("classic public link locale integration", () => {
 
     const removed = await postScale("Lysholm", { respostas: { q1: 5 }, score: 80 });
     expect(removed.status).toBe(400);
+    for (const escala of ["KOOS", "WOMAC", "IKDC", "ASES", "DASH"]) {
+      const licensed = await postScale(escala, { respostas: { q1: 5 }, score: 80 });
+      expect(licensed.status, escala).toBe(400);
+    }
 
     const vas = await postScale("VAS Dor", { respostas: { vas: 3 } });
     expect(vas.status).toBe(200);

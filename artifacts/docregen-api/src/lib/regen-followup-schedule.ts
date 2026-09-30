@@ -6,6 +6,7 @@
  * 6-week hyaluronic-acid review ("6 semanas (HA)") belongs to viscosupplement
  * cases and must never appear for PRP-only (or other biologic) cases.
  */
+import { SANE_KNEE_CODE } from "@workspace/clinical/knee-function";
 import { SANE_KNEE_SCALE, isKneeCondition } from "./regen-knee-measures";
 
 export type RegenFollowupSlot = {
@@ -47,6 +48,32 @@ export function regenFollowupScheduleFor(
     (slot) => !slot.products || slot.products.some((code) => used.has(code)),
   ).map((slot) => (knee ? { ...slot, scales: [...slot.scales, SANE_KNEE_SCALE] } : slot));
 }
+
+/**
+ * Scales the patient answers through the regen follow-up link: the ones any
+ * schedule can produce (VAS Dor, plus SANE Joelho for knee cases). Licensed or
+ * retired instruments (KOOS, WOMAC, IKDC, ASES, DASH…) are never accepted;
+ * rows already stored under old names are left untouched and still displayed.
+ */
+export const REGEN_PATIENT_SCALES: ReadonlySet<string> = new Set([
+  ...REGEN_FOLLOWUP_SCHEDULE.flatMap((slot) => slot.scales),
+  SANE_KNEE_SCALE,
+]);
+
+export function isRegenPatientScale(scale: unknown): scale is string {
+  return typeof scale === "string" && REGEN_PATIENT_SCALES.has(scale);
+}
+
+/** Legacy notifications may list retired scales: never ask the patient for them. */
+export function filterRegenPatientScales(scales: readonly unknown[] | null | undefined): string[] {
+  return [...new Set((scales ?? []).filter(isRegenPatientScale))];
+}
+
+/**
+ * Instruments the physician can record manually on a regen case (case page
+ * PROM form): VAS and SANE-joelho, under either SANE-joelho spelling.
+ */
+export const REGEN_PROM_INSTRUMENTS = ["VAS", SANE_KNEE_CODE, SANE_KNEE_SCALE] as const;
 
 const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 

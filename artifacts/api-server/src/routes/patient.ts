@@ -47,6 +47,7 @@ import {
 import { logger } from "../lib/logger";
 import { resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
+import { filterRegenPatientScales } from "../lib/regen-scales";
 import { regenPeriodForLocale } from "../lib/regen-labels";
 
 const router: IRouter = Router();
@@ -196,14 +197,13 @@ const SERVER_SCORE_CALCULATORS: Record<string, (a: Answers) => number> = {
 
 /**
  * Compute server-authoritative score.
- * - For known scales: throws on invalid/missing answers (no silent fallback).
- * - For unknown scales: validates client score is finite and in 0-100.
+ * - Throws on invalid/missing answers (no silent fallback).
+ * - Throws for any scale without a server-side calculator.
  * Returns { score } or throws with a user-readable message.
  */
 function computeScore(
   escala: string,
   respostas: Record<string, unknown>,
-  clientScore: unknown,
 ): number {
   const calc = SERVER_SCORE_CALCULATORS[escala];
   if (calc) {
@@ -213,15 +213,9 @@ function computeScore(
     return clampScore(escala, raw);
   }
 
-  // Unknown scale — use client-supplied score but validate it
-  const cs = Number(clientScore);
-  if (!isFinite(cs) || isNaN(cs)) {
-    throw new Error(`Score ausente ou inválido para escala desconhecida "${escala}"`);
-  }
-  if (cs < 0 || cs > 100) {
-    throw new Error(`Score fora da faixa permitida (0–100) para escala "${escala}"`);
-  }
-  return cs;
+  // Only scales with a server-side calculator are ever accepted: a client
+  // score for any other (retired or licensed) name is never trusted.
+  throw new Error(`Escala não suportada "${escala}"`);
 }
 
 /**
@@ -440,10 +434,7 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
     return;
   }
 
-  const { respostas, score: clientScore } = req.body as {
-    respostas?: unknown;
-    score?: unknown;
-  };
+  const { respostas } = req.body as { respostas?: unknown };
 
   // 2. Validate respostas structure
   const validationError = validateRespostas(respostas);
@@ -464,9 +455,16 @@ router.post("/patient/:token/scale/:escala", async (req: Request, res: Response)
     return;
   }
 
+  // Only the scales this app offers (VAS Dor, SANE); retired or licensed
+  // names (KOOS, IKDC, ASES, DASH…) are rejected before any scoring.
+  if (!isSupportedFollowupScale(escala)) {
+    res.status(400).json({ error: message(locale, "requestedScaleNotFound") });
+    return;
+  }
+
   let score: number;
   try {
-    score = computeScore(escala, respostas as Record<string, unknown>, clientScore);
+    score = computeScore(escala, respostas as Record<string, unknown>);
   } catch (err) {
     res.status(400).json({
       error: message(locale, "scoreCalculationFailed"),
@@ -621,9 +619,9 @@ router.get("/patient/regen/:token", async (req: Request, res: Response): Promise
     // response writes. This label is strictly presentation-only.
     periodo: n.periodo,
     periodoLabel: regenPeriodForLocale(n.periodo, locale),
-    scales: n.scales ?? [],
+    scales: filterRegenPatientScales(n.scales),
     completedScales: respRows.rows.map((r: Record<string, string>) => r.nome_escala),
-    noScales: !(n.scales?.length),
+    noScales: filterRegenPatientScales(n.scales).length === 0,
     isRegen: true,
     doctorLocale: locale,
   });
@@ -711,9 +709,9 @@ router.post("/patient/regen/:token/verify", async (req: Request, res: Response):
     doctorLocale: locale,
     periodo: n.periodo,
     periodoLabel: regenPeriodForLocale(n.periodo, locale),
-    scales: n.scales ?? [],
+    scales: filterRegenPatientScales(n.scales),
     completedScales: respRows.rows.map((r: Record<string, string>) => r.nome_escala),
-    noScales: !(n.scales?.length),
+    noScales: filterRegenPatientScales(n.scales).length === 0,
     scheduledDate: n.scheduled_date,
     isRegen: true,
   });
@@ -741,10 +739,7 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
     return;
   }
 
-  const { respostas, score: clientScore } = req.body as {
-    respostas?: unknown;
-    score?: unknown;
-  };
+  const { respostas } = req.body as { respostas?: unknown };
 
   // 2. Validate respostas structure
   const validationError = validateRespostas(respostas);
@@ -764,7 +759,8 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
   }
   const n = rows[0];
 
-  if (!n.scales?.includes(escala)) {
+  // Only scales this module offers; legacy rows may still list retired ones.
+  if (!filterRegenPatientScales(n.scales).includes(escala)) {
     res.status(400).json({ error: message(locale, "requestedScaleNotFound") });
     return;
   }
@@ -772,7 +768,7 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
   // 3. Compute authoritative score
   let score: number;
   try {
-    score = computeScore(escala, respostas as Record<string, unknown>, clientScore);
+    score = computeScore(escala, respostas as Record<string, unknown>);
   } catch (err) {
     res.status(400).json({
       error: message(locale, "scoreCalculationFailed"),
@@ -822,7 +818,7 @@ router.post("/patient/regen/:token/scale/:escala", async (req: Request, res: Res
     [n.id]
   );
   const completedScales = all.map((r: Record<string, string>) => r.nome_escala);
-  const allCompleted = (n.scales || []).every((s: string) => completedScales.includes(s));
+  const allCompleted = filterRegenPatientScales(n.scales).every((s: string) => completedScales.includes(s));
 
   if (allCompleted) {
     await pool.query(
