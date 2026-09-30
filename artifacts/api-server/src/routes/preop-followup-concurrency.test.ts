@@ -253,7 +253,8 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
 
   it("accepts no public scale response when a fracture wins before submission", async () => {
     const token = randomUUID();
-    const scale = "Teste Concorrência";
+    // A scale the app offers, so the request reaches the locked transaction.
+    const scale = "SANE";
     const [followup] = await db
       .insert(followupTable)
       .values({
@@ -282,7 +283,7 @@ describe.sequential("preoperative follow-up fracture concurrency", () => {
           Origin: baseUrl,
           Referer: `${baseUrl}/patient/${token}`,
         },
-        body: JSON.stringify({ respostas: { resposta: 1 }, score: 50 }),
+        body: JSON.stringify({ respostas: { sane: 50 } }),
       }),
     );
 
