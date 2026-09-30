@@ -23,6 +23,11 @@ function isExemptMutation(req: Request): boolean {
   const path = (req.path || req.originalUrl.split("?")[0] || "").replace(/^\/api(?=\/)/, "");
   if (EXEMPT_MUTATION_PATHS.some((pattern) => pattern.test(path))) return true;
 
+  // Recording (or revoking) the doctor's own acceptance of the terms of use is
+  // a legal/LGPD record, not paid clinical data. The register page posts it
+  // right after sign-up, before any subscription exists.
+  if (req.method === "POST" && /^\/lgpd\/consentimento\/?$/.test(path)) return true;
+
   // Language is an account preference needed for localized billing/support,
   // not paid clinical data. Keep every other profile field behind the gate.
   if (req.method === "PATCH" && /^\/doctors\/\d+\/?$/.test(path)) {

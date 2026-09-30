@@ -89,4 +89,17 @@ describe.sequential("subscription write guard integration", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "Mensagem é obrigatória." });
   });
+
+  it("lets a doctor without a subscription record the terms-of-use consent (sent right after sign-up)", async () => {
+    const response = await fetch(`${baseUrl}/regen-api/lgpd/consentimento`, {
+      method: "POST",
+      headers: { Authorization: authorization, "Content-Type": "application/json" },
+      body: JSON.stringify({ aceito: true, tipo: "plataforma_docregen" }),
+    });
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      consentimento: { doctorId, aceito: true },
+    });
+  });
 });
