@@ -5,7 +5,7 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 import { DB, DOCREGEN_DOCTOR, DOCREGEN_OTHER_DOCTOR, RUN_ID } from "../support/env";
 import {
-  FICTIONAL_PNG, expectNoInvalidDate, fakeCpf, fillDate, failShot, fillVisibleFields, formatCpf, isoToBr, isoToday, shot, sql, trackPageErrors,
+  FICTIONAL_PNG, answerPreConsult, expectNoInvalidDate, fakeCpf, fillDate, failShot, fillVisibleFields, formatCpf, isoToBr, isoToday, shot, sql, trackPageErrors,
 } from "../support/helpers";
 
 const APP = "docregen";
@@ -90,37 +90,8 @@ test("patient opens the public pré-consulta link, validates CPF, fills all step
   const patientContext = await browser.newContext();
   const patientPage = await patientContext.newPage();
   const errors = trackPageErrors(patientPage);
-  patientPage.on("dialog", (dialog) => void dialog.accept());
   try {
-    await patientPage.goto(new URL(preConsultLink).pathname);
-    // Wrong CPF first: access must be refused.
-    await patientPage.locator("#cpf").fill("111.444.777-35");
-    await patientPage.getByRole("button", { name: "Acessar" }).click();
-    await expect(patientPage.locator("#cpf")).toBeVisible();
-    await patientPage.locator("#cpf").fill(formatCpf(PATIENT.cpf));
-    await patientPage.getByRole("button", { name: "Acessar" }).click();
-    await expect(patientPage.getByRole("heading", { name: "Sobre Você" }).or(patientPage.getByText("Sobre Você", { exact: true })).first()).toBeVisible();
-    await shot(patientPage, APP, "05-pre-consult-step1");
-
-    for (let step = 1; step <= 6; step++) {
-      await fillVisibleFields(patientPage, "main", `Resposta ficticia etapa ${step}`);
-      if (step === 2) await patientPage.locator("main button", { hasText: /^7$/ }).first().click();
-      if (step === 5) {
-        const upload = patientPage.waitForResponse((r) => /\/attachments$/.test(r.url()) && r.request().method() === "POST");
-        await patientPage.locator("main input[type=file]").setInputFiles({
-          name: "exame-ficticio.png", mimeType: "image/png", buffer: FICTIONAL_PNG,
-        });
-        expect((await upload).status()).toBe(201);
-        await expect(patientPage.getByText("Arquivos Anexados")).toBeVisible();
-        await expect(patientPage.locator("p.truncate", { hasText: "exame-ficticio.png" })).toHaveCount(1);
-        await shot(patientPage, APP, "06-pre-consult-upload");
-      }
-      if (step < 6) await patientPage.getByRole("button", { name: /Próximo/ }).click();
-    }
-    const submit = patientPage.waitForResponse((r) => /\/submit$/.test(r.url()) && r.request().method() === "POST");
-    await patientPage.getByRole("button", { name: /Finalizar envio/ }).click();
-    expect((await submit).status()).toBe(200);
-    await shot(patientPage, APP, "07-pre-consult-submitted");
+    await answerPreConsult(patientPage, preConsultLink, PATIENT.cpf, APP);
     expect(errors.filter((e) => e.startsWith("pageerror"))).toEqual([]);
   } catch (error) {
     await failShot(patientPage, APP, "patient-pre-consult");

@@ -123,3 +123,68 @@ export async function fillVisibleFields(page: Page, scopeSelector: string, text:
     if ((await box.getAttribute("aria-checked")) !== "true") await box.click();
   }
 }
+
+/**
+ * Patient side of the pré-consulta link (same UI in both apps): wrong CPF is
+ * refused, right CPF opens the 6 steps, every field gets a fictional answer,
+ * step 5 uploads a PNG exam through the (fake) object storage, then submits.
+ */
+export async function answerPreConsult(
+  patientPage: Page,
+  link: string,
+  cpfDigits: string,
+  app: string,
+): Promise<void> {
+  patientPage.on("dialog", (dialog) => void dialog.accept());
+  await patientPage.goto(new URL(link).pathname);
+  await patientPage.locator("#cpf").fill("111.444.777-35");
+  await patientPage.getByRole("button", { name: "Acessar" }).click();
+  await expect(patientPage.locator("#cpf")).toBeVisible();
+  await patientPage.locator("#cpf").fill(formatCpf(cpfDigits));
+  await patientPage.getByRole("button", { name: "Acessar" }).click();
+  await expect(patientPage.getByText("Sobre Você", { exact: true }).first()).toBeVisible();
+  await shot(patientPage, app, "05-pre-consult-step1");
+  for (let step = 1; step <= 6; step++) {
+    await fillVisibleFields(patientPage, "main", `Resposta ficticia etapa ${step}`);
+    if (step === 2) await patientPage.locator("main button", { hasText: /^7$/ }).first().click();
+    if (step === 5) {
+      const upload = patientPage.waitForResponse((r) => /\/attachments$/.test(r.url()) && r.request().method() === "POST");
+      await patientPage.locator("main input[type=file]").setInputFiles({
+        name: "exame-ficticio.png", mimeType: "image/png", buffer: FICTIONAL_PNG,
+      });
+      expect((await upload).status()).toBe(201);
+      await expect(patientPage.locator("p.truncate", { hasText: "exame-ficticio.png" })).toHaveCount(1);
+      await shot(patientPage, app, "06-pre-consult-upload");
+    }
+    if (step < 6) await patientPage.getByRole("button", { name: /Próximo/ }).click();
+  }
+  const submit = patientPage.waitForResponse((r) => /\/submit$/.test(r.url()) && r.request().method() === "POST");
+  await patientPage.getByRole("button", { name: /Finalizar envio/ }).click();
+  expect((await submit).status()).toBe(200);
+  await shot(patientPage, app, "07-pre-consult-submitted");
+}
+
+/**
+ * Minimal text extraction for the jsPDF documents: inflates every content
+ * stream and returns the literal strings of the text operators, joined by
+ * spaces (enough to assert dates and names, not a general PDF parser).
+ */
+export function pdfText(pdf: Buffer): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const zlib = require("node:zlib") as typeof import("node:zlib");
+  const raw = pdf.toString("latin1");
+  const chunks: string[] = [];
+  const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  for (let m = re.exec(raw); m; m = re.exec(raw)) {
+    const bytes = Buffer.from(m[1], "latin1");
+    try { chunks.push(zlib.inflateSync(bytes).toString("latin1")); } catch { chunks.push(m[1]); }
+  }
+  const strings: string[] = [];
+  for (const content of chunks) {
+    for (const s of content.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj|\[((?:[^\]])*)\]\s*TJ/g)) {
+      const literal = s[1] ?? (s[2] ?? "").match(/\(((?:\\.|[^\\)])*)\)/g)?.map((p) => p.slice(1, -1)).join("") ?? "";
+      strings.push(literal.replace(/\\([()\\])/g, "$1").replace(/\\(\d{3})/g, (_, o: string) => String.fromCharCode(parseInt(o, 8))));
+    }
+  }
+  return strings.join(" ");
+}
