@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import { useScopedTranslations } from "@/lib/i18n";
 import { decisionSupportMessages } from "@/locales/decision-support";
 import {
-  collectControversies, formatTraceValue, groupTrace, referenceHref, referenceIds, referenceMap, ruleTitle,
+  collectControversies, conflictLines, formatTraceValue, groupTrace, parameterLines, referenceHref, referenceIds, referenceMap,
+  ruleTitle, usedInputLines, type ExecutionMeta, type ProvenanceKind,
 } from "./logic";
 
 export type DsT = ReturnType<typeof useDsT>;
@@ -78,13 +79,33 @@ function RefLinks({ ids, refs }: { ids: readonly string[]; refs: Map<string, Ref
   );
 }
 
-export function DecisionResultView({ resultado, def, execucaoId, modo }: {
+const PROV_CLASS: Record<ProvenanceKind, string> = {
+  registro: "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200",
+  manual: "border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+  derivado: "border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
+};
+
+const SOURCE_KEYS = new Set(["payload", "intraop", "paciente", "derivada", "manual"]);
+
+function ProvenanceTag({ kind, title }: { kind: ProvenanceKind; title?: string }) {
+  const t = useDsT();
+  return <span title={title} className={cn("inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide", PROV_CLASS[kind])}>{t(`prov_${kind}`)}</span>;
+}
+
+export function DecisionResultView({ resultado, def, execucaoId, modo, meta }: {
   resultado: ResultadoApoio;
   def?: AlgorithmDef;
   execucaoId?: number;
   modo?: string;
+  /** Proveniência, conflitos com o registro e parâmetros ignorados (resposta da avaliação ou linha gravada). */
+  meta?: ExecutionMeta;
 }) {
   const t = useDsT();
+  const labels = { yes: t("yes"), no: t("no") };
+  const sourceLabel = (origem: string) => (SOURCE_KEYS.has(origem) ? t(`src_${origem}` as "src_manual") : origem);
+  const conflitos = conflictLines(meta?.conflitos, def, labels, meta?.proveniencia);
+  const usados = usedInputLines(resultado.entrada ?? {}, def, labels, meta?.proveniencia, meta?.conflitos);
+  const parametros = parameterLines(resultado.parametros);
   const refs = referenceMap(resultado);
   const controversias = collectControversies(resultado.opcoes);
   const trace = groupTrace(resultado.trace);
@@ -106,6 +127,27 @@ export function DecisionResultView({ resultado, def, execucaoId, modo }: {
           {execucaoId !== undefined && <> · {t("executionId", { id: execucaoId })}</>}
         </p>
       </div>
+
+      {/* Conflitos com o registro salvo: informativo, o registro prevaleceu */}
+      {conflitos.length > 0 && (
+        <div role="note" className="rounded-lg border border-sky-300/60 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+          <p className="flex items-center gap-2 font-semibold"><Info className="h-4 w-4 shrink-0" />{t("conflictsTitle")}</p>
+          <p className="mt-1 text-xs leading-relaxed">{t("conflictsBody")}</p>
+          <ul className="mt-2 space-y-1">
+            {conflitos.map((c) => (
+              <li key={c.entrada} title={c.caminho}>
+                {t("conflictLine", { rotulo: c.rotulo, digitado: c.digitado, usado: c.usado, fonte: sourceLabel(c.origem) })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {meta?.parametrosIgnorados && (
+        <div role="note" className="flex items-start gap-2 rounded-lg border border-sky-300/60 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" /><p>{t("paramsIgnored")}</p>
+        </div>
+      )}
 
       {(resultado.foraDeEscopo.length > 0 || resultado.escopoIndeterminado.length > 0) && (
         <div className="space-y-2">
@@ -184,6 +226,23 @@ export function DecisionResultView({ resultado, def, execucaoId, modo }: {
         </div>
       ))}
 
+      {/* Dados usados, com a origem de cada valor */}
+      {usados.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold">{t("usedTitle")}</h3>
+          <ul className="space-y-1 text-sm">
+            {usados.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span><span className="font-medium">{u.rotulo}:</span> {u.valor}</span>
+                {u.kind && <ProvenanceTag kind={u.kind} title={[u.caminho, u.nota].filter(Boolean).join(" · ") || undefined} />}
+                {u.emConflito && <span className="text-[11px] text-sky-800 dark:text-sky-300">{t("conflictTag")}</span>}
+              </li>
+            ))}
+          </ul>
+          {usados.some((u) => u.kind) && <p className="text-[11px] text-muted-foreground">{t("usedLegend")}</p>}
+        </div>
+      )}
+
       {/* Dados que faltam */}
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{t("missingTitle")}</h3>
@@ -206,14 +265,20 @@ export function DecisionResultView({ resultado, def, execucaoId, modo }: {
         )}
       </div>
 
-      {resultado.parametros && resultado.parametros.length > 0 && (
+      {/* Parâmetros (limiares) usados */}
+      {parametros.length > 0 && (
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{t("parametersTitle")}</h3>
-          <ul className="space-y-1 text-sm">
-            {resultado.parametros.map((p) => (
+          <ul className="space-y-2 text-sm">
+            {parametros.map((p) => (
               <li key={p.id}>
-                <span className="font-medium">{p.rotulo}: {p.valor}{p.unidade ? ` ${p.unidade}` : ""}</span>
-                {p.status === "pendente_decisao_cirurgiao" && <span className="ml-2 text-xs text-amber-700 dark:text-amber-300">{t("paramPending")}</span>}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{p.rotulo}: {p.valor}</span>
+                  <span className="text-[11px] text-muted-foreground">{t(`paramOrigin_${p.origem}`)}</span>
+                  {p.pendente && (
+                    <span className="inline-flex items-center rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{t("paramPending")}</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">{p.nota} <RefLinks ids={p.referencias} refs={refs} /></p>
               </li>
             ))}

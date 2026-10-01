@@ -10,7 +10,7 @@ import type { ResultadoApoio } from "@workspace/clinical/web";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/lib/i18n";
 import { DecisionDisclaimer, DecisionResultView, StrengthChip, useDsT } from "./decision-result";
-import { choiceLabel } from "./logic";
+import { choiceLabel, readExecutionMeta } from "./logic";
 
 function ExecucaoItem({ e }: { e: ApoioDecisaoExecucaoCirurgia }) {
   const t = useDsT();
@@ -37,7 +37,7 @@ function ExecucaoItem({ e }: { e: ApoioDecisaoExecucaoCirurgia }) {
       </p>
       <details>
         <summary className="cursor-pointer text-xs font-medium text-primary">{t("showDetails")}</summary>
-        <div className="mt-3"><DecisionResultView resultado={resultado} execucaoId={e.execucaoId} modo={e.modo} /></div>
+        <div className="mt-3"><DecisionResultView resultado={resultado} execucaoId={e.execucaoId} modo={e.modo} meta={readExecutionMeta(e)} /></div>
       </details>
     </li>
   );

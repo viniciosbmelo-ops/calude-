@@ -12,6 +12,7 @@ import {
   type EntradaDef,
   type Forca,
   type OpcaoResultado,
+  type ParametroResultado,
   type PreopAssessment,
   type Referencia,
   type ResultadoApoio,
@@ -252,6 +253,193 @@ export function formatTraceValue(v: unknown): string {
   if (Array.isArray(v)) return v.join(", ");
   if (typeof v === "boolean") return v ? "✓" : "✗";
   return String(v);
+}
+
+// ---------------------------------------------------------------------------
+// Proveniência, conflitos com o registro e parâmetros usados
+// ---------------------------------------------------------------------------
+
+/** Proveniência como vem da API (`de` é string para tolerar valores novos). */
+export interface ProvenienciaView {
+  de: string;
+  caminho?: string;
+  nota?: string;
+}
+
+/** Conflito como vem da API: valor digitado descartado porque o registro salvo prevaleceu. */
+export interface ConflitoView {
+  entrada: string;
+  usado: unknown;
+  origemUsada: string;
+  descartado: unknown;
+  origemDescartada: string;
+}
+
+/** Agrupamento exibido ao usuário: do registro salvo, digitado, ou calculado a partir do registro. */
+export type ProvenanceKind = "registro" | "manual" | "derivado";
+
+/** payload/intraop/paciente → registro; derivada → derivado; manual ou desconhecido → manual. */
+export function provenanceKind(de: string | undefined): ProvenanceKind {
+  if (de === "payload" || de === "intraop" || de === "paciente") return "registro";
+  if (de === "derivada") return "derivado";
+  return "manual";
+}
+
+/** Rótulos usados na formatação de valores (vêm do arquivo de textos, para manter pt-BR/es). */
+export interface ValueLabels {
+  yes: string;
+  no: string;
+}
+
+/** Valor legível de uma entrada: Sim/Não para booleanos, lista com vírgulas, unidade quando houver. */
+export function formatInputValue(v: unknown, labels: ValueLabels, unidade?: string): string {
+  if (v === undefined || v === null || v === "") return "—";
+  if (typeof v === "boolean") return v ? labels.yes : labels.no;
+  if (Array.isArray(v)) return v.length ? v.map(String).join(", ") : "—";
+  if (typeof v === "object") return JSON.stringify(v);
+  return unidade ? `${String(v)} ${unidade}` : String(v);
+}
+
+function entradaDef(def: Pick<AlgorithmDef, "entradas"> | undefined, id: string): EntradaDef | undefined {
+  return def?.entradas.find((e) => e.id === id);
+}
+
+function unidadeDe(e: EntradaDef | undefined): string | undefined {
+  return e?.def.tipo === "numero" ? e.def.unidade : undefined;
+}
+
+export interface ConflictLine {
+  entrada: string;
+  rotulo: string;
+  /** Valor digitado pelo cirurgião (descartado). */
+  digitado: string;
+  /** Valor usado, do registro salvo. */
+  usado: string;
+  /** Origem detalhada do valor usado (payload, intraop, paciente, derivada...). */
+  origem: string;
+  kind: ProvenanceKind;
+  caminho?: string;
+}
+
+/** Linhas do aviso de conflitos, na ordem das entradas da definição (as desconhecidas ao fim). */
+export function conflictLines(
+  conflitos: readonly ConflitoView[] | undefined,
+  def: Pick<AlgorithmDef, "entradas"> | undefined,
+  labels: ValueLabels,
+  proveniencia?: Readonly<Record<string, ProvenienciaView>>,
+): ConflictLine[] {
+  if (!conflitos?.length) return [];
+  const ordem = (id: string) => {
+    const i = def?.entradas.findIndex((e) => e.id === id) ?? -1;
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...conflitos]
+    .sort((a, b) => ordem(a.entrada) - ordem(b.entrada))
+    .map((c) => {
+      const e = entradaDef(def, c.entrada);
+      const u = unidadeDe(e);
+      const caminho = proveniencia?.[c.entrada]?.caminho;
+      return {
+        entrada: c.entrada,
+        rotulo: e?.rotulo ?? c.entrada,
+        digitado: formatInputValue(c.descartado, labels, u),
+        usado: formatInputValue(c.usado, labels, u),
+        origem: c.origemUsada,
+        kind: provenanceKind(c.origemUsada),
+        ...(caminho ? { caminho } : {}),
+      };
+    });
+}
+
+export interface UsedInputLine {
+  id: string;
+  rotulo: string;
+  valor: string;
+  /** Ausente quando a proveniência não foi registrada (execuções antigas). */
+  kind?: ProvenanceKind;
+  caminho?: string;
+  nota?: string;
+  /** Este valor substituiu um valor digitado diferente. */
+  emConflito: boolean;
+}
+
+/** "Dados usados": entradas efetivamente avaliadas, na ordem da definição, com a origem de cada uma. */
+export function usedInputLines(
+  entrada: Readonly<Record<string, unknown>>,
+  def: Pick<AlgorithmDef, "entradas"> | undefined,
+  labels: ValueLabels,
+  proveniencia?: Readonly<Record<string, ProvenienciaView>>,
+  conflitos?: readonly Pick<ConflitoView, "entrada">[],
+): UsedInputLine[] {
+  const ids = Object.keys(entrada);
+  const defOrder = (def?.entradas ?? []).map((e) => e.id).filter((id) => ids.includes(id));
+  const rest = ids.filter((id) => !defOrder.includes(id)).sort();
+  const emConflito = new Set((conflitos ?? []).map((c) => c.entrada));
+  return [...defOrder, ...rest].map((id) => {
+    const e = entradaDef(def, id);
+    const p = proveniencia?.[id];
+    return {
+      id,
+      rotulo: e?.rotulo ?? id,
+      valor: formatInputValue(entrada[id], labels, unidadeDe(e)),
+      ...(p ? { kind: provenanceKind(p.de) } : {}),
+      ...(p?.caminho ? { caminho: p.caminho } : {}),
+      ...(p?.nota ? { nota: p.nota } : {}),
+      emConflito: emConflito.has(id),
+    };
+  });
+}
+
+export interface ParameterLine {
+  id: string;
+  rotulo: string;
+  valor: string;
+  origem: ParametroResultado["origem"];
+  pendente: boolean;
+  nota: string;
+  referencias: string[];
+}
+
+/** Parâmetros usados, com valor e unidade; `pendente` marca o padrão provisório ainda sem decisão do cirurgião. */
+export function parameterLines(parametros: readonly ParametroResultado[] | undefined): ParameterLine[] {
+  return (parametros ?? []).map((p) => ({
+    id: p.id,
+    rotulo: p.rotulo,
+    valor: p.unidade ? `${p.valor} ${p.unidade}` : String(p.valor),
+    origem: p.origem,
+    pendente: p.status === "pendente_decisao_cirurgiao",
+    nota: p.nota,
+    referencias: [...p.referencias],
+  }));
+}
+
+/** Metadados de uma execução (resposta da avaliação ou linha gravada), lidos com tolerância a campos ausentes. */
+export interface ExecutionMeta {
+  proveniencia?: Record<string, ProvenienciaView>;
+  conflitos: ConflitoView[];
+  parametrosIgnorados: boolean;
+}
+
+export function readExecutionMeta(x: unknown): ExecutionMeta {
+  const o = isObj(x) ? x : {};
+  let proveniencia: Record<string, ProvenienciaView> | undefined;
+  if (isObj(o.proveniencia)) {
+    proveniencia = {};
+    for (const [k, v] of Object.entries(o.proveniencia)) {
+      if (isObj(v) && typeof v.de === "string") {
+        proveniencia[k] = {
+          de: v.de,
+          ...(typeof v.caminho === "string" ? { caminho: v.caminho } : {}),
+          ...(typeof v.nota === "string" ? { nota: v.nota } : {}),
+        };
+      }
+    }
+  }
+  const conflitos = Array.isArray(o.conflitos)
+    ? o.conflitos.filter((c): c is ConflitoView => isObj(c) && typeof c.entrada === "string" && typeof c.origemUsada === "string")
+      .map((c) => ({ entrada: c.entrada, usado: c.usado, origemUsada: c.origemUsada, descartado: c.descartado, origemDescartada: String(c.origemDescartada ?? "manual") }))
+    : [];
+  return { ...(proveniencia ? { proveniencia } : {}), conflitos, parametrosIgnorados: o.parametrosIgnorados === true };
 }
 
 // ---------------------------------------------------------------------------

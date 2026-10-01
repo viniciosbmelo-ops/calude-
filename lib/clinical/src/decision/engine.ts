@@ -14,7 +14,7 @@ import type {
   Forca, MotivoOpcao, OpcaoResultado, ParametroResultado, Referencia, ResultadoApoio, TraceItem,
 } from './types';
 
-export const MOTOR_VERSAO = '1.0.0';
+export const MOTOR_VERSAO = '1.1.0';
 
 const RANK: Record<Forca, number> = { forte: 3, moderada: 2, fraca: 1, controversa: 0 };
 

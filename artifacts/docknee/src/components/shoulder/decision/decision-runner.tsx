@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { DecisionResultView, useDsT, type DsT } from "./decision-result";
 import {
   BOOL_NAO, BOOL_SIM, CHOICE_OTHER, MAX_JUSTIFICATIVA, MAX_OUTRA, buildChoicePayload, buildEntrada, describeApiError,
-  emptyChoice, visibleInputs, type ApiErrorView, type ChoiceState, type FieldError, type FormValues,
+  emptyChoice, readExecutionMeta, visibleInputs, type ApiErrorView, type ChoiceState, type FieldError, type FormValues,
 } from "./logic";
 
 export function algorithmDef(a: Pick<ApoioDecisaoAlgoritmo, "definicao">): AlgorithmDef {
@@ -241,7 +241,7 @@ export function DecisionRunner({ algoritmo, modo, initialValues, patientId, surg
       {mut.error && <ErrorBox error={describeApiError(mut.error)} title={t("evalError")} />}
       {exec && resultado && (
         <div className="space-y-4">
-          <DecisionResultView resultado={resultado} def={def} execucaoId={exec.execucaoId} modo={exec.modo} />
+          <DecisionResultView resultado={resultado} def={def} execucaoId={exec.execucaoId} modo={exec.modo} meta={readExecutionMeta(exec)} />
           {exec.modo !== "revisao" && <SurgeonChoiceForm key={exec.execucaoId} execucaoId={exec.execucaoId} opcoes={def.opcoes} />}
         </div>
       )}

@@ -100,6 +100,9 @@ describe('evaluate: resultado e agregação', () => {
     expect(r.rotulo).toBe('Sugestão');
     expect(r.algoritmo).toEqual({ id: FAKE.id, versao: FAKE.versao, hash: hashDefinition(FAKE), status: 'rascunho' });
     expect(r.motor).toBe(MOTOR_VERSAO);
+    // 1.1.0: o resultado gravado sempre traz `parametros` (lista vazia quando a definição não declara)
+    expect(MOTOR_VERSAO).toBe('1.1.0');
+    expect(Array.isArray(r.parametros)).toBe(true);
     expect(r.modo).toBe('preop');
     expect(r.avisosGerais).toEqual(FAKE.avisosGerais);
     const ctx = evaluate(FAKE, {}, { status: 'ativo', hash: 'abc', modo: 'registro' });
