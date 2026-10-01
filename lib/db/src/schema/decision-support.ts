@@ -9,7 +9,7 @@
  * FKs com nome curto e explícito: o nome automático de drizzle pode passar de 63 caracteres e
  * fazer o `push` derrubar e recriar a FK a cada execução.
  */
-import { pgTable, serial, integer, text, jsonb, timestamp, index, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, jsonb, boolean, timestamp, index, foreignKey } from "drizzle-orm/pg-core";
 import { doctorsTable } from "./doctors";
 import { patientsTable } from "./patients";
 import { surgeriesTable } from "./surgeries";
@@ -32,6 +32,8 @@ export const apoioDecisaoExecucoesTable = pgTable("apoio_decisao_execucoes", {
   proveniencia: jsonb("proveniencia").notNull(),
   /** Divergências manual × registro (o registro prevalece); [] quando não há. Nulo só em linhas antigas. */
   conflitos: jsonb("conflitos"),
+  /** O cliente enviou limiares (`parametros`) que não foram aplicados. Nulo só em linhas antigas. */
+  parametrosIgnorados: boolean("params_ignorados"),
   /** Resultado completo, sempre recalculado no servidor (inclui `parametros`: limiares usados e a origem). */
   resultado: jsonb("resultado").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

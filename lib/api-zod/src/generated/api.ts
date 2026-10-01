@@ -1061,6 +1061,19 @@ export const ListExecucoesApoioDecisaoCirurgiaResponse = zod.object({
   "referencias": zod.array(zod.record(zod.string(), zod.unknown())),
   "parametros": zod.array(zod.record(zod.string(), zod.unknown())).optional().describe('Resolved parameters (value used and origin `padrao` or `contexto`)')
 }).describe('Engine output (ResultadoApoio in @workspace\/clinical). Never a decision.'),
+  "proveniencia": zod.record(zod.string(), zod.object({
+  "de": zod.enum(['payload', 'intraop', 'paciente', 'derivada', 'manual']),
+  "caminho": zod.string().optional(),
+  "nota": zod.string().optional()
+})).describe('Origin of each input used (record path, patient, derived or manual)'),
+  "conflitos": zod.array(zod.object({
+  "entrada": zod.string(),
+  "usado": zod.unknown(),
+  "origemUsada": zod.string(),
+  "descartado": zod.unknown(),
+  "origemDescartada": zod.string()
+})).nullable().describe('Manual values that diverged from the record and were discarded (null on legacy rows)'),
+  "parametrosIgnorados": zod.boolean().nullable().describe('True when the client sent parameter overrides that were not applied (null on legacy rows)'),
   "escolha": zod.union([zod.object({
   "id": zod.number(),
   "execucaoId": zod.number(),

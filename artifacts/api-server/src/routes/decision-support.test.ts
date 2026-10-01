@@ -293,7 +293,7 @@ describe.sequential("apoio à decisão: API", () => {
     expect(row).toMatchObject({
       doctorId, patientId, surgeryId, algoritmoId: ALG_ID, algoritmoVersao: "1.0.0", algoritmoHash: hashDefinition(V1),
       statusNoMomento: "ativo", modo: "preop", entrada,
-      proveniencia: { temperatura: { de: "manual" }, solo: { de: "manual" } }, conflitos: [],
+      proveniencia: { temperatura: { de: "manual" }, solo: { de: "manual" } }, conflitos: [], parametrosIgnorados: false,
     });
     expect(row.resultado).toEqual(esperado);
   });
@@ -374,6 +374,7 @@ describe.sequential("apoio à decisão: API", () => {
     expect(execucoes).toHaveLength(1);
     expect(execucoes[0]).toMatchObject({
       execucaoId, algoritmoId: ALG_ID, versao: "1.0.0", hash: hashDefinition(V1), statusNoMomento: "ativo", modo: "preop",
+      proveniencia: { temperatura: { de: "manual" }, solo: { de: "manual" } }, conflitos: [], parametrosIgnorados: false,
       escolha: { execucaoId, opcao: null, outra: "Adiar uma semana", concordancia: "diverge" },
     });
     expect(execucoes[0].resultado.rotulo).toBe("Sugestão");
@@ -475,7 +476,32 @@ describe.sequential("apoio à decisão: parâmetros (governança) e mapeamento d
     expect(body.proveniencia).toEqual(proveniencia);
     expect(body.conflitos).toEqual(conflitos);
     const row = await linha(body.execucaoId);
-    expect(row).toMatchObject({ surgeryId: sid, patientId: pid, entrada: { temperatura: 34, solo: "seco", idade: 45 }, proveniencia, conflitos });
+    expect(row).toMatchObject({ surgeryId: sid, patientId: pid, entrada: { temperatura: 34, solo: "seco", idade: 45 }, proveniencia, conflitos, parametrosIgnorados: false });
+  });
+
+  it("o histórico da cirurgia devolve conflitos, proveniência e parâmetros ignorados de cada execução", async () => {
+    const res = await call(avaliarP, "POST", authDoctor, {
+      entrada: { temperatura: 12, solo: "seco" }, modo: "preop", surgeryId: sid, parametros: { limiar_calor: 20 },
+    });
+    expect(res.status).toBe(201);
+    const { execucaoId: id } = await res.json();
+    const lista = await call(`/api/apoio-decisao/cirurgias/${sid}/execucoes`, "GET", authDoctor);
+    expect(lista.status).toBe(200);
+    const { execucoes } = await lista.json();
+    const exec = execucoes.find((e: { execucaoId: number }) => e.execucaoId === id);
+    expect(exec).toMatchObject({
+      proveniencia: {
+        temperatura: { de: "payload", caminho: "avaliacaoPreop.comum.temperatura_local" },
+        solo: { de: "manual" },
+        idade: { de: "paciente", caminho: "paciente.dataNascimento" },
+      },
+      conflitos: [{ entrada: "temperatura", usado: 34, origemUsada: "payload", descartado: 12, origemDescartada: "manual" }],
+      parametrosIgnorados: true,
+    });
+    // A execução anterior (sem limiares enviados) continua com o próprio registro
+    const anterior = execucoes.find((e: { execucaoId: number }) => e.execucaoId !== id);
+    expect(anterior).toMatchObject({ parametrosIgnorados: false });
+    expect(anterior.conflitos).toHaveLength(2);
   });
 
   it("posse: a cirurgia de outro médico não é lida nem vinculada", async () => {

@@ -277,6 +277,7 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
         entrada: resultado.entrada,
         proveniencia,
         conflitos: montada.conflitos,
+        parametrosIgnorados,
         resultado,
       })
       .returning({ id: apoioDecisaoExecucoesTable.id });
@@ -507,6 +508,9 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
           modo: e.modo,
           createdAt: e.createdAt.toISOString(),
           resultado: e.resultado,
+          proveniencia: e.proveniencia,
+          conflitos: e.conflitos ?? null,
+          parametrosIgnorados: e.parametrosIgnorados ?? null,
           escolha: escolha
             ? {
               id: escolha.id,

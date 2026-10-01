@@ -924,6 +924,11 @@ export const ApoioDecisaoExecucaoCirurgiaModo = {
   revisao: 'revisao',
 } as const;
 
+/**
+ * Origin of each input used (record path, patient, derived or manual)
+ */
+export type ApoioDecisaoExecucaoCirurgiaProveniencia = {[key: string]: ApoioDecisaoProveniencia};
+
 export interface ApoioDecisaoExecucaoCirurgia {
   execucaoId: number;
   algoritmoId: string;
@@ -933,6 +938,18 @@ export interface ApoioDecisaoExecucaoCirurgia {
   modo: ApoioDecisaoExecucaoCirurgiaModo;
   createdAt: string;
   resultado: ResultadoApoioDecisao;
+  /** Origin of each input used (record path, patient, derived or manual) */
+  proveniencia: ApoioDecisaoExecucaoCirurgiaProveniencia;
+  /**
+     * Manual values that diverged from the record and were discarded (null on legacy rows)
+     * @nullable
+     */
+  conflitos: ApoioDecisaoConflito[] | null;
+  /**
+     * True when the client sent parameter overrides that were not applied (null on legacy rows)
+     * @nullable
+     */
+  parametrosIgnorados: boolean | null;
   escolha: ApoioDecisaoEscolha | null;
 }
 

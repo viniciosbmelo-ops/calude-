@@ -2039,11 +2039,24 @@ components:
           format: date-time
         resultado:
           $ref: "#/components/schemas/ResultadoApoioDecisao"
+        proveniencia:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ApoioDecisaoProveniencia"
+          description: Origin of each input used (record path, patient, derived or manual)
+        conflitos:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ApoioDecisaoConflito"
+          description: Manual values that diverged from the record and were discarded (null on legacy rows)
+        parametrosIgnorados:
+          type: ["boolean", "null"]
+          description: True when the client sent parameter overrides that were not applied (null on legacy rows)
         escolha:
           oneOf:
             - $ref: "#/components/schemas/ApoioDecisaoEscolha"
             - type: "null"
-      required: [execucaoId, algoritmoId, versao, hash, statusNoMomento, modo, createdAt, resultado, escolha]
+      required: [execucaoId, algoritmoId, versao, hash, statusNoMomento, modo, createdAt, resultado, proveniencia, conflitos, parametrosIgnorados, escolha]
 
     ApoioDecisaoExecucoesCirurgia:
       type: object

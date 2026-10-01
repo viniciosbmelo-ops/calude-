@@ -5,8 +5,10 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
+import type { ApoioDecisaoConflito } from './apoioDecisaoConflito';
 import type { ApoioDecisaoEscolha } from './apoioDecisaoEscolha';
 import type { ApoioDecisaoExecucaoCirurgiaModo } from './apoioDecisaoExecucaoCirurgiaModo';
+import type { ApoioDecisaoExecucaoCirurgiaProveniencia } from './apoioDecisaoExecucaoCirurgiaProveniencia';
 import type { ResultadoApoioDecisao } from './resultadoApoioDecisao';
 
 export interface ApoioDecisaoExecucaoCirurgia {
@@ -18,5 +20,17 @@ export interface ApoioDecisaoExecucaoCirurgia {
   modo: ApoioDecisaoExecucaoCirurgiaModo;
   createdAt: Date;
   resultado: ResultadoApoioDecisao;
+  /** Origin of each input used (record path, patient, derived or manual) */
+  proveniencia: ApoioDecisaoExecucaoCirurgiaProveniencia;
+  /**
+     * Manual values that diverged from the record and were discarded (null on legacy rows)
+     * @nullable
+     */
+  conflitos: ApoioDecisaoConflito[] | null;
+  /**
+     * True when the client sent parameter overrides that were not applied (null on legacy rows)
+     * @nullable
+     */
+  parametrosIgnorados: boolean | null;
   escolha: ApoioDecisaoEscolha | null;
 }
