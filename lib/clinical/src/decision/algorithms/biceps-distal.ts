@@ -8,7 +8,8 @@
  *
  * Nenhum nó chega a "forte" (não há ECR operatório × não operatório, nem em lesões crônicas ou parciais).
  * Zonas cinzentas (◆ na spec) são regras com `controversia` e alternativas lado a lado, sem vencedor:
- * classificação temporal (N2), A1-ZC, A3, A5, B2, C2 e D1.
+ * A1-ZC, A3, A5, B2, C2 e D1. A classificação temporal (N2) é um aviso informativo exibido só quando as
+ * definições de "crônica" discordam para os dias informados; definições não são opções de tratamento.
  *
  * O corte "crônica" é o PARÂMETRO `limiar_cronica_dias` (a entrada guarda os dias crus).
  * Níveis de evidência das referências: atribuídos pelo desenho do estudo descrito na spec
@@ -36,7 +37,7 @@ const AVISO_RM_PCT = 'A estimativa do % rompido por RM é pouco reprodutível (c
 
 export const BICEPS_DISTAL: AlgorithmDef = {
   id: 'EL_DBR_APOIO',
-  versao: '0.1.0',
+  versao: '0.1.1',
   patologias: [BICEPS_DISTAL_CODIGO],
   titulo: 'Ruptura do tendão distal do bíceps (rascunho)',
   escopo: 'Suspeita ou diagnóstico de ruptura completa (aguda ou tardia/crônica) ou parcial do tendão distal do bíceps, do diagnóstico ao pós-operatório.',
@@ -65,26 +66,26 @@ export const BICEPS_DISTAL: AlgorithmDef = {
   ],
   entradas: [
     { id: 'dias_desde_lesao', rotulo: 'Dias desde a lesão', def: { tipo: 'numero', unidade: 'dias', min: 0, max: 3650 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].dias_desde_lesao_preop' }, momento: 'preop' },
-    { id: 'tipo_ruptura', rotulo: 'Tipo de ruptura', def: { tipo: 'enum', valores: ['completa', 'parcial', 'tendinopatia', 'indeterminada'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].tipo_rm' }, momento: 'preop' },
-    { id: 'hook_test', rotulo: 'Hook test', def: { tipo: 'enum', valores: ['anormal', 'normal', 'normal_doloroso', 'nao_realizado'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].hook_test' }, momento: 'preop' },
+    { id: 'tipo_ruptura', rotulo: 'Tipo de ruptura', def: { tipo: 'enum', valores: ['completa', 'parcial', 'tendinopatia', 'indeterminada'], rotulos: { completa: 'Completa', parcial: 'Parcial', tendinopatia: 'Tendinopatia (sem ruptura)', indeterminada: 'Indeterminada' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].tipo_rm' }, momento: 'preop' },
+    { id: 'hook_test', rotulo: 'Hook test', def: { tipo: 'enum', valores: ['anormal', 'normal', 'normal_doloroso', 'nao_realizado'], rotulos: { anormal: 'Anormal', normal: 'Normal', normal_doloroso: 'Normal e doloroso', nao_realizado: 'Não realizado' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].hook_test' }, momento: 'preop' },
     { id: 'pct_ruptura_parcial_rm', rotulo: '% estimado de ruptura parcial na RM', def: { tipo: 'numero', unidade: '%', min: 0, max: 100 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].partial_pct_rm' }, momento: 'preop' },
     { id: 'rm_incidencia_fabs', rotulo: 'RM com incidência FABS', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'retracao_cm', rotulo: 'Retração na RM', def: { tipo: 'numero', unidade: 'cm', min: 0, max: 30 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].retracao_cm_rm' }, momento: 'preop' },
-    { id: 'lacerto_fibroso', rotulo: 'Lacerto fibroso', def: { tipo: 'enum', valores: ['integro', 'roto', 'indeterminado'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].lacerto_integro_rm' }, momento: 'preop' },
+    { id: 'lacerto_fibroso', rotulo: 'Lacerto fibroso', def: { tipo: 'enum', valores: ['integro', 'roto', 'indeterminado'], rotulos: { integro: 'Íntegro', roto: 'Roto', indeterminado: 'Indeterminado' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].lacerto_integro_rm' }, momento: 'preop' },
     { id: 'membro_dominante', rotulo: 'Lesão no membro dominante', def: { tipo: 'booleano' }, origem: { de: 'derivada', funcao: 'lado_dominante × lado da cirurgia', dependeDe: [] }, momento: 'preop' },
-    { id: 'ocupacao', rotulo: 'Ocupação', def: { tipo: 'enum', valores: ['manual_pesado', 'atleta', 'sedentario', 'outro'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].ocupacao_demanda' }, momento: 'preop' },
-    { id: 'demanda_funcional', rotulo: 'Demanda funcional', def: { tipo: 'enum', valores: ['alta', 'baixa'] }, origem: { de: 'derivada', funcao: 'ocupacao_demanda ou nivel_atividade', dependeDe: [] }, momento: 'preop' },
-    { id: 'prioridade_supinacao', rotulo: 'Prioridade do paciente para supinação', def: { tipo: 'enum', valores: ['alta', 'baixa', 'nao_informada'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].necessidade_forca_supinacao' }, momento: 'preop' },
+    { id: 'ocupacao', rotulo: 'Ocupação', def: { tipo: 'enum', valores: ['manual_pesado', 'atleta', 'sedentario', 'outro'], rotulos: { manual_pesado: 'Trabalho manual pesado', atleta: 'Atleta', sedentario: 'Sedentário', outro: 'Outra' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].ocupacao_demanda' }, momento: 'preop' },
+    { id: 'demanda_funcional', rotulo: 'Demanda funcional', def: { tipo: 'enum', valores: ['alta', 'baixa'], rotulos: { alta: 'Alta', baixa: 'Baixa' } }, origem: { de: 'derivada', funcao: 'ocupacao_demanda ou nivel_atividade', dependeDe: [] }, momento: 'preop' },
+    { id: 'prioridade_supinacao', rotulo: 'Prioridade do paciente para supinação', def: { tipo: 'enum', valores: ['alta', 'baixa', 'nao_informada'], rotulos: { alta: 'Alta', baixa: 'Baixa', nao_informada: 'Não informada pelo paciente' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].necessidade_forca_supinacao' }, momento: 'preop' },
     { id: 'aceita_deficit_supinacao', rotulo: 'Paciente aceita o déficit de supinação', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'idade', rotulo: 'Idade', def: { tipo: 'numero', unidade: 'anos', min: 0, max: 120, inteiro: true }, origem: { de: 'paciente', campo: 'idade' }, momento: 'preop' },
-    { id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex', 'atual'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.comum.tabagismo' }, momento: 'preop' },
+    { id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex', 'atual'], rotulos: { nunca: 'Nunca fumou', ex: 'Ex-tabagista', atual: 'Tabagista atual' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop.comum.tabagismo' }, momento: 'preop' },
     { id: 'diabetes', rotulo: 'Diabetes', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: 'avaliacaoPreop.comum.diabetes' }, momento: 'preop' },
     { id: 'dpoc', rotulo: 'DPOC', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
-    { id: 'obesidade_classe', rotulo: 'Obesidade (classe)', def: { tipo: 'enum', valores: ['nao', 'I', 'II', 'III'] }, origem: { de: 'manual' }, momento: 'preop' },
+    { id: 'obesidade_classe', rotulo: 'Obesidade (classe)', def: { tipo: 'enum', valores: ['nao', 'I', 'II', 'III'], rotulos: { nao: 'Sem obesidade', I: 'Classe I', II: 'Classe II', III: 'Classe III' } }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'asa', rotulo: 'ASA', def: { tipo: 'numero', min: 1, max: 5, inteiro: true }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'restricao_aine', rotulo: 'Restrição ao uso de AINE', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'workers_comp', rotulo: 'Afastamento/indenização por acidente de trabalho', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
-    { id: 'via_planejada', rotulo: 'Via de acesso escolhida pelo cirurgião', def: { tipo: 'enum', valores: ['unica', 'dupla', 'nao_definida'] }, origem: { de: 'manual' }, momento: 'preop' },
+    { id: 'via_planejada', rotulo: 'Via de acesso escolhida pelo cirurgião', def: { tipo: 'enum', valores: ['unica', 'dupla', 'nao_definida'], rotulos: { unica: 'Incisão única anterior', dupla: 'Dupla incisão', nao_definida: 'Ainda não definida' } }, origem: { de: 'manual' }, momento: 'preop' },
   ],
   opcoes: [
     { id: 'complementar_rm', rotulo: 'Complementar a investigação com RM', naoCirurgica: true },
@@ -103,9 +104,6 @@ export const BICEPS_DISTAL: AlgorithmDef = {
     { id: 'reparo_parcial', rotulo: 'Completar a ruptura e reinserção anatômica', procedimentosIntraop: ['single_incision_repair', 'double_incision_repair'] },
     { id: 'imobilizacao_inicial', rotulo: 'Imobilização inicial no pós-operatório', naoCirurgica: true },
     { id: 'mobilizacao_precoce', rotulo: 'Mobilização precoce no pós-operatório', naoCirurgica: true },
-    { id: 'def_cronica_21d', rotulo: 'Definição de crônica: >21 dias', naoCirurgica: true },
-    { id: 'def_cronica_4sem', rotulo: 'Definição de crônica: >4 semanas', naoCirurgica: true },
-    { id: 'def_cronica_6sem', rotulo: 'Definição de crônica: ≥6 semanas', naoCirurgica: true },
   ],
   regras: [
     // ---------- N1: confirmação diagnóstica ----------
@@ -138,25 +136,21 @@ export const BICEPS_DISTAL: AlgorithmDef = {
       referencias: [{ ref: 'Luokkala2019', nota: 'sensibilidade 45% com lacerto íntegro' }],
     },
 
-    // ---------- N2 ◆: classificação temporal ----------
+    // ---------- N2 ◆: classificação temporal (informativa; definições não são opções de tratamento) ----------
     {
-      id: 'DBR.N2.TEMPO', titulo: 'Classificação temporal da ruptura completa',
-      quando: { all: [COMPLETA, { campo: 'dias_desde_lesao', op: '>=', valor: 0 }] },
-      efeitos: [
-        { opcao: 'def_cronica_21d', efeito: 'favorece', forca: 'fraca' },
-        { opcao: 'def_cronica_4sem', efeito: 'favorece', forca: 'fraca' },
-        { opcao: 'def_cronica_6sem', efeito: 'favorece', forca: 'fraca' },
+      id: 'DBR.N2.TEMPO', titulo: 'Classificação temporal: as definições de ruptura crônica divergem',
+      // Só quando as três definições discordam: entre o corte mais curto (>21 dias) e o mais longo (≥6 semanas = 42 dias).
+      quando: { all: [COMPLETA, { campo: 'dias_desde_lesao', op: '>', valor: 21 }, { campo: 'dias_desde_lesao', op: '<', valor: 42 }] },
+      efeitos: [], aviso: true,
+      motivo: 'Lesão de {dias_desde_lesao}: as definições de ruptura crônica divergem para este tempo. Crônica por >21 dias (Kelly 2000; Haverstock 2017; Carlier 2023); crônica por >4 semanas só a partir do 29º dia (nota técnica, n=6; Greco 2026); não crônica pela definição de ≥6 semanas, que começa no 42º dia (Schmidt 2022). Em série de via dupla (n=74), complicações de 24% com <10 dias, 38% com 10–21 dias e 41% com >21 dias. O sistema guarda os dias e aplica o corte de ruptura crônica configurado pelo cirurgião (parâmetro configurável); a disponibilidade de enxerto para lesões >6 semanas (43% dos cirurgiões em survey) é prática, não limiar clínico.',
+      referencias: [
+        { ref: 'Kelly2000', nota: '>21 dias; estratos <10 d, 10–21 d, >21 d' },
+        { ref: 'Haverstock2017', nota: '>21 dias' },
+        { ref: 'Carlier2023', nota: '>21 dias' },
+        { ref: 'Greco2026', nota: '>4 semanas (nota técnica, n=6)' },
+        { ref: 'Schmidt2022', nota: '≥6 semanas' },
+        { ref: 'Rosenthal2023', nota: 'prática de survey, não limiar' },
       ],
-      motivo: 'Lesão de {dias_desde_lesao}. Não existe definição única de "crônica": >21 dias, >4 semanas ou ≥6 semanas. Em série de via dupla (n=74), complicações de 24% com <10 dias, 38% com 10–21 dias e 41% com >21 dias. O corte aplicado pelo sistema é o parâmetro configurado pelo cirurgião.',
-      referencias: [{ ref: 'Kelly2000', nota: 'estratos <10 d, 10–21 d, >21 d' }],
-      controversia: {
-        nota: 'Não há definição única de ruptura crônica. O sistema guarda os dias e mostra as definições sem escolher entre elas. A disponibilidade de enxerto para lesões >6 semanas (43% dos cirurgiões em survey) é prática, não limiar clínico.',
-        alternativas: [
-          { opcao: 'def_cronica_21d', argumento: '>21 dias = tardia/crônica.', referencias: [{ ref: 'Kelly2000' }, { ref: 'Haverstock2017' }, { ref: 'Carlier2023' }] },
-          { opcao: 'def_cronica_4sem', argumento: '>4 semanas = crônica (nota técnica, n=6).', referencias: [{ ref: 'Greco2026' }] },
-          { opcao: 'def_cronica_6sem', argumento: '≥6 semanas = crônica.', referencias: [{ ref: 'Schmidt2022' }, { ref: 'Rosenthal2023', nota: 'prática de survey, não limiar' }] },
-        ],
-      },
     },
 
     // ---------- A1: ruptura completa aguda, operatório × não operatório ----------

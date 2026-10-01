@@ -187,6 +187,39 @@ describe('zonas cinzentas: controversa com alternativas', () => {
   test('nenhuma zona cinzenta marca vencedora: todas as alternativas saem como controversa', () => {
     const r = evaluate(DEF, { ...REC, gbl_pct: 15 });
     expect(r.opcoes.every((o) => o.forca === 'controversa')).toBe(true);
+    // zona cinzenta nunca leva "favorece": sai como alternativa
+    expect(r.opcoes.every((o) => o.sentido === 'alternativa')).toBe(true);
+  });
+
+  test('caso-ouro off-track (GBL subcrítica na ZC-A, ISIS intermediário): Bankart isolado sai como cautela forte, nunca "favorece"', () => {
+    const r = evaluate(DEF, { ...REC, gbl_pct: 15, track_status: 'off_track', gt_mm: 20.5, hsi_mm: 23.9, isis_total: 5 });
+    // regras que, isoladas, favoreceriam o Bankart (ZC-A e ZC-D) disparam junto com a cautela off-track
+    expect(disparou(r)).toEqual(expect.arrayContaining(['N3.ZC_A', 'N5.ZC_D', 'N4.OFF_TRACK.BANKART_ISOLADO', 'N4.ZC_B']));
+    const bankart = opcao(r, 'bankart_artro')!;
+    expect(bankart).toMatchObject({ sentido: 'desfavorece', forca: 'forte' });
+    expect(bankart.motivos.find((m) => m.regra === 'N4.OFF_TRACK.BANKART_ISOLADO')).toMatchObject({ efeito: 'desfavorece', forca: 'forte' });
+    expect(r.opcoes[r.opcoes.length - 1].opcao).toBe('bankart_artro');
+    // as alternativas da ZC-B ficam como alternativas, sem "favorece"
+    for (const id of ['bankart_remplissage', 'latarjet', 'latarjet_remplissage']) {
+      expect(opcao(r, id), id).toMatchObject({ sentido: 'alternativa', forca: 'controversa' });
+    }
+    expect(r.opcoes.filter((o) => o.sentido === 'favorece')).toEqual([]);
+    // texto da cautela com vírgula decimal (pt-BR)
+    expect(bankart.motivos.find((m) => m.regra === 'N4.OFF_TRACK.BANKART_ISOLADO')!.texto).toContain('HSI 23,9 mm > GT 20,5 mm');
+  });
+
+  test('caso-ouro off-track em primeiro episódio sem perda óssea (ZC-E forte a favor): cautela forte prevalece', () => {
+    const r = evaluate(DEF, { tipo_episodio: 'primeiro_episodio', idade: 25, gbl_pct: 3, track_status: 'off_track' });
+    expect(disparou(r)).toEqual(expect.arrayContaining(['N2B.ZC_E', 'N4.OFF_TRACK.BANKART_ISOLADO']));
+    expect(opcao(r, 'bankart_artro')).toMatchObject({ sentido: 'desfavorece', forca: 'forte' });
+    expect(opcao(r, 'conservador')).toMatchObject({ sentido: 'alternativa', forca: 'controversa' });
+  });
+
+  test('aviso do track usa rótulo legível (sem id interno)', () => {
+    const r = evaluate(DEF, { ...REC, track_status: 'off_track' });
+    const a = r.avisos.find((x) => x.regra === 'L7.CONFIABILIDADE_TRACK')!;
+    expect(a.texto).toContain('Off-track');
+    expect(a.texto).not.toContain('off_track');
   });
 });
 

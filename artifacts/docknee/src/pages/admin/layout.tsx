@@ -40,7 +40,7 @@ export function AdminLayout({ children, activeSection, onSectionChange }: AdminL
       <aside className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0">
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight flex items-center gap-2">
-            <span className="bg-sidebar-primary text-sidebar-primary-foreground p-1 rounded">DK</span>
+            <span className="bg-sidebar-primary text-sidebar-primary-foreground p-1 rounded">DS</span>
             DocSholder Admin
           </h1>
           <p className="text-xs text-sidebar-accent-foreground mt-1 opacity-70">{t("console.operational")}</p>
@@ -79,7 +79,7 @@ export function AdminLayout({ children, activeSection, onSectionChange }: AdminL
       {/* Header Mobile */}
       <header className="md:hidden bg-sidebar p-4 flex items-center justify-between border-b border-sidebar-border sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <span className="bg-sidebar-primary text-sidebar-primary-foreground p-1 rounded font-bold text-xs">DK</span>
+          <span className="bg-sidebar-primary text-sidebar-primary-foreground p-1 rounded font-bold text-xs">DS</span>
           <span className="text-sm font-bold text-sidebar-foreground">{t("admin")}</span>
         </div>
         <select 

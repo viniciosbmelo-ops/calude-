@@ -4,13 +4,13 @@
  * Só leitura; reutilizado na página, no painel do registro e no cartão da cirurgia.
  */
 import { AlertTriangle, BookOpen, CircleHelp, ExternalLink, Info, Scale, ThumbsUp } from "lucide-react";
-import type { AlgorithmDef, Forca, OpcaoResultado, Referencia, ResultadoApoio, StatusAlgoritmo } from "@workspace/clinical/web";
+import { DECISION_ALGORITHMS, type AlgorithmDef, type Forca, type Referencia, type ResultadoApoio, type SentidoOpcao, type StatusAlgoritmo } from "@workspace/clinical/web";
 import { cn } from "@/lib/utils";
-import { useScopedTranslations } from "@/lib/i18n";
+import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { decisionSupportMessages } from "@/locales/decision-support";
 import {
-  collectControversies, conflictLines, formatTraceValue, groupTrace, parameterLines, referenceHref, referenceIds, referenceMap,
-  ruleTitle, usedInputLines, type ExecutionMeta, type ProvenanceKind,
+  alternativeEvidence, collectControversies, conflictLines, displayDirection, formatTraceValue, groupTrace, motiveTag, orderedMotives,
+  parameterLines, referenceHref, referenceIds, referenceMap, ruleTitle, usedInputLines, valueLabelsOf, type ExecutionMeta, type ProvenanceKind,
 } from "./logic";
 
 export type DsT = ReturnType<typeof useDsT>;
@@ -54,13 +54,30 @@ export function StrengthChip({ forca }: { forca: Forca }) {
   return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold", FORCA_CLASS[forca])}>{t("strength", { f: t(`forca_${forca}`) })}</span>;
 }
 
-function DirectionTag({ sentido }: { sentido: OpcaoResultado["sentido"] }) {
+const DIRECTION_CLASS: Record<SentidoOpcao, string> = {
+  favorece: "text-emerald-700 dark:text-emerald-300",
+  alternativa: "text-sky-800 dark:text-sky-300",
+  desfavorece: "text-amber-700 dark:text-amber-300",
+};
+const DIRECTION_ICON = { favorece: ThumbsUp, alternativa: CircleHelp, desfavorece: AlertTriangle } as const;
+
+export function DirectionTag({ sentido }: { sentido: SentidoOpcao }) {
   const t = useDsT();
-  const Icon = sentido === "favorece" ? ThumbsUp : AlertTriangle;
+  const Icon = DIRECTION_ICON[sentido];
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", sentido === "favorece" ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", DIRECTION_CLASS[sentido])}>
       <Icon className="h-3.5 w-3.5" />{t(`sentido_${sentido}`)}
     </span>
+  );
+}
+
+/** Força + sentido de uma opção. Alternativa de zona cinzenta: só o rótulo de alternativa (sem força nem "favorece"). */
+export function OptionDirection({ forca, sentido }: { forca: Forca; sentido: SentidoOpcao }) {
+  return (
+    <>
+      {sentido !== "alternativa" && <StrengthChip forca={forca} />}
+      <DirectionTag sentido={sentido} />
+    </>
   );
 }
 
@@ -92,7 +109,7 @@ function ProvenanceTag({ kind, title }: { kind: ProvenanceKind; title?: string }
   return <span title={title} className={cn("inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide", PROV_CLASS[kind])}>{t(`prov_${kind}`)}</span>;
 }
 
-export function DecisionResultView({ resultado, def, execucaoId, modo, meta }: {
+export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, meta }: {
   resultado: ResultadoApoio;
   def?: AlgorithmDef;
   execucaoId?: number;
@@ -101,15 +118,19 @@ export function DecisionResultView({ resultado, def, execucaoId, modo, meta }: {
   meta?: ExecutionMeta;
 }) {
   const t = useDsT();
-  const labels = { yes: t("yes"), no: t("no") };
+  const { locale } = useLanguage();
+  // Resultado gravado sem a definição em mãos (cartão da cirurgia): usa a versão registrada no código, se houver.
+  const def = defProp ?? DECISION_ALGORITHMS.find((d) => d.id === resultado.algoritmo.id && d.versao === resultado.algoritmo.versao);
+  const labels = { yes: t("yes"), no: t("no"), locale };
   const sourceLabel = (origem: string) => (SOURCE_KEYS.has(origem) ? t(`src_${origem}` as "src_manual") : origem);
   const conflitos = conflictLines(meta?.conflitos, def, labels, meta?.proveniencia);
   const usados = usedInputLines(resultado.entrada ?? {}, def, labels, meta?.proveniencia, meta?.conflitos);
-  const parametros = parameterLines(resultado.parametros);
+  const parametros = parameterLines(resultado.parametros, locale);
   const refs = referenceMap(resultado);
   const controversias = collectControversies(resultado.opcoes);
   const trace = groupTrace(resultado.trace);
   const entradaRotulo = (id: string) => def?.entradas.find((e) => e.id === id)?.rotulo ?? id;
+  const rotulosDe = (id: string) => valueLabelsOf(def?.entradas.find((e) => e.id === id));
   const titulo = def?.titulo ?? resultado.algoritmo.id;
 
   return (
@@ -183,29 +204,49 @@ export function DecisionResultView({ resultado, def, execucaoId, modo, meta }: {
         <h3 className="flex items-center gap-2 text-sm font-semibold"><Scale className="h-4 w-4" />{t("optionsTitle")}</h3>
         {resultado.opcoes.length === 0 && <p className="text-sm text-muted-foreground">{t("noOptions")}</p>}
         <ul className="space-y-2">
-          {resultado.opcoes.map((o) => (
-            <li key={o.opcao} className="rounded-lg border p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold">{o.rotulo}</span>
-                <StrengthChip forca={o.forca} />
-                <DirectionTag sentido={o.sentido} />
-              </div>
-              {o.motivos.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs font-semibold text-muted-foreground">{t("whyTitle")}</p>
-                  <ul className="mt-1 space-y-1 text-sm">
-                    {o.motivos.map((m, i) => (
-                      <li key={`${m.regra}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
-                        <span>{m.texto}</span>
-                        <span className="text-[11px] text-muted-foreground">{m.regra} · {t(`sentido_${m.efeito}`)} · {t(`forca_${m.forca}`)}</span>
-                      </li>
-                    ))}
-                  </ul>
+          {resultado.opcoes.map((o) => {
+            const sentido = displayDirection(o);
+            const evidencia = sentido === "alternativa" ? alternativeEvidence(o) : [];
+            return (
+              <li key={o.opcao} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{o.rotulo}</span>
+                  <OptionDirection forca={o.forca} sentido={sentido} />
                 </div>
-              )}
-              {o.referencias.length > 0 && <div className="mt-2"><RefLinks ids={o.referencias} refs={refs} /></div>}
-            </li>
-          ))}
+                {evidencia.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground">{t("alternativeEvidenceTitle")}</p>
+                    <ul className="mt-1 space-y-1 text-sm">
+                      {evidencia.map((a, i) => (
+                        <li key={`${a.regra}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
+                          <span>{a.argumento}</span>
+                          <span className="text-[11px] text-muted-foreground">{ruleTitle(def, a.regra)}</span>
+                          <RefLinks ids={a.referencias} refs={refs} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {o.motivos.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground">{t("whyTitle")}</p>
+                    <ul className="mt-1 space-y-1 text-sm">
+                      {orderedMotives(o.motivos, sentido).map((m, i) => {
+                        const tag = motiveTag(o, m);
+                        return (
+                          <li key={`${m.regra}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
+                            <span>{m.texto}</span>
+                            <span className="text-[11px] text-muted-foreground">{m.regra} · {t(`sentido_${tag.sentido}`)}{tag.forca ? <> · {t(`forca_${tag.forca}`)}</> : null}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+                {o.referencias.length > 0 && <div className="mt-2"><RefLinks ids={o.referencias} refs={refs} /></div>}
+              </li>
+            );
+          })}
         </ul>
       </div>
 
@@ -299,7 +340,7 @@ export function DecisionResultView({ resultado, def, execucaoId, modo, meta }: {
                     <span className="font-medium">{ruleTitle(def, it.regra)}</span> <span className="text-[11px] text-muted-foreground">{it.regra}</span>
                     {Object.keys(it.valores).length > 0 && (
                       <span className="ml-2 text-xs text-muted-foreground">
-                        {Object.entries(it.valores).map(([k, v]) => `${entradaRotulo(k)} = ${formatTraceValue(v)}`).join("; ")}
+                        {Object.entries(it.valores).map(([k, v]) => `${entradaRotulo(k)} = ${formatTraceValue(v, locale, rotulosDe(k))}`).join("; ")}
                       </span>
                     )}
                     {it.faltando.length > 0 && <span className="ml-2 text-xs text-amber-700 dark:text-amber-300">{t("traceMissing", { list: it.faltando.map(entradaRotulo).join(", ") })}</span>}
@@ -320,7 +361,7 @@ export function DecisionResultView({ resultado, def, execucaoId, modo, meta }: {
               const href = referenceHref(r);
               return (
                 <li key={r.id} className="rounded-md border p-2">
-                  <p><span className="font-semibold">{r.id}</span> · {t("level", { n: r.nivel })} · {r.tipo}</p>
+                  <p><span className="font-semibold">{r.id}</span> · {t("level", { n: r.nivel })} · {t(`tipo_${r.tipo}`)}</p>
                   <p className="text-xs">{r.citacao}</p>
                   <p className="text-xs">
                     {href

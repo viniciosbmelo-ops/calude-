@@ -57,7 +57,7 @@ const DELPHI: Cond = {
 
 export const FX_UMERO_PROXIMAL: AlgorithmDef = {
   id: 'FX_UMERO_PROXIMAL',
-  versao: '0.1.0',
+  versao: '0.1.1',
   patologias: [FX_UMERO_PROXIMAL_CODIGO],
   titulo: 'Fratura do úmero proximal em adultos (rascunho)',
   escopo: 'Adultos com fratura do úmero proximal. Rascunho a partir da spec verificada v0.1; '
@@ -70,13 +70,13 @@ export const FX_UMERO_PROXIMAL: AlgorithmDef = {
   ],
   entradas: [
     { id: 'idade', rotulo: 'Idade', def: { tipo: 'numero', unidade: 'anos', min: 0, max: 120, inteiro: true }, origem: { de: 'paciente', campo: 'idade' }, momento: 'preop' },
-    { id: 'mecanismo_energia', rotulo: 'Energia do trauma', def: { tipo: 'enum', valores: ['baixa', 'alta'] }, origem: MANUAL, momento: 'preop' },
+    { id: 'mecanismo_energia', rotulo: 'Energia do trauma', def: { tipo: 'enum', valores: ['baixa', 'alta'], rotulos: { baixa: 'Baixa energia', alta: 'Alta energia' } }, origem: MANUAL, momento: 'preop' },
     { id: 'deslocada', rotulo: 'Fratura deslocada (critério de Neer: >1 cm ou >45°, avaliado pelo cirurgião)', def: { tipo: 'booleano' }, origem: MANUAL, momento: 'preop' },
     { id: 'neer_partes', rotulo: 'Partes de Neer', def: { tipo: 'numero', min: 1, max: 4, inteiro: true }, origem: doPayload('neer_partes'), momento: 'preop' },
-    { id: 'segmentos_deslocados', rotulo: 'Segmentos deslocados', def: { tipo: 'lista', valores: ['colo_cirurgico', 'colo_anatomico', 'tuberosidade_maior', 'tuberosidade_menor'] }, origem: MANUAL, momento: 'preop' },
-    { id: 'fratura_luxacao', rotulo: 'Fratura-luxação', def: { tipo: 'enum', valores: ['nenhuma', 'anterior', 'posterior'] }, origem: doPayload('fratura_luxacao'), momento: 'preop' },
+    { id: 'segmentos_deslocados', rotulo: 'Segmentos deslocados', def: { tipo: 'lista', valores: ['colo_cirurgico', 'colo_anatomico', 'tuberosidade_maior', 'tuberosidade_menor'], rotulos: { colo_cirurgico: 'Colo cirúrgico', colo_anatomico: 'Colo anatômico', tuberosidade_maior: 'Tuberosidade maior', tuberosidade_menor: 'Tuberosidade menor' } }, origem: MANUAL, momento: 'preop' },
+    { id: 'fratura_luxacao', rotulo: 'Fratura-luxação', def: { tipo: 'enum', valores: ['nenhuma', 'anterior', 'posterior'], rotulos: { nenhuma: 'Nenhuma', anterior: 'Anterior', posterior: 'Posterior' } }, origem: doPayload('fratura_luxacao'), momento: 'preop' },
     { id: 'head_split', rotulo: 'Head-split / fratura da superfície articular', def: { tipo: 'booleano' }, origem: doPayload('head_split'), momento: 'preop' },
-    { id: 'ao_ota', rotulo: 'Classificação AO/OTA', def: { tipo: 'enum', valores: ['11A1', '11A2', '11A3', '11B1', '11B2', '11B3', '11C1', '11C2', '11C3'] }, origem: doPayload('ao_ota'), momento: 'preop' },
+    { id: 'ao_ota', rotulo: 'Classificação AO/OTA', def: { tipo: 'enum', valores: ['11A1', '11A2', '11A3', '11B1', '11B2', '11B3', '11C1', '11C2', '11C3'], rotulos: { '11A1': '11-A1', '11A2': '11-A2', '11A3': '11-A3', '11B1': '11-B1', '11B2': '11-B2', '11B3': '11-B3', '11C1': '11-C1', '11C2': '11-C2', '11C3': '11-C3' } }, origem: doPayload('ao_ota'), momento: 'preop' },
     { id: 'cirurgia_escolhida', rotulo: 'Cirurgião já optou por tratamento cirúrgico', def: { tipo: 'booleano' }, origem: MANUAL, momento: 'preop' },
     { id: 'fratura_exposta', rotulo: 'Fratura exposta', def: { tipo: 'booleano' }, origem: doPayload('fratura_exposta'), momento: 'preop' },
     { id: 'lesao_neurovascular', rotulo: 'Lesão neurovascular', def: { tipo: 'booleano' }, origem: doPayload('lesao_neurovascular'), momento: 'preop' },
@@ -92,7 +92,7 @@ export const FX_UMERO_PROXIMAL: AlgorithmDef = {
     { id: 'espessura_cortical_mm', rotulo: 'Espessura cortical combinada (só registro)', def: { tipo: 'numero', unidade: 'mm', min: 0, max: 30 }, origem: doPayload('espessura_cortical_combinada_mm'), momento: 'preop' },
     { id: 'dias_desde_lesao', rotulo: 'Dias desde a lesão (só registro)', def: { tipo: 'numero', unidade: 'dias', min: 0, max: 3650 }, origem: doPayload('dias_desde_lesao'), momento: 'preop' },
     { id: 'asa', rotulo: 'ASA (só registro)', def: { tipo: 'numero', min: 1, max: 5, inteiro: true }, origem: doPayload('asa'), momento: 'preop' },
-    { id: 'demanda_funcional', rotulo: 'Demanda funcional (só registro; sem escala validada)', def: { tipo: 'enum', valores: ['baixa', 'moderada', 'alta'] }, origem: MANUAL, momento: 'preop' },
+    { id: 'demanda_funcional', rotulo: 'Demanda funcional (só registro; sem escala validada)', def: { tipo: 'enum', valores: ['baixa', 'moderada', 'alta'], rotulos: { baixa: 'Baixa', moderada: 'Moderada', alta: 'Alta' } }, origem: MANUAL, momento: 'preop' },
   ],
   parametros: [
     {

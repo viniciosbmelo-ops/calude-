@@ -10,11 +10,12 @@ export type EscolhaCirurgiao = { opcao: string } | { outra: string };
 const RANK: Record<Forca, number> = { forte: 3, moderada: 2, fraca: 1, controversa: 0 };
 
 /**
- * 'sem_sugestao' quando nenhuma opção foi favorecida; 'concorda' quando a opção escolhida está
- * entre as favorecidas de maior força; 'diverge' nos demais casos (inclusive "outra").
+ * 'sem_sugestao' quando nenhuma opção foi favorecida nem apareceu como alternativa de zona cinzenta;
+ * 'concorda' quando a opção escolhida está entre as de maior força (alternativas de zona cinzenta contam
+ * com força 'controversa'); 'diverge' nos demais casos (inclusive "outra" e opção sob cautela).
  */
 export function concordancia(resultado: Pick<ResultadoApoio, 'opcoes'>, escolha: EscolhaCirurgiao): Concordancia {
-  const favorecidas = resultado.opcoes.filter((o) => o.sentido === 'favorece');
+  const favorecidas = resultado.opcoes.filter((o) => o.sentido === 'favorece' || o.sentido === 'alternativa');
   if (!favorecidas.length) return 'sem_sugestao';
   if (!('opcao' in escolha)) return 'diverge';
   const topo = Math.max(...favorecidas.map((o) => RANK[o.forca]));

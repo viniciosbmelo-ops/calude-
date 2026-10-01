@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { ClinicalGuardError } from '../../src/errors';
 import { avaliarCond } from '../../src/decision/conditions';
 import { evaluate, MOTOR_VERSAO } from '../../src/decision/engine';
+import { concordancia } from '../../src/decision/choice';
 import { canonicalJson, hashDefinition, sha256Hex } from '../../src/decision/hash';
 import { podeTransitar, statusEfetivo } from '../../src/decision/governance';
 import type { Cond, V3 } from '../../src/decision/types';
@@ -101,7 +102,8 @@ describe('evaluate: resultado e agregação', () => {
     expect(r.algoritmo).toEqual({ id: FAKE.id, versao: FAKE.versao, hash: hashDefinition(FAKE), status: 'rascunho' });
     expect(r.motor).toBe(MOTOR_VERSAO);
     // 1.1.0: o resultado gravado sempre traz `parametros` (lista vazia quando a definição não declara)
-    expect(MOTOR_VERSAO).toBe('1.1.0');
+    // 1.2.0: sentido líquido honesto ('alternativa' para zona cinzenta), rótulos de enum e vírgula decimal no texto
+    expect(MOTOR_VERSAO).toBe('1.2.0');
     expect(Array.isArray(r.parametros)).toBe(true);
     expect(r.modo).toBe('preop');
     expect(r.avisosGerais).toEqual(FAKE.avisosGerais);
@@ -135,12 +137,30 @@ describe('evaluate: resultado e agregação', () => {
     expect(esperar.motivos.map((m) => [m.regra, m.forca])).toEqual([['R.CHUVA', 'moderada'], ['R.FRIO', 'fraca']]);
   });
 
-  test('favorece e desfavorece de força igual ou maior → controversa, com os dois lados nos motivos', () => {
+  test('cautela de força igual ou maior que o favor → "Cautela" com a força da cautela, nunca "favorece"', () => {
     const r = evaluate(FAKE, { temperatura: 32, solo: 'seco', chuva: 20 });
     const regar = opcao(r, 'regar')!;
-    expect(regar.forca).toBe('controversa');
-    expect(regar.sentido).toBe('favorece');
+    expect(regar).toMatchObject({ sentido: 'desfavorece', forca: 'forte' });
     expect(regar.motivos.map((m) => m.efeito)).toEqual(['favorece', 'desfavorece']);
+    // cautela listada depois das favorecidas
+    expect(r.opcoes.map((o) => o.opcao).indexOf('regar')).toBe(r.opcoes.length - 1);
+  });
+
+  test('cautela mais fraca que o favor: sentido "favorece" com a força do favor, os dois lados nos motivos', () => {
+    const d = clone(FAKE);
+    d.regras.find((x) => x.id === 'R.CHUVA')!.efeitos[0].forca = 'moderada';
+    const regar = opcao(evaluate(d, { temperatura: 32, solo: 'seco', chuva: 20 }), 'regar')!;
+    expect(regar).toMatchObject({ sentido: 'favorece', forca: 'forte' });
+    expect(regar.motivos.map((m) => m.efeito)).toEqual(['favorece', 'desfavorece']);
+  });
+
+  test('cautela vinda só de zona cinzenta → "Cautela" com força controversa', () => {
+    const d = clone(FAKE);
+    d.regras.find((x) => x.id === 'R.GEADA')!.efeitos = [{ opcao: 'cobrir', efeito: 'desfavorece', forca: 'moderada' }];
+    expect(opcao(evaluate(d, { geada: true }), 'cobrir')).toMatchObject({ sentido: 'desfavorece', forca: 'controversa' });
+    // ...mas uma cautela fora de zona cinzenta de mesma força define a força
+    d.regras.find((x) => x.id === 'R.LONA')!.efeitos = [{ opcao: 'cobrir', efeito: 'desfavorece', forca: 'moderada' }];
+    expect(opcao(evaluate(d, { geada: true, ferramentas: ['lona'] }), 'cobrir')).toMatchObject({ sentido: 'desfavorece', forca: 'moderada' });
   });
 
   test('só desfavorece → cautela (sentido desfavorece), listada depois das que a literatura favorece', () => {
@@ -153,11 +173,46 @@ describe('evaluate: resultado e agregação', () => {
     const r = evaluate(FAKE, { geada: true, ferramentas: ['lona'] });
     const cobrir = opcao(r, 'cobrir')!;
     expect(cobrir.forca).toBe('controversa');
+    // zona cinzenta: alternativa, nunca "favorece" (mesmo com R.LONA moderada a favor)
+    expect(cobrir.sentido).toBe('alternativa');
     expect(cobrir.controversias).toEqual([{
       regra: 'R.GEADA', nota: FAKE.regras[2].controversia!.nota,
       alternativas: [{ opcao: 'podar', rotulo: 'Podar', argumento: 'Podar reduz a área exposta.', referencias: ['Beta2002'] }],
     }]);
     expect(cobrir.referencias).toEqual(['Beta2002', 'Gama2003']);
+  });
+
+  test('ordenação: favorece, depois alternativas de zona cinzenta, depois cautela', () => {
+    const r = evaluate(FAKE, { geada: true, chuva: 20, solo: 'umido' });
+    expect(r.opcoes.map((o) => [o.opcao, o.sentido])).toEqual([
+      ['esperar', 'favorece'],
+      ['podar', 'favorece'],
+      ['cobrir', 'alternativa'],
+      ['regar', 'desfavorece'],
+    ]);
+  });
+
+  test('texto interpolado: rótulo do valor de enum/lista e número com vírgula decimal', () => {
+    const d = clone(FAKE);
+    const solo = d.entradas.find((e) => e.id === 'solo')!;
+    if (solo.def.tipo === 'enum') solo.def.rotulos = { seco: 'Seco ao toque' };
+    const ferr = d.entradas.find((e) => e.id === 'ferramentas')!;
+    if (ferr.def.tipo === 'lista') ferr.def.rotulos = { lona: 'Lona plástica', regador: 'Regador manual' };
+    const r = evaluate(d, { temperatura: 32.5, solo: 'seco', ferramentas: ['lona', 'regador'] });
+    expect(opcao(r, 'regar')!.motivos[0].texto).toBe('Temperatura 32,5 °C com solo Seco ao toque.');
+    expect(opcao(r, 'cobrir')!.motivos[0].texto).toBe('Ferramentas: Regador manual, Lona plástica.');
+    // a entrada gravada continua com os valores internos
+    expect(r.entrada.solo).toBe('seco');
+  });
+
+  test('concordância: alternativa de zona cinzenta conta como sugestão; opção sob cautela não', () => {
+    const r = evaluate(FAKE, { geada: true });
+    expect(r.opcoes.every((o) => o.sentido !== 'favorece' || o.opcao === 'esperar')).toBe(true);
+    expect(concordancia(evaluate(FAKE, { geada: true, temperatura: 10 }), { opcao: 'cobrir' })).toBe('diverge');
+    const soZona = evaluate(clone({ ...FAKE, regras: FAKE.regras.filter((x) => x.id === 'R.GEADA') }), { geada: true });
+    expect(soZona.opcoes.map((o) => o.sentido)).toEqual(['alternativa']);
+    expect(concordancia(soZona, { opcao: 'cobrir' })).toBe('concorda');
+    expect(concordancia(evaluate(FAKE, { chuva: 20, temperatura: 10 }), { opcao: 'regar' })).toBe('diverge');
   });
 
   test('ordenação: força decrescente, depois ordem declarada', () => {

@@ -115,13 +115,13 @@ const manual = { de: 'manual' } as const;
 const ENTRADAS: EntradaDef[] = [
   pre({ id: 'lesao_sintomatica_confirmada', rotulo: 'Lesão sintomática do manguito confirmada por imagem', def: { tipo: 'booleano' }, origem: manual }),
   pre({ id: 'idade', rotulo: 'Idade (contínua; sem corte)', def: { tipo: 'numero', unidade: 'anos', min: 0, max: 120 }, origem: { de: 'paciente', campo: 'idade' } }),
-  pre({ id: 'inicio', rotulo: 'Início', def: { tipo: 'enum', valores: ['traumatico_agudo', 'agudo_sobre_cronico', 'degenerativo'] }, origem: { de: 'payload', caminho: `${DX}.inicio` } }),
+  pre({ id: 'inicio', rotulo: 'Início', def: { tipo: 'enum', valores: ['traumatico_agudo', 'agudo_sobre_cronico', 'degenerativo'], rotulos: { traumatico_agudo: 'Traumático agudo', agudo_sobre_cronico: 'Agudo sobre crônico', degenerativo: 'Degenerativo' } }, origem: { de: 'payload', caminho: `${DX}.inicio` } }),
   pre({ id: 'semanas_desde_lesao', rotulo: 'Semanas desde a lesão', def: { tipo: 'numero', unidade: 'semanas', min: 0, max: 2600 }, origem: { de: 'payload', caminho: `${DX}.semanas_desde_lesao` } }),
   pre({ id: 'duracao_sintomas_meses', rotulo: 'Duração dos sintomas', def: { tipo: 'numero', unidade: 'meses', min: 0, max: 600 }, origem: manual }),
-  pre({ id: 'tipo_rotura', rotulo: 'Espessura / tipo da rotura (RM)', def: { tipo: 'enum', valores: ['parcial_articular', 'parcial_bursal', 'parcial_intersticial', 'completa'] }, origem: { de: 'payload', caminho: `${DX}.tipo_rotura_rm` } }),
+  pre({ id: 'tipo_rotura', rotulo: 'Espessura / tipo da rotura (RM)', def: { tipo: 'enum', valores: ['parcial_articular', 'parcial_bursal', 'parcial_intersticial', 'completa'], rotulos: { parcial_articular: 'Parcial articular', parcial_bursal: 'Parcial bursal', parcial_intersticial: 'Parcial intersticial', completa: 'Completa (espessura total)' } }, origem: { de: 'payload', caminho: `${DX}.tipo_rotura_rm` } }),
   pre({ id: 'ellman', rotulo: 'Grau de Ellman (registrado)', def: { tipo: 'numero', min: 1, max: 3, inteiro: true }, origem: { de: 'payload', caminho: `${DX}.ellman_rm` } }),
   pre({ id: 'parcial_profundidade_pct', rotulo: 'Profundidade da lesão parcial', def: { tipo: 'numero', unidade: '% da espessura', min: 0, max: 100 }, origem: manual }),
-  pre({ id: 'tendoes', rotulo: 'Tendões envolvidos', def: { tipo: 'lista', valores: ['SSP', 'ISP', 'SSC', 'TM'] }, origem: { de: 'payload', caminho: `${DX}.tendoes_rm` } }),
+  pre({ id: 'tendoes', rotulo: 'Tendões envolvidos', def: { tipo: 'lista', valores: ['SSP', 'ISP', 'SSC', 'TM'], rotulos: { SSP: 'Supraespinal (SSP)', ISP: 'Infraespinal (ISP)', SSC: 'Subescapular (SSC)', TM: 'Redondo menor (TM)' } }, origem: { de: 'payload', caminho: `${DX}.tendoes_rm` } }),
   pre({ id: 'tamanho_ap_mm', rotulo: 'Tamanho anteroposterior (sagital)', def: { tipo: 'numero', unidade: 'mm', min: 0, max: 100 }, origem: { de: 'payload', caminho: `${DX}.tamanho_ap_mm_rm` } }),
   pre({ id: 'tamanho_coronal_mm', rotulo: 'Tamanho coronal', def: { tipo: 'numero', unidade: 'mm', min: 0, max: 100 }, origem: manual }),
   pre({ id: 'massiva', rotulo: 'Lesão massiva (definição de Rosenblum: ≥2 tendões ou ≥5 cm)', def: { tipo: 'booleano' }, origem: { de: 'derivada', funcao: 'massivaRosenblum', dependeDe: ['tipo_rotura', 'tendoes', 'tamanho_ap_mm', 'tamanho_coronal_mm'] } }),
@@ -132,19 +132,19 @@ const ENTRADAS: EntradaDef[] = [
   pre({ id: 'goutallier_ssc', rotulo: 'Goutallier do subescapular (registrado)', def: { tipo: 'numero', min: 0, max: 4, inteiro: true }, origem: { de: 'payload', caminho: `${DX}.goutallier.SSC` } }),
   pre({ id: 'goutallier_tm', rotulo: 'Goutallier do redondo menor (registrado)', def: { tipo: 'numero', min: 0, max: 4, inteiro: true }, origem: { de: 'payload', caminho: `${DX}.goutallier.TM` } }),
   pre({ id: 'gfdi', rotulo: 'GFDI (média de Goutallier SSP/ISP/SSC)', def: { tipo: 'numero', min: 0, max: 4 }, origem: { de: 'derivada', funcao: 'gfdiGoutallier2003', dependeDe: ['goutallier_ssp', 'goutallier_isp', 'goutallier_ssc'] } }),
-  pre({ id: 'modalidade_graduacao', rotulo: 'Modalidade da graduação gordurosa', def: { tipo: 'enum', valores: ['TC', 'RM'] }, origem: manual }),
+  pre({ id: 'modalidade_graduacao', rotulo: 'Modalidade da graduação gordurosa', def: { tipo: 'enum', valores: ['TC', 'RM'], rotulos: { TC: 'Tomografia (TC)', RM: 'Ressonância magnética (RM)' } }, origem: manual }),
   pre({ id: 'tangent_sign', rotulo: 'Tangent sign positivo', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${DX}.tangent_sign` } }),
   pre({ id: 'dah_mm', rotulo: 'Distância acromioumeral (valor bruto)', def: { tipo: 'numero', unidade: 'mm', min: 0, max: 30 }, origem: { de: 'payload', caminho: `${DX}.distancia_acromioumeral_mm` } }),
   pre({ id: 'hamada', rotulo: 'Grau de Hamada (registrado pelo cirurgião)', def: { tipo: 'numero', min: 1, max: 5, inteiro: true }, origem: { de: 'payload', caminho: `${DX}.hamada` } }),
-  pre({ id: 'artrose_glenoumeral', rotulo: 'Artrose glenoumeral', def: { tipo: 'enum', valores: ['ausente', 'leve', 'moderada', 'grave'] }, origem: manual }),
+  pre({ id: 'artrose_glenoumeral', rotulo: 'Artrose glenoumeral', def: { tipo: 'enum', valores: ['ausente', 'leve', 'moderada', 'grave'], rotulos: { ausente: 'Ausente', leve: 'Leve', moderada: 'Moderada', grave: 'Grave' } }, origem: manual }),
   pre({ id: 'elevacao_ativa_graus', rotulo: 'Elevação ativa (valor bruto)', def: { tipo: 'numero', unidade: 'graus', min: 0, max: 180 }, origem: { de: 'payload', caminho: `${DX}.elevacao_ativa_graus` } }),
   pre({ id: 'elevacao_passiva_graus', rotulo: 'Elevação passiva (valor bruto)', def: { tipo: 'numero', unidade: 'graus', min: 0, max: 180 }, origem: { de: 'payload', caminho: `${DX}.elevacao_passiva_graus` } }),
   pre({ id: 'pseudoparalisia', rotulo: 'Pseudoparalisia (definição do serviço)', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${DX}.pseudoparalisia` } }),
-  pre({ id: 'subescapular_status', rotulo: 'Subescapular', def: { tipo: 'enum', valores: ['integro', 'parcial_reparavel', 'completo_reparavel', 'irreparavel'] }, origem: manual }),
-  pre({ id: 'redondo_menor_trofismo', rotulo: 'Trofismo do redondo menor', def: { tipo: 'enum', valores: ['normal', 'atrofico'] }, origem: manual }),
+  pre({ id: 'subescapular_status', rotulo: 'Subescapular', def: { tipo: 'enum', valores: ['integro', 'parcial_reparavel', 'completo_reparavel', 'irreparavel'], rotulos: { integro: 'Íntegro', parcial_reparavel: 'Lesão parcial reparável', completo_reparavel: 'Lesão completa reparável', irreparavel: 'Irreparável' } }, origem: manual }),
+  pre({ id: 'redondo_menor_trofismo', rotulo: 'Trofismo do redondo menor', def: { tipo: 'enum', valores: ['normal', 'atrofico'], rotulos: { normal: 'Normal', atrofico: 'Atrófico' } }, origem: manual }),
   pre({ id: 'deltoide_funcional', rotulo: 'Deltoide / nervo axilar funcional', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${DX}.deltoide_funcional` } }),
-  pre({ id: 'nivel_atividade', rotulo: 'Nível de atividade / demanda', def: { tipo: 'enum', valores: ['sedentario', 'recreativo', 'competitivo', 'trabalhador_bracal'] }, origem: { de: 'payload', caminho: `${COMUM}.nivel_atividade` } }),
-  pre({ id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex_tabagista', 'atual'] }, origem: { de: 'payload', caminho: `${COMUM}.tabagismo` } }),
+  pre({ id: 'nivel_atividade', rotulo: 'Nível de atividade / demanda', def: { tipo: 'enum', valores: ['sedentario', 'recreativo', 'competitivo', 'trabalhador_bracal'], rotulos: { sedentario: 'Sedentário', recreativo: 'Recreativo', competitivo: 'Competitivo', trabalhador_bracal: 'Trabalhador braçal' } }, origem: { de: 'payload', caminho: `${COMUM}.nivel_atividade` } }),
+  pre({ id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex_tabagista', 'atual'], rotulos: { nunca: 'Nunca fumou', ex_tabagista: 'Ex-tabagista', atual: 'Tabagista atual' } }, origem: { de: 'payload', caminho: `${COMUM}.tabagismo` } }),
   pre({ id: 'diabetes', rotulo: 'Diabetes', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${COMUM}.diabetes` } }),
   pre({ id: 'imc', rotulo: 'IMC', def: { tipo: 'numero', unidade: 'kg/m²', min: 10, max: 80 }, origem: manual }),
   pre({ id: 'dmo_baixa', rotulo: 'Densidade mineral óssea baixa', def: { tipo: 'booleano' }, origem: manual }),
@@ -152,7 +152,7 @@ const ENTRADAS: EntradaDef[] = [
   pre({ id: 'conservador_meses', rotulo: 'Tratamento conservador realizado', def: { tipo: 'numero', unidade: 'meses', min: 0, max: 600 }, origem: { de: 'payload', caminho: `${DX}.tratamento_conservador_meses` } }),
   pre({ id: 'falha_conservador', rotulo: 'Falha do tratamento conservador', def: { tipo: 'booleano' }, origem: manual }),
   pre({ id: 'reparo_previo', rotulo: 'Cirurgia prévia do manguito', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${DX}.reparo_previo` } }),
-  pre({ id: 'reparabilidade_estimada', rotulo: 'Reparabilidade estimada pelo cirurgião (pré-op)', def: { tipo: 'enum', valores: ['provavel_reparavel', 'provavel_irreparavel'] }, origem: manual }),
+  pre({ id: 'reparabilidade_estimada', rotulo: 'Reparabilidade estimada pelo cirurgião (pré-op)', def: { tipo: 'enum', valores: ['provavel_reparavel', 'provavel_irreparavel'], rotulos: { provavel_reparavel: 'Provavelmente reparável', provavel_irreparavel: 'Provavelmente irreparável' } }, origem: manual }),
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -165,6 +165,11 @@ const ARTROPATIA: Cond = { any: [{ campo: 'hamada', op: '>=', valor: 3 }, { camp
 const SEM_ARTROPATIA: Cond = { not: ARTROPATIA };
 const REPARAVEL: Cond = { campo: 'reparabilidade_estimada', op: '==', valor: 'provavel_reparavel' };
 const IRREPARAVEL: Cond = { campo: 'reparabilidade_estimada', op: '==', valor: 'provavel_irreparavel' };
+/**
+ * Roteamento N6 → N7/N8 da spec: o reparo artroscópico pertence a N7 (provavelmente reparável). Regras de N5 que
+ * favorecem reparo não disparam quando o cirurgião estimou a lesão como provavelmente irreparável (vai para N8/ZC1).
+ */
+const NAO_IRREPARAVEL: Cond = { campo: 'reparabilidade_estimada', op: '!=', valor: 'provavel_irreparavel' };
 const FALHA: Cond = { campo: 'falha_conservador', op: '==', valor: true };
 /** Ellman: >50% da espessura (resumo de Ellman 1990; Duralde define o grau III como >50%). */
 const MAIS_METADE: Cond = { any: [{ campo: 'parcial_profundidade_pct', op: '>', valor: 50 }, { campo: 'ellman', op: '==', valor: 3 }] };
@@ -176,7 +181,7 @@ const PENDENTE = 'Pendente de decisão do cirurgião.';
 
 export const MANGUITO_ROTADOR: AlgorithmDef = {
   id: 'SH_RCT_DECISAO',
-  versao: '0.1.0',
+  versao: '0.1.1',
   patologias: ['SH_RCT', 'SH_RCT_PARTIAL', 'SH_RCT_FULL', 'SH_RCT_MASSIVE', 'SH_RCT_SUBSCAP', 'SH_RCT_REVISION'],
   titulo: 'Lesões do manguito rotador (rascunho)',
   escopo: 'Lesão sintomática do manguito rotador confirmada por imagem, avaliação pré-operatória. Rascunho a partir da spec verificada v0.1; não revisado.',
@@ -194,7 +199,7 @@ export const MANGUITO_ROTADOR: AlgorithmDef = {
     {
       id: 'dah_lacuna_max_mm', rotulo: 'DAH: limite superior da faixa sem grau de Hamada', unidade: 'mm', min: 0, max: 30, padrao: 6,
       status: 'pendente_decisao_cirurgiao',
-      nota: `Ver dah_lacuna_min_mm. Faixa inclusiva nos dois limites. ${PENDENTE}`,
+      nota: `Ver o limite inferior da faixa sem grau de Hamada (parâmetro configurável). Faixa inclusiva nos dois limites. ${PENDENTE}`,
       referencias: [c('Hamada1990'), c('BaekDAH2026')],
     },
   ],
@@ -312,7 +317,7 @@ export const MANGUITO_ROTADOR: AlgorithmDef = {
     // ------------------------------------------------------------------ N5 Completa sem artropatia
     {
       id: 'N5A', titulo: 'Traumática aguda: reparo precoce',
-      quando: all(COMPLETA, SEM_ARTROPATIA, { campo: 'inicio', op: '==', valor: 'traumatico_agudo' }),
+      quando: all(COMPLETA, SEM_ARTROPATIA, NAO_IRREPARAVEL, { campo: 'inicio', op: '==', valor: 'traumatico_agudo' }),
       efeitos: [{ opcao: 'reparo_artroscopico', efeito: 'favorece', forca: 'fraca' }],
       motivo: `Lesão traumática aguda: a literatura favorece considerar reparo o mais cedo possível (certeza muito baixa). "Precoce" varia de 3 semanas a 6 meses: sem definição padronizada (${PENDENTE}) O maior ganho de Constant na traumática vale só para a coorte ≤45 anos. Em paciente de baixa demanda ou clinicamente inapto, o não cirúrgico permanece adequado (consenso).`,
       referencias: [
@@ -337,7 +342,7 @@ export const MANGUITO_ROTADOR: AlgorithmDef = {
     },
     {
       id: 'N5B.FALHA', titulo: 'Degenerativa com falha do conservador',
-      quando: all(COMPLETA, SEM_ARTROPATIA, { campo: 'inicio', op: '==', valor: 'degenerativo' }, FALHA),
+      quando: all(COMPLETA, SEM_ARTROPATIA, NAO_IRREPARAVEL, { campo: 'inicio', op: '==', valor: 'degenerativo' }, FALHA),
       efeitos: [{ opcao: 'reparo_artroscopico', efeito: 'favorece', forca: 'fraca' }],
       motivo: 'Falha do conservador ou dor e disfunção persistentes na lesão degenerativa: a literatura favorece considerar cirurgia.',
       referencias: [c('Hurley2026a', 'Reparo após falha do conservador (nível V)')],

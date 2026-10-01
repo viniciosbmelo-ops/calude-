@@ -11,10 +11,14 @@ import { hashDefinition } from './hash';
 import { ROTULO_SUGESTAO } from './vocab';
 import type {
   AlgorithmDef, AvisoResultado, ContextoAvaliacao, ControversiaResultado, Efeito, EntradaDef, FaltanteResultado,
-  Forca, MotivoOpcao, OpcaoResultado, ParametroResultado, Referencia, ResultadoApoio, TraceItem,
+  Forca, MotivoOpcao, OpcaoResultado, ParametroResultado, Referencia, ResultadoApoio, SentidoOpcao, TraceItem,
 } from './types';
 
-export const MOTOR_VERSAO = '1.1.0';
+/**
+ * 1.2.0: sentido líquido honesto (cautela ≥ favor → cautela; zona cinzenta → 'alternativa'), rótulos de enum
+ * e números com vírgula no texto interpolado das regras.
+ */
+export const MOTOR_VERSAO = '1.2.0';
 
 const RANK: Record<Forca, number> = { forte: 3, moderada: 2, fraca: 1, controversa: 0 };
 
@@ -83,10 +87,26 @@ export function normalizarEntrada(def: AlgorithmDef, bruta: Record<string, unkno
   return { valores, descartadas };
 }
 
+/** Número no texto das regras (português): vírgula decimal, sem separador de milhar. */
+export function numeroPtBr(n: number): string {
+  return String(n).replace('.', ',');
+}
+
+/** Rótulo legível de um valor de enum/lista (o próprio valor quando a definição não traz rótulo). */
+export function rotuloDoValor(e: EntradaDef | undefined, v: string): string {
+  const d = e?.def;
+  const r = d && (d.tipo === 'enum' || d.tipo === 'lista') ? d.rotulos : undefined;
+  return r?.[v] ?? v;
+}
+
 function formatar(v: unknown, e: EntradaDef | undefined): string {
   if (typeof v === 'boolean') return v ? 'sim' : 'não';
-  if (Array.isArray(v)) return v.join(', ');
-  if (typeof v === 'number' && e?.def.tipo === 'numero' && e.def.unidade) return `${v} ${e.def.unidade}`;
+  if (Array.isArray(v)) return v.map((x) => rotuloDoValor(e, String(x))).join(', ');
+  if (typeof v === 'number') {
+    const u = e?.def.tipo === 'numero' && e.def.unidade ? ` ${e.def.unidade}` : '';
+    return `${numeroPtBr(v)}${u}`;
+  }
+  if (typeof v === 'string') return rotuloDoValor(e, v);
   return String(v);
 }
 
@@ -188,11 +208,16 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
     const motivos: MotivoOpcao[] = [];
     const controversias: ControversiaResultado[] = [];
     const refs: string[] = [];
+    /** Maior força de cautela vinda de regra fora de zona cinzenta (-1 se nenhuma). */
+    let desFirme = -1;
     for (const regra of disparadas) {
       const efeitos = regra.efeitos.filter((e) => e.opcao === op.id);
       if (!efeitos.length) continue;
       const texto = interpolar(regra.motivo, valores, porId);
-      for (const e of efeitos) motivos.push({ regra: regra.id, texto, forca: e.forca, efeito: e.efeito });
+      for (const e of efeitos) {
+        motivos.push({ regra: regra.id, texto, forca: e.forca, efeito: e.efeito });
+        if (e.efeito === 'desfavorece' && !regra.controversia) desFirme = Math.max(desFirme, RANK[e.forca]);
+      }
       refs.push(...refsIds(regra.referencias));
       if (regra.controversia) {
         controversias.push({
@@ -210,18 +235,33 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
     }
     if (!motivos.length) continue; // ausência de sugestão não é sugestão
 
+    // Sentido líquido (honesto):
+    // - cautela de força igual ou maior que a de qualquer efeito a favor prevalece ("Cautela", nunca "favorece");
+    //   a força é a da cautela mais forte quando ela vem de regra fora de zona cinzenta, senão 'controversa';
+    // - efeito a favor ligado a zona cinzenta (regra com controvérsia) é alternativa, nunca "favorece".
     const max = (ef: Efeito) => Math.max(-1, ...motivos.filter((m) => m.efeito === ef).map((m) => RANK[m.forca]));
     const fav = max('favorece');
     const des = max('desfavorece');
-    const sentido: Efeito = fav >= 0 ? 'favorece' : 'desfavorece';
-    const conflito = fav >= 0 && des >= fav;
-    const forcaBase = (Object.keys(RANK) as Forca[]).find((f) => RANK[f] === (sentido === 'favorece' ? fav : des))!;
-    const forca: Forca = conflito || controversias.length ? 'controversa' : forcaBase;
+    const forcaDe = (rank: number) => (Object.keys(RANK) as Forca[]).find((f) => RANK[f] === rank)!;
+    let sentido: SentidoOpcao;
+    let forca: Forca;
+    if (des >= 0 && des >= fav) {
+      sentido = 'desfavorece';
+      forca = desFirme === des ? forcaDe(des) : 'controversa';
+    } else if (controversias.length) {
+      sentido = 'alternativa';
+      forca = 'controversa';
+    } else {
+      sentido = 'favorece';
+      forca = forcaDe(fav);
+    }
     opcoes.push({ opcao: op.id, rotulo: op.rotulo, forca, sentido, motivos, referencias: sortUniq(refs), controversias });
   }
+  // Ordem: favorece, alternativas de zona cinzenta, cautela; depois força; depois ordem declarada.
+  const ORDEM_SENTIDO: Record<SentidoOpcao, number> = { favorece: 0, alternativa: 1, desfavorece: 2 };
   const ordemDecl = new Map(def.opcoes.map((o, i) => [o.id, i]));
   opcoes.sort((a, b) =>
-    (a.sentido === b.sentido ? 0 : a.sentido === 'favorece' ? -1 : 1)
+    ORDEM_SENTIDO[a.sentido] - ORDEM_SENTIDO[b.sentido]
     || RANK[b.forca] - RANK[a.forca]
     || ordemDecl.get(a.opcao)! - ordemDecl.get(b.opcao)!);
 

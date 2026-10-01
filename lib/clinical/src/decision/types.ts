@@ -9,6 +9,13 @@
 export type Forca = 'forte' | 'moderada' | 'fraca' | 'controversa';
 /** "desfavorece" = cautela. Nunca exibido como proibição. */
 export type Efeito = 'favorece' | 'desfavorece';
+/**
+ * Sentido líquido de uma opção no resultado:
+ * - 'favorece': só efeitos a favor, fora de zona cinzenta, mais fortes que qualquer cautela;
+ * - 'alternativa': alternativa de zona cinzenta (a literatura diverge; nenhuma é escolhida);
+ * - 'desfavorece': cautela de força igual ou maior que a de qualquer efeito a favor.
+ */
+export type SentidoOpcao = Efeito | 'alternativa';
 /** Nível de evidência (JBJS / OCEBM). */
 export type NivelEvidencia = 'I' | 'II' | 'III' | 'IV' | 'V';
 export type TipoEstudo =
@@ -42,8 +49,14 @@ export interface CitRef {
 export type TipoEntrada =
   | { tipo: 'numero'; unidade?: string; min?: number; max?: number; inteiro?: boolean }
   | { tipo: 'booleano' }
-  | { tipo: 'enum'; valores: readonly string[] }
-  | { tipo: 'lista'; valores: readonly string[] };
+  | { tipo: 'enum'; valores: readonly string[]; rotulos?: RotulosValores }
+  | { tipo: 'lista'; valores: readonly string[]; rotulos?: RotulosValores };
+
+/**
+ * Rótulo legível (pt-BR) de cada valor de um enum/lista: exibido nos seletores, em "Dados usados" e no texto
+ * interpolado das regras. Entra no hash da definição. Valor sem rótulo é exibido como está.
+ */
+export type RotulosValores = Readonly<Record<string, string>>;
 
 export type OrigemEntrada =
   | { de: 'payload'; caminho: string }
@@ -187,7 +200,8 @@ export interface OpcaoResultado {
   opcao: string;
   rotulo: string;
   forca: Forca;
-  sentido: Efeito;
+  /** Ver `SentidoOpcao`. Em 'alternativa' a força é sempre 'controversa'. */
+  sentido: SentidoOpcao;
   motivos: MotivoOpcao[];
   referencias: string[];
   controversias: ControversiaResultado[];

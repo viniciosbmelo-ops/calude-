@@ -18,8 +18,9 @@ const GOLDEN: Record<string, Entrada> = {
   parcialBursalAteMetade: { tipo_rotura: 'parcial_bursal', ellman: 2, falha_conservador: true },
   artropatia: { tipo_rotura: 'completa', hamada: 4 },
   artroseSemHamada: { tipo_rotura: 'completa', artrose_glenoumeral: 'grave' },
-  traumatica: { ...COMPLETA_BASE, inicio: 'traumatico_agudo' },
-  degenerativaFalha: { ...COMPLETA_BASE, inicio: 'degenerativo', falha_conservador: true },
+  traumatica: { ...COMPLETA_BASE, inicio: 'traumatico_agudo', reparabilidade_estimada: 'provavel_reparavel' },
+  degenerativaFalha: { ...COMPLETA_BASE, inicio: 'degenerativo', falha_conservador: true, reparabilidade_estimada: 'provavel_reparavel' },
+  degenerativaFalhaIrreparavel: { ...COMPLETA_BASE, inicio: 'degenerativo', falha_conservador: true, massiva: true, reparabilidade_estimada: 'provavel_irreparavel', pseudoparalisia: false },
   agudoSobreCronico: { ...COMPLETA_BASE, inicio: 'agudo_sobre_cronico' },
   reparavelPequena: { ...COMPLETA_BASE, reparabilidade_estimada: 'provavel_reparavel', tamanho_ap_mm: 25, diabetes: true, csa_graus: 42 },
   reparavelGrande: { ...COMPLETA_BASE, reparabilidade_estimada: 'provavel_reparavel', tamanho_ap_mm: 35, massiva: true },
@@ -121,6 +122,33 @@ describe('casos-ouro por ramo', () => {
     expect(a.opcoes).toEqual([]);
   });
 
+  test('roteamento N6: degenerativa com falha e "provavelmente irreparável" (massiva, sem artrose) não sugere reparo artroscópico', () => {
+    const r = run(GOLDEN.degenerativaFalhaIrreparavel);
+    expect(res(r, 'N5B.FALHA')).toBe('nao_disparou');
+    expect(res(r, 'N7.1')).toBe('nao_disparou');
+    expect(op(r, 'reparo_artroscopico')).toBeUndefined();
+    expect(res(r, 'ZC1')).toBe('disparou');
+    // nenhuma opção aparece como "favorece": tudo é alternativa da ZC1/ZC2 (ou cautela)
+    expect(r.opcoes.filter((o) => o.sentido === 'favorece')).toEqual([]);
+    expect(r.opcoes[0].sentido).toBe('alternativa');
+    expect(op(r, 'tratamento_conservador')).toMatchObject({ sentido: 'alternativa', forca: 'controversa' });
+    // traumática aguda estimada irreparável: N5A também não vaza
+    const t = run({ ...GOLDEN.degenerativaFalhaIrreparavel, inicio: 'traumatico_agudo' });
+    expect(res(t, 'N5A')).toBe('nao_disparou');
+    expect(op(t, 'reparo_artroscopico')).toBeUndefined();
+  });
+
+  test('roteamento N6: degenerativa com falha e "provavelmente reparável" sugere reparo artroscópico (N5B.FALHA + N7.1)', () => {
+    const r = run(GOLDEN.degenerativaFalha);
+    expect(disparadas(r)).toEqual(expect.arrayContaining(['N5B.FALHA', 'N7.1']));
+    expect(op(r, 'reparo_artroscopico')).toMatchObject({ sentido: 'favorece', forca: 'fraca' });
+    expect(op(r, 'reparo_artroscopico')!.motivos.map((m) => m.regra).sort()).toEqual(['N5B.FALHA', 'N7.1']);
+    // sem a estimativa de reparabilidade a regra fica indeterminada (não vira sugestão por omissão)
+    const semEstimativa = run({ ...GOLDEN.degenerativaFalha, reparabilidade_estimada: undefined });
+    expect(res(semEstimativa, 'N5B.FALHA')).toBe('indeterminada');
+    expect(semEstimativa.faltantes.find((f) => f.entrada === 'reparabilidade_estimada')!.desbloqueia).toContain('N5B.FALHA');
+  });
+
   test('reparável <3 cm: zona de técnica simples vs dupla, ambas controversas', () => {
     const r = run(GOLDEN.reparavelPequena);
     expect(disparadas(r)).toEqual(expect.arrayContaining(['N7.1', 'ZC.TECNICA_MENOR_3CM', 'ZC.AUGMENTATION', 'N7.3', 'N7.FATORES_PRESENTES', 'N7.CSA']));
@@ -147,7 +175,19 @@ describe('casos-ouro por ramo', () => {
     expect(disparadas(r)).toEqual(expect.arrayContaining(['ZC1', 'ZC2.IRREPARAVEL', 'LTT.TABAGISMO', 'LTT.REDONDO_MENOR', 'LTT.DELTOIDE', 'BALAO.AXILAR', 'SCR.GOUTALLIER3', 'ZC2.REVISAO', 'ZC.GOUTALLIER3']));
     expect(res(r, 'ZC1-P')).toBe('nao_disparou');
     const zc1 = ['reparo_parcial', 'scr', 'ltt', 'balao', 'desbridamento_tenotomia', 'rsa', 'ponte_enxerto', 'tratamento_conservador'];
-    for (const id of zc1) expect(op(r, id)?.forca, id).toBe('controversa');
+    // Alternativa de zona cinzenta, ou cautela quando uma cautela do paciente (fora da zona) iguala o favor
+    for (const id of zc1) {
+      const o = op(r, id)!;
+      if (o.sentido === 'alternativa') expect(o.forca, id).toBe('controversa');
+      else {
+        expect(o.sentido, id).toBe('desfavorece');
+        expect(o.motivos.some((m) => m.efeito === 'desfavorece' && !/^ZC/.test(m.regra)), id).toBe(true);
+      }
+    }
+    for (const id of ['ltt', 'scr', 'balao']) expect(op(r, id)?.sentido, id).toBe('desfavorece');
+    for (const id of ['reparo_parcial', 'desbridamento_tenotomia', 'rsa', 'ponte_enxerto', 'tratamento_conservador']) {
+      expect(op(r, id)?.sentido, id).toBe('alternativa');
+    }
     expect(op(r, 'ltt')!.motivos.filter((m) => m.efeito === 'desfavorece').map((m) => m.regra).sort())
       .toEqual(['LTT.DELTOIDE', 'LTT.REDONDO_MENOR', 'LTT.TABAGISMO']);
   });
@@ -224,7 +264,10 @@ describe('zonas cinzentas', () => {
         vistas.add(z.id);
         for (const ef of z.efeitos) {
           const o = op(r, ef.opcao)!;
-          expect(o.forca, `${z.id}/${ef.opcao}`).toBe('controversa');
+          // 'controversa' (alternativa ou cautela vinda da zona), ou cautela de força definida por regra fora da zona
+          const cautelaFirme = o.sentido === 'desfavorece' && o.motivos.some((m) => m.efeito === 'desfavorece' && !zonas.some((x) => x.id === m.regra));
+          if (!cautelaFirme) expect(o.forca, `${z.id}/${ef.opcao}`).toBe('controversa');
+          expect(o.sentido, `${z.id}/${ef.opcao}`).not.toBe('favorece');
           const c = o.controversias.find((x) => x.regra === z.id)!;
           expect(c.alternativas.length).toBe(z.controversia!.alternativas.length);
         }

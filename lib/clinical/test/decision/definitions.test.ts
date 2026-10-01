@@ -43,6 +43,36 @@ describe.each(TODOS)('estrutura de $nome', ({ def, lock }) => {
     }
   });
 
+  test('todo valor de enum/lista tem rótulo legível', () => {
+    if (def === FAKE) return; // o exemplo de teste não exibe rótulos
+    for (const e of def.entradas) {
+      if (e.def.tipo !== 'enum' && e.def.tipo !== 'lista') continue;
+      for (const v of e.def.valores) expect(e.def.rotulos?.[v]?.trim(), `${e.id}: ${v}`).toBeTruthy();
+    }
+  });
+
+  test('textos exibidos não citam ids internos (parâmetros, entradas, valores de enum, opções)', () => {
+    const ids = new Set<string>([
+      ...(def.parametros ?? []).map((p) => p.id),
+      ...def.entradas.filter((e) => e.id.includes('_')).map((e) => e.id),
+      ...def.entradas.flatMap((e) => (e.def.tipo === 'enum' || e.def.tipo === 'lista' ? e.def.valores.filter((v) => v.includes('_')) : [])),
+      ...def.opcoes.filter((o) => o.id.includes('_')).map((o) => o.id),
+    ]);
+    const textos: [string, string][] = [
+      ['titulo', def.titulo], ['escopo', def.escopo],
+      ...def.foraDeEscopo.map((f): [string, string] => [f.id, f.texto]),
+      ...def.avisosGerais.map((a, i): [string, string] => [`aviso geral ${i}`, a]),
+      ...def.entradas.map((e): [string, string] => [`entrada ${e.id}`, e.rotulo]),
+      ...def.opcoes.map((o): [string, string] => [`opção ${o.id}`, o.rotulo]),
+      ...(def.parametros ?? []).flatMap((p): [string, string][] => [[`parâmetro ${p.id}`, p.rotulo], [`parâmetro ${p.id}`, p.nota]]),
+      ...def.regras.flatMap((r): [string, string][] => [
+        [r.id, r.titulo], [r.id, r.motivo.replace(/\{[A-Za-z0-9_]+\}/g, '')],
+        ...(r.controversia ? [[r.id, r.controversia.nota] as [string, string], ...r.controversia.alternativas.map((a): [string, string] => [r.id, a.argumento])] : []),
+      ]),
+    ];
+    for (const [onde, t] of textos) for (const id of ids) expect(new RegExp(`\\b${id}\\b`).test(t), `${onde}: "${id}"`).toBe(false);
+  });
+
   test('validateDefinition completo não aponta problemas', () => {
     expect(validateDefinition(def, lock)).toEqual([]);
   });
@@ -74,6 +104,14 @@ describe('validateDefinition detecta definições quebradas', () => {
     return validateDefinition(d, lock).join('\n');
   };
 
+  test('rótulo de valor fora do enum ou vazio', () => {
+    const msg = issues((d) => {
+      const solo = d.entradas.find((e) => e.id === 'solo')!;
+      if (solo.def.tipo === 'enum') solo.def.rotulos = { seco: 'Seco', lamacento: 'Lama', umido: ' ' };
+    });
+    expect(msg).toMatch(/entrada solo: rótulo para valor "lamacento" fora do enum/);
+    expect(msg).toMatch(/entrada solo: rótulo vazio para "umido"/);
+  });
   test('regra sem referência', () => {
     expect(issues((d) => { d.regras[0].referencias = []; })).toMatch(/R\.CALOR: sem referência/);
   });

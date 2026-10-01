@@ -148,7 +148,8 @@ describe('casos-ouro por ramo', () => {
     expect(r.foraDeEscopo).toEqual([]);
     expect(disparadas(r)).toEqual([...regras].sort());
     expect(opcoes(r)).toEqual(esperado);
-    for (const o of r.opcoes) expect(o.sentido).toBe('favorece');
+    // Nenhuma cautela neste algoritmo; opção ligada a zona cinzenta é 'alternativa' (força controversa), nunca "favorece".
+    for (const o of r.opcoes) expect(o.sentido, o.opcao).toBe(o.forca === 'controversa' ? 'alternativa' : 'favorece');
   });
 
   test.each(['fratura_exposta', 'lesao_neurovascular', 'fratura_patologica', 'politrauma'])('N0: %s → fora do escopo, sem opções', (campo) => {
@@ -163,7 +164,7 @@ describe('casos-ouro por ramo', () => {
   test('S3 mantém o motivo moderado da RSA sem torná-la vencedora (continua controversa pela ZC-G)', () => {
     const r = evaluate(DEF, GOLDEN.find((g) => g.nome.startsWith('S3'))!.entrada);
     const rsa = r.opcoes.find((o) => o.opcao === 'artroplastia_reversa')!;
-    expect(rsa.forca).toBe('controversa');
+    expect(rsa).toMatchObject({ forca: 'controversa', sentido: 'alternativa' });
     expect(rsa.motivos.some((m) => m.regra === 'N8.S3.AO_C2_CIRURGIA' && m.forca === 'moderada')).toBe(true);
   });
 

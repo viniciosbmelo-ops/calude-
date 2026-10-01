@@ -20,7 +20,6 @@ const aviso = (r: ResultadoApoio, id: string) => r.avisos.find((a) => a.regra ==
 const agudaAlta = { tipo_ruptura: 'completa', dias_desde_lesao: 10, demanda_funcional: 'alta', prioridade_supinacao: 'alta', hook_test: 'anormal' };
 
 const GRAY_ZONES: { regra: string; entrada: Record<string, unknown>; opcoes: string[] }[] = [
-  { regra: 'DBR.N2.TEMPO', entrada: { tipo_ruptura: 'completa', dias_desde_lesao: 30 }, opcoes: ['def_cronica_21d', 'def_cronica_4sem', 'def_cronica_6sem'] },
   { regra: 'DBR.A1.ZC_BAIXA_DEMANDA', entrada: { tipo_ruptura: 'completa', dias_desde_lesao: 5, demanda_funcional: 'baixa', prioridade_supinacao: 'baixa' }, opcoes: ['reparo_anatomico', 'nao_operatorio'] },
   { regra: 'DBR.A3.VIA', entrada: { tipo_ruptura: 'completa' }, opcoes: ['incisao_unica', 'incisao_dupla'] },
   { regra: 'DBR.A5.PROFILAXIA_OH', entrada: { via_planejada: 'dupla' }, opcoes: ['profilaxia_oh_aine', 'sem_profilaxia_oh'] },
@@ -224,10 +223,45 @@ describe('zonas cinzentas', () => {
     for (const o of opcoes) {
       const res = op(r, o)!;
       expect(res.forca, o).toBe('controversa');
+      expect(res.sentido, o).toBe('alternativa');
       const c = res.controversias.find((x) => x.regra === regra)!;
       expect(c.alternativas.map((a) => a.opcao).sort()).toEqual([...opcoes].sort());
       for (const a of c.alternativas) expect(a.referencias.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('classificação temporal: informativa, nunca opção de tratamento', () => {
+  test('nenhuma opção do algoritmo é uma definição de "crônica"', () => {
+    expect(def.opcoes.some((o) => /cr[ôo]nica/i.test(o.rotulo) || o.id.startsWith('def_'))).toBe(false);
+    const regra = def.regras.find((x) => x.id === 'DBR.N2.TEMPO')!;
+    expect(regra.aviso).toBe(true);
+    expect(regra.efeitos).toEqual([]);
+  });
+
+  test('10 dias: as três definições concordam (aguda) → sem aviso temporal e sem opções de definição', () => {
+    const r = run({ tipo_ruptura: 'completa', dias_desde_lesao: 10 });
+    expect(tr(r, 'DBR.N2.TEMPO')).toBe('nao_disparou');
+    expect(aviso(r, 'DBR.N2.TEMPO')).toBeUndefined();
+    expect(r.opcoes.some((o) => o.opcao.startsWith('def_'))).toBe(false);
+  });
+
+  test.each([22, 28, 30, 41])('%i dias: definições divergem → aviso informativo com as três definições', (dias) => {
+    const r = run({ tipo_ruptura: 'completa', dias_desde_lesao: dias });
+    const a = aviso(r, 'DBR.N2.TEMPO')!;
+    expect(a.texto).toContain(`Lesão de ${dias} dias`);
+    for (const d of ['>21 dias', '>4 semanas', '≥6 semanas']) expect(a.texto).toContain(d);
+    expect(a.referencias).toEqual(expect.arrayContaining(['Kelly2000', 'Greco2026', 'Schmidt2022']));
+    expect(r.opcoes.some((o) => o.opcao.startsWith('def_'))).toBe(false);
+  });
+
+  test.each([0, 21, 42, 90])('%i dias: no corte mais curto ou a partir do mais longo, as definições concordam → sem aviso', (dias) => {
+    expect(tr(run({ tipo_ruptura: 'completa', dias_desde_lesao: dias }), 'DBR.N2.TEMPO')).toBe('nao_disparou');
+  });
+
+  test('ruptura parcial ou dias ausentes: sem aviso temporal', () => {
+    expect(tr(run({ tipo_ruptura: 'parcial', dias_desde_lesao: 30 }), 'DBR.N2.TEMPO')).toBe('nao_disparou');
+    expect(tr(run({ tipo_ruptura: 'completa' }), 'DBR.N2.TEMPO')).toBe('indeterminada');
   });
 });
 
@@ -267,6 +301,7 @@ describe('entradas ausentes nunca disparam regras', () => {
       { tipo_ruptura: 'parcial', pct_ruptura_parcial_rm: 70, demanda_funcional: 'alta', workers_comp: true },
       { tipo_ruptura: 'parcial', pct_ruptura_parcial_rm: 30, demanda_funcional: 'baixa' },
       { tipo_ruptura: 'completa', dias_desde_lesao: 60, hook_test: 'anormal' },
+      { tipo_ruptura: 'completa', dias_desde_lesao: 30 },
     ];
     const cobertas = new Set<string>();
     for (const caso of casos) {

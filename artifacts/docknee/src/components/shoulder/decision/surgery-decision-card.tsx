@@ -9,8 +9,8 @@ import {
 import type { ResultadoApoio } from "@workspace/clinical/web";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/lib/i18n";
-import { DecisionDisclaimer, DecisionResultView, StrengthChip, useDsT } from "./decision-result";
-import { choiceLabel, readExecutionMeta } from "./logic";
+import { DecisionDisclaimer, DecisionResultView, OptionDirection, useDsT } from "./decision-result";
+import { choiceLabel, displayDirection, readExecutionMeta } from "./logic";
 
 function ExecucaoItem({ e }: { e: ApoioDecisaoExecucaoCirurgia }) {
   const t = useDsT();
@@ -26,7 +26,7 @@ function ExecucaoItem({ e }: { e: ApoioDecisaoExecucaoCirurgia }) {
       </div>
       {top && (
         <p className="flex flex-wrap items-center gap-2 text-sm">
-          <span>{top.rotulo}</span><StrengthChip forca={top.forca} /><span className="text-xs text-muted-foreground">{t(`sentido_${top.sentido}`)}</span>
+          <span>{top.rotulo}</span><OptionDirection forca={top.forca} sentido={displayDirection(top)} />
         </p>
       )}
       <p className="text-sm">

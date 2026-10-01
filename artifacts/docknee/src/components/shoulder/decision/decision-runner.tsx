@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { DecisionResultView, useDsT, type DsT } from "./decision-result";
 import {
   BOOL_NAO, BOOL_SIM, CHOICE_OTHER, MAX_JUSTIFICATIVA, MAX_OUTRA, buildChoicePayload, buildEntrada, describeApiError,
-  emptyChoice, readExecutionMeta, visibleInputs, type ApiErrorView, type ChoiceState, type FieldError, type FormValues,
+  emptyChoice, readExecutionMeta, valueLabel, visibleInputs, type ApiErrorView, type ChoiceState, type FieldError, type FormValues,
 } from "./logic";
 
 export function algorithmDef(a: Pick<ApoioDecisaoAlgoritmo, "definicao">): AlgorithmDef {
@@ -79,7 +79,7 @@ export function DecisionInputForm({ entradas, values, onChange, errors, idPrefix
               <select id={fid} value={typeof raw === "string" ? raw : ""} className={inputCls}
                 onChange={(ev) => set(e.id, ev.target.value || undefined)}>
                 <option value="">{t("notInformed")}</option>
-                {d.valores.map((v) => <option key={v} value={v}>{v}</option>)}
+                {d.valores.map((v) => <option key={v} value={v}>{valueLabel(v, d.rotulos)}</option>)}
               </select>
             )}
             {d.tipo === "lista" && (
@@ -94,7 +94,7 @@ export function DecisionInputForm({ entradas, values, onChange, errors, idPrefix
                           const next = on ? cur.filter((x) => x !== v) : [...cur, v];
                           set(e.id, next.length ? next : undefined);
                         }} />
-                      {v}
+                      {valueLabel(v, d.rotulos)}
                     </label>
                   );
                 })}

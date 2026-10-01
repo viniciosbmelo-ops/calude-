@@ -11,11 +11,13 @@ import {
   type AlgorithmDef,
   type EntradaDef,
   type Forca,
+  type MotivoOpcao,
   type OpcaoResultado,
   type ParametroResultado,
   type PreopAssessment,
   type Referencia,
   type ResultadoApoio,
+  type SentidoOpcao,
   type StatusAlgoritmo,
   type TraceItem,
 } from "@workspace/clinical/web";
@@ -200,6 +202,38 @@ export function prefillFromRegistro(def: Pick<AlgorithmDef, "entradas">, ctx: Re
 // ---------------------------------------------------------------------------
 
 export const FORCAS: readonly Forca[] = ["forte", "moderada", "fraca", "controversa"];
+const RANK_FORCA: Record<Forca, number> = { forte: 3, moderada: 2, fraca: 1, controversa: 0 };
+
+/**
+ * Sentido exibido de uma opção. O motor ≥1.2.0 já entrega o sentido líquido; resultados gravados antes traziam
+ * "favorece" com força "controversa" tanto para alternativas de zona cinzenta quanto para cautela de força igual
+ * ou maior que o favor. Nesses, o sentido é reconstruído dos motivos (cautela ≥ favor → cautela; senão alternativa).
+ */
+export function displayDirection(o: Pick<OpcaoResultado, "sentido" | "forca" | "motivos">): SentidoOpcao {
+  if (o.sentido !== "favorece" || o.forca !== "controversa") return o.sentido;
+  const max = (ef: MotivoOpcao["efeito"]) => Math.max(-1, ...o.motivos.filter((m) => m.efeito === ef).map((m) => RANK_FORCA[m.forca]));
+  const des = max("desfavorece");
+  return des >= 0 && des >= max("favorece") ? "desfavorece" : "alternativa";
+}
+
+/** Rótulo exibido de um motivo: efeito a favor vindo de zona cinzenta é "alternativa", sem força. */
+export function motiveTag(o: Pick<OpcaoResultado, "controversias">, m: Pick<MotivoOpcao, "regra" | "efeito" | "forca">): { sentido: SentidoOpcao; forca?: Forca } {
+  if (m.efeito === "favorece" && (o.controversias ?? []).some((c) => c.regra === m.regra)) return { sentido: "alternativa" };
+  return { sentido: m.efeito, forca: m.forca };
+}
+
+/** Motivos com os do sentido exibido primeiro (a cautela que define a opção não fica escondida no fim). */
+export function orderedMotives<T extends Pick<MotivoOpcao, "efeito">>(motivos: readonly T[], sentido: SentidoOpcao): T[] {
+  const primeiro = sentido === "desfavorece" ? "desfavorece" : "favorece";
+  return [...motivos].sort((a, b) => Number(b.efeito === primeiro) - Number(a.efeito === primeiro));
+}
+
+/** Evidência própria desta opção dentro de cada zona cinzenta em que ela é alternativa. */
+export function alternativeEvidence(o: Pick<OpcaoResultado, "opcao" | "controversias">): { regra: string; argumento: string; referencias: string[] }[] {
+  return (o.controversias ?? []).flatMap((c) => c.alternativas
+    .filter((a) => a.opcao === o.opcao)
+    .map((a) => ({ regra: c.regra, argumento: a.argumento, referencias: [...a.referencias] })));
+}
 
 /** Link público da referência: PubMed quando há PMID, senão DOI. */
 export function referenceHref(r: Pick<Referencia, "pmid" | "doi">): string | undefined {
@@ -248,11 +282,29 @@ export function ruleTitle(def: Pick<AlgorithmDef, "regras" | "foraDeEscopo"> | u
   return def.regras.find((r) => r.id === id)?.titulo ?? def.foraDeEscopo.find((f) => f.id === id)?.texto ?? id;
 }
 
-export function formatTraceValue(v: unknown): string {
+export function formatTraceValue(v: unknown, locale?: string, rotulos?: Readonly<Record<string, string>>): string {
   if (v === undefined || v === null) return "—";
-  if (Array.isArray(v)) return v.join(", ");
+  if (Array.isArray(v)) return v.map((x) => valueLabel(String(x), rotulos)).join(", ");
   if (typeof v === "boolean") return v ? "✓" : "✗";
+  if (typeof v === "number") return formatDecimal(v, locale);
+  if (typeof v === "string") return valueLabel(v, rotulos);
   return String(v);
+}
+
+/** Número no idioma da tela (vírgula decimal em pt-BR/es), sem separador de milhar. Sem idioma: como está. */
+export function formatDecimal(n: number, locale?: string): string {
+  if (!locale) return String(n);
+  return new Intl.NumberFormat(locale, { useGrouping: false, maximumFractionDigits: 10 }).format(n);
+}
+
+/** Rótulo de um valor de enum/lista (pt-BR, da definição); o próprio valor quando não há rótulo. */
+export function valueLabel(v: string, rotulos?: Readonly<Record<string, string>>): string {
+  return rotulos?.[v] ?? v;
+}
+
+/** Rótulos de valores declarados para uma entrada enum/lista. */
+export function valueLabelsOf(e: EntradaDef | undefined): Readonly<Record<string, string>> | undefined {
+  return e && (e.def.tipo === "enum" || e.def.tipo === "lista") ? e.def.rotulos : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -289,15 +341,21 @@ export function provenanceKind(de: string | undefined): ProvenanceKind {
 export interface ValueLabels {
   yes: string;
   no: string;
+  /** Idioma da tela para formatar números (vírgula decimal). */
+  locale?: string;
 }
 
-/** Valor legível de uma entrada: Sim/Não para booleanos, lista com vírgulas, unidade quando houver. */
-export function formatInputValue(v: unknown, labels: ValueLabels, unidade?: string): string {
+/**
+ * Valor legível de uma entrada: Sim/Não para booleanos, rótulo do valor de enum/lista, número no idioma da tela,
+ * unidade quando houver.
+ */
+export function formatInputValue(v: unknown, labels: ValueLabels, unidade?: string, rotulos?: Readonly<Record<string, string>>): string {
   if (v === undefined || v === null || v === "") return "—";
   if (typeof v === "boolean") return v ? labels.yes : labels.no;
-  if (Array.isArray(v)) return v.length ? v.map(String).join(", ") : "—";
+  if (Array.isArray(v)) return v.length ? v.map((x) => valueLabel(String(x), rotulos)).join(", ") : "—";
   if (typeof v === "object") return JSON.stringify(v);
-  return unidade ? `${String(v)} ${unidade}` : String(v);
+  const txt = typeof v === "number" ? formatDecimal(v, labels.locale) : valueLabel(String(v), rotulos);
+  return unidade ? `${txt} ${unidade}` : txt;
 }
 
 function entradaDef(def: Pick<AlgorithmDef, "entradas"> | undefined, id: string): EntradaDef | undefined {
@@ -342,8 +400,8 @@ export function conflictLines(
       return {
         entrada: c.entrada,
         rotulo: e?.rotulo ?? c.entrada,
-        digitado: formatInputValue(c.descartado, labels, u),
-        usado: formatInputValue(c.usado, labels, u),
+        digitado: formatInputValue(c.descartado, labels, u, valueLabelsOf(e)),
+        usado: formatInputValue(c.usado, labels, u, valueLabelsOf(e)),
         origem: c.origemUsada,
         kind: provenanceKind(c.origemUsada),
         ...(caminho ? { caminho } : {}),
@@ -381,7 +439,7 @@ export function usedInputLines(
     return {
       id,
       rotulo: e?.rotulo ?? id,
-      valor: formatInputValue(entrada[id], labels, unidadeDe(e)),
+      valor: formatInputValue(entrada[id], labels, unidadeDe(e), valueLabelsOf(e)),
       ...(p ? { kind: provenanceKind(p.de) } : {}),
       ...(p?.caminho ? { caminho: p.caminho } : {}),
       ...(p?.nota ? { nota: p.nota } : {}),
@@ -401,11 +459,11 @@ export interface ParameterLine {
 }
 
 /** Parâmetros usados, com valor e unidade; `pendente` marca o padrão provisório ainda sem decisão do cirurgião. */
-export function parameterLines(parametros: readonly ParametroResultado[] | undefined): ParameterLine[] {
+export function parameterLines(parametros: readonly ParametroResultado[] | undefined, locale?: string): ParameterLine[] {
   return (parametros ?? []).map((p) => ({
     id: p.id,
     rotulo: p.rotulo,
-    valor: p.unidade ? `${p.valor} ${p.unidade}` : String(p.valor),
+    valor: p.unidade ? `${formatDecimal(p.valor, locale)} ${p.unidade}` : formatDecimal(p.valor, locale),
     origem: p.origem,
     pendente: p.status === "pendente_decisao_cirurgiao",
     nota: p.nota,

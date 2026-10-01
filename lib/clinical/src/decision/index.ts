@@ -2,7 +2,7 @@
 export * from './types';
 export { avaliarCond, camposDe } from './conditions';
 export type { CondResultado, Parametros } from './conditions';
-export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, MOTOR_VERSAO } from './engine';
+export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, rotuloDoValor, numeroPtBr, MOTOR_VERSAO } from './engine';
 export { canonicalJson, sha256Hex, hashDefinition, algorithmKey } from './hash';
 export { validateDefinition, entradasUsadas } from './validate';
 export {
@@ -17,6 +17,8 @@ export type {
   ContextoMapeamento, ConflitoMapeamento, EntradaMontada, MapeadorEntrada, ProvenienciaEntrada, ResultadoMapeador,
 } from './mapping';
 export type { AlgoritmoRegistrado, DecisionRegistry } from './registry';
-export { ROTULO_SUGESTAO, AVISO_DECISAO_DO_CIRURGIAO, AVISO_NIVEIS_EVIDENCIA, FORCA_ROTULO, EFEITO_ROTULO, STATUS_ROTULO } from './vocab';
+export {
+  ROTULO_SUGESTAO, AVISO_DECISAO_DO_CIRURGIAO, AVISO_NIVEIS_EVIDENCIA, FORCA_ROTULO, EFEITO_ROTULO, SENTIDO_ROTULO, TIPO_ESTUDO_ROTULO, STATUS_ROTULO,
+} from './vocab';
 export { concordancia } from './choice';
 export type { Concordancia, EscolhaCirurgiao } from './choice';

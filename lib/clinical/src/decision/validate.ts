@@ -93,6 +93,12 @@ export function validateDefinition(def: AlgorithmDef, lock?: Readonly<Record<str
       issues.push(`entrada ${e.id}: min > max`);
     }
     if ((e.def.tipo === 'enum' || e.def.tipo === 'lista') && e.def.valores.length === 0) issues.push(`entrada ${e.id}: enum vazio`);
+    if ((e.def.tipo === 'enum' || e.def.tipo === 'lista') && e.def.rotulos) {
+      for (const [v, r] of Object.entries(e.def.rotulos)) {
+        if (!e.def.valores.includes(v)) issues.push(`entrada ${e.id}: rótulo para valor "${v}" fora do enum`);
+        if (!r.trim()) issues.push(`entrada ${e.id}: rótulo vazio para "${v}"`);
+      }
+    }
     if (e.origem.de === 'derivada') {
       for (const d of e.origem.dependeDe) if (!entradas.has(d)) issues.push(`entrada ${e.id}: depende de "${d}" não declarada`);
     }

@@ -36,7 +36,10 @@ const LESOES = ['bankart', 'bony_bankart', 'perthes', 'alpsa', 'glad', 'hagl', '
 
 const entradas: EntradaDef[] = [
   { id: 'idade', rotulo: 'Idade na data da cirurgia/avaliação', def: { tipo: 'numero', unidade: 'anos', min: 5, max: 100, inteiro: true }, origem: { de: 'paciente', campo: 'dataNascimento' }, momento: 'preop' },
-  { id: 'tipo_episodio', rotulo: 'Tipo de episódio', def: { tipo: 'enum', valores: TIPO_EPISODIO }, origem: { de: 'derivada', funcao: 'tipoEpisodio(episodes, prior_surgery, n_cirurgias_estabilizacao_previas)', dependeDe: [] }, momento: 'preop' },
+  { id: 'tipo_episodio', rotulo: 'Tipo de episódio', def: { tipo: 'enum', valores: TIPO_EPISODIO, rotulos: {
+    primeiro_episodio: 'Primeiro episódio', recorrente: 'Recorrente',
+    falha_pos_estabilizacao_partes_moles: 'Falha após estabilização de partes moles', falha_pos_transferencia_coracoide: 'Falha após transferência do coracoide (Latarjet/Bristow)',
+  } }, origem: { de: 'derivada', funcao: 'tipoEpisodio(episodes, prior_surgery, n_cirurgias_estabilizacao_previas)', dependeDe: [] }, momento: 'preop' },
   { id: 'instabilidade_voluntaria', rotulo: 'Instabilidade voluntária', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.voluntary` }, momento: 'preop' },
   { id: 'esporte_competitivo', rotulo: 'Esporte competitivo', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.sport_competitive` }, momento: 'preop' },
   { id: 'esporte_contato_ou_arremesso', rotulo: 'Esporte de contato ou com arremesso/elevação forçada', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.sport_contact_or_forced_overhead` }, momento: 'preop' },
@@ -44,13 +47,15 @@ const entradas: EntradaDef[] = [
   { id: 'n_luxacoes', rotulo: 'Número de luxações pré-operatórias', def: { tipo: 'numero', min: 0, max: 1000, inteiro: true }, origem: { de: 'payload', caminho: `${P}.n_luxacoes` }, momento: 'preop' },
   { id: 'meses_desde_primeiro_episodio', rotulo: 'Tempo desde o 1º episódio', def: { tipo: 'numero', unidade: 'meses', min: 0, max: 1200 }, origem: { de: 'payload', caminho: `${P}.meses_desde_primeiro_episodio` }, momento: 'preop' },
   { id: 'epilepsia', rotulo: 'Epilepsia', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.epilepsy` }, momento: 'preop' },
-  { id: 'lesoes_partes_moles', rotulo: 'Lesões de partes moles na imagem', def: { tipo: 'lista', valores: LESOES }, origem: { de: 'payload', caminho: `${P}.soft_tissue_lesions` }, momento: 'preop' },
+  { id: 'lesoes_partes_moles', rotulo: 'Lesões de partes moles na imagem', def: { tipo: 'lista', valores: LESOES, rotulos: {
+    bankart: 'Bankart', bony_bankart: 'Bankart ósseo', perthes: 'Perthes', alpsa: 'ALPSA', glad: 'GLAD', hagl: 'HAGL', slap_extension: 'Extensão para SLAP',
+  } }, origem: { de: 'payload', caminho: `${P}.soft_tissue_lesions` }, momento: 'preop' },
   { id: 'D_mm', rotulo: 'Diâmetro da glenoide inferior (D)', def: { tipo: 'numero', unidade: 'mm', min: 15, max: 40 }, origem: { de: 'payload', caminho: `${P}.D_mm` }, momento: 'preop' },
   { id: 'd_mm', rotulo: 'Largura do defeito glenoidal (d)', def: { tipo: 'numero', unidade: 'mm', min: 0, max: 20 }, origem: { de: 'payload', caminho: `${P}.d_mm` }, momento: 'preop' },
   { id: 'hsi_mm', rotulo: 'Intervalo de Hill-Sachs (HSI)', def: { tipo: 'numero', unidade: 'mm', min: 0, max: 50 }, origem: { de: 'payload', caminho: `${P}.hsi_mm` }, momento: 'preop' },
   { id: 'gbl_pct', rotulo: 'Perda óssea glenoidal (GBL)', def: { tipo: 'numero', unidade: '%', min: 0, max: 100 }, origem: { de: 'derivada', funcao: 'glenoidBoneLossPct(D_mm, d_mm) | gbl_pct_direto', dependeDe: ['D_mm', 'd_mm'] }, momento: 'preop' },
   { id: 'gt_mm', rotulo: 'Glenoid track (GT = 0,83·D − d)', def: { tipo: 'numero', unidade: 'mm', min: -20, max: 40 }, origem: { de: 'derivada', funcao: 'glenoidTrack(D_mm, d_mm)', dependeDe: ['D_mm', 'd_mm'] }, momento: 'preop' },
-  { id: 'track_status', rotulo: 'Status do track', def: { tipo: 'enum', valores: ['on_track', 'off_track'] }, origem: { de: 'derivada', funcao: 'trackStatus(gt_mm, hsi_mm)', dependeDe: ['gt_mm', 'hsi_mm'] }, momento: 'preop' },
+  { id: 'track_status', rotulo: 'Status do track', def: { tipo: 'enum', valores: ['on_track', 'off_track'], rotulos: { on_track: 'On-track', off_track: 'Off-track' } }, origem: { de: 'derivada', funcao: 'trackStatus(gt_mm, hsi_mm)', dependeDe: ['gt_mm', 'hsi_mm'] }, momento: 'preop' },
   { id: 'dtd_mm', rotulo: 'Distância até o track (DTD = GT − HSI; positiva quando on-track)', def: { tipo: 'numero', unidade: 'mm', min: -50, max: 40 }, origem: { de: 'derivada', funcao: 'trackStatus(gt_mm, hsi_mm).margin_mm', dependeDe: ['gt_mm', 'hsi_mm'] }, momento: 'preop' },
   { id: 'hill_sachs_presente', rotulo: 'Hill-Sachs presente na imagem', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
   { id: 'isis_total', rotulo: 'ISIS total (informado pelo cirurgião)', def: { tipo: 'numero', unidade: 'pontos', min: 0, max: 10, inteiro: true }, origem: { de: 'manual' }, momento: 'preop' },
@@ -98,7 +103,7 @@ const regras: RegraDef[] = [
       { opcao: 'latarjet', efeito: 'favorece', forca: 'forte' },
       { opcao: 'bankart_artro', efeito: 'desfavorece', forca: 'forte' },
     ],
-    motivo: 'GBL {gbl_pct}, no limiar crítico ou acima (parâmetro gbl_critico_pct). Com defeito ósseo significativo, recorrência após Bankart artroscópico de 67% contra 4% (89% contra 6,5% em atletas de contato); defeito ≥21% reduz a estabilidade após Bankart (cadavérico); glenoide em pera invertida com ≥25–27% de perda; ≥25% descrito como consenso de enxerto ósseo; no quartil ≥20%, falha de 27,8% contra 7,3% (militares). A literatura favorece aumento ósseo glenoidal (Latarjet/bloco ósseo); cautela com Bankart artroscópico isolado.',
+    motivo: 'GBL {gbl_pct}, no limiar de perda glenoidal crítica (parâmetro configurável) ou acima. Com defeito ósseo significativo, recorrência após Bankart artroscópico de 67% contra 4% (89% contra 6,5% em atletas de contato); defeito ≥21% reduz a estabilidade após Bankart (cadavérico); glenoide em pera invertida com ≥25–27% de perda; ≥25% descrito como consenso de enxerto ósseo; no quartil ≥20%, falha de 27,8% contra 7,3% (militares). A literatura favorece aumento ósseo glenoidal (Latarjet/bloco ósseo); cautela com Bankart artroscópico isolado.',
     referencias: [
       { ref: 'Burkhart2000', nota: '67% vs 4%; contato 89% vs 6,5% (n = 194)' },
       { ref: 'Itoi2000', nota: 'Defeito ≥21% (cadavérico)' },
@@ -127,7 +132,7 @@ const regras: RegraDef[] = [
       { opcao: 'bankart_artro', efeito: 'favorece', forca: 'fraca' },
       { opcao: 'estabilizacao_dinamica', efeito: 'favorece', forca: 'fraca' },
     ],
-    motivo: 'GBL {gbl_pct}, entre o limite inferior da zona cinzenta A (parâmetro gbl_zc_a_inferior_pct) e o limiar crítico (parâmetro gbl_critico_pct). Avaliar também o track (N4) e o ISIS (N5), exibidos ao lado.',
+    motivo: 'GBL {gbl_pct}, entre o limite inferior da zona cinzenta A e o limiar de perda glenoidal crítica (ambos parâmetros configuráveis). Avaliar também o track (N4) e o ISIS (N5), exibidos ao lado.',
     referencias: [
       { ref: 'Masud2023', nota: 'NMA: Latarjet < Bankart na faixa de 10–20% (p = 0,0016); 0–10% semelhantes' },
       { ref: 'Trasolini2022', nota: 'Limiares críticos de 10–15% com imagem avançada' },
@@ -191,7 +196,7 @@ const regras: RegraDef[] = [
       { opcao: 'bankart_artro', efeito: 'favorece', forca: 'fraca' },
       { opcao: 'bankart_remplissage', efeito: 'favorece', forca: 'fraca' },
     ],
-    motivo: 'On-track com DTD {dtd_mm}, abaixo do limiar near-track (parâmetro near_track_dtd_mm).',
+    motivo: 'On-track com DTD {dtd_mm}, abaixo do limiar near-track (parâmetro configurável).',
     referencias: [{ ref: 'Li2021' }, { ref: 'Verweij2023' }, { ref: 'Dadoo2026' }, { ref: 'Lin2023' }, { ref: 'Charles2025' }],
     controversia: {
       nota: 'Zona cinzenta C: resultados preditivos opostos. DTD <8 mm prediz falha (AUC 0,73; 0,84 em ≥20 anos; 0,69 em <20 anos; n = 173). Em militares, DTD sem poder preditivo (AUC 0,49; n = 80). Em 10 anos, DTD sem associação com recorrência (p = 0,59), mas near-track associado a revisão (p = 0,02). O escore PIT pode apoiar a discussão (faixas 0–3, 4–8, 9–13 e ≥14; recorrência de 2,2% a 51,3%), mas os pesos dos itens requerem texto completo e não são calculados aqui.',
@@ -207,7 +212,7 @@ const regras: RegraDef[] = [
     quando: { campo: 'track_status', op: 'in', valores: ['on_track', 'off_track'] },
     efeitos: [],
     aviso: true,
-    motivo: 'Status do track calculado ({track_status}). Na TC-3D, a concordância interavaliador foi "fair" (α = 0,368) e a acurácia de 65% contra o teste artroscópico dinâmico (n = 49). Registrar a modalidade e o método de medida.',
+    motivo: 'Status do track calculado: {track_status}. Na TC-3D, a concordância interavaliador foi "fair" (α = 0,368) e a acurácia de 65% contra o teste artroscópico dinâmico (n = 49). Registrar a modalidade e o método de medida.',
     referencias: [{ ref: 'Rashid2024' }],
   },
 
@@ -220,7 +225,7 @@ const regras: RegraDef[] = [
       { opcao: 'bankart_artro', efeito: 'desfavorece', forca: 'forte' },
       { opcao: 'latarjet', efeito: 'favorece', forca: 'moderada' },
     ],
-    motivo: 'ISIS {isis_total}, acima do corte alto (parâmetro isis_corte_alto): recorrência de 70% no estudo original (n = 131; recorrência global de 14,5%) e de 71,4% na validação externa (n = 99); meta-análise com RR 4,88. Os autores originais sugerem Bristow-Latarjet. Cautela com Bankart artroscópico isolado.',
+    motivo: 'ISIS {isis_total}, acima do corte alto do ISIS (parâmetro configurável): recorrência de 70% no estudo original (n = 131; recorrência global de 14,5%) e de 71,4% na validação externa (n = 99); meta-análise com RR 4,88. Os autores originais sugerem Bristow-Latarjet. Cautela com Bankart artroscópico isolado.',
     referencias: [{ ref: 'Balg2007' }, { ref: 'vanBlommestein2024' }, { ref: 'Verweij2021' }],
     justificativaForca: 'Força "forte" atribuída pela especificação (L14) à associação de ISIS >6 com alta recorrência: estudo original, validação externa e meta-análise concordantes.',
   },
@@ -237,7 +242,7 @@ const regras: RegraDef[] = [
       { opcao: 'bankart_remplissage', efeito: 'favorece', forca: 'moderada' },
       { opcao: 'latarjet', efeito: 'favorece', forca: 'fraca' },
     ],
-    motivo: 'ISIS {isis_total}, entre os cortes baixo e alto (parâmetros isis_corte_baixo e isis_corte_alto).',
+    motivo: 'ISIS {isis_total}, entre os cortes baixo e alto do ISIS (parâmetros configuráveis).',
     referencias: [{ ref: 'vanBlommestein2024' }, { ref: 'Chen2021' }, { ref: 'Verweij2021' }, { ref: 'Trasolini2022' }, { ref: 'SanchezCruz2026' }],
     controversia: {
       nota: 'Zona cinzenta D: recorrência de 40,7% com ISIS 4–6 contra 15,4% com 0–3; os autores da validação apontam decisão compartilhada. O corte ótimo varia: ≥4 pela curva ROC (n = 222), >3 com RR 3,28, cortes preditivos de 2–4 em revisão sistemática; uma meta-análise de 2026 aponta não depender de cortes rígidos.',
@@ -379,7 +384,7 @@ const regras: RegraDef[] = [
 
 export const INSTABILIDADE_ANTERIOR: AlgorithmDef = {
   id: 'SH_INST_ANT',
-  versao: '0.1.0',
+  versao: '0.1.1',
   patologias: [SH_INST_ANT_CODIGO],
   titulo: 'Instabilidade glenoumeral anterior: apoio à decisão cirúrgica (rascunho)',
   escopo: 'Instabilidade glenoumeral anterior traumática unidirecional (primeiro episódio, recorrente, falha após estabilização de partes moles ou após transferência do coracoide). Instabilidade posterior, multidirecional e voluntária ficam fora.',

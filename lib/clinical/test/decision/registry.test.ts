@@ -93,7 +93,7 @@ describe.each(DECISION_ALGORITHMS.map((def) => ({ nome: algorithmKey(def), def }
 });
 
 describe('montarEntrada: registro prevalece sobre o manual', () => {
-  const inst = decisionRegistry.get('SH_INST_ANT', '0.1.0')!;
+  const inst = decisionRegistry.get('SH_INST_ANT', '0.1.1')!;
   const payload = {
     avaliacaoPreop: {
       comum: { data_avaliacao: '2026-03-10' },
@@ -125,7 +125,7 @@ describe('montarEntrada: registro prevalece sobre o manual', () => {
   });
 
   test('manguito: derivada do registro (GFDI) prevalece sobre GFDI manual', () => {
-    const rct = decisionRegistry.get('SH_RCT_DECISAO', '0.1.0')!;
+    const rct = decisionRegistry.get('SH_RCT_DECISAO', '0.1.1')!;
     const p = { avaliacaoPreop: { comum: {}, patologias: [{ codigo: 'SH_RCT_FULL', schema: 'SH_RCT.diagnosis.v1', dados: { goutallier: { SSP: 2, ISP: 2, SSC: 2 } } }] } };
     const m = montarEntrada(rct.def, rct.mapear, { payload: p }, { gfdi: 3.5 });
     expect(m.entrada.gfdi).toBe(2);
