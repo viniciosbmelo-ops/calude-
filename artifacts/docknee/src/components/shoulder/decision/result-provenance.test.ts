@@ -28,7 +28,7 @@ describe("formatação de valores", () => {
   it("booleano, lista, número com unidade, ausente", () => {
     expect(formatInputValue(true, L)).toBe("Sim");
     expect(formatInputValue(false, L)).toBe("Não");
-    expect(formatInputValue(0, L, "%")).toBe("0 %");
+    expect(formatInputValue(0, L, "%")).toBe("0%");
     expect(formatInputValue(["x", "y"], L)).toBe("x, y");
     expect(formatInputValue([], L)).toBe("—");
     expect(formatInputValue(undefined, L)).toBe("—");
@@ -48,7 +48,7 @@ describe("conflitos com o registro salvo", () => {
       DEF, L, { perda: { de: "payload", caminho: "avaliacaoPreop[X].perda" } },
     );
     expect(lines).toEqual([
-      { entrada: "perda", rotulo: "Perda", digitado: "15 %", usado: "20 %", origem: "payload", kind: "registro", caminho: "avaliacaoPreop[X].perda" },
+      { entrada: "perda", rotulo: "Perda", digitado: "15%", usado: "20%", origem: "payload", kind: "registro", caminho: "avaliacaoPreop[X].perda" },
       { entrada: "lesao", rotulo: "Lesão", digitado: "Não", usado: "Sim", origem: "derivada", kind: "derivado" },
       { entrada: "desconhecida", rotulo: "desconhecida", digitado: "2", usado: "1", origem: "paciente", kind: "registro" },
     ]);
@@ -71,7 +71,7 @@ describe("dados usados", () => {
       [{ entrada: "perda" }],
     );
     expect(lines.map((l) => l.id)).toEqual(["perda", "lesao", "achados", "zeta"]);
-    expect(lines[0]).toEqual({ id: "perda", rotulo: "Perda", valor: "20 %", kind: "registro", caminho: "avaliacaoPreop[X].perda", emConflito: true });
+    expect(lines[0]).toEqual({ id: "perda", rotulo: "Perda", valor: "20%", kind: "registro", caminho: "avaliacaoPreop[X].perda", emConflito: true });
     expect(lines[1]).toEqual({ id: "lesao", rotulo: "Lesão", valor: "Não", kind: "manual", emConflito: false });
     expect(lines[2]).toEqual({ id: "achados", rotulo: "Achados", valor: "y", kind: "derivado", nota: "calc", emConflito: false });
     // Sem proveniência registrada (execução antiga): sem tag
@@ -90,7 +90,7 @@ describe("parâmetros usados", () => {
 
   it("valor com unidade, origem e pendência de decisão do cirurgião", () => {
     expect(parameterLines([P({ unidade: "%" }), P({ id: "b", valor: 3, status: "pendente_decisao_cirurgiao", origem: "contexto" })])).toEqual([
-      { id: "lim", rotulo: "Limiar", valor: "10 %", origem: "padrao", pendente: false, nota: "n", referencias: ["R1"] },
+      { id: "lim", rotulo: "Limiar", valor: "10%", origem: "padrao", pendente: false, nota: "n", referencias: ["R1"] },
       { id: "b", rotulo: "Limiar", valor: "3", origem: "contexto", pendente: true, nota: "n", referencias: ["R1"] },
     ]);
   });

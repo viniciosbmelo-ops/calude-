@@ -2,7 +2,7 @@
 export * from './types';
 export { avaliarCond, camposDe } from './conditions';
 export type { CondResultado, Parametros } from './conditions';
-export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, rotuloDoValor, numeroPtBr, MOTOR_VERSAO } from './engine';
+export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, rotuloDoValor, numeroPtBr, comUnidade, MOTOR_VERSAO } from './engine';
 export { canonicalJson, sha256Hex, hashDefinition, algorithmKey } from './hash';
 export { validateDefinition, entradasUsadas } from './validate';
 export {

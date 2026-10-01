@@ -231,8 +231,8 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
                   <div className="mt-2">
                     <p className="text-xs font-semibold text-muted-foreground">{t("whyTitle")}</p>
                     <ul className="mt-1 space-y-1 text-sm">
-                      {orderedMotives(o.motivos, sentido).map((m, i) => {
-                        const tag = motiveTag(o, m);
+                      {orderedMotives(o.motivos, sentido, o).map((m, i) => {
+                        const tag = motiveTag(o, m, sentido);
                         return (
                           <li key={`${m.regra}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
                             <span>{m.texto}</span>

@@ -46,6 +46,40 @@ describe("sentido exibido", () => {
     expect(motiveTag(o, mot("R.X", "favorece", "moderada"))).toEqual({ sentido: "favorece", forca: "moderada" });
   });
 
+  it("cartão de alternativa: sugestão de fora da zona rotulada pela origem, com força, nunca \"favorece\"", () => {
+    const o = opcao({ opcao: "a", sentido: "alternativa", forca: "controversa", controversias: [ZC] });
+    expect(motiveTag(o, mot("N5B", "favorece", "fraca"), "alternativa")).toEqual({ sentido: "fora_da_zona", forca: "fraca" });
+    expect(motiveTag(o, mot("ZC1", "favorece", "fraca"), "alternativa")).toEqual({ sentido: "alternativa" });
+    expect(motiveTag(o, mot("R.OFF", "desfavorece", "fraca"), "alternativa")).toEqual({ sentido: "desfavorece", forca: "fraca" });
+    // ordem: zona cinzenta, depois fora da zona, depois cautela
+    const ms = [mot("R.OFF", "desfavorece", "fraca"), mot("N5B", "favorece", "fraca"), mot("ZC1", "favorece", "fraca")];
+    expect(orderedMotives(ms, "alternativa", o).map((m) => m.regra)).toEqual(["ZC1", "N5B", "R.OFF"]);
+  });
+
+  it.each([
+    ["SH_RCT_DECISAO", { lesao_sintomatica_confirmada: true, tipo_rotura: "completa", hamada: 2, artrose_glenoumeral: "ausente", inicio: "degenerativo", falha_conservador: true, massiva: true, reparabilidade_estimada: "provavel_irreparavel", pseudoparalisia: false }, "tratamento_conservador", "N5B"],
+    ["FX_UMERO_PROXIMAL", { fratura_exposta: false, lesao_neurovascular: false, fratura_patologica: false, politrauma: false, idade: 75, mecanismo_energia: "baixa", deslocada: true, neer_partes: 4, segmentos_deslocados: ["colo_cirurgico", "tuberosidade_maior"], fratura_luxacao: "nenhuma", head_split: false, ao_ota: "11C2", cirurgia_escolhida: true }, "artroplastia_reversa", "N8.S3.AO_C2_CIRURGIA"],
+    ["EL_DBR_APOIO", { tipo_ruptura: "completa", dias_desde_lesao: 5, demanda_funcional: "baixa", prioridade_supinacao: "baixa", aceita_deficit_supinacao: true }, "nao_operatorio", "DBR.A1.NAO_OPERATORIO"],
+    ["EL_DBR_APOIO", { tipo_ruptura: "parcial", pct_ruptura_parcial_rm: 70, demanda_funcional: "alta" }, "reparo_parcial", "DBR.C2.DEMANDA_ALTA"],
+    ["SH_INST_ANT", { tipo_episodio: "recorrente", gbl_pct: 15, track_status: "off_track", isis_total: 5 }, null, null],
+    ["SH_INST_ANT", { tipo_episodio: "primeiro_episodio", idade: 25, gbl_pct: 3, track_status: "off_track" }, null, null],
+  ] as const)("%s (motor real): nenhum cartão de alternativa exibe \"favorece\" em seus motivos", (algo, entrada, opcaoMista, regraFora) => {
+    const def = DECISION_ALGORITHMS.find((d) => d.id === algo)!;
+    const r = evaluate(def, { ...entrada });
+    for (const o of r.opcoes) {
+      const sentido = displayDirection(o);
+      if (sentido !== "alternativa") continue;
+      for (const m of o.motivos) expect(motiveTag(o, m, sentido).sentido, `${o.opcao}/${m.regra}`).not.toBe("favorece");
+    }
+    if (!opcaoMista) return;
+    const o = r.opcoes.find((x) => x.opcao === opcaoMista)!;
+    expect(displayDirection(o)).toBe("alternativa");
+    const m = o.motivos.find((x) => x.regra === regraFora)!;
+    // a sugestão de fora da zona continua visível, com a força, rotulada pela origem
+    expect(motiveTag(o, m, "alternativa")).toEqual({ sentido: "fora_da_zona", forca: m.forca });
+    expect(orderedMotives(o.motivos, "alternativa", o)[0].regra).not.toBe(regraFora);
+  });
+
   it("cautela que define a opção aparece primeiro nos motivos", () => {
     const ms = [mot("ZC1", "favorece", "fraca"), mot("R.OFF", "desfavorece", "forte"), mot("ZC2", "favorece", "fraca")];
     expect(orderedMotives(ms, "desfavorece").map((m) => m.regra)).toEqual(["R.OFF", "ZC1", "ZC2"]);
@@ -98,7 +132,23 @@ describe("rótulos de valores e números", () => {
     expect(formatTraceValue(3.9, "pt-BR")).toBe("3,9");
     expect(formatTraceValue("off_track", "pt-BR", { off_track: "Off-track" })).toBe("Off-track");
     const p: ParametroResultado = { id: "x", rotulo: "Limiar", valor: 13.5, unidade: "%", origem: "padrao", status: "definido", nota: "", referencias: [] };
-    expect(parameterLines([p], "pt-BR")[0].valor).toBe("13,5 %");
+    expect(parameterLines([p], "pt-BR")[0].valor).toBe("13,5%");
+  });
+
+  it("percentual sem espaço em pt-BR e es (como \"65%\"); demais unidades com espaço", () => {
+    expect(formatInputValue(15, labels, "%")).toBe("15%");
+    expect(formatInputValue(13.5, { ...labels, locale: "es" }, "%")).toBe("13,5%");
+    expect(formatInputValue(60, labels, "% da espessura")).toBe("60% da espessura");
+    expect(formatInputValue(3.9, labels, "mm")).toBe("3,9 mm");
+    const p: ParametroResultado = { id: "g", rotulo: "GBL", valor: 20, unidade: "%", origem: "padrao", status: "definido", nota: "", referencias: [] };
+    expect(parameterLines([p], "es")[0].valor).toBe("20%");
+    // texto das regras (motor): "GBL 15%", nunca "GBL 15 %"
+    const def = DECISION_ALGORITHMS.find((d) => d.id === "SH_INST_ANT")!;
+    const r = evaluate(def, { tipo_episodio: "recorrente", gbl_pct: 15, track_status: "off_track", isis_total: 5 });
+    const textos = r.opcoes.flatMap((o) => o.motivos.map((m) => m.texto));
+    expect(textos.join(" ")).toContain("GBL 15%");
+    for (const t of textos) expect(t).not.toMatch(/\d %/);
+    expect(usedInputLines(r.entrada, def, labels).find((l) => l.id === "gbl_pct")!.valor).toBe("15%");
   });
 
   it("todo valor de enum/lista dos algoritmos registrados tem rótulo legível (sem id interno na tela)", () => {
@@ -124,6 +174,10 @@ describe("textos do apoio à decisão", () => {
     expect(pt.sentido_alternativa).toBe("Alternativa (zona cinzenta)");
     expect(pt.sentido_alternativa).not.toMatch(/favorece/i);
     expect(es.sentido_alternativa).not.toMatch(/favorece/i);
+    // sugestão de fora da zona num cartão de alternativa: rotulada pela origem, sem "favorece"
+    expect(pt.sentido_fora_da_zona).toBe("Também apoiado fora da zona cinzenta");
+    expect(es.sentido_fora_da_zona).toBe("También respaldado fuera de la zona gris");
+    for (const v of [pt.sentido_fora_da_zona, es.sentido_fora_da_zona]) expect(v).not.toMatch(/favorece/i);
   });
 
   it("dados que faltam: 'libera N regras' em pt-BR e es", () => {

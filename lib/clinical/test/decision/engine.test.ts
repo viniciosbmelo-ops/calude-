@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest';
 import { ClinicalGuardError } from '../../src/errors';
 import { avaliarCond } from '../../src/decision/conditions';
-import { evaluate, MOTOR_VERSAO } from '../../src/decision/engine';
+import { comUnidade, evaluate, MOTOR_VERSAO } from '../../src/decision/engine';
 import { concordancia } from '../../src/decision/choice';
 import { canonicalJson, hashDefinition, sha256Hex } from '../../src/decision/hash';
 import { podeTransitar, statusEfetivo } from '../../src/decision/governance';
@@ -103,7 +103,8 @@ describe('evaluate: resultado e agregação', () => {
     expect(r.motor).toBe(MOTOR_VERSAO);
     // 1.1.0: o resultado gravado sempre traz `parametros` (lista vazia quando a definição não declara)
     // 1.2.0: sentido líquido honesto ('alternativa' para zona cinzenta), rótulos de enum e vírgula decimal no texto
-    expect(MOTOR_VERSAO).toBe('1.2.0');
+    // 1.2.1: '%' colado ao número no texto interpolado ("15%")
+    expect(MOTOR_VERSAO).toBe('1.2.1');
     expect(Array.isArray(r.parametros)).toBe(true);
     expect(r.modo).toBe('preop');
     expect(r.avisosGerais).toEqual(FAKE.avisosGerais);
@@ -203,6 +204,18 @@ describe('evaluate: resultado e agregação', () => {
     expect(opcao(r, 'cobrir')!.motivos[0].texto).toBe('Ferramentas: Regador manual, Lona plástica.');
     // a entrada gravada continua com os valores internos
     expect(r.entrada.solo).toBe('seco');
+  });
+
+  test('unidade: "%" colado ao número (também "% da espessura"); demais unidades após espaço', () => {
+    expect(comUnidade('15', '%')).toBe('15%');
+    expect(comUnidade('13,5', '%')).toBe('13,5%');
+    expect(comUnidade('60', '% da espessura')).toBe('60% da espessura');
+    expect(comUnidade('23,9', 'mm')).toBe('23,9 mm');
+    expect(comUnidade('5')).toBe('5');
+    const d = clone(FAKE);
+    const t = d.entradas.find((e) => e.id === 'temperatura')!;
+    if (t.def.tipo === 'numero') t.def.unidade = '%';
+    expect(opcao(evaluate(d, { temperatura: 32.5, solo: 'seco' }), 'regar')!.motivos[0].texto).toMatch(/32,5% com solo/);
   });
 
   test('concordância: alternativa de zona cinzenta conta como sugestão; opção sob cautela não', () => {

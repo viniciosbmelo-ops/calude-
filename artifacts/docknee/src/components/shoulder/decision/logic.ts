@@ -12,6 +12,7 @@ import {
   type CampoPerfilClinico,
   type PerfilClinicoPaciente,
   TRANSICOES_STATUS,
+  comUnidade,
   type AlgorithmDef,
   type EntradaDef,
   type Forca,
@@ -234,16 +235,48 @@ export function displayDirection(o: Pick<OpcaoResultado, "sentido" | "forca" | "
   return des >= 0 && des >= max("favorece") ? "desfavorece" : "alternativa";
 }
 
-/** Rótulo exibido de um motivo: efeito a favor vindo de zona cinzenta é "alternativa", sem força. */
-export function motiveTag(o: Pick<OpcaoResultado, "controversias">, m: Pick<MotivoOpcao, "regra" | "efeito" | "forca">): { sentido: SentidoOpcao; forca?: Forca } {
-  if (m.efeito === "favorece" && (o.controversias ?? []).some((c) => c.regra === m.regra)) return { sentido: "alternativa" };
+/**
+ * Sentido exibido ao lado de um motivo. Além dos sentidos da opção, "fora_da_zona": efeito a favor vindo de regra
+ * FORA de zona cinzenta, num cartão exibido como alternativa de zona cinzenta.
+ */
+export type SentidoMotivo = SentidoOpcao | "fora_da_zona";
+
+const zonasDa = (o: Pick<OpcaoResultado, "controversias">) => new Set((o.controversias ?? []).map((c) => c.regra));
+
+/**
+ * Rótulo exibido de um motivo, sempre coerente com o cabeçalho do cartão:
+ * - efeito a favor vindo de zona cinzenta → "alternativa", sem força;
+ * - no cartão de alternativa (`sentidoOpcao` = 'alternativa'), efeito a favor vindo de regra fora da zona cinzenta →
+ *   "fora_da_zona" com a força: a sugestão continua visível, identificada pela origem, e nunca como "favorece",
+ *   o que contradiria o cabeçalho e elegeria um vencedor dentro da zona cinzenta;
+ * - os demais mantêm efeito e força.
+ */
+export function motiveTag(
+  o: Pick<OpcaoResultado, "controversias">,
+  m: Pick<MotivoOpcao, "regra" | "efeito" | "forca">,
+  sentidoOpcao?: SentidoOpcao,
+): { sentido: SentidoMotivo; forca?: Forca } {
+  if (m.efeito === "favorece" && zonasDa(o).has(m.regra)) return { sentido: "alternativa" };
+  if (m.efeito === "favorece" && sentidoOpcao === "alternativa") return { sentido: "fora_da_zona", forca: m.forca };
   return { sentido: m.efeito, forca: m.forca };
 }
 
-/** Motivos com os do sentido exibido primeiro (a cautela que define a opção não fica escondida no fim). */
-export function orderedMotives<T extends Pick<MotivoOpcao, "efeito">>(motivos: readonly T[], sentido: SentidoOpcao): T[] {
-  const primeiro = sentido === "desfavorece" ? "desfavorece" : "favorece";
-  return [...motivos].sort((a, b) => Number(b.efeito === primeiro) - Number(a.efeito === primeiro));
+/**
+ * Motivos com os do sentido exibido primeiro (a cautela que define a opção não fica escondida no fim). No cartão de
+ * alternativa, com as zonas da opção: os motivos da zona cinzenta, depois as sugestões de fora da zona, depois cautela.
+ */
+export function orderedMotives<T extends Pick<MotivoOpcao, "efeito" | "regra">>(
+  motivos: readonly T[],
+  sentido: SentidoOpcao,
+  o?: Pick<OpcaoResultado, "controversias">,
+): T[] {
+  const zonas = o ? zonasDa(o) : new Set<string>();
+  const rank = (m: T) => {
+    if (sentido === "desfavorece") return m.efeito === "desfavorece" ? 0 : 1;
+    if (m.efeito === "desfavorece") return 2;
+    return sentido === "alternativa" && o && !zonas.has(m.regra) ? 1 : 0;
+  };
+  return [...motivos].sort((a, b) => rank(a) - rank(b));
 }
 
 /** Evidência própria desta opção dentro de cada zona cinzenta em que ela é alternativa. */
@@ -373,7 +406,7 @@ export function formatInputValue(v: unknown, labels: ValueLabels, unidade?: stri
   if (Array.isArray(v)) return v.length ? v.map((x) => valueLabel(String(x), rotulos)).join(", ") : "—";
   if (typeof v === "object") return JSON.stringify(v);
   const txt = typeof v === "number" ? formatDecimal(v, labels.locale) : valueLabel(String(v), rotulos);
-  return unidade ? `${txt} ${unidade}` : txt;
+  return comUnidade(txt, unidade);
 }
 
 function entradaDef(def: Pick<AlgorithmDef, "entradas"> | undefined, id: string): EntradaDef | undefined {
@@ -481,7 +514,7 @@ export function parameterLines(parametros: readonly ParametroResultado[] | undef
   return (parametros ?? []).map((p) => ({
     id: p.id,
     rotulo: p.rotulo,
-    valor: p.unidade ? `${formatDecimal(p.valor, locale)} ${p.unidade}` : formatDecimal(p.valor, locale),
+    valor: comUnidade(formatDecimal(p.valor, locale), p.unidade),
     origem: p.origem,
     pendente: p.status === "pendente_decisao_cirurgiao",
     nota: p.nota,

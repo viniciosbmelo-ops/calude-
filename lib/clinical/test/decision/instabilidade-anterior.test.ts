@@ -206,6 +206,10 @@ describe('zonas cinzentas: controversa com alternativas', () => {
     expect(r.opcoes.filter((o) => o.sentido === 'favorece')).toEqual([]);
     // texto da cautela com vírgula decimal (pt-BR)
     expect(bankart.motivos.find((m) => m.regra === 'N4.OFF_TRACK.BANKART_ISOLADO')!.texto).toContain('HSI 23,9 mm > GT 20,5 mm');
+    // percentual sem espaço, como no resto da tela ("GBL 15%", nunca "GBL 15 %")
+    const textos = r.opcoes.flatMap((o) => o.motivos.map((m) => m.texto));
+    expect(textos.some((t) => t.includes('GBL 15%'))).toBe(true);
+    for (const t of [...textos, ...r.avisos.map((x) => x.texto)]) expect(t).not.toMatch(/\d %/);
   });
 
   test('caso-ouro off-track em primeiro episódio sem perda óssea (ZC-E forte a favor): cautela forte prevalece', () => {

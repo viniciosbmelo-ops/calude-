@@ -17,8 +17,9 @@ import type {
 /**
  * 1.2.0: sentido líquido honesto (cautela ≥ favor → cautela; zona cinzenta → 'alternativa'), rótulos de enum
  * e números com vírgula no texto interpolado das regras.
+ * 1.2.1: unidade '%' colada ao número no texto interpolado e nas mensagens ("15%", não "15 %").
  */
-export const MOTOR_VERSAO = '1.2.0';
+export const MOTOR_VERSAO = '1.2.1';
 
 const RANK: Record<Forca, number> = { forte: 3, moderada: 2, fraca: 1, controversa: 0 };
 
@@ -37,9 +38,8 @@ function normalizarValor(e: EntradaDef, v: unknown): unknown {
     case 'numero': {
       if (typeof v !== 'number' || !Number.isFinite(v)) guard('DS_NOT_A_NUMBER', `"${e.rotulo}" deve ser numérico.`, e.id);
       if (d.inteiro && !Number.isInteger(v)) guard('DS_NOT_INTEGER', `"${e.rotulo}" deve ser inteiro.`, e.id);
-      const u = d.unidade ? ` ${d.unidade}` : '';
-      if (d.min !== undefined && v < d.min) guard('DS_OUT_OF_RANGE', `"${e.rotulo}" abaixo do mínimo plausível (${d.min}${u}).`, e.id);
-      if (d.max !== undefined && v > d.max) guard('DS_OUT_OF_RANGE', `"${e.rotulo}" acima do máximo plausível (${d.max}${u}).`, e.id);
+      if (d.min !== undefined && v < d.min) guard('DS_OUT_OF_RANGE', `"${e.rotulo}" abaixo do mínimo plausível (${comUnidade(numeroPtBr(d.min), d.unidade)}).`, e.id);
+      if (d.max !== undefined && v > d.max) guard('DS_OUT_OF_RANGE', `"${e.rotulo}" acima do máximo plausível (${comUnidade(numeroPtBr(d.max), d.unidade)}).`, e.id);
       return v;
     }
     case 'booleano':
@@ -57,6 +57,15 @@ function normalizarValor(e: EntradaDef, v: unknown): unknown {
       return d.valores.filter((x) => (v as unknown[]).includes(x));
     }
   }
+}
+
+/**
+ * Valor com unidade, igual em todo o produto: '%' (e unidades que começam por '%', como '% da espessura')
+ * cola no número ("15%"); as demais vêm após um espaço ("12 mm"). Sem unidade, o próprio texto.
+ */
+export function comUnidade(valor: string, unidade?: string): string {
+  if (!unidade) return valor;
+  return unidade.startsWith('%') ? `${valor}${unidade}` : `${valor} ${unidade}`;
 }
 
 export interface EntradaNormalizada {
@@ -103,8 +112,7 @@ function formatar(v: unknown, e: EntradaDef | undefined): string {
   if (typeof v === 'boolean') return v ? 'sim' : 'não';
   if (Array.isArray(v)) return v.map((x) => rotuloDoValor(e, String(x))).join(', ');
   if (typeof v === 'number') {
-    const u = e?.def.tipo === 'numero' && e.def.unidade ? ` ${e.def.unidade}` : '';
-    return `${numeroPtBr(v)}${u}`;
+    return comUnidade(numeroPtBr(v), e?.def.tipo === 'numero' ? e.def.unidade : undefined);
   }
   if (typeof v === 'string') return rotuloDoValor(e, v);
   return String(v);
@@ -130,11 +138,10 @@ export function resolverParametros(def: AlgorithmDef, ctx: ContextoAvaliacao['pa
   return decl.map((p) => {
     const doContexto = ctx[p.id] !== undefined;
     const v = doContexto ? ctx[p.id] : p.padrao;
-    const u = p.unidade ? ` ${p.unidade}` : '';
     if (typeof v !== 'number' || !Number.isFinite(v)) guard('DS_NOT_A_NUMBER', `Parâmetro "${p.rotulo}" deve ser numérico.`, p.id);
     if (p.inteiro && !Number.isInteger(v)) guard('DS_NOT_INTEGER', `Parâmetro "${p.rotulo}" deve ser inteiro.`, p.id);
-    if (p.min !== undefined && v < p.min) guard('DS_OUT_OF_RANGE', `Parâmetro "${p.rotulo}" abaixo do mínimo (${p.min}${u}).`, p.id);
-    if (p.max !== undefined && v > p.max) guard('DS_OUT_OF_RANGE', `Parâmetro "${p.rotulo}" acima do máximo (${p.max}${u}).`, p.id);
+    if (p.min !== undefined && v < p.min) guard('DS_OUT_OF_RANGE', `Parâmetro "${p.rotulo}" abaixo do mínimo (${comUnidade(numeroPtBr(p.min), p.unidade)}).`, p.id);
+    if (p.max !== undefined && v > p.max) guard('DS_OUT_OF_RANGE', `Parâmetro "${p.rotulo}" acima do máximo (${comUnidade(numeroPtBr(p.max), p.unidade)}).`, p.id);
     return {
       id: p.id, rotulo: p.rotulo, valor: v, ...(p.unidade ? { unidade: p.unidade } : {}),
       origem: doContexto ? 'contexto' : 'padrao', status: p.status, nota: p.nota, referencias: sortUniq(refsIds(p.referencias)),
