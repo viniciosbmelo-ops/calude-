@@ -14,7 +14,7 @@ const constantFull = {
 };
 
 describe('escalas do médico — habilitação', () => {
-  test('só Constant e Rowe (free, clínico/misto); ASES/MEPS/SANE fora', () => {
+  test('só Constant e Rowe (free, clínico/misto); SANE (paciente) e escalas removidas fora', () => {
     expect(isClinicianScaleEnabled('CONSTANT')).toBe(true);
     expect(isClinicianScaleEnabled('ROWE')).toBe(true);
     expect(isClinicianScaleEnabled('ASES')).toBe(false);
@@ -25,6 +25,14 @@ describe('escalas do médico — habilitação', () => {
 });
 
 describe('escalas aplicáveis pela patologia', () => {
+  test('proms_default só com escalas free', () => {
+    expect(promsDefaultFor('SH_RCT')).toEqual(['SANE', 'CONSTANT']);
+    expect(promsDefaultFor('SH_BICEPS')).toEqual(['SANE']);
+    expect(promsDefaultFor('SH_AC_DISL')).toEqual(['SANE']);
+    expect(promsDefaultFor('SH_ARTHROPLASTY')).toEqual(['SANE', 'CONSTANT']);
+    expect(promsDefaultFor('SH_INST_ANT')).toEqual(['SANE', 'ROWE']);
+    expect(promsDefaultFor('EL_DBR')).toEqual(['SANE']);
+  });
   test('subtipo herda proms_default do parent', () => {
     expect(promsDefaultFor('SH_RCT_FULL')).toEqual(promsDefaultFor('SH_RCT'));
     expect(promsDefaultFor('SH_STIFF')).toEqual([]);
@@ -76,6 +84,7 @@ describe('itens e escore', () => {
   });
   test('rejeições', () => {
     expect(() => scoreClinicianScale('ASES', { pain_vas: 0, adl: Array(10).fill(3) })).toThrow(ClinicalGuardError);
+    expect(() => scoreClinicianScale('MEPS', { pain: 'none' })).toThrow(ClinicalGuardError);
     expect(() => scoreClinicianScale('ROWE', { stability: 'constructor', motion: 'full', function: 'mild' })).toThrow(ClinicalGuardError);
     expect(() => scoreClinicianScale('CONSTANT', { ...constantFull, hand_position: 'toString' })).toThrow(ClinicalGuardError);
     expect(() => scoreClinicianScale('CONSTANT', { ...constantFull, pain: 16 })).toThrow(ClinicalGuardError);

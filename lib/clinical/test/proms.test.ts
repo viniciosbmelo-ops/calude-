@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'vitest';
 import { ClinicalGuardError } from '../src/errors';
-import { canSendToPatient, isInstrumentEnabled, scheduleTimepoints, scoreASES, scoreConstant, scoreMEPS, scoreRowe, scoreSANE } from '../src/proms/instruments';
+import { INSTRUMENTS, canSendToPatient, isInstrumentEnabled, scheduleTimepoints, scoreConstant, scoreRowe, scoreSANE } from '../src/proms/instruments';
+import { PATHOLOGIES } from '../src/catalog/pathologies';
+import * as clinical from '../src/index';
 
 describe('SANE', () => {
   test('limites', () => {
@@ -8,23 +10,6 @@ describe('SANE', () => {
     expect(scoreSANE({ value: 100 }).score).toBe(100);
     expect(() => scoreSANE({ value: 101 })).toThrow(ClinicalGuardError);
     expect(() => scoreSANE({ value: 50.5 })).toThrow(ClinicalGuardError);
-  });
-});
-
-describe('ASES (paciente)', () => {
-  test('mínimo 0 e máximo 100', () => {
-    expect(scoreASES({ pain_vas: 10, adl: Array(10).fill(0) }).score).toBe(0);
-    expect(scoreASES({ pain_vas: 0, adl: Array(10).fill(3) }).score).toBe(100);
-  });
-  test('caso intermediário: dor 4, função soma 18 → 30 + 30 = 60', () => {
-    const r = scoreASES({ pain_vas: 4, adl: [2, 2, 2, 2, 2, 2, 2, 2, 1, 1] });
-    expect(r.subscores).toEqual({ pain: 30, function: 30 });
-    expect(r.score).toBe(60);
-  });
-  test('item faltante ou fora de faixa', () => {
-    expect(() => scoreASES({ pain_vas: 3, adl: Array(9).fill(3) })).toThrow(/10 itens/);
-    expect(() => scoreASES({ pain_vas: 3, adl: [...Array(9).fill(3), 4] })).toThrow(/adl\[9\]/);
-    expect(() => scoreASES({ pain_vas: 11, adl: Array(10).fill(3) })).toThrow(ClinicalGuardError);
   });
 });
 
@@ -68,17 +53,6 @@ describe('Constant-Murley', () => {
   });
 });
 
-describe('MEPS', () => {
-  const allTasks = { can_comb_hair: true, can_feed: true, can_hygiene: true, can_shirt: true, can_shoes: true };
-  test('máximo 100', () => expect(scoreMEPS({ pain: 'none', arc_deg: 130, stability: 'stable', ...allTasks }).score).toBe(100));
-  test('bandas de arco: >100 = 20; 50–100 = 15; <50 = 5', () => {
-    const m = (a: number) => scoreMEPS({ pain: 'none', arc_deg: a, stability: 'stable', ...allTasks }).subscores.motion;
-    expect([m(101), m(100), m(50), m(49)]).toEqual([20, 15, 15, 5]);
-  });
-  test('mínimo 5', () => expect(scoreMEPS({ pain: 'severe', arc_deg: 10, stability: 'gross_instability', can_comb_hair: false, can_feed: false, can_hygiene: false, can_shirt: false, can_shoes: false }).score).toBe(5));
-  test('item faltante', () => expect(() => scoreMEPS({ pain: 'none', arc_deg: 100, stability: 'stable', ...allTasks, can_shoes: undefined as any })).toThrow(/can_shoes/));
-});
-
 describe('Rowe', () => {
   test('100 e 0', () => {
     expect(scoreRowe({ stability: 'no_recurrence', motion: 'full', function: 'no_limitation' }).score).toBe(100);
@@ -88,8 +62,27 @@ describe('Rowe', () => {
 });
 
 describe('licenças e envio', () => {
-  test('licenciados bloqueados', () => {
-    for (const c of ['OSS', 'OES', 'DASH', 'QUICKDASH', 'WOSI']) expect(isInstrumentEnabled(c)).toBe(false);
+  test('todo instrumento em INSTRUMENTS tem licença free', () => {
+    expect(INSTRUMENTS.map((i) => i.code)).toEqual(['SANE', 'CONSTANT', 'ROWE']);
+    for (const i of INSTRUMENTS) expect(i.license_status, i.code).toBe('free');
+  });
+  test('todo proms_default do catálogo existe em INSTRUMENTS e é free', () => {
+    const byCode = new Map(INSTRUMENTS.map((i) => [i.code, i]));
+    for (const p of PATHOLOGIES) {
+      for (const code of p.proms_default ?? []) {
+        expect(byCode.get(code)?.license_status, `${p.code} → ${code}`).toBe('free');
+        expect(isInstrumentEnabled(code)).toBe(true);
+      }
+    }
+  });
+  test('escalas que exigem licença foram removidas (sem registro nem escore)', () => {
+    for (const c of ['ASES', 'MEPS', 'OSS', 'OES', 'DASH', 'QUICKDASH', 'WOSI']) {
+      expect(INSTRUMENTS.some((i) => i.code === c)).toBe(false);
+      expect(isInstrumentEnabled(c)).toBe(false);
+      expect(canSendToPatient(c)).toBe(false);
+    }
+    expect(clinical).not.toHaveProperty('scoreASES');
+    expect(clinical).not.toHaveProperty('scoreMEPS');
     expect(isInstrumentEnabled('SANE')).toBe(true);
     expect(isInstrumentEnabled('NAO_EXISTE')).toBe(false);
   });

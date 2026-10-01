@@ -186,7 +186,7 @@ describe.sequential("clinician scales on follow-up", () => {
     expect(await followupsOf(cuffSurgeryId)).toHaveLength(before);
   });
 
-  it("rejects ASES (license pending) even though the pathology lists it", async () => {
+  it("rejects ASES (scale requiring a license, removed from the catalog)", async () => {
     const before = (await followupsOf(cuffSurgeryId)).length;
     const res = await api("/api/followup", "POST", {
       surgeryId: cuffSurgeryId,

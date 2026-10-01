@@ -62,7 +62,7 @@ describe("escalas suportadas no seguimento", () => {
     expect(isSupportedFollowupScale("VAS Dor")).toBe(true);
     expect(isSupportedFollowupScale("SANE")).toBe(true);
     expect(isSupportedFollowupScale("Lysholm")).toBe(false);
-    // Licença pendente: não entram no cronograma do paciente.
+    // Escalas que exigem licença foram removidas: não entram no cronograma do paciente.
     expect(isSupportedFollowupScale("ASES")).toBe(false);
     expect(isSupportedFollowupScale("MEPS")).toBe(false);
   });

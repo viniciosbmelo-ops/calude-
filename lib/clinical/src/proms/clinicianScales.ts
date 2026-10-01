@@ -20,7 +20,6 @@ import {
   INSTRUMENTS,
   ROWE_OPTIONS,
   scoreConstant,
-  scoreMEPS,
   scoreRowe,
   type ConstantInput,
   type ScoreResult
@@ -66,12 +65,10 @@ export function constantMax(withDynamometer: boolean): number {
   return withDynamometer ? CONSTANT_MAX_WITH_STRENGTH : CONSTANT_MAX_WITHOUT_STRENGTH;
 }
 
-// Funções de escore das escalas de preenchimento clínico/misto do pacote.
-// MEPS está aqui mas segue bloqueado pela licença ('pending') em isClinicianScaleEnabled.
+// Funções de escore das escalas de preenchimento clínico/misto do pacote (todas 'free').
 const SCORERS: Readonly<Record<string, (answers: Record<string, unknown>) => ScoreResult>> = {
   CONSTANT: (a) => scoreConstant(a as unknown as ConstantInput),
-  ROWE: (a) => scoreRowe(a as unknown as Parameters<typeof scoreRowe>[0]),
-  MEPS: (a) => scoreMEPS(a as unknown as Parameters<typeof scoreMEPS>[0])
+  ROWE: (a) => scoreRowe(a as unknown as Parameters<typeof scoreRowe>[0])
 };
 
 /** Escala clínica/mista, com licença 'free', com escore e itens definidos no pacote. */

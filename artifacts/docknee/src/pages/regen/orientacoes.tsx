@@ -117,8 +117,6 @@ export const DATA: Record<string, ProcData> = {
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica. 0 = sem dor, 10 = pior dor imaginável." },
-      { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand. 0 = sem incapacidade." },
-      { nome: "AOFAS", min: 0, max: 100, desc: "American Orthopaedic Foot & Ankle Society. 100 = melhor." },
     ],
   },
 
@@ -194,15 +192,12 @@ export const DATA: Record<string, ProcData> = {
     },
     retornos: [
       { tempo: "7-10 dias", tipo: "Retorno inicial", objetivo: "Avaliar resposta ao flare, adesão à imobilização/fisioterapia. USG de controle se dor excessiva." },
-      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores funcionais (VAS, VISA-A para Aquiles, DASH para epicondilite). Avaliar progressão excêntrica. 2ª sessão se protocolo indicar." },
+      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores funcionais (VAS). Avaliar progressão excêntrica. 2ª sessão se protocolo indicar." },
       { tempo: "3 meses", tipo: "Reavaliação principal", objetivo: "Avaliação clínica + USG (neovascularização, espessamento tendíneo). Decisão sobre nova sessão." },
       { tempo: "6-12 meses", tipo: "Longo prazo", objetivo: "Avaliar durabilidade. Tendões maturam colágeno em 6-12 meses. Documentar resultado." },
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "VISA-A (Aquiles)", min: 0, max: 100, desc: "Victorian Institute of Sport Assessment-Achilles. 100 = melhor." },
-      { nome: "PRTEE (Epicondilite)", min: 0, max: 100, desc: "Patient-Rated Tennis Elbow Evaluation. 0 = melhor." },
-      { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand. 0 = sem incapacidade." },
     ],
   },
 
@@ -274,13 +269,12 @@ export const DATA: Record<string, ProcData> = {
     },
     retornos: [
       { tempo: "7-10 dias", tipo: "Retorno inicial", objetivo: "Avaliar edema, adesão à imobilização, início de fisioterapia." },
-      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores (VAS, AOFAS para tornozelo). Testes de estabilidade. 2ª sessão de PRP se indicado." },
+      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores (VAS). Testes de estabilidade. 2ª sessão de PRP se indicado." },
       { tempo: "3 meses", tipo: "Reavaliação principal", objetivo: "Avaliação clínica + RM de controle. Avaliar sinais de cicatrização ligamentar. Decisão sobre retorno ao esporte." },
       { tempo: "6-12 meses", tipo: "Longo prazo", objetivo: "Avaliar estabilidade articular duradoura. Comparar escores com baseline." },
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "AOFAS", min: 0, max: 100, desc: "American Orthopaedic Foot & Ankle Society." },
     ],
   },
 
@@ -433,14 +427,12 @@ export const DATA: Record<string, ProcData> = {
     },
     retornos: [
       { tempo: "7-10 dias", tipo: "Retorno inicial", objetivo: "Avaliar sítio de coleta e aplicação. Edema, dor, sinais de infecção. Início de fisioterapia." },
-      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores funcionais (VAS, DASH). Avaliar progressão." },
+      { tempo: "4-6 semanas", tipo: "Reavaliação", objetivo: "Escores funcionais (VAS). Avaliar progressão." },
       { tempo: "3 meses", tipo: "Reavaliação principal", objetivo: "Avaliação clínica completa + imagem (RM/TC) de controle. Avaliar integração tecidual. Decisão sobre nova sessão." },
       { tempo: "6-12 meses", tipo: "Longo prazo", objetivo: "Avaliar durabilidade. CTMs podem levar 6-12 meses para efeito máximo." },
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand." },
-      { nome: "AOFAS", min: 0, max: 100, desc: "American Orthopaedic Foot & Ankle Society." },
     ],
   },
 
@@ -512,7 +504,6 @@ export const DATA: Record<string, ProcData> = {
     ],
     escores: [
       { nome: "VAS (Dor)", min: 0, max: 10, desc: "Escala Visual Analógica." },
-      { nome: "DASH", min: 0, max: 100, desc: "Disabilities of the Arm, Shoulder and Hand." },
     ],
   },
 };
@@ -559,7 +550,6 @@ function buildSpanishContent() {
   const localizedScoreNames: Record<string, string> = {
     "VAS (Dor)": "VAS (Dolor)",
     "MRC (Força)": "MRC (Fuerza)",
-    "PRTEE (Epicondilite)": "PRTEE (Epicondilitis)",
   };
 
   Object.values(data).forEach(protocol => {

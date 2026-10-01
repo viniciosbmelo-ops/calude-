@@ -34,7 +34,7 @@ export function isHiddenFracturePreoperative(
 /**
  * Cronograma de seguimento de ombro e cotovelo. Os momentos são os do cronograma
  * genérico herdado. Em todos os tipos de caso o paciente responde a dor (VAS) e
- * o SANE (0–100, % do normal). ASES/MEPS seguem desabilitados até a licença.
+ * o SANE (0–100, % do normal). Só entram escalas de uso livre (sem licença).
  */
 export const FOLLOWUP_SCHEDULE: ScheduleEntry[] = [
   { periodo: PREOPERATIVE_PERIOD, daysAfterSurgery: 0,   scales: ["VAS Dor", "SANE"], notes: "Avaliação baseline pré-operatório" },
