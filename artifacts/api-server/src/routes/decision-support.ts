@@ -35,6 +35,7 @@ import {
   podeTransitar,
   statusEfetivo,
   montarEntrada,
+  perfilClinicoDe,
   type AlgoritmoRegistrado,
   type ClinicalPayload,
   type ContextoMapeamento,
@@ -208,6 +209,11 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
           dataCirurgia: surgeriesTable.dataCirurgia,
           lado: surgeriesTable.lado,
           dataNascimento: patientsTable.dataNascimento,
+          // Cadastro do paciente: os algoritmos leem estes campos daqui (não do pré-op da cirurgia)
+          ladoDominante: patientsTable.ladoDominante,
+          tabagismo: patientsTable.tabagismo,
+          diabetes: patientsTable.diabetes,
+          nivelAtividade: patientsTable.nivelAtividade,
         })
         .from(surgeriesTable)
         .innerJoin(patientsTable, and(eq(patientsTable.id, surgeriesTable.patientId), eq(patientsTable.doctorId, req.doctorId!)))
@@ -225,6 +231,7 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
       contexto = {
         payload: payloadParaMapeamento(s.dadosClinicos),
         dataNascimento: s.dataNascimento,
+        paciente: perfilClinicoDe(s),
         dataReferencia: s.dataCirurgia,
         lado: s.lado,
       };

@@ -1,3 +1,4 @@
+import { patientClinicalCsvExtra, patientClinicalExport } from "../lib/patient-clinical-export";
 import { Router, type IRouter } from "express";
 import { createHash } from "node:crypto";
 import {
@@ -170,7 +171,7 @@ router.get("/lgpd/dados", requireAuth, async (req, res): Promise<void> => {
       totalCirurgias: surgeries.length,
       totalFollowups: followups.length,
       totalPreConsultas: preConsultations.length,
-      pacientes: patients.map(p => ({ id: p.id, nome: p.nome, createdAt: p.createdAt })),
+      pacientes: patients.map(p => ({ id: p.id, nome: p.nome, ...patientClinicalExport(p), createdAt: p.createdAt })),
       cirurgias: surgeries.map(s => ({ id: s.id, dataCirurgia: s.dataCirurgia, status: s.status, createdAt: s.createdAt })),
       followups: followups.map(f => ({
         id: f.id,
@@ -278,7 +279,7 @@ router.get("/lgpd/exportar", requireAuth, async (req, res): Promise<void> => {
         csvCell(p.nome),
         csvCell(p.createdAt.toISOString()),
         csvCell("ativo"),
-        csvCell(""),
+        csvCell(patientClinicalCsvExtra(p)),
       ].join(",")
     );
     const surgeryRows = surgeries.map(s =>
@@ -401,6 +402,7 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
 
   const anonHash = createHash("sha256").update(`${patientId}-${Date.now()}`).digest("hex").slice(0, 8);
 
+  // Perfil clínico (lado dominante, tabagismo, diabetes, nível de atividade) é mantido: dado clínico, não identificador
   await db.update(patientsTable).set({
     nome: `Paciente Anonimizado #${anonHash}`,
     cpf: null,

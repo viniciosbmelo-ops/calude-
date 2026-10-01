@@ -6,6 +6,8 @@ import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalCoreMessages } from "@/locales/operational-core";
 import { reportingDashboardMessages } from "@/locales/reporting-dashboard";
 import { reportCatalogLabel, reportCatalogOptions } from "@/locales/reporting-catalogs";
+import { operationalPatientRecordMessages } from "@/locales/operational-patient-record";
+import { PATIENT_CLINICAL_OPTIONS, PATIENT_CLINICAL_VALUE_KEYS } from "@/lib/patient-clinical";
 import { CASE_TYPE_BY_KEY, CASE_TYPES } from "@workspace/clinical/web";
 import { documentText } from "@/locales/document-locales";
 import { formatDateOnly, sortByPtBrName } from "@/lib/utils";
@@ -29,7 +31,8 @@ import {
 // ─── Constants ───────────────────────────────────────────────────────────────
 const CASE_TYPE_OPTIONS = CASE_TYPES.filter((c) => !c.freeOnly);
 const TEMPOS = ["Pré-operatório", "6 semanas", "3 meses", "6 meses", "1 ano"];
-const NIVEIS_ATIVIDADE = ["Sedentário", "Recreacional", "Amador", "Semi-profissional", "Profissional"];
+// Nível de atividade do cadastro do paciente (mesmos valores do núcleo clínico)
+const NIVEIS_ATIVIDADE: readonly string[] = PATIENT_CLINICAL_OPTIONS.nivelAtividade;
 const LADOS = ["Direito", "Esquerdo"];
 
 export const ESCALAS = [
@@ -164,8 +167,10 @@ export function summarizeReportScores(rows: readonly { vasDor: number | null; sa
 }
 function fmtAvg(v: number | null, d = 1) { return v == null ? "—" : v.toFixed(d); }
 
-function FilterSelect({ label, value, options, onChange, placeholder, locale }: {
-  label: string; value: string; options: string[]; onChange: (v: string) => void; placeholder: string; locale: "pt-BR" | "es";
+function FilterSelect({ label, value, options, onChange, placeholder, locale, labelOf }: {
+  label: string; value: string; options: readonly string[]; onChange: (v: string) => void; placeholder: string; locale: "pt-BR" | "es";
+  /** Rótulo por valor (quando o valor gravado é um código, não texto em português). */
+  labelOf?: (value: string) => string;
 }) {
   return (
     <div className="space-y-1">
@@ -174,7 +179,7 @@ function FilterSelect({ label, value, options, onChange, placeholder, locale }: 
         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder} /></SelectTrigger>
         <SelectContent>
           <SelectItem value="_all">{placeholder}</SelectItem>
-          {reportCatalogOptions(locale, options)
+          {(labelOf ? options.map((v) => ({ value: v, label: labelOf(v) })) : reportCatalogOptions(locale, options))
             .sort((a, b) => a.label.localeCompare(b.label, locale))
             .map(({ value: optionValue, label: optionLabel }) => (
               <SelectItem key={optionValue} value={optionValue}>{optionLabel}</SelectItem>
@@ -207,6 +212,7 @@ export default function Reports() {
   const { formatDate, locale } = useLanguage();
   const t = useScopedTranslations(operationalCoreMessages);
   const tx = useScopedTranslations(reportingDashboardMessages);
+  const trPatient = useScopedTranslations(operationalPatientRecordMessages);
   type ReportingKey = keyof (typeof reportingDashboardMessages)["pt-BR"];
   // The i18n helper has no plural rules: pick the singular or plural key explicitly.
   const countLabel = (count: number, one: ReportingKey, other: ReportingKey) => tx(count === 1 ? one : other, { count });
@@ -892,7 +898,8 @@ export default function Reports() {
               <Input type="number" className="h-8 text-xs" placeholder={tx("maximumAgeExample")} min={0} max={100} value={filters.idadeMax} onChange={e => setFilter("idadeMax", e.target.value)} />
             </div>
              <FilterSelect label={tx("operatedSide")} value={filters.lado} options={LADOS} onChange={v => setFilter("lado", v)} placeholder={tx("all")} locale={locale} />
-             <FilterSelect label={tx("activityLevel")} value={filters.nivelAtividade} options={NIVEIS_ATIVIDADE} onChange={v => setFilter("nivelAtividade", v)} placeholder={tx("all")} locale={locale} />
+             <FilterSelect label={tx("activityLevel")} value={filters.nivelAtividade} options={NIVEIS_ATIVIDADE} onChange={v => setFilter("nivelAtividade", v)} placeholder={tx("all")} locale={locale}
+              labelOf={(v) => trPatient((PATIENT_CLINICAL_VALUE_KEYS.nivelAtividade as Record<string, keyof (typeof operationalPatientRecordMessages)["pt-BR"]>)[v] ?? "notInformed")} />
           </FilterSection>
 
           {/* Admin */}

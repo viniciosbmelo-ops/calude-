@@ -31,9 +31,9 @@ describe("avaliação pré-operatória: payload", () => {
   });
 
   it("sub-bloco oculto fica no estado, mas não é enviado", () => {
-    const state = { comum: { diabetes: true }, bySchema: { "SH_RCT.diagnosis.v1": { hamada: 3 }, "SH_INST_ANT.diagnosis.v2": { n_luxacoes: 2 } } };
+    const state = { comum: { data_avaliacao: "2026-09-01" }, bySchema: { "SH_RCT.diagnosis.v1": { hamada: 3 }, "SH_INST_ANT.diagnosis.v2": { n_luxacoes: 2 } } };
     expect(buildPreopPayload(state, visiblePreopBlocks([{ codigo: "SH_INST_ANT" }]))).toEqual({
-      comum: { diabetes: true },
+      comum: { data_avaliacao: "2026-09-01" },
       patologias: [{ codigo: "SH_INST_ANT", schema: "SH_INST_ANT.diagnosis.v2", dados: { n_luxacoes: 2 } }],
     });
   });
@@ -47,10 +47,19 @@ describe("avaliação pré-operatória: payload", () => {
 
   it("ida e volta pelo payload gravado; v1 sem bloco dá estado vazio", () => {
     const blocks = visiblePreopBlocks([{ codigo: "SH_FX_PROX_HUM" }]);
-    const sent = buildPreopPayload({ comum: { lado_dominante: "L" }, bySchema: { "SH_FX_PROX_HUM.diagnosis.v1": { neer_partes: 4 } } }, blocks);
+    const sent = buildPreopPayload({ comum: { data_avaliacao: "2026-09-01" }, bySchema: { "SH_FX_PROX_HUM.diagnosis.v1": { neer_partes: 4 } } }, blocks);
     const state = preopStateFromPayload(JSON.parse(JSON.stringify(sent)));
     expect(buildPreopPayload(state, blocks)).toEqual(sent);
     expect(preopStateFromPayload(undefined)).toEqual(emptyPreopState());
     expect(preopStateFromPayload({ patologias: [{ codigo: "SH_STIFF", dados: { x: 1 } }, "lixo"] })).toEqual(emptyPreopState());
+  });
+
+  it("registro antigo com lado dominante, tabagismo, diabetes e nível de atividade no bloco comum: descartados ao carregar", () => {
+    const state = preopStateFromPayload({
+      comum: { data_avaliacao: "2026-09-01", lado_dominante: "R", tabagismo: "atual", diabetes: true, nivel_atividade: "competitivo" },
+      patologias: [],
+    });
+    expect(state.comum).toEqual({ data_avaliacao: "2026-09-01" });
+    expect(buildPreopPayload(state, [])).toEqual({ comum: { data_avaliacao: "2026-09-01" }, patologias: [] });
   });
 });

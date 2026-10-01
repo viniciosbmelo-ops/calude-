@@ -76,6 +76,7 @@ const VP: AlgorithmDef = {
     { id: "temperatura", rotulo: "Temperatura", def: { tipo: "numero", unidade: "°C", min: -30, max: 50 }, origem: { de: "payload", caminho: "avaliacaoPreop.comum.temperatura_local" }, momento: "preop" },
     { id: "solo", rotulo: "Solo", def: { tipo: "enum", valores: ["seco", "umido"] }, origem: { de: "manual" }, momento: "preop" },
     { id: "idade", rotulo: "Idade", def: { tipo: "numero", unidade: "anos", min: 0, max: 120, inteiro: true }, origem: { de: "paciente", campo: "idade" }, momento: "preop" },
+    { id: "fumo", rotulo: "Fumo", def: { tipo: "enum", valores: ["nunca", "ex_tabagista", "atual"] }, origem: { de: "paciente", campo: "tabagismo" }, momento: "preop" },
   ],
   parametros: [{
     id: "limiar_calor", rotulo: "Limiar de calor", unidade: "°C", min: 20, max: 40, padrao: 30,
@@ -91,7 +92,7 @@ const VP: AlgorithmDef = {
 };
 const mapearVP: MapeadorEntrada = (ctx) => {
   const entrada: Record<string, unknown> = {};
-  const proveniencia: Record<string, { de: "payload" | "paciente"; caminho: string }> = {};
+  const proveniencia: Record<string, { de: "payload" | "paciente"; caminho: string; nota?: string }> = {};
   const t = ctx.payload.avaliacaoPreop?.comum?.temperatura_local;
   if (typeof t === "number") {
     entrada.temperatura = t;
@@ -101,6 +102,11 @@ const mapearVP: MapeadorEntrada = (ctx) => {
   if (idade !== undefined) {
     entrada.idade = idade;
     proveniencia.idade = { de: "paciente", caminho: "paciente.dataNascimento" };
+  }
+  // Cadastro do paciente (o servidor carrega junto com a cirurgia)
+  if (ctx.paciente?.tabagismo) {
+    entrada.fumo = ctx.paciente.tabagismo;
+    proveniencia.fumo = { de: "paciente", caminho: "paciente.tabagismo", nota: "cadastro do paciente" };
   }
   return { entrada, proveniencia };
 };
@@ -401,7 +407,7 @@ describe.sequential("apoio à decisão: parâmetros (governança) e mapeamento d
 
   beforeAll(async () => {
     const [p, op] = await db.insert(patientsTable).values([
-      { doctorId, nome: "DS Map Patient", dataNascimento: "1980-06-15" },
+      { doctorId, nome: "DS Map Patient", dataNascimento: "1980-06-15", tabagismo: "atual", diabetes: true, ladoDominante: "L", nivelAtividade: "competitivo" },
       { doctorId: otherDoctorId, nome: "DS Map Other" },
     ]).returning();
     pid = p.id;
@@ -462,12 +468,13 @@ describe.sequential("apoio à decisão: parâmetros (governança) e mapeamento d
     const res = await call(avaliarP, "POST", authDoctor, { entrada: { temperatura: 10, solo: "seco", idade: 30 }, modo: "preop", surgeryId: sid });
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.resultado.entrada).toEqual({ temperatura: 34, solo: "seco", idade: 45 });
+    expect(body.resultado.entrada).toEqual({ temperatura: 34, solo: "seco", idade: 45, fumo: "atual" });
     expect(body.resultado.opcoes.map((o: { opcao: string }) => o.opcao)).toEqual(["regar"]);
     const proveniencia = {
       temperatura: { de: "payload", caminho: "avaliacaoPreop.comum.temperatura_local" },
       solo: { de: "manual" },
       idade: { de: "paciente", caminho: "paciente.dataNascimento" },
+      fumo: { de: "paciente", caminho: "paciente.tabagismo", nota: "cadastro do paciente" },
     };
     const conflitos = [
       { entrada: "temperatura", usado: 34, origemUsada: "payload", descartado: 10, origemDescartada: "manual" },
@@ -476,7 +483,7 @@ describe.sequential("apoio à decisão: parâmetros (governança) e mapeamento d
     expect(body.proveniencia).toEqual(proveniencia);
     expect(body.conflitos).toEqual(conflitos);
     const row = await linha(body.execucaoId);
-    expect(row).toMatchObject({ surgeryId: sid, patientId: pid, entrada: { temperatura: 34, solo: "seco", idade: 45 }, proveniencia, conflitos, parametrosIgnorados: false });
+    expect(row).toMatchObject({ surgeryId: sid, patientId: pid, entrada: { temperatura: 34, solo: "seco", idade: 45, fumo: "atual" }, proveniencia, conflitos, parametrosIgnorados: false });
   });
 
   it("o histórico da cirurgia devolve conflitos, proveniência e parâmetros ignorados de cada execução", async () => {

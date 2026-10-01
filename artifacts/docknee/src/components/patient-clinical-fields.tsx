@@ -50,7 +50,7 @@ export function PatientClinicalSummary({ patient, className }: { patient: unknow
     <dl className={cn("grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm", className)} data-testid="patient-clinical-summary">
       {patientClinicalDisplay(patient).map((item) => (
         <div key={item.field} className="min-w-0">
-          <dt className="text-xs text-muted-foreground">{tr(item.labelKey)}</dt>
+          <dt className="text-xs text-muted-foreground">{tr(item.labelKey as MsgKey)}</dt>
           <dd className={cn("break-words", !item.valueKey && "text-muted-foreground")}>
             {item.valueKey ? tr(item.valueKey as MsgKey) : tr("notInformed")}
           </dd>

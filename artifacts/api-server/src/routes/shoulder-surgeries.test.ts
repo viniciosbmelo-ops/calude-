@@ -206,7 +206,7 @@ describe("cirurgia de ombro e cotovelo", () => {
       patologias: [{ codigo: "SH_BICEPS", dados: {} }],
     };
     const fxPreop = {
-      comum: { data_avaliacao: "2026-09-20", lado_dominante: "L", nivel_atividade: "sedentario" },
+      comum: { data_avaliacao: "2026-09-20" },
       patologias: [{ codigo: "SH_FX_PROX_HUM", dados: { neer_partes: 3, desvio_tuberosidade_maior_mm: 6, dobradica_medial_desviada_mm: 2, asa: 3, cognicao_preservada: true } }],
     };
     const fxBody = (avaliacaoPreop: unknown) =>
@@ -233,7 +233,7 @@ describe("cirurgia de ombro e cotovelo", () => {
     });
 
     it("finalizar com valor fora da faixa devolve a pendência no escopo pré-operatório", async () => {
-      const bad = { ...fxPreop, comum: { ...fxPreop.comum, nivel_atividade: "elite" }, patologias: [{ codigo: "SH_FX_PROX_HUM", dados: { neer_partes: 5, desvio_tuberosidade_maior_mm: -1 } }] };
+      const bad = { ...fxPreop, comum: { ...fxPreop.comum, data_avaliacao: "2026-13-40" }, patologias: [{ codigo: "SH_FX_PROX_HUM", dados: { neer_partes: 5, desvio_tuberosidade_maior_mm: -1 } }] };
       const r = await api(`/api/surgeries/${preopDraftId}/finalize`, "POST", fxBody(bad));
       expect(r.status).toBe(422);
       const j = await json(r);
@@ -244,7 +244,10 @@ describe("cirurgia de ombro e cotovelo", () => {
     });
 
     it("finalizar válido grava o bloco, e o relatório não traz dados pré-operatórios", async () => {
-      const r = await api(`/api/surgeries/${preopDraftId}/finalize`, "POST", fxBody(fxPreop));
+      // Cliente antigo ainda envia lado dominante, tabagismo, diabetes e nível de atividade no bloco comum
+      // (agora são do cadastro do paciente): aceito, e esses campos não são gravados na cirurgia
+      const legado = { ...fxPreop, comum: { ...fxPreop.comum, lado_dominante: "L", tabagismo: "atual", diabetes: true, nivel_atividade: "elite" } };
+      const r = await api(`/api/surgeries/${preopDraftId}/finalize`, "POST", fxBody(legado));
       expect(r.status).toBe(200);
       const got = await json(await api(`/api/surgeries/${preopDraftId}`, "GET"));
       expect(got.status).toBe("completo");
