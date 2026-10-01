@@ -26,6 +26,8 @@ import type {
   ApoioDecisaoAlgoritmoList,
   ApoioDecisaoEscolha,
   ApoioDecisaoExecucao,
+  ApoioDecisaoExecucoesCirurgia,
+  ApoioDecisaoStatusHistorico,
   ApoioDecisaoStatusRegistro,
   AuthResponse,
   AvaliarApoioDecisaoBody,
@@ -2180,6 +2182,90 @@ export const useRegistrarEscolhaApoioDecisao = <TError = ErrorType<ErrorResponse
       return useMutation(getRegistrarEscolhaApoioDecisaoMutationOptions(options));
     }
 
+export const getListStatusApoioDecisaoUrl = (algoritmoId: string,
+    versao: string,) => {
+
+
+
+
+  return `/api/apoio-decisao/algoritmos/${algoritmoId}/${versao}/status`
+}
+
+/**
+ * Insert-only history, newest first. Each row carries the content hash it was recorded for;
+ * a row whose hash differs from the running code does not count as the current status.
+ * @summary Status history of an algorithm version (admin only)
+ */
+export const listStatusApoioDecisao = async (algoritmoId: string,
+    versao: string, options?: RequestInit): Promise<ApoioDecisaoStatusHistorico> => {
+
+  return customFetch<ApoioDecisaoStatusHistorico>(getListStatusApoioDecisaoUrl(algoritmoId,versao),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStatusApoioDecisaoQueryKey = (algoritmoId: string,
+    versao: string,) => {
+    return [
+    `/api/apoio-decisao/algoritmos/${algoritmoId}/${versao}/status`
+    ] as const;
+    }
+
+
+export const getListStatusApoioDecisaoQueryOptions = <TData = Awaited<ReturnType<typeof listStatusApoioDecisao>>, TError = ErrorType<void | ErrorResponse>>(algoritmoId: string,
+    versao: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatusApoioDecisao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStatusApoioDecisaoQueryKey(algoritmoId,versao);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStatusApoioDecisao>>> = ({ signal }) => listStatusApoioDecisao(algoritmoId,versao, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: algoritmoId !== null && algoritmoId !== undefined && versao !== null && versao !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStatusApoioDecisao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStatusApoioDecisaoQueryResult = NonNullable<Awaited<ReturnType<typeof listStatusApoioDecisao>>>
+export type ListStatusApoioDecisaoQueryError = ErrorType<void | ErrorResponse>
+
+
+/**
+ * @summary Status history of an algorithm version (admin only)
+ */
+
+export function useListStatusApoioDecisao<TData = Awaited<ReturnType<typeof listStatusApoioDecisao>>, TError = ErrorType<void | ErrorResponse>>(
+ algoritmoId: string,
+    versao: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatusApoioDecisao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStatusApoioDecisaoQueryOptions(algoritmoId,versao,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getAlterarStatusApoioDecisaoUrl = (algoritmoId: string,
     versao: string,) => {
 
@@ -2257,4 +2343,83 @@ export const useAlterarStatusApoioDecisao = <TError = ErrorType<ErrorResponse | 
       > => {
       return useMutation(getAlterarStatusApoioDecisaoMutationOptions(options));
     }
+
+export const getListExecucoesApoioDecisaoCirurgiaUrl = (surgeryId: number,) => {
+
+
+
+
+  return `/api/apoio-decisao/cirurgias/${surgeryId}/execucoes`
+}
+
+/**
+ * Only the surgery's owner can list them. Newest first. Each execution carries the stored
+ * result (always a suggestion) and the latest recorded choice, if any.
+ * @summary Decision-support executions linked to a surgery, with the latest surgeon choice
+ */
+export const listExecucoesApoioDecisaoCirurgia = async (surgeryId: number, options?: RequestInit): Promise<ApoioDecisaoExecucoesCirurgia> => {
+
+  return customFetch<ApoioDecisaoExecucoesCirurgia>(getListExecucoesApoioDecisaoCirurgiaUrl(surgeryId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListExecucoesApoioDecisaoCirurgiaQueryKey = (surgeryId: number,) => {
+    return [
+    `/api/apoio-decisao/cirurgias/${surgeryId}/execucoes`
+    ] as const;
+    }
+
+
+export const getListExecucoesApoioDecisaoCirurgiaQueryOptions = <TData = Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>, TError = ErrorType<ErrorResponse | void>>(surgeryId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListExecucoesApoioDecisaoCirurgiaQueryKey(surgeryId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>> = ({ signal }) => listExecucoesApoioDecisaoCirurgia(surgeryId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: surgeryId !== null && surgeryId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListExecucoesApoioDecisaoCirurgiaQueryResult = NonNullable<Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>>
+export type ListExecucoesApoioDecisaoCirurgiaQueryError = ErrorType<ErrorResponse | void>
+
+
+/**
+ * @summary Decision-support executions linked to a surgery, with the latest surgeon choice
+ */
+
+export function useListExecucoesApoioDecisaoCirurgia<TData = Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>, TError = ErrorType<ErrorResponse | void>>(
+ surgeryId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExecucoesApoioDecisaoCirurgia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListExecucoesApoioDecisaoCirurgiaQueryOptions(surgeryId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { LayoutDashboard, Users, Building2, Ticket, TrendingUp, Settings, ShieldCheck, FileText, ChevronRight, LogOut, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, Building2, Ticket, TrendingUp, Settings, ShieldCheck, FileText, ChevronRight, LogOut, MessageCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useScopedTranslations } from "@/lib/i18n";
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { id: "compliance-security", label: "nav.compliance", icon: ShieldCheck },
   { id: "reports", label: "nav.reports", icon: FileText },
   { id: "whatsapp", label: "nav.whatsapp", icon: MessageCircle },
+  { id: "decision-support", label: "nav.decisionSupport", icon: Scale },
 ] as const;
 
 export function AdminLayout({ children, activeSection, onSectionChange }: AdminLayoutProps) {

@@ -59,6 +59,7 @@ import ServiceLogin from "@/pages/service/login";
 import ServiceDashboard from "@/pages/service/dashboard";
 import AgendaPage from "@/pages/agenda";
 import AgendaCirurgica from "@/pages/agenda-cirurgica";
+import ApoioDecisaoPage from "@/pages/apoio-decisao";
 import { ErrorBoundary } from "@/components/error-boundary";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { ProductAnalytics } from "@/components/ProductAnalytics";
@@ -79,7 +80,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false, allowPending = false, noLayout = false }: { component: any, adminOnly?: boolean, allowPending?: boolean, noLayout?: boolean }) {
+function ProtectedRoute({ component: Component, adminOnly = false, allowPending = false, noLayout = false, allowAdmin = false }: { component: any, adminOnly?: boolean, allowPending?: boolean, noLayout?: boolean, allowAdmin?: boolean }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -100,7 +101,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, allowPending 
   }
 
   // Admin must stay in admin section — no access to doctor-only pages
-  if (!adminOnly && user.isAdmin) {
+  if (!adminOnly && !allowAdmin && user.isAdmin) {
     return <Redirect to={`${import.meta.env.BASE_URL}admin`.replace(/\/\//g, "/")} />;
   }
 
@@ -145,6 +146,8 @@ function Router() {
       <Route path="/followup" component={() => <ProtectedRoute component={FollowupCentral} />} />
       <Route path="/whatsapp-broadcast" component={() => <ProtectedRoute component={WhatsappBroadcast} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
+      {/* Apoio à decisão: médicos (versões ativas) e admin (todas as versões, para revisão) */}
+      <Route path="/apoio-decisao" component={() => <ProtectedRoute component={ApoioDecisaoPage} allowAdmin />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/pending-approval" component={() => <ProtectedRoute component={PendingApproval} allowPending />} />
       {/* Admin Route - Custom Layout injected by AdminDashboard */}

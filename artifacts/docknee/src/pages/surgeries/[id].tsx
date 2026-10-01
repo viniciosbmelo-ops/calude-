@@ -6,6 +6,7 @@ import { getGetSurgeryQueryKey, useDeleteSurgery, useGetSurgery } from "@workspa
 import { ArrowLeft, Calendar, ClipboardList, Download, ExternalLink, FileText, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { CASE_TYPE_BY_KEY, applicableClinicianScales, type ClinicalPayload } from "@workspace/clinical/web";
 import { SurgeryClinicalView, useSurgeryReport } from "@/components/shoulder/surgery-clinical-view";
+import { SurgeryDecisionCard } from "@/components/shoulder/decision/surgery-decision-card";
 import { SurgeryFollowupSection, type SurgeryFollowup } from "@/components/shoulder/surgery-followup-section";
 import { SurgeryRehabSection } from "@/components/shoulder/surgery-rehab-section";
 import { SurgeryMedia } from "@/components/surgery-media";
@@ -338,6 +339,7 @@ export default function SurgeryDetail() {
               </TabsList>
               <TabsContent value="detalhes" className="min-w-0 space-y-4 mt-4">
                 {clinicalPayload && <SurgeryClinicalView payload={clinicalPayload} report={report} />}
+                <SurgeryDecisionCard surgeryId={surgery.id} />
                 {surgery.observacoes && (
                   <Card className="shadow-sm">
                     <CardHeader className="pb-2"><CardTitle className="text-lg">{t("td_detail099")}</CardTitle></CardHeader>

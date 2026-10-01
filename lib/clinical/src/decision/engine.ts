@@ -11,7 +11,7 @@ import { hashDefinition } from './hash';
 import { ROTULO_SUGESTAO } from './vocab';
 import type {
   AlgorithmDef, AvisoResultado, ContextoAvaliacao, ControversiaResultado, Efeito, EntradaDef, FaltanteResultado,
-  Forca, MotivoOpcao, OpcaoResultado, Referencia, ResultadoApoio, TraceItem,
+  Forca, MotivoOpcao, OpcaoResultado, ParametroResultado, Referencia, ResultadoApoio, TraceItem,
 } from './types';
 
 export const MOTOR_VERSAO = '1.0.0';
@@ -98,6 +98,31 @@ const refsIds = (cs: { ref: string }[]) => cs.map((c) => c.ref);
 const sortUniq = (xs: string[]) => [...new Set(xs)].sort();
 
 /**
+ * Valor efetivo de cada parâmetro declarado: o do contexto (cirurgião/serviço) ou o padrão da definição.
+ * Parâmetro desconhecido, não numérico ou fora da faixa declarada → ClinicalGuardError.
+ */
+export function resolverParametros(def: AlgorithmDef, ctx: ContextoAvaliacao['parametros'] = {}): ParametroResultado[] {
+  const decl = def.parametros ?? [];
+  const ids = new Set(decl.map((p) => p.id));
+  for (const k of Object.keys(ctx)) {
+    if (!ids.has(k)) guard('DS_UNKNOWN_PARAM', `Parâmetro "${k}" não pertence ao algoritmo ${def.id}.`, k);
+  }
+  return decl.map((p) => {
+    const doContexto = ctx[p.id] !== undefined;
+    const v = doContexto ? ctx[p.id] : p.padrao;
+    const u = p.unidade ? ` ${p.unidade}` : '';
+    if (typeof v !== 'number' || !Number.isFinite(v)) guard('DS_NOT_A_NUMBER', `Parâmetro "${p.rotulo}" deve ser numérico.`, p.id);
+    if (p.inteiro && !Number.isInteger(v)) guard('DS_NOT_INTEGER', `Parâmetro "${p.rotulo}" deve ser inteiro.`, p.id);
+    if (p.min !== undefined && v < p.min) guard('DS_OUT_OF_RANGE', `Parâmetro "${p.rotulo}" abaixo do mínimo (${p.min}${u}).`, p.id);
+    if (p.max !== undefined && v > p.max) guard('DS_OUT_OF_RANGE', `Parâmetro "${p.rotulo}" acima do máximo (${p.max}${u}).`, p.id);
+    return {
+      id: p.id, rotulo: p.rotulo, valor: v, ...(p.unidade ? { unidade: p.unidade } : {}),
+      origem: doContexto ? 'contexto' : 'padrao', status: p.status, nota: p.nota, referencias: sortUniq(refsIds(p.referencias)),
+    };
+  });
+}
+
+/**
  * Avalia um algoritmo. `ctx` é opcional: status padrão 'rascunho', modo padrão 'preop'
  * e hash calculado do conteúdo da definição.
  */
@@ -105,6 +130,8 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
   const modo = ctx.modo ?? 'preop';
   const porId = new Map(def.entradas.map((e) => [e.id, e]));
   const { valores, descartadas } = normalizarEntrada(def, entrada, modo);
+  const parametros = resolverParametros(def, ctx.parametros);
+  const params: Record<string, number> = Object.fromEntries(parametros.map((p) => [p.id, p.valor]));
 
   const faltantesMap = new Map<string, Set<string>>();
   const anotarFaltantes = (campos: string[], desbloqueia: string) => {
@@ -118,7 +145,7 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
   const foraDeEscopo: ResultadoApoio['foraDeEscopo'] = [];
   const escopoIndeterminado: ResultadoApoio['escopoIndeterminado'] = [];
   for (const f of def.foraDeEscopo) {
-    const r = avaliarCond(f.quando, valores);
+    const r = avaliarCond(f.quando, valores, params);
     if (r.v === true) foraDeEscopo.push({ id: f.id, texto: f.texto });
     else if (r.v === 'desconhecido') {
       escopoIndeterminado.push({ id: f.id, texto: f.texto, faltando: r.faltando });
@@ -137,7 +164,7 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
       trace.push({ regra: regra.id, resultado: 'fora_de_escopo', valores: {}, faltando: [] });
       continue;
     }
-    const r = avaliarCond(regra.quando, valores);
+    const r = avaliarCond(regra.quando, valores, params);
     if (r.v === 'desconhecido') {
       indeterminadas++;
       anotarFaltantes(r.faltando, regra.id);
@@ -216,6 +243,7 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
     ...refsIds(def.referenciasGerais),
     ...opcoes.flatMap((o) => o.referencias),
     ...avisos.flatMap((a) => a.referencias),
+    ...parametros.flatMap((p) => p.referencias),
   ]);
   const referencias: Referencia[] = def.referencias.filter((r) => citadas.has(r.id)).sort((a, b) => a.id.localeCompare(b.id));
 
@@ -238,6 +266,7 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
     entrada: entradaSnapshot,
     entradasDescartadas: descartadas,
     avisosGerais: [...def.avisosGerais],
+    ...(def.parametros?.length ? { parametros } : {}),
   };
 }
 

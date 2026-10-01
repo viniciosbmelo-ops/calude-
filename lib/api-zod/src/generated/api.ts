@@ -947,6 +947,33 @@ export const RegistrarEscolhaApoioDecisaoResponse = zod.object({
 
 
 /**
+ * Insert-only history, newest first. Each row carries the content hash it was recorded for;
+ * a row whose hash differs from the running code does not count as the current status.
+ * @summary Status history of an algorithm version (admin only)
+ */
+export const ListStatusApoioDecisaoParams = zod.object({
+  "algoritmoId": zod.coerce.string(),
+  "versao": zod.coerce.string()
+})
+
+export const ListStatusApoioDecisaoResponse = zod.object({
+  "algoritmoId": zod.string(),
+  "versao": zod.string(),
+  "hashCodigo": zod.string().nullable(),
+  "hashLock": zod.string().nullable(),
+  "historico": zod.array(zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['rascunho', 'revisado', 'ativo', 'aposentado']),
+  "hash": zod.string(),
+  "hashConfereCodigo": zod.boolean().describe('Whether this row was recorded for the hash of the running code'),
+  "doctorId": zod.number().nullable(),
+  "nota": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
  * Allowed transitions: rascunho → revisado, revisado → rascunho | ativo, ativo → aposentado.
  * Refused with 409 when `hash` differs from the hash of the code currently running, so a
  * version can only be activated exactly as it was reviewed. Activating a version retires
@@ -977,6 +1004,48 @@ export const AlterarStatusApoioDecisaoResponse = zod.object({
   "anterior": zod.enum(['rascunho', 'revisado', 'ativo', 'aposentado']),
   "aposentadas": zod.array(zod.string()).describe('Versions of the same algorithm retired by this activation'),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Only the surgery's owner can list them. Newest first. Each execution carries the stored
+ * result (always a suggestion) and the latest recorded choice, if any.
+ * @summary Decision-support executions linked to a surgery, with the latest surgeon choice
+ */
+export const ListExecucoesApoioDecisaoCirurgiaParams = zod.object({
+  "surgeryId": zod.coerce.number()
+})
+
+export const ListExecucoesApoioDecisaoCirurgiaResponse = zod.object({
+  "execucoes": zod.array(zod.object({
+  "execucaoId": zod.number(),
+  "algoritmoId": zod.string(),
+  "versao": zod.string(),
+  "hash": zod.string(),
+  "statusNoMomento": zod.string(),
+  "modo": zod.enum(['preop', 'registro', 'revisao']),
+  "createdAt": zod.coerce.date(),
+  "resultado": zod.object({
+  "rotulo": zod.enum(['Sugestão']),
+  "algoritmo": zod.record(zod.string(), zod.unknown()),
+  "motor": zod.string(),
+  "modo": zod.string(),
+  "opcoes": zod.array(zod.record(zod.string(), zod.unknown())),
+  "avisos": zod.array(zod.record(zod.string(), zod.unknown())),
+  "faltantes": zod.array(zod.record(zod.string(), zod.unknown())),
+  "trace": zod.array(zod.record(zod.string(), zod.unknown())),
+  "referencias": zod.array(zod.record(zod.string(), zod.unknown()))
+}).describe('Engine output (ResultadoApoio in @workspace\/clinical). Never a decision.'),
+  "escolha": zod.union([zod.object({
+  "id": zod.number(),
+  "execucaoId": zod.number(),
+  "opcao": zod.string().nullable(),
+  "outra": zod.string().nullable(),
+  "concordancia": zod.enum(['concorda', 'diverge', 'sem_sugestao']),
+  "justificativa": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()])
+}))
 })
 
 

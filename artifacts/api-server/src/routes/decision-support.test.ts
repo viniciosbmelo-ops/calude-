@@ -302,6 +302,36 @@ describe.sequential("apoio à decisão: API", () => {
     expect(adm.algoritmos.find((a: { versao: string }) => a.versao === "1.0.0").status).toBe("aposentado");
   });
 
+  it("histórico de status: só admin, mais recente primeiro, com o hash de cada linha", async () => {
+    expect((await call(statusPath("1.0.0"), "GET", authDoctor)).status).toBe(403);
+    const res = await call(statusPath("1.0.0"), "GET", authAdmin);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ algoritmoId: ALG_ID, versao: "1.0.0", hashCodigo: hashDefinition(V1), hashLock: hashDefinition(V1) });
+    expect(body.historico.map((h: { status: string }) => h.status)).toEqual(["aposentado", "ativo", "revisado"]);
+    expect(body.historico.every((h: { hashConfereCodigo: boolean; doctorId: number }) => h.hashConfereCodigo && h.doctorId === adminId)).toBe(true);
+    expect(body.historico[2].nota).toBe("Casos revisados.");
+    const vazio = await (await call(statusPath("3.0.0"), "GET", authAdmin)).json();
+    expect(vazio).toMatchObject({ hashLock: LOCK[algorithmKey(V3_STALE)], historico: [] });
+    expect((await call(statusPath("9.9.9"), "GET", authAdmin)).status).toBe(404);
+  });
+
+  it("lista as execuções da cirurgia com a última escolha, só para o dono", async () => {
+    const path = `/api/apoio-decisao/cirurgias/${surgeryId}/execucoes`;
+    expect((await call(path, "GET", null, undefined, fullUrl)).status).toBe(401);
+    expect((await call(path, "GET", authOther)).status).toBe(404);
+    expect((await call("/api/apoio-decisao/cirurgias/abc/execucoes", "GET", authDoctor)).status).toBe(400);
+    const res = await call(path, "GET", authDoctor);
+    expect(res.status).toBe(200);
+    const { execucoes } = await res.json();
+    expect(execucoes).toHaveLength(1);
+    expect(execucoes[0]).toMatchObject({
+      execucaoId, algoritmoId: ALG_ID, versao: "1.0.0", hash: hashDefinition(V1), statusNoMomento: "ativo", modo: "preop",
+      escolha: { execucaoId, opcao: null, outra: "Adiar uma semana", concordancia: "diverge" },
+    });
+    expect(execucoes[0].resultado.rotulo).toBe("Sugestão");
+  });
+
   it("excluir o paciente apaga as execuções e escolhas (cascade)", async () => {
     await db.delete(patientsTable).where(eq(patientsTable.id, patientId));
     expect(await db.select().from(apoioDecisaoExecucoesTable).where(eq(apoioDecisaoExecucoesTable.id, execucaoId))).toEqual([]);

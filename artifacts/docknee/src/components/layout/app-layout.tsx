@@ -22,6 +22,7 @@ const PAGE_TITLE_KEYS = {
   "/surgeries": "nav.surgeries",
   "/followup-central": "nav.followups",
   "/reports": "nav.reports",
+  "/apoio-decisao": "nav.decisionSupport",
   "/profile": "nav.profile",
   "/admin": "nav.admin",
 } as const;
@@ -33,7 +34,7 @@ function getBackPath(location: string): string | null {
   if (location.startsWith("/admin/")) return "/admin";
   const secondary = [
     "/agenda-cirurgica", "/agenda", "/followup-central",
-    "/whatsapp-broadcast", "/reports", "/profile", "/admin",
+    "/whatsapp-broadcast", "/reports", "/profile", "/admin", "/apoio-decisao",
   ];
   if (secondary.some(p => location === p || location.startsWith(p + "/"))) return "/dashboard";
   return null;

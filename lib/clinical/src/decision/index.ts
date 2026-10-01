@@ -1,8 +1,8 @@
 /** Apoio à decisão: motor genérico, governança e registro. Sem conteúdo clínico nesta fase. */
 export * from './types';
 export { avaliarCond, camposDe } from './conditions';
-export type { CondResultado } from './conditions';
-export { evaluate, normalizarEntrada, entradasDaRegra, MOTOR_VERSAO } from './engine';
+export type { CondResultado, Parametros } from './conditions';
+export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, MOTOR_VERSAO } from './engine';
 export { canonicalJson, sha256Hex, hashDefinition, algorithmKey } from './hash';
 export { validateDefinition, entradasUsadas } from './validate';
 export {

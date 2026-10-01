@@ -1,0 +1,281 @@
+/**
+ * Painel de resultado do apoio à decisão: rótulo fixo de sugestão, opções com força e sentido,
+ * controvérsias lado a lado, dados que faltam, avisos, trace das regras e referências.
+ * Só leitura; reutilizado na página, no painel do registro e no cartão da cirurgia.
+ */
+import { AlertTriangle, BookOpen, CircleHelp, ExternalLink, Info, Scale, ThumbsUp } from "lucide-react";
+import type { AlgorithmDef, Forca, OpcaoResultado, Referencia, ResultadoApoio, StatusAlgoritmo } from "@workspace/clinical/web";
+import { cn } from "@/lib/utils";
+import { useScopedTranslations } from "@/lib/i18n";
+import { decisionSupportMessages } from "@/locales/decision-support";
+import {
+  collectControversies, formatTraceValue, groupTrace, referenceHref, referenceIds, referenceMap, ruleTitle,
+} from "./logic";
+
+export type DsT = ReturnType<typeof useDsT>;
+export function useDsT() {
+  return useScopedTranslations(decisionSupportMessages);
+}
+
+/** Aviso persistente: sugestão baseada na literatura, não decisão; a evidência tem limites. */
+export function DecisionDisclaimer({ compact = false }: { compact?: boolean }) {
+  const t = useDsT();
+  return (
+    <div role="note" className={cn("rounded-lg border border-sky-300/60 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100", compact ? "p-3 text-xs" : "p-4 text-sm")}>
+      <p className="flex items-center gap-2 font-semibold"><Info className="h-4 w-4 shrink-0" />{t("disclaimerTitle")}</p>
+      <p className="mt-1 leading-relaxed">{t("disclaimerBody")}</p>
+    </div>
+  );
+}
+
+const STATUS_CLASS: Record<StatusAlgoritmo, string> = {
+  rascunho: "border-amber-400 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
+  revisado: "border-sky-400 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-200",
+  ativo: "border-emerald-400 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+  aposentado: "border-slate-300 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+};
+
+export function StatusBadge({ status }: { status: StatusAlgoritmo }) {
+  const t = useDsT();
+  return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold", STATUS_CLASS[status])}>{t(`status_${status}`)}</span>;
+}
+
+/** Cor neutra por força (sem vermelho: força não é urgência). Controversa em âmbar. */
+const FORCA_CLASS: Record<Forca, string> = {
+  forte: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900",
+  moderada: "bg-slate-500 text-white dark:bg-slate-400 dark:text-slate-900",
+  fraca: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
+  controversa: "bg-amber-100 text-amber-900 border border-amber-400 dark:bg-amber-950/50 dark:text-amber-200",
+};
+
+export function StrengthChip({ forca }: { forca: Forca }) {
+  const t = useDsT();
+  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold", FORCA_CLASS[forca])}>{t("strength", { f: t(`forca_${forca}`) })}</span>;
+}
+
+function DirectionTag({ sentido }: { sentido: OpcaoResultado["sentido"] }) {
+  const t = useDsT();
+  const Icon = sentido === "favorece" ? ThumbsUp : AlertTriangle;
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", sentido === "favorece" ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
+      <Icon className="h-3.5 w-3.5" />{t(`sentido_${sentido}`)}
+    </span>
+  );
+}
+
+function RefLinks({ ids, refs }: { ids: readonly string[]; refs: Map<string, Referencia> }) {
+  if (!ids.length) return null;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {ids.map((id) => {
+        const r = refs.get(id);
+        const href = r ? referenceHref(r) : undefined;
+        return href
+          ? <a key={id} href={href} target="_blank" rel="noopener noreferrer" className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-primary hover:underline" title={r?.citacao}>{id}</a>
+          : <span key={id} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{id}</span>;
+      })}
+    </span>
+  );
+}
+
+export function DecisionResultView({ resultado, def, execucaoId, modo }: {
+  resultado: ResultadoApoio;
+  def?: AlgorithmDef;
+  execucaoId?: number;
+  modo?: string;
+}) {
+  const t = useDsT();
+  const refs = referenceMap(resultado);
+  const controversias = collectControversies(resultado.opcoes);
+  const trace = groupTrace(resultado.trace);
+  const entradaRotulo = (id: string) => def?.entradas.find((e) => e.id === id)?.rotulo ?? id;
+  const titulo = def?.titulo ?? resultado.algoritmo.id;
+
+  return (
+    <section className="space-y-4" aria-label={t("suggestionLabel")}>
+      {/* Rótulo fixo */}
+      <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-primary px-3 py-1 text-base font-bold uppercase tracking-wide text-primary-foreground">{t("suggestionLabel")}</span>
+          <StatusBadge status={resultado.algoritmo.status} />
+          {modo && <span className="text-xs text-muted-foreground">{t(`modo_${modo}` as "modo_preop")}</span>}
+        </div>
+        <p className="mt-2 text-sm font-medium">{t("resultFor", { titulo, versao: resultado.algoritmo.versao })}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("completeness", { avaliadas: resultado.completude.avaliadas, total: resultado.completude.total, indeterminadas: resultado.completude.indeterminadas })}
+          {execucaoId !== undefined && <> · {t("executionId", { id: execucaoId })}</>}
+        </p>
+      </div>
+
+      {(resultado.foraDeEscopo.length > 0 || resultado.escopoIndeterminado.length > 0) && (
+        <div className="space-y-2">
+          {resultado.foraDeEscopo.length > 0 && (
+            <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+              <p className="font-semibold">{t("outOfScope")}</p>
+              <ul className="mt-1 list-disc pl-5">{resultado.foraDeEscopo.map((f) => <li key={f.id}>{f.texto}</li>)}</ul>
+            </div>
+          )}
+          {resultado.escopoIndeterminado.length > 0 && (
+            <div className="rounded-lg border p-3 text-sm">
+              <p className="font-semibold">{t("scopeUndetermined")}</p>
+              <ul className="mt-1 list-disc pl-5">
+                {resultado.escopoIndeterminado.map((f) => <li key={f.id}>{f.texto} <span className="text-xs text-muted-foreground">({t("traceMissing", { list: f.faltando.map(entradaRotulo).join(", ") })})</span></li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Avisos */}
+      {resultado.avisos.length > 0 && (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+          <p className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{t("warningsTitle")}</p>
+          <ul className="mt-1 space-y-1 pl-1">
+            {resultado.avisos.map((a) => <li key={a.regra}>{a.texto} <RefLinks ids={a.referencias} refs={refs} /></li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* Opções */}
+      <div className="space-y-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><Scale className="h-4 w-4" />{t("optionsTitle")}</h3>
+        {resultado.opcoes.length === 0 && <p className="text-sm text-muted-foreground">{t("noOptions")}</p>}
+        <ul className="space-y-2">
+          {resultado.opcoes.map((o) => (
+            <li key={o.opcao} className="rounded-lg border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">{o.rotulo}</span>
+                <StrengthChip forca={o.forca} />
+                <DirectionTag sentido={o.sentido} />
+              </div>
+              {o.motivos.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs font-semibold text-muted-foreground">{t("whyTitle")}</p>
+                  <ul className="mt-1 space-y-1 text-sm">
+                    {o.motivos.map((m, i) => (
+                      <li key={`${m.regra}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
+                        <span>{m.texto}</span>
+                        <span className="text-[11px] text-muted-foreground">{m.regra} · {t(`sentido_${m.efeito}`)} · {t(`forca_${m.forca}`)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {o.referencias.length > 0 && <div className="mt-2"><RefLinks ids={o.referencias} refs={refs} /></div>}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Controvérsias: sempre expandidas, alternativas lado a lado */}
+      {controversias.map((c) => (
+        <div key={c.regra} className="rounded-lg border border-amber-400 bg-amber-50/60 p-3 dark:bg-amber-950/30">
+          <p className="flex items-center gap-2 text-sm font-semibold"><CircleHelp className="h-4 w-4" />{t("controversyTitle")}</p>
+          <p className="mt-1 text-sm">{c.nota} <span className="text-[11px] text-muted-foreground">({c.regra})</span></p>
+          <div className="mt-2 grid gap-2" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(12rem, 1fr))` }}>
+            {c.alternativas.map((a) => (
+              <div key={a.opcao} className="rounded-md border bg-background p-2 text-sm">
+                <p className="font-semibold">{a.rotulo}</p>
+                <p className="mt-1">{a.argumento}</p>
+                <div className="mt-1"><RefLinks ids={a.referencias} refs={refs} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Dados que faltam */}
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">{t("missingTitle")}</h3>
+        {resultado.faltantes.length === 0
+          ? <p className="text-sm text-muted-foreground">{t("missingNone")}</p>
+          : (
+            <ul className="space-y-1 text-sm">
+              {resultado.faltantes.map((f) => (
+                <li key={f.entrada} className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="font-medium">{f.rotulo}{f.unidade ? ` (${f.unidade})` : ""}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {f.desbloqueia.length === 1 ? t("unlocksOne") : t("unlocksMany", { n: f.desbloqueia.length })}: {f.desbloqueia.map((id) => ruleTitle(def, id)).join("; ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        {resultado.entradasDescartadas.length > 0 && (
+          <p className="text-xs text-muted-foreground">{t("discarded", { list: resultado.entradasDescartadas.map(entradaRotulo).join(", ") })}</p>
+        )}
+      </div>
+
+      {resultado.parametros && resultado.parametros.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold">{t("parametersTitle")}</h3>
+          <ul className="space-y-1 text-sm">
+            {resultado.parametros.map((p) => (
+              <li key={p.id}>
+                <span className="font-medium">{p.rotulo}: {p.valor}{p.unidade ? ` ${p.unidade}` : ""}</span>
+                {p.status === "pendente_decisao_cirurgiao" && <span className="ml-2 text-xs text-amber-700 dark:text-amber-300">{t("paramPending")}</span>}
+                <p className="text-xs text-muted-foreground">{p.nota} <RefLinks ids={p.referencias} refs={refs} /></p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Trace */}
+      <details className="rounded-lg border p-3">
+        <summary className="cursor-pointer text-sm font-semibold">{t("traceTitle")}</summary>
+        <div className="mt-2 space-y-3">
+          {trace.map((g) => (
+            <div key={g.grupo}>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">{t(`trace_${g.grupo}`)}</p>
+              <ul className="mt-1 space-y-1 text-sm">
+                {g.itens.map((it) => (
+                  <li key={it.regra}>
+                    <span className="font-medium">{ruleTitle(def, it.regra)}</span> <span className="text-[11px] text-muted-foreground">{it.regra}</span>
+                    {Object.keys(it.valores).length > 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {Object.entries(it.valores).map(([k, v]) => `${entradaRotulo(k)} = ${formatTraceValue(v)}`).join("; ")}
+                      </span>
+                    )}
+                    {it.faltando.length > 0 && <span className="ml-2 text-xs text-amber-700 dark:text-amber-300">{t("traceMissing", { list: it.faltando.map(entradaRotulo).join(", ") })}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </details>
+
+      {/* Referências */}
+      {resultado.referencias.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><BookOpen className="h-4 w-4" />{t("referencesTitle")}</h3>
+          <ol className="space-y-2 text-sm">
+            {resultado.referencias.map((r) => {
+              const href = referenceHref(r);
+              return (
+                <li key={r.id} className="rounded-md border p-2">
+                  <p><span className="font-semibold">{r.id}</span> · {t("level", { n: r.nivel })} · {r.tipo}</p>
+                  <p className="text-xs">{r.citacao}</p>
+                  <p className="text-xs">
+                    {href
+                      ? <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">{referenceIds(r)}<ExternalLink className="h-3 w-3" /></a>
+                      : referenceIds(r)}
+                  </p>
+                  {r.conflitoInteresse && <p className="text-xs text-muted-foreground">{t("conflict", { c: r.conflitoInteresse })}</p>}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+
+      {resultado.avisosGerais.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold">{t("generalWarnings")}</h3>
+          <ul className="list-disc pl-5 text-xs text-muted-foreground">{resultado.avisosGerais.map((a, i) => <li key={i}>{a}</li>)}</ul>
+        </div>
+      )}
+    </section>
+  );
+}

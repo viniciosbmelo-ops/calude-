@@ -358,6 +358,105 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
     });
   });
 
+  // GET /apoio-decisao/algoritmos/:algoritmoId/:versao/status — histórico de status (admin)
+  router.get("/apoio-decisao/algoritmos/:algoritmoId/:versao/status", requireAdmin, async (req, res): Promise<void> => {
+    const algoritmoId = paramStr(req.params.algoritmoId);
+    const versao = paramStr(req.params.versao);
+    const entry = registry.get(algoritmoId, versao);
+    const rows = await db
+      .select({
+        id: apoioDecisaoStatusTable.id,
+        status: apoioDecisaoStatusTable.status,
+        hash: apoioDecisaoStatusTable.algoritmoHash,
+        doctorId: apoioDecisaoStatusTable.doctorId,
+        nota: apoioDecisaoStatusTable.nota,
+        createdAt: apoioDecisaoStatusTable.createdAt,
+      })
+      .from(apoioDecisaoStatusTable)
+      .where(and(eq(apoioDecisaoStatusTable.algoritmoId, algoritmoId), eq(apoioDecisaoStatusTable.algoritmoVersao, versao)))
+      .orderBy(desc(apoioDecisaoStatusTable.id));
+    if (!entry && rows.length === 0) {
+      res.status(404).json({ error: "Versão do algoritmo não encontrada.", code: "ALGORITHM_NOT_FOUND" });
+      return;
+    }
+    res.json({
+      algoritmoId,
+      versao,
+      hashCodigo: entry?.hash ?? null,
+      hashLock: entry?.hashLock ?? null,
+      historico: rows.map((r) => ({
+        id: r.id,
+        status: r.status,
+        hash: r.hash,
+        hashConfereCodigo: entry ? r.hash === entry.hash : false,
+        doctorId: r.doctorId,
+        nota: r.nota,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    });
+  });
+
+  // GET /apoio-decisao/cirurgias/:surgeryId/execucoes — execuções vinculadas à cirurgia, com a última escolha
+  router.get("/apoio-decisao/cirurgias/:surgeryId/execucoes", requireAuth, async (req, res): Promise<void> => {
+    const surgeryId = Number.parseInt(paramStr(req.params.surgeryId), 10);
+    if (!Number.isInteger(surgeryId) || surgeryId <= 0) {
+      res.status(400).json({ error: "ID inválido.", code: "INVALID_ID" });
+      return;
+    }
+    const [s] = await db
+      .select({ id: surgeriesTable.id })
+      .from(surgeriesTable)
+      .where(and(eq(surgeriesTable.id, surgeryId), eq(surgeriesTable.doctorId, req.doctorId!)))
+      .limit(1);
+    if (!s) {
+      res.status(404).json({ error: "Cirurgia não encontrada.", code: "SURGERY_NOT_FOUND" });
+      return;
+    }
+    const execs = await db
+      .select()
+      .from(apoioDecisaoExecucoesTable)
+      .where(and(eq(apoioDecisaoExecucoesTable.surgeryId, surgeryId), eq(apoioDecisaoExecucoesTable.doctorId, req.doctorId!)))
+      .orderBy(desc(apoioDecisaoExecucoesTable.id));
+    const escolhas = execs.length
+      ? await db
+        .select()
+        .from(apoioDecisaoEscolhasTable)
+        .where(and(
+          inArray(apoioDecisaoEscolhasTable.execucaoId, execs.map((e) => e.id)),
+          eq(apoioDecisaoEscolhasTable.doctorId, req.doctorId!),
+        ))
+        .orderBy(desc(apoioDecisaoEscolhasTable.id))
+      : [];
+    const ultimaEscolha = new Map<number, (typeof escolhas)[number]>();
+    for (const e of escolhas) if (!ultimaEscolha.has(e.execucaoId)) ultimaEscolha.set(e.execucaoId, e);
+    res.json({
+      execucoes: execs.map((e) => {
+        const escolha = ultimaEscolha.get(e.id);
+        return {
+          execucaoId: e.id,
+          algoritmoId: e.algoritmoId,
+          versao: e.algoritmoVersao,
+          hash: e.algoritmoHash,
+          statusNoMomento: e.statusNoMomento,
+          modo: e.modo,
+          createdAt: e.createdAt.toISOString(),
+          resultado: e.resultado,
+          escolha: escolha
+            ? {
+              id: escolha.id,
+              execucaoId: escolha.execucaoId,
+              opcao: escolha.opcao,
+              outra: escolha.outra,
+              concordancia: escolha.concordancia,
+              justificativa: escolha.justificativa,
+              createdAt: escolha.createdAt.toISOString(),
+            }
+            : null,
+        };
+      }),
+    });
+  });
+
   return router;
 }
 

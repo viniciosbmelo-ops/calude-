@@ -683,6 +683,39 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /apoio-decisao/algoritmos/{algoritmoId}/{versao}/status:
+    get:
+      operationId: listStatusApoioDecisao
+      tags: [apoio-decisao]
+      summary: Status history of an algorithm version (admin only)
+      description: |
+        Insert-only history, newest first. Each row carries the content hash it was recorded for;
+        a row whose hash differs from the running code does not count as the current status.
+      parameters:
+        - name: algoritmoId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versao
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Status history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApoioDecisaoStatusHistorico"
+        "403":
+          description: Admin access required
+        "404":
+          description: Unknown algorithm version (not in the code and without history)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: alterarStatusApoioDecisao
       tags: [apoio-decisao]
@@ -738,6 +771,42 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           description: Transition not allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /apoio-decisao/cirurgias/{surgeryId}/execucoes:
+    get:
+      operationId: listExecucoesApoioDecisaoCirurgia
+      tags: [apoio-decisao]
+      summary: Decision-support executions linked to a surgery, with the latest surgeon choice
+      description: |
+        Only the surgery's owner can list them. Newest first. Each execution carries the stored
+        result (always a suggestion) and the latest recorded choice, if any.
+      parameters:
+        - name: surgeryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Linked executions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApoioDecisaoExecucoesCirurgia"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+        "404":
+          description: Surgery not found
           content:
             application/json:
               schema:
@@ -1843,3 +1912,77 @@ components:
           type: string
           format: date-time
       required: [algoritmoId, versao, hash, status, anterior, aposentadas, createdAt]
+
+    ApoioDecisaoStatusHistoricoItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/ApoioDecisaoStatus"
+        hash:
+          type: string
+        hashConfereCodigo:
+          type: boolean
+          description: Whether this row was recorded for the hash of the running code
+        doctorId:
+          type: ["integer", "null"]
+        nota:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, status, hash, hashConfereCodigo, doctorId, nota, createdAt]
+
+    ApoioDecisaoStatusHistorico:
+      type: object
+      properties:
+        algoritmoId:
+          type: string
+        versao:
+          type: string
+        hashCodigo:
+          type: ["string", "null"]
+        hashLock:
+          type: ["string", "null"]
+        historico:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApoioDecisaoStatusHistoricoItem"
+      required: [algoritmoId, versao, hashCodigo, hashLock, historico]
+
+    ApoioDecisaoExecucaoCirurgia:
+      type: object
+      properties:
+        execucaoId:
+          type: integer
+        algoritmoId:
+          type: string
+        versao:
+          type: string
+        hash:
+          type: string
+        statusNoMomento:
+          type: string
+        modo:
+          type: string
+          enum: [preop, registro, revisao]
+        createdAt:
+          type: string
+          format: date-time
+        resultado:
+          $ref: "#/components/schemas/ResultadoApoioDecisao"
+        escolha:
+          oneOf:
+            - $ref: "#/components/schemas/ApoioDecisaoEscolha"
+            - type: "null"
+      required: [execucaoId, algoritmoId, versao, hash, statusNoMomento, modo, createdAt, resultado, escolha]
+
+    ApoioDecisaoExecucoesCirurgia:
+      type: object
+      properties:
+        execucoes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApoioDecisaoExecucaoCirurgia"
+      required: [execucoes]

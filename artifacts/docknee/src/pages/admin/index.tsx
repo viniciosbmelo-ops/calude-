@@ -7,6 +7,7 @@ import { Support } from "./components/support";
 import { GrowthContent } from "./components/growth-content";
 import { ComplianceSecurity } from "./components/compliance-security";
 import { WhatsappCrm } from "./components/whatsapp-crm";
+import { DecisionGovernance } from "@/pages/apoio-decisao/governanca";
 import Reports from "@/pages/reports";
 import { useAuth } from "@/lib/auth";
 import { Redirect } from "wouter";
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
       case "growth-content": return <GrowthContent />;
       case "compliance-security": return <ComplianceSecurity />;
       case "whatsapp": return <WhatsappCrm />;
+      case "decision-support": return <DecisionGovernance />;
       case "reports": return <div className="bg-background rounded-xl"><Reports /></div>;
       default: return <Overview />;
     }

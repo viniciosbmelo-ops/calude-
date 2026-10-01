@@ -34,7 +34,7 @@ export const adminConsoleMessages = {
     "overview.clicks.uniqueDoctors": "Médicos Únicos",
     "overview.clicks.noRecords": "Nenhum registro para exibir.",
 
-    "nav.overview": "Central de comando", "nav.staff": "Corpo clínico", "nav.institutions": "Instituições e fisios", "nav.support": "Suporte ao paciente", "nav.growth": "Crescimento e conteúdo", "nav.compliance": "Compliance e segurança", "nav.reports": "Relatórios legados", "nav.whatsapp": "WhatsApp CRM",
+    "nav.overview": "Central de comando", "nav.staff": "Corpo clínico", "nav.institutions": "Instituições e fisios", "nav.support": "Suporte ao paciente", "nav.growth": "Crescimento e conteúdo", "nav.compliance": "Compliance e segurança", "nav.reports": "Relatórios legados", "nav.whatsapp": "WhatsApp CRM", "nav.decisionSupport": "Apoio à decisão",
     "console.operational": "Console operacional", "admin.logout": "Sair do admin", "admin": "Admin",
     "loading": "Carregando...", "never": "Nunca", "noData": "Sem dados", "actions": "Ações", "status": "Status", "active": "Ativo", "blocked": "Bloqueado", "cancel": "Cancelar", "save": "Salvar", "create": "Criar", "edit": "Editar", "delete": "Excluir", "error": "Erro", "close": "Fechar",
     "overview.title": "Central de gestão", "overview.subtitle": "Visão geral executiva e performance da plataforma.", "overview.days7": "7 dias", "overview.days30": "30 dias", "overview.months3": "3 meses", "overview.months12": "12 meses", "overview.previousPeriod": "vs. período anterior", "overview.noAccess": "Nenhum acesso", "overview.accessesPeriod": "{count} acessos no período",
@@ -331,7 +331,7 @@ export const adminConsoleMessages = {
     "overview.clicks.uniqueDoctors": "Médicos Únicos",
     "overview.clicks.noRecords": "Ningún registro para mostrar.",
 
-    "nav.overview": "Centro de control", "nav.staff": "Personal clínico", "nav.institutions": "Instituciones y fisios", "nav.support": "Soporte al paciente", "nav.growth": "Crecimiento y contenido", "nav.compliance": "Cumplimiento y seguridad", "nav.reports": "Informes heredados", "nav.whatsapp": "CRM de WhatsApp",
+    "nav.overview": "Centro de control", "nav.staff": "Personal clínico", "nav.institutions": "Instituciones y fisios", "nav.support": "Soporte al paciente", "nav.growth": "Crecimiento y contenido", "nav.compliance": "Cumplimiento y seguridad", "nav.reports": "Informes heredados", "nav.whatsapp": "CRM de WhatsApp", "nav.decisionSupport": "Apoyo a la decisión",
     "console.operational": "Consola operativa", "admin.logout": "Salir del panel admin", "admin": "Admin",
     "loading": "Cargando...", "never": "Nunca", "noData": "Sin datos", "actions": "Acciones", "status": "Estado", "active": "Activo", "blocked": "Bloqueado", "cancel": "Cancelar", "save": "Guardar", "create": "Crear", "edit": "Editar", "delete": "Eliminar", "error": "Error", "close": "Cerrar",
     "overview.title": "Centro de gestión", "overview.subtitle": "Visión ejecutiva y rendimiento de la plataforma.", "overview.days7": "7 días", "overview.days30": "30 días", "overview.months3": "3 meses", "overview.months12": "12 meses", "overview.previousPeriod": "vs. período anterior", "overview.noAccess": "Sin accesos", "overview.accessesPeriod": "{count} accesos en el período",

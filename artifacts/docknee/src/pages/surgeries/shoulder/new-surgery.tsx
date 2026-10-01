@@ -29,6 +29,7 @@ import { ArthroscopicMap } from "@/components/shoulder/arthroscopic-map";
 import { ImplantsEditor } from "@/components/shoulder/implants-editor";
 import { PreopAssessmentForm, preopIssueCount } from "@/components/shoulder/preop-assessment-section";
 import { buildPreopPayload, emptyPreopState, preopStateFromPayload, visiblePreopBlocks, type PreopState } from "@/components/shoulder/preop-assessment";
+import { DecisionRegistroPanel } from "@/components/shoulder/decision/registro-panel";
 import { cn, sortByPtBrName } from "@/lib/utils";
 import { useScopedTranslations } from "@/lib/i18n";
 import { surgeryShoulderMessages } from "@/locales/surgery-shoulder";
@@ -197,6 +198,13 @@ export default function NewShoulderSurgery() {
   // Avaliação pré-operatória: só os sub-blocos das patologias dos procedimentos escolhidos
   const preopBlocks = useMemo(() => visiblePreopBlocks(tipos.map((k) => ({ codigo: procs[k]?.codigo ?? null }))), [tipos, procs]);
   const preopPending = useMemo(() => preopIssueCount(preop, preopBlocks), [preop, preopBlocks]);
+  // Apoio à decisão (painel opcional): patologias do caso e registro atual para pré-preencher entradas
+  const decisionCaseCodes = useMemo(() => tipos.flatMap((k) => procs[k]?.codigo ? [procs[k]!.codigo!] : CASE_TYPE_BY_KEY.get(k)?.codes ?? []), [tipos, procs]);
+  const decisionContext = useMemo(() => ({
+    preop: buildPreopPayload(preop, preopBlocks),
+    geral: effectiveGeral,
+    procedimentos: tipos.map((k) => ({ codigo: procs[k]?.codigo ?? null, dados: procs[k]?.dados ?? {} })),
+  }), [preop, preopBlocks, effectiveGeral, tipos, procs]);
 
   const buildPayload = () => {
     const procedimentos = tipos.map((key) => ({ tipoCaso: key, codigo: procs[key]?.codigo ?? null, dados: procs[key]?.dados ?? {} }));
@@ -470,6 +478,8 @@ export default function NewShoulderSurgery() {
               <Section title={t("preopTitle")} pending={preopPending > 0 ? preopPending : undefined} open={Boolean(serverIssues?.some((g) => g.scope.startsWith("avaliação pré-operatória")))} t={t}>
                 <PreopAssessmentForm blocks={preopBlocks} state={preop} onChange={setPreop} side={sideCode} region={region} />
               </Section>
+
+              <DecisionRegistroPanel caseCodes={decisionCaseCodes} context={decisionContext} patientId={patientId} surgeryId={draftId} />
 
               <Section title={t("generalData")} pending={coreIssues.filter((i) => !hiddenCore.includes(i.field.split(".")[0])).length} t={t}>
                 <SchemaForm schema={coreSchema} value={geral} issues={coreIssues}

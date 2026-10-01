@@ -1,11 +1,12 @@
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, BarChart, LogOut, Menu, User, LineChart, ShieldCheck, MessageSquare, HelpCircle, Send, X, MessageCircle, CalendarDays, Scissors, FlaskConical } from "lucide-react";
+import { LayoutDashboard, Users, FileText, BarChart, LogOut, Menu, User, LineChart, ShieldCheck, Scale, MessageSquare, HelpCircle, Send, X, MessageCircle, CalendarDays, Scissors, FlaskConical } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLanguage } from "@/lib/i18n";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
+import { getListApoioDecisaoAlgoritmosQueryKey, useListApoioDecisaoAlgoritmos } from "@workspace/api-client-react";
 
 interface SidebarProps {
   mobile?: boolean;
@@ -22,6 +23,9 @@ const DOCTOR_LINKS = [
   { href: "/reports", key: "nav.reports" as const, icon: LineChart },
   { href: "/profile", key: "nav.profile" as const, icon: User },
 ];
+
+type NavLink = (typeof DOCTOR_LINKS)[number] | (typeof ADMIN_LINKS)[number] | typeof DECISION_LINK;
+const DECISION_LINK = { href: "/apoio-decisao", key: "nav.decisionSupport" as const, icon: Scale };
 
 const ADMIN_LINKS = [
   { href: "/admin", key: "nav.admin" as const, icon: BarChart },
@@ -244,7 +248,16 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const [contactOpen, setContactOpen] = useState(false);
 
   const isAdmin = user?.isAdmin;
-  const links = (isAdmin ? ADMIN_LINKS : DOCTOR_LINKS).map(link => ({
+  // Apoio à decisão: o item só aparece quando a API devolve algum algoritmo visível
+  const { data: apoioDecisao } = useListApoioDecisaoAlgoritmos({
+    query: { queryKey: getListApoioDecisaoAlgoritmosQueryKey(), enabled: Boolean(user), staleTime: 5 * 60_000, retry: false },
+  });
+  const baseLinks: readonly NavLink[] = isAdmin ? ADMIN_LINKS : DOCTOR_LINKS;
+  const at = isAdmin ? 1 : baseLinks.length - 2;
+  const withDecision = (apoioDecisao?.algoritmos.length ?? 0) > 0
+    ? [...baseLinks.slice(0, at), DECISION_LINK, ...baseLinks.slice(at)]
+    : baseLinks;
+  const links = withDecision.map(link => ({
     ...link,
     label: t(link.key),
   }));

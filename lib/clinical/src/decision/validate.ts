@@ -23,11 +23,16 @@ function duplicados(xs: string[]): string[] {
   return [...new Set(xs.filter((x, i) => xs.indexOf(x) !== i))];
 }
 
-function checarCond(c: Cond, onde: string, entradas: Map<string, EntradaDef>, issues: string[]): void {
+function checarCond(c: Cond, onde: string, entradas: Map<string, EntradaDef>, issues: string[], params: Set<string>): void {
   for (const f of folhas(c)) {
     const e = entradas.get(f.campo);
     if (!e) {
       issues.push(`${onde}: entrada "${f.campo}" não declarada`);
+      continue;
+    }
+    if ('param' in f) {
+      if (!params.has(f.param)) issues.push(`${onde}: parâmetro "${f.param}" não declarado`);
+      if (e.def.tipo !== 'numero') issues.push(`${onde}: comparação com parâmetro sobre "${f.campo}" (${e.def.tipo})`);
       continue;
     }
     const t = e.def.tipo;
@@ -54,6 +59,7 @@ export function validateDefinition(def: AlgorithmDef, lock?: Readonly<Record<str
   const entradas = new Map(def.entradas.map((e) => [e.id, e]));
   const opcoes = new Set(def.opcoes.map((o) => o.id));
   const refs = new Map(def.referencias.map((r) => [r.id, r]));
+  const params = new Set((def.parametros ?? []).map((p) => p.id));
 
   if (!/^\d+\.\d+\.\d+$/.test(def.versao)) issues.push(`versão "${def.versao}" não é semver`);
   for (const [nome, ids] of [
@@ -62,6 +68,7 @@ export function validateDefinition(def: AlgorithmDef, lock?: Readonly<Record<str
     ['regra', def.regras.map((r) => r.id)],
     ['referência', def.referencias.map((r) => r.id)],
     ['escopo', def.foraDeEscopo.map((f) => f.id)],
+    ['parâmetro', (def.parametros ?? []).map((p) => p.id)],
   ] as const) {
     for (const d of duplicados([...ids])) issues.push(`${nome} "${d}" duplicada`);
   }
@@ -91,12 +98,25 @@ export function validateDefinition(def: AlgorithmDef, lock?: Readonly<Record<str
     }
   }
 
-  for (const f of def.foraDeEscopo) checarCond(f.quando, `escopo ${f.id}`, entradas, issues);
+  // Parâmetros: padrão dentro da faixa, nota e referência
+  for (const p of def.parametros ?? []) {
+    const onde = `parâmetro ${p.id}`;
+    if (!Number.isFinite(p.padrao)) issues.push(`${onde}: padrão não numérico`);
+    if (p.inteiro && !Number.isInteger(p.padrao)) issues.push(`${onde}: padrão não inteiro`);
+    if (p.min !== undefined && p.padrao < p.min) issues.push(`${onde}: padrão abaixo do mínimo`);
+    if (p.max !== undefined && p.padrao > p.max) issues.push(`${onde}: padrão acima do máximo`);
+    if (!p.nota.trim()) issues.push(`${onde}: sem nota`);
+    if (p.referencias.length === 0) issues.push(`${onde}: sem referência`);
+    checarCits(p.referencias, onde);
+    if (entradas.has(p.id)) issues.push(`${onde}: mesmo id de uma entrada`);
+  }
+
+  for (const f of def.foraDeEscopo) checarCond(f.quando, `escopo ${f.id}`, entradas, issues, params);
 
   // Regras
   for (const r of def.regras) {
     const onde = `regra ${r.id}`;
-    checarCond(r.quando, onde, entradas, issues);
+    checarCond(r.quando, onde, entradas, issues, params);
     if (r.referencias.length === 0) issues.push(`${onde}: sem referência`);
     checarCits(r.referencias, onde);
     const citadas = r.referencias.map((c) => refs.get(c.ref)).filter((x) => x !== undefined);

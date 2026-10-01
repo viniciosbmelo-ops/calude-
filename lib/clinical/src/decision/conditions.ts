@@ -13,6 +13,11 @@ export interface CondResultado {
 }
 
 export type Valores = Readonly<Record<string, unknown>>;
+/** Valores dos parâmetros do algoritmo (já resolvidos: padrão ou contexto). */
+export type Parametros = Readonly<Record<string, number>>;
+
+type Folha = Extract<Cond, { campo: string }>;
+type FolhaValor = Exclude<Folha, { param: string }>;
 
 /** Campos referenciados por uma condição, em ordem de aparição, sem repetição. */
 export function camposDe(c: Cond, out: string[] = []): string[] {
@@ -32,7 +37,7 @@ function num(v: unknown, campo: string): number {
   return v;
 }
 
-function folha(c: Extract<Cond, { campo: string }>, x: unknown): boolean {
+function folha(c: FolhaValor, x: unknown): boolean {
   switch (c.op) {
     case '==': return x === c.valor;
     case '!=': return x !== c.valor;
@@ -51,10 +56,18 @@ function folha(c: Extract<Cond, { campo: string }>, x: unknown): boolean {
   }
 }
 
-export function avaliarCond(c: Cond, valores: Valores): CondResultado {
+/** Substitui `{ param }` pelo valor do parâmetro. Parâmetro sem valor é erro de definição, não dado faltante. */
+function resolverFolha(c: Folha, params: Parametros): FolhaValor {
+  if (!('param' in c)) return c;
+  const v = params[c.param];
+  if (typeof v !== 'number') throw new Error(`Parâmetro "${c.param}" sem valor.`);
+  return { campo: c.campo, op: c.op, valor: v };
+}
+
+export function avaliarCond(c: Cond, valores: Valores, params: Parametros = {}): CondResultado {
   if ('all' in c || 'any' in c) {
     const isAll = 'all' in c;
-    const filhos = (isAll ? c.all : c.any).map((x) => avaliarCond(x, valores));
+    const filhos = (isAll ? c.all : c.any).map((x) => avaliarCond(x, valores, params));
     const lidos = Object.assign({}, ...filhos.map((f) => f.valores)) as Record<string, unknown>;
     // all: falso domina; any: verdadeiro domina
     const dominante = isAll ? false : true;
@@ -66,10 +79,10 @@ export function avaliarCond(c: Cond, valores: Valores): CondResultado {
     return { v: !dominante, faltando: [], valores: lidos };
   }
   if ('not' in c) {
-    const r = avaliarCond(c.not, valores);
+    const r = avaliarCond(c.not, valores, params);
     return { ...r, v: r.v === 'desconhecido' ? 'desconhecido' : !r.v };
   }
   const x = valores[c.campo];
   if (x === undefined) return { v: 'desconhecido', faltando: [c.campo], valores: {} };
-  return { v: folha(c, x), faltando: [], valores: { [c.campo]: x } };
+  return { v: folha(resolverFolha(c, params), x), faltando: [], valores: { [c.campo]: x } };
 }

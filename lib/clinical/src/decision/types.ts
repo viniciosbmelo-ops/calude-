@@ -72,7 +72,31 @@ export type Cond =
   | { campo: string; op: OpComparacao; valor: number | string | boolean }
   | { campo: string; op: 'in'; valores: (string | number)[] }
   | { campo: string; op: 'contem'; valor: string }
-  | { campo: string; op: 'entre'; min: number; max: number; incluiMax?: boolean };
+  | { campo: string; op: 'entre'; min: number; max: number; incluiMax?: boolean }
+  /** Compara uma entrada numérica com um PARÂMETRO do algoritmo (limiar configurável, ver `ParametroDef`). */
+  | { campo: string; op: OpComparacaoNumerica; param: string };
+
+export type OpComparacaoNumerica = '<' | '<=' | '>' | '>=';
+
+// ---- Parâmetros (limiares configuráveis) ----
+/**
+ * Limiar que a literatura não fixa (decisão em aberto). A definição traz o valor padrão (entra no hash);
+ * o cirurgião ou o serviço pode sobrescrever em `ContextoAvaliacao.parametros`. O valor usado sai no resultado.
+ */
+export interface ParametroDef {
+  id: string;
+  rotulo: string;
+  unidade?: string;
+  min?: number;
+  max?: number;
+  inteiro?: boolean;
+  padrao: number;
+  /** 'pendente_decisao_cirurgiao': padrão provisório, ainda não escolhido pelo cirurgião/serviço. */
+  status: 'definido' | 'pendente_decisao_cirurgiao';
+  /** O que o parâmetro significa e as alternativas da literatura. */
+  nota: string;
+  referencias: CitRef[];
+}
 
 // ---- Opções ----
 export interface OpcaoDef {
@@ -126,6 +150,8 @@ export interface AlgorithmDef {
   escopo: string;
   foraDeEscopo: ForaDeEscopoDef[];
   entradas: EntradaDef[];
+  /** Limiares configuráveis citados por condições `{ campo, op, param }`. */
+  parametros?: ParametroDef[];
   opcoes: OpcaoDef[];
   regras: RegraDef[];
   /** Bibliografia do algoritmo; as regras citam por `id`. */
@@ -200,6 +226,19 @@ export interface ResultadoApoio {
   /** Entradas recebidas mas descartadas (ex.: intraoperatórias no modo `preop`). */
   entradasDescartadas: string[];
   avisosGerais: string[];
+  /** Só quando a definição declara parâmetros: valor efetivamente usado e de onde veio. */
+  parametros?: ParametroResultado[];
+}
+
+export interface ParametroResultado {
+  id: string;
+  rotulo: string;
+  valor: number;
+  unidade?: string;
+  origem: 'padrao' | 'contexto';
+  status: ParametroDef['status'];
+  nota: string;
+  referencias: string[];
 }
 
 export interface ContextoAvaliacao {
@@ -207,4 +246,6 @@ export interface ContextoAvaliacao {
   /** Se omitido, é calculado do conteúdo da definição. */
   hash?: string;
   modo?: ModoAvaliacao;
+  /** Sobrescreve o padrão de parâmetros declarados (id → valor). Id desconhecido ou fora da faixa → erro. */
+  parametros?: Readonly<Record<string, number>>;
 }

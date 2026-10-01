@@ -842,6 +842,54 @@ export interface ApoioDecisaoStatusRegistro {
   createdAt: string;
 }
 
+export interface ApoioDecisaoStatusHistoricoItem {
+  id: number;
+  status: ApoioDecisaoStatus;
+  hash: string;
+  /** Whether this row was recorded for the hash of the running code */
+  hashConfereCodigo: boolean;
+  /** @nullable */
+  doctorId: number | null;
+  /** @nullable */
+  nota: string | null;
+  createdAt: string;
+}
+
+export interface ApoioDecisaoStatusHistorico {
+  algoritmoId: string;
+  versao: string;
+  /** @nullable */
+  hashCodigo: string | null;
+  /** @nullable */
+  hashLock: string | null;
+  historico: ApoioDecisaoStatusHistoricoItem[];
+}
+
+export type ApoioDecisaoExecucaoCirurgiaModo = typeof ApoioDecisaoExecucaoCirurgiaModo[keyof typeof ApoioDecisaoExecucaoCirurgiaModo];
+
+
+export const ApoioDecisaoExecucaoCirurgiaModo = {
+  preop: 'preop',
+  registro: 'registro',
+  revisao: 'revisao',
+} as const;
+
+export interface ApoioDecisaoExecucaoCirurgia {
+  execucaoId: number;
+  algoritmoId: string;
+  versao: string;
+  hash: string;
+  statusNoMomento: string;
+  modo: ApoioDecisaoExecucaoCirurgiaModo;
+  createdAt: string;
+  resultado: ResultadoApoioDecisao;
+  escolha: ApoioDecisaoEscolha | null;
+}
+
+export interface ApoioDecisaoExecucoesCirurgia {
+  execucoes: ApoioDecisaoExecucaoCirurgia[];
+}
+
 export type GetAdminAnalyticsParams = {
 period?: GetAdminAnalyticsPeriod;
 };
