@@ -17,6 +17,7 @@
  */
 import type { ClinicalPayload } from '../../surgery/payload';
 import { preopFor } from '../../surgery/payload';
+import { perfilClinicoDe, type PerfilClinicoPaciente } from '../../patient/profile';
 import type { AlgorithmDef, Cond, Proveniencia } from '../types';
 import { AVISO_NIVEIS_EVIDENCIA } from '../vocab';
 
@@ -37,7 +38,7 @@ const AVISO_RM_PCT = 'A estimativa do % rompido por RM é pouco reprodutível (c
 
 export const BICEPS_DISTAL: AlgorithmDef = {
   id: 'EL_DBR_APOIO',
-  versao: '0.1.1',
+  versao: '0.1.2',
   patologias: [BICEPS_DISTAL_CODIGO],
   titulo: 'Ruptura do tendão distal do bíceps (rascunho)',
   escopo: 'Suspeita ou diagnóstico de ruptura completa (aguda ou tardia/crônica) ou parcial do tendão distal do bíceps, do diagnóstico ao pós-operatório.',
@@ -72,14 +73,14 @@ export const BICEPS_DISTAL: AlgorithmDef = {
     { id: 'rm_incidencia_fabs', rotulo: 'RM com incidência FABS', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'retracao_cm', rotulo: 'Retração na RM', def: { tipo: 'numero', unidade: 'cm', min: 0, max: 30 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].retracao_cm_rm' }, momento: 'preop' },
     { id: 'lacerto_fibroso', rotulo: 'Lacerto fibroso', def: { tipo: 'enum', valores: ['integro', 'roto', 'indeterminado'], rotulos: { integro: 'Íntegro', roto: 'Roto', indeterminado: 'Indeterminado' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].lacerto_integro_rm' }, momento: 'preop' },
-    { id: 'membro_dominante', rotulo: 'Lesão no membro dominante', def: { tipo: 'booleano' }, origem: { de: 'derivada', funcao: 'lado_dominante × lado da cirurgia', dependeDe: [] }, momento: 'preop' },
+    { id: 'membro_dominante', rotulo: 'Lesão no membro dominante', def: { tipo: 'booleano' }, origem: { de: 'derivada', funcao: 'paciente.ladoDominante × lado da cirurgia', dependeDe: [] }, momento: 'preop' },
     { id: 'ocupacao', rotulo: 'Ocupação', def: { tipo: 'enum', valores: ['manual_pesado', 'atleta', 'sedentario', 'outro'], rotulos: { manual_pesado: 'Trabalho manual pesado', atleta: 'Atleta', sedentario: 'Sedentário', outro: 'Outra' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].ocupacao_demanda' }, momento: 'preop' },
-    { id: 'demanda_funcional', rotulo: 'Demanda funcional', def: { tipo: 'enum', valores: ['alta', 'baixa'], rotulos: { alta: 'Alta', baixa: 'Baixa' } }, origem: { de: 'derivada', funcao: 'ocupacao_demanda ou nivel_atividade', dependeDe: [] }, momento: 'preop' },
+    { id: 'demanda_funcional', rotulo: 'Demanda funcional', def: { tipo: 'enum', valores: ['alta', 'baixa'], rotulos: { alta: 'Alta', baixa: 'Baixa' } }, origem: { de: 'derivada', funcao: 'ocupacao_demanda ou paciente.nivelAtividade', dependeDe: [] }, momento: 'preop' },
     { id: 'prioridade_supinacao', rotulo: 'Prioridade do paciente para supinação', def: { tipo: 'enum', valores: ['alta', 'baixa', 'nao_informada'], rotulos: { alta: 'Alta', baixa: 'Baixa', nao_informada: 'Não informada pelo paciente' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].necessidade_forca_supinacao' }, momento: 'preop' },
     { id: 'aceita_deficit_supinacao', rotulo: 'Paciente aceita o déficit de supinação', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'idade', rotulo: 'Idade', def: { tipo: 'numero', unidade: 'anos', min: 0, max: 120, inteiro: true }, origem: { de: 'paciente', campo: 'idade' }, momento: 'preop' },
-    { id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex', 'atual'], rotulos: { nunca: 'Nunca fumou', ex: 'Ex-tabagista', atual: 'Tabagista atual' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop.comum.tabagismo' }, momento: 'preop' },
-    { id: 'diabetes', rotulo: 'Diabetes', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: 'avaliacaoPreop.comum.diabetes' }, momento: 'preop' },
+    { id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex_tabagista', 'atual'], rotulos: { nunca: 'Nunca fumou', ex_tabagista: 'Ex-tabagista', atual: 'Tabagista atual' } }, origem: { de: 'paciente', campo: 'tabagismo' }, momento: 'preop' },
+    { id: 'diabetes', rotulo: 'Diabetes', def: { tipo: 'booleano' }, origem: { de: 'paciente', campo: 'diabetes' }, momento: 'preop' },
     { id: 'dpoc', rotulo: 'DPOC', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'obesidade_classe', rotulo: 'Obesidade (classe)', def: { tipo: 'enum', valores: ['nao', 'I', 'II', 'III'], rotulos: { nao: 'Sem obesidade', I: 'Classe I', II: 'Classe II', III: 'Classe III' } }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'asa', rotulo: 'ASA', def: { tipo: 'numero', min: 1, max: 5, inteiro: true }, origem: { de: 'manual' }, momento: 'preop' },
@@ -217,7 +218,7 @@ export const BICEPS_DISTAL: AlgorithmDef = {
     },
     {
       id: 'DBR.A2.EX_TABAGISTA', titulo: 'Ex-tabagista',
-      quando: { all: [COMPLETA, AGUDA, { campo: 'tabagismo', op: '==', valor: 'ex' }] },
+      quando: { all: [COMPLETA, AGUDA, { campo: 'tabagismo', op: '==', valor: 'ex_tabagista' }] },
       efeitos: [], aviso: true,
       motivo: 'Em pacientes operados, força de supinação de 93,2% em ex-fumantes × 99,5% em não fumantes (p=0,009).',
       referencias: [{ ref: 'Kallhovd2025' }],
@@ -537,10 +538,13 @@ export interface ContextoBicepsDistal {
   idade?: number;
   /** Lado da cirurgia (coluna da cirurgia): 'Direito' | 'Esquerdo' ou 'R' | 'L'. */
   lado?: string;
+  /** Cadastro do paciente: lado dominante, tabagismo, diabetes e nível de atividade. */
+  paciente?: PerfilClinicoPaciente;
 }
 
 const P_DBR = `avaliacaoPreop[${BICEPS_DISTAL_CODIGO}]`;
 const P_COMUM = 'avaliacaoPreop.comum';
+const CADASTRO = 'cadastro do paciente';
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -559,7 +563,6 @@ const OCUPACAO: Record<string, string> = { bracal: 'manual_pesado', atleta: 'atl
 const DEMANDA_OCUPACAO: Record<string, 'alta' | 'baixa'> = { bracal: 'alta', atleta: 'alta', sedentario: 'baixa' };
 /** 'recreativo' não tem tradução segura → fica ausente. */
 const DEMANDA_ATIVIDADE: Record<string, 'alta' | 'baixa'> = { competitivo: 'alta', trabalhador_bracal: 'alta', sedentario: 'baixa' };
-const TABAGISMO: Record<string, string> = { nunca: 'nunca', ex_tabagista: 'ex', atual: 'atual' };
 const TIPOS = ['completa', 'parcial', 'tendinopatia'];
 
 function ladoCodigo(l: string | undefined): 'R' | 'L' | undefined {
@@ -569,7 +572,7 @@ function ladoCodigo(l: string | undefined): 'R' | 'L' | undefined {
 }
 
 /**
- * Lê o bloco pré-operatório (payload v2) de EL_DBR + campos comuns + contexto do paciente.
+ * Lê o bloco pré-operatório (payload v2) de EL_DBR + data da avaliação + cadastro e contexto do paciente.
  * Determinístico, sem relógio: `dias_desde_lesao` vem do campo gravado ou, na falta dele,
  * de `data_lesao` × `data_avaliacao`. Nada é inventado: sem dado, sem campo.
  * Entradas manuais (DPOC, obesidade, ASA, FABS, via planejada etc.) não vêm do payload.
@@ -586,6 +589,7 @@ export function mapearEntradaBicepsDistal(
   };
   const d: Record<string, unknown> = preopFor(payload, BICEPS_DISTAL_CODIGO)?.dados ?? {};
   const c: Record<string, unknown> = payload.avaliacaoPreop?.comum ?? {};
+  const pac = perfilClinicoDe(ctx.paciente);
 
   // Dias desde a lesão
   if (isNum(d.dias_desde_lesao_preop) && d.dias_desde_lesao_preop >= 0) {
@@ -609,28 +613,26 @@ export function mapearEntradaBicepsDistal(
     set('lacerto_fibroso', d.lacerto_integro_rm ? 'integro' : 'roto', { de: 'payload', caminho: `${P_DBR}.lacerto_integro_rm`, nota: 'fonte: RM' });
   }
 
-  // Ocupação e demanda: primeiro a ocupação do bloco EL_DBR, depois o nível de atividade comum
+  // Ocupação e demanda: primeiro a ocupação do bloco EL_DBR, depois o nível de atividade do cadastro do paciente
   const oc = typeof d.ocupacao_demanda === 'string' ? d.ocupacao_demanda : undefined;
   if (oc && OCUPACAO[oc]) set('ocupacao', OCUPACAO[oc], { de: 'payload', caminho: `${P_DBR}.ocupacao_demanda`, nota: 'bracal → manual_pesado' });
-  const na = typeof c.nivel_atividade === 'string' ? c.nivel_atividade : undefined;
+  const na = pac.nivelAtividade ?? undefined;
   if (oc && DEMANDA_OCUPACAO[oc]) {
     set('demanda_funcional', DEMANDA_OCUPACAO[oc], { de: 'derivada', caminho: `${P_DBR}.ocupacao_demanda`, nota: 'bracal/atleta → alta; sedentario → baixa' });
   } else if (na && DEMANDA_ATIVIDADE[na]) {
-    set('demanda_funcional', DEMANDA_ATIVIDADE[na], { de: 'derivada', caminho: `${P_COMUM}.nivel_atividade`, nota: 'competitivo/trabalhador_bracal → alta; sedentario → baixa; recreativo → sem dado' });
+    set('demanda_funcional', DEMANDA_ATIVIDADE[na], { de: 'derivada', caminho: 'paciente.nivelAtividade', nota: `${CADASTRO}: competitivo/trabalhador_bracal → alta; sedentario → baixa; recreativo → sem dado` });
   }
 
   if (typeof d.necessidade_forca_supinacao === 'boolean') {
     set('prioridade_supinacao', d.necessidade_forca_supinacao ? 'alta' : 'baixa', { de: 'payload', caminho: `${P_DBR}.necessidade_forca_supinacao`, nota: 'sim → alta; não → baixa' });
   }
 
-  // Comuns
-  if (typeof c.tabagismo === 'string' && TABAGISMO[c.tabagismo]) {
-    set('tabagismo', TABAGISMO[c.tabagismo], { de: 'payload', caminho: `${P_COMUM}.tabagismo` });
-  }
-  if (typeof c.diabetes === 'boolean') set('diabetes', c.diabetes, { de: 'payload', caminho: `${P_COMUM}.diabetes` });
+  // Cadastro do paciente
+  if (pac.tabagismo) set('tabagismo', pac.tabagismo, { de: 'paciente', caminho: 'paciente.tabagismo', nota: CADASTRO });
+  if (typeof pac.diabetes === 'boolean') set('diabetes', pac.diabetes, { de: 'paciente', caminho: 'paciente.diabetes', nota: CADASTRO });
   const ladoOp = ladoCodigo(ctx.lado);
-  if (ladoOp && (c.lado_dominante === 'R' || c.lado_dominante === 'L')) {
-    set('membro_dominante', c.lado_dominante === ladoOp, { de: 'derivada', caminho: `${P_COMUM}.lado_dominante × lado da cirurgia`, nota: 'ambidestro → sem dado' });
+  if (ladoOp && (pac.ladoDominante === 'R' || pac.ladoDominante === 'L')) {
+    set('membro_dominante', pac.ladoDominante === ladoOp, { de: 'derivada', caminho: 'paciente.ladoDominante × lado da cirurgia', nota: `${CADASTRO}; ambidestro → sem dado` });
   }
 
   // Paciente

@@ -148,7 +148,7 @@ describe('ramos (casos de ouro)', () => {
   });
 
   test('modificadores (A2) são avisos e não mexem nas opções', () => {
-    const r = run({ ...agudaAlta, idade: 70, dpoc: true, obesidade_classe: 'II', diabetes: true, tabagismo: 'ex' });
+    const r = run({ ...agudaAlta, idade: 70, dpoc: true, obesidade_classe: 'II', diabetes: true, tabagismo: 'ex_tabagista' });
     for (const a of ['DBR.A2.IDADE', 'DBR.A2.DPOC', 'DBR.A2.OBESIDADE_II', 'DBR.A2.DIABETES', 'DBR.A2.EX_TABAGISTA']) expect(aviso(r, a), a).toBeDefined();
     expect(aviso(r, 'DBR.A2.IDADE')!.texto).toContain('70 anos');
     expect(op(r, 'reparo_anatomico')!.motivos.map((m) => m.regra)).toEqual(['DBR.A1.OPERATORIO']);
@@ -295,7 +295,7 @@ describe('entradas ausentes nunca disparam regras', () => {
 
   test('retirar entradas lidas por uma regra nunca a faz disparar por falta de dado (todas as regras cobertas)', () => {
     const casos: Record<string, unknown>[] = [
-      { ...agudaAlta, idade: 70, dpoc: true, obesidade_classe: 'II', diabetes: true, tabagismo: 'ex', retracao_cm: 8, via_planejada: 'dupla', restricao_aine: true, workers_comp: true },
+      { ...agudaAlta, idade: 70, dpoc: true, obesidade_classe: 'II', diabetes: true, tabagismo: 'ex_tabagista', retracao_cm: 8, via_planejada: 'dupla', restricao_aine: true, workers_comp: true },
       { tipo_ruptura: 'completa', dias_desde_lesao: 100, hook_test: 'normal', lacerto_fibroso: 'roto', retracao_cm: 8 },
       { tipo_ruptura: 'completa', dias_desde_lesao: 5, demanda_funcional: 'baixa', prioridade_supinacao: 'baixa', aceita_deficit_supinacao: true, hook_test: 'normal_doloroso', lacerto_fibroso: 'integro' },
       { tipo_ruptura: 'parcial', pct_ruptura_parcial_rm: 70, demanda_funcional: 'alta', workers_comp: true },
@@ -333,22 +333,23 @@ describe('mapeamento payload → entrada', () => {
     avaliacaoPreop: { comum, patologias: [{ codigo: 'EL_DBR', schema: 'EL_DBR.diagnosis.v1', dados }] },
   });
 
-  test('traduz campos do bloco EL_DBR e comuns, com proveniência', () => {
+  test('traduz campos do bloco EL_DBR e do cadastro do paciente, com proveniência', () => {
     const { entrada, proveniencia } = mapearEntradaBicepsDistal(
-      payload(
-        { dias_desde_lesao_preop: 12, tipo_rm: 'parcial', partial_pct_rm: 60, retracao_cm_rm: 2, lacerto_integro_rm: true, hook_test: false, ocupacao_demanda: 'bracal', necessidade_forca_supinacao: true },
-        { tabagismo: 'ex_tabagista', diabetes: false, lado_dominante: 'R', nivel_atividade: 'sedentario' },
-      ),
-      { idade: 52, lado: 'Direito' },
+      payload({ dias_desde_lesao_preop: 12, tipo_rm: 'parcial', partial_pct_rm: 60, retracao_cm_rm: 2, lacerto_integro_rm: true, hook_test: false, ocupacao_demanda: 'bracal', necessidade_forca_supinacao: true }),
+      { idade: 52, lado: 'Direito', paciente: { tabagismo: 'ex_tabagista', diabetes: false, ladoDominante: 'R', nivelAtividade: 'sedentario' } },
     );
     expect(entrada).toEqual({
       dias_desde_lesao: 12, tipo_ruptura: 'parcial', hook_test: 'normal', pct_ruptura_parcial_rm: 60, retracao_cm: 2,
       lacerto_fibroso: 'integro', ocupacao: 'manual_pesado', demanda_funcional: 'alta', prioridade_supinacao: 'alta',
-      tabagismo: 'ex', diabetes: false, membro_dominante: true, idade: 52,
+      tabagismo: 'ex_tabagista', diabetes: false, membro_dominante: true, idade: 52,
     });
     expect(proveniencia.dias_desde_lesao).toEqual({ de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].dias_desde_lesao_preop' });
     expect(proveniencia.demanda_funcional.de).toBe('derivada');
     expect(proveniencia.idade.de).toBe('paciente');
+    expect(proveniencia.tabagismo).toEqual({ de: 'paciente', caminho: 'paciente.tabagismo', nota: 'cadastro do paciente' });
+    expect(proveniencia.diabetes).toEqual({ de: 'paciente', caminho: 'paciente.diabetes', nota: 'cadastro do paciente' });
+    expect(proveniencia.membro_dominante).toMatchObject({ de: 'derivada', caminho: 'paciente.ladoDominante × lado da cirurgia' });
+    expect(proveniencia.membro_dominante.nota).toContain('cadastro do paciente');
     expect(proveniencia.lacerto_fibroso.nota).toContain('RM');
     expect(Object.keys(proveniencia).sort()).toEqual(Object.keys(entrada).sort());
     // a entrada mapeada é aceita pelo motor
@@ -367,22 +368,31 @@ describe('mapeamento payload → entrada', () => {
   });
 
   test('campos ausentes ficam ausentes (nunca 0/false); ambidestro, recreativo e lado desconhecido → sem dado', () => {
-    const { entrada, proveniencia } = mapearEntradaBicepsDistal(payload({}, { lado_dominante: 'ambidestro', nivel_atividade: 'recreativo' }), { lado: 'Direito' });
+    const { entrada, proveniencia } = mapearEntradaBicepsDistal(payload({}), { lado: 'Direito', paciente: { ladoDominante: 'ambidestro', nivelAtividade: 'recreativo' } });
     expect(entrada).toEqual({});
     expect(proveniencia).toEqual({});
     expect(mapearEntradaBicepsDistal({}).entrada).toEqual({});
-    expect(mapearEntradaBicepsDistal(payload({}, { lado_dominante: 'R' })).entrada).toEqual({});
+    expect(mapearEntradaBicepsDistal(payload({}), { paciente: { ladoDominante: 'R' } }).entrada).toEqual({});
   });
 
-  test('demanda: ocupação do bloco EL_DBR tem prioridade sobre o nível de atividade comum', () => {
-    expect(mapearEntradaBicepsDistal(payload({ ocupacao_demanda: 'sedentario' }, { nivel_atividade: 'competitivo' })).entrada.demanda_funcional).toBe('baixa');
-    const soComum = mapearEntradaBicepsDistal(payload({}, { nivel_atividade: 'competitivo' }));
-    expect(soComum.entrada.demanda_funcional).toBe('alta');
-    expect(soComum.proveniencia.demanda_funcional.caminho).toBe('avaliacaoPreop.comum.nivel_atividade');
+  test('demanda: ocupação do bloco EL_DBR tem prioridade sobre o nível de atividade do cadastro', () => {
+    expect(mapearEntradaBicepsDistal(payload({ ocupacao_demanda: 'sedentario' }), { paciente: { nivelAtividade: 'competitivo' } }).entrada.demanda_funcional).toBe('baixa');
+    const soCadastro = mapearEntradaBicepsDistal(payload({}), { paciente: { nivelAtividade: 'competitivo' } });
+    expect(soCadastro.entrada.demanda_funcional).toBe('alta');
+    expect(soCadastro.proveniencia.demanda_funcional.caminho).toBe('paciente.nivelAtividade');
+    expect(soCadastro.proveniencia.demanda_funcional.nota).toContain('cadastro do paciente');
+  });
+
+  test('campos antigos em avaliacaoPreop.comum não são lidos: o cadastro do paciente é a única fonte', () => {
+    const { entrada } = mapearEntradaBicepsDistal(
+      payload({}, { tabagismo: 'atual', diabetes: true, lado_dominante: 'R', nivel_atividade: 'competitivo' }),
+      { lado: 'Direito' },
+    );
+    expect(entrada).toEqual({});
   });
 
   test('hook_test positivo → anormal; lacerto não íntegro → roto; lado esquerdo não dominante', () => {
-    const { entrada } = mapearEntradaBicepsDistal(payload({ hook_test: true, lacerto_integro_rm: false }, { lado_dominante: 'R' }), { lado: 'L' });
+    const { entrada } = mapearEntradaBicepsDistal(payload({ hook_test: true, lacerto_integro_rm: false }), { lado: 'L', paciente: { ladoDominante: 'R' } });
     expect(entrada).toMatchObject({ hook_test: 'anormal', lacerto_fibroso: 'roto', membro_dominante: false });
   });
 

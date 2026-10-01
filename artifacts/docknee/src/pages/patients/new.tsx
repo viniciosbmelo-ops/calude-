@@ -25,6 +25,7 @@ import {
   Copy,
   FileText,
   Heart,
+  HeartPulse,
   Loader2,
   MapPin,
   MessageCircle,
@@ -36,6 +37,8 @@ import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import { useCreatePreConsultInvite } from "@/hooks/use-pre-consult";
 import { isValidCpf, normalizeCpf } from "../../../../../lib/api-zod/src/cpf";
+import { PatientClinicalFields } from "@/components/patient-clinical-fields";
+import { emptyPatientClinicalForm, patientClinicalCreateBody, type PatientClinicalForm } from "@/lib/patient-clinical";
 
 const ESTADOS_BR = [
   { uf: "AC", nome: "Acre" },
@@ -95,6 +98,8 @@ export default function NewPatient() {
     cep: "",
   });
 
+  const [clinical, setClinical] = useState<PatientClinicalForm>(emptyPatientClinicalForm);
+
   const set = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
 
   const formatCpf = (value: string) => {
@@ -107,10 +112,11 @@ export default function NewPatient() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: Record<string, string | undefined> = {};
+    const payload: Record<string, string | boolean | undefined> = {};
     for (const [k, v] of Object.entries(formData)) {
       if (v.trim() !== "") payload[k] = v.trim();
     }
+    Object.assign(payload, patientClinicalCreateBody(clinical));
     createPatientMutation.mutate(
       { data: payload as never },
       {
@@ -264,6 +270,19 @@ export default function NewPatient() {
                   <Input id="email" type="email" placeholder={tr("emailPlaceholder")} value={formData.email} onChange={e => set("email", e.target.value)} />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Perfil clínico (cadastro; usado em todas as cirurgias) */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <HeartPulse className="h-4 w-4 text-primary" /> {tr("clinicalProfile")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">{tr("clinicalProfileHelp")}</p>
+              <PatientClinicalFields idPrefix="new" value={clinical} onChange={setClinical} />
             </CardContent>
           </Card>
 

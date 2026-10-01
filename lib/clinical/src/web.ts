@@ -14,6 +14,11 @@ export type { Gs1Result } from './gs1/parser';
 export { procedureName, diagnosisText, CLINICAL_PAYLOAD_VERSION } from './surgery/payload';
 export { IMPLANT_CATEGORIES, PREOP_COMMON_SCHEMA, preopFor } from './surgery/payload';
 export {
+  CAMPOS_PERFIL_CLINICO, CAMPOS_PREOP_NO_CADASTRO, LADO_DOMINANTE_VALORES, NIVEL_ATIVIDADE_VALORES, TABAGISMO_VALORES,
+  perfilClinicoDe, semCamposDoCadastro
+} from './patient/profile';
+export type { CampoPerfilClinico, LadoDominante, NivelAtividade, PerfilClinicoPaciente, Tabagismo } from './patient/profile';
+export {
   CORE_OPTIONS_BY_REGION, coreSchemaForRegion, coreRegionIssues, inapplicableCoreFields, withoutInapplicableCore,
   withoutOtherRegionOptions, hasAccessType, isArthroscopic, isOpenOnly
 } from './surgery/coreOptions';

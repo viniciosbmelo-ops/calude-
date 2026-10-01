@@ -10,7 +10,7 @@ const fields = (r: ReturnType<SchemaRegistry['validate']>) => r.issues.map((i) =
 describe('SchemaRegistry', () => {
   test('todos os schemas compilam', () => {
     expect(reg.ids()).toEqual([
-      'CORE_SURGERY.v1', 'EL_DBR.diagnosis.v1', 'EL_DBR.intraop.v1', 'PREOP_COMMON.v1', 'SH_AC_DISL.intraop.v1', 'SH_ARTHROPLASTY.intraop.v1',
+      'CORE_SURGERY.v1', 'EL_DBR.diagnosis.v1', 'EL_DBR.intraop.v1', 'PREOP_COMMON.v2', 'SH_AC_DISL.intraop.v1', 'SH_ARTHROPLASTY.intraop.v1',
       'SH_BICEPS.intraop.v1', 'SH_FX_PROX_HUM.diagnosis.v1', 'SH_INST_ANT.diagnosis.v1', 'SH_INST_ANT.diagnosis.v2', 'SH_INST_ANT.intraop.v1',
       'SH_RCT.diagnosis.v1', 'SH_RCT.intraop.v1'
     ]);

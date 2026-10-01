@@ -26,6 +26,10 @@ import { es, ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Save, Pencil, ClipboardList, Phone, FileDown, Building2, Paperclip, Upload, FileText, FileImage, Film, File, X, Download, AlertCircle, Activity, ExternalLink } from "lucide-react";
 import { generateProntuarioPDF } from "@/lib/prontuario-pdf";
+import { PatientClinicalFields, PatientClinicalSummary } from "@/components/patient-clinical-fields";
+import {
+  emptyPatientClinicalForm, patientClinicalFormFrom, patientClinicalUpdateBody, shouldOpenPatientEdit, type PatientClinicalForm,
+} from "@/lib/patient-clinical";
 import { sharePdfOrDownload, handlePdfOpenClick } from "@/lib/pdf-share";
 import { useListFollowup } from "@workspace/api-client-react";
 import type { Followup } from "@workspace/api-client-react";
@@ -253,7 +257,9 @@ export default function PatientDetail() {
     }
   };
 
-  const [editOpen, setEditOpen] = useState(false);
+  // Link do formulário da cirurgia (?edit=1) abre direto o modal de edição do cadastro
+  const [editOpen, setEditOpen] = useState(() => typeof window !== "undefined" && shouldOpenPatientEdit(window.location.search));
+  const [editClinical, setEditClinical] = useState<PatientClinicalForm>(emptyPatientClinicalForm);
   const [editForm, setEditForm] = useState({
     nome: "", cpf: "", dataNascimento: "", email: "",
     sexo: "", telefone: "",
@@ -322,6 +328,7 @@ export default function PatientDetail() {
         estado: (patient as any).estado || "",
         cep: (patient as any).cep || "",
       });
+      setEditClinical(patientClinicalFormFrom(patient));
     }
   }, [patient]);
 
@@ -368,10 +375,16 @@ export default function PatientDetail() {
           cidade: editForm.cidade || undefined,
           estado: editForm.estado || undefined,
           cep: editForm.cep || undefined,
+          ...patientClinicalUpdateBody(editClinical),
         } as any,
       },
       {
-        onSuccess: () => { setEditOpen(false); toast({ title: tr("registrationUpdated") }); },
+        onSuccess: () => {
+          setEditOpen(false);
+          toast({ title: tr("registrationUpdated") });
+          void queryClient.invalidateQueries({ queryKey: getGetPatientQueryKey(id) });
+          void queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
+        },
         onError: () => toast({ title: tr("saveError"), variant: "destructive" }),
       }
     );
@@ -784,6 +797,21 @@ export default function PatientDetail() {
                   <p className="text-3xl font-bold mt-1" style={{ color: "#1A365D" }}>{card.value}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="bg-card border border-border rounded-xl overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }} data-testid="patient-clinical-profile">
+              <div className="px-5 py-4 border-b border-border flex justify-between items-center gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-foreground">{tr("clinicalProfile")}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">{tr("clinicalProfileHelp")}</p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 shrink-0" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5" />{tr("edit")}
+                </Button>
+              </div>
+              <div className="p-4 md:px-5">
+                <PatientClinicalSummary patient={patient} />
+              </div>
             </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
@@ -1439,6 +1467,13 @@ export default function PatientDetail() {
                 <SelectItem value="F">{tr("female")}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Perfil clínico */}
+          <div className="space-y-2 rounded-lg border border-border p-3">
+            <p className="text-sm font-medium">{tr("clinicalProfile")}</p>
+            <p className="text-xs text-muted-foreground">{tr("clinicalProfileHelp")}</p>
+            <PatientClinicalFields idPrefix="edit" value={editClinical} onChange={setEditClinical} />
           </div>
 
           {/* País de Residência */}

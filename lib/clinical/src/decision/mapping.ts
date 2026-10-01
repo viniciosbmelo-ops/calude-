@@ -9,6 +9,7 @@
  * preenche entradas que o registro não trouxe. Divergência entre manual e registro vira `conflito`.
  */
 import type { ClinicalPayload } from '../surgery/payload';
+import type { PerfilClinicoPaciente } from '../patient/profile';
 import type { AlgorithmDef, Proveniencia } from './types';
 
 export interface ProvenienciaEntrada {
@@ -33,6 +34,11 @@ export interface ContextoMapeamento {
   payload: Pick<ClinicalPayload, 'avaliacaoPreop'> & Partial<Pick<ClinicalPayload, 'geral' | 'procedimentos'>>;
   /** Data de nascimento do paciente (AAAA-MM-DD). */
   dataNascimento?: string | null;
+  /**
+   * Cadastro do paciente: lado dominante, tabagismo, diabetes e nível de atividade. Os algoritmos leem esses
+   * campos daqui (proveniência `paciente`, "cadastro do paciente"), nunca de `avaliacaoPreop.comum`.
+   */
+  paciente?: PerfilClinicoPaciente;
   /** Data de referência para a idade (AAAA-MM-DD). Padrão: avaliacaoPreop.comum.data_avaliacao. */
   dataReferencia?: string | null;
   /** Lado da cirurgia (coluna da cirurgia: 'Direito' | 'Esquerdo'). */

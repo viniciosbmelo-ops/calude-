@@ -331,7 +331,7 @@ describe('parâmetros (pendentes de decisão do cirurgião)', () => {
 describe('mapeamento payload → entrada', () => {
   const payload = {
     avaliacaoPreop: {
-      comum: { tabagismo: 'atual', diabetes: false, nivel_atividade: 'recreativo' },
+      comum: { data_avaliacao: '2026-03-10' },
       patologias: [{
         codigo: 'SH_RCT', schema: 'SH_RCT.diagnosis.v1',
         dados: {
@@ -346,7 +346,7 @@ describe('mapeamento payload → entrada', () => {
 
   test('copia campos do pré-op, deriva GFDI e massiva, e registra proveniência', () => {
     const { entrada, proveniencia } = mapearEntradaManguito(payload, {
-      paciente: { idade: 63.5 },
+      paciente: { idade: 63.5, tabagismo: 'atual', diabetes: false, nivelAtividade: 'recreativo' },
       manual: { artrose_glenoumeral: 'ausente', reparabilidade_estimada: 'provavel_irreparavel', hamada: 4 },
     });
     expect(entrada).toMatchObject({
@@ -358,7 +358,9 @@ describe('mapeamento payload → entrada', () => {
     });
     expect(proveniencia.tipo_rotura).toEqual({ origem: 'payload', caminho: 'avaliacaoPreop[SH_RCT].tipo_rotura_rm' });
     expect(proveniencia.goutallier_isp.caminho).toMatch(/goutallier\.ISP$/);
-    expect(proveniencia.tabagismo).toEqual({ origem: 'payload', caminho: 'avaliacaoPreop.comum.tabagismo' });
+    expect(proveniencia.tabagismo).toEqual({ origem: 'paciente', caminho: 'paciente.tabagismo', nota: 'cadastro do paciente' });
+    expect(proveniencia.diabetes).toEqual({ origem: 'paciente', caminho: 'paciente.diabetes', nota: 'cadastro do paciente' });
+    expect(proveniencia.nivel_atividade).toEqual({ origem: 'paciente', caminho: 'paciente.nivelAtividade', nota: 'cadastro do paciente' });
     expect(proveniencia.idade).toEqual({ origem: 'paciente', caminho: 'idade' });
     expect(proveniencia.artrose_glenoumeral).toEqual({ origem: 'manual' });
     expect(proveniencia.gfdi.origem).toBe('derivada');
@@ -372,6 +374,14 @@ describe('mapeamento payload → entrada', () => {
     // A entrada mapeada é aceita pelo motor
     const r = evaluate(DEF, entrada);
     expect(res(r, 'ZC1')).toBe('disparou');
+  });
+
+  test('tabagismo, diabetes e nível de atividade vêm só do cadastro do paciente (campos antigos do pré-op são ignorados)', () => {
+    const antigo = { avaliacaoPreop: { comum: { tabagismo: 'atual', diabetes: true, nivel_atividade: 'competitivo' }, patologias: [] } };
+    expect(mapearEntradaManguito(antigo).entrada).toEqual({});
+    // Valor fora do enum no cadastro (texto livre legado) fica ausente
+    const r = mapearEntradaManguito({}, { paciente: { nivelAtividade: 'Sedentário' as never, diabetes: true } });
+    expect(r.entrada).toEqual({ diabetes: true });
   });
 
   test('payload sem avaliação pré-op → entrada vazia (nada vira 0)', () => {

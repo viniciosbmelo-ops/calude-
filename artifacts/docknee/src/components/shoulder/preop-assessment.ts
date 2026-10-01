@@ -1,8 +1,9 @@
 /**
  * Avaliação pré-operatória (payload v2, `avaliacaoPreop`): estado do formulário e regras de exibição.
- * Sem React, para teste unitário. Os campos vêm dos schemas do núcleo (PREOP_COMMON.v1 e `<código>.diagnosis.vN`).
+ * Sem React, para teste unitário. Os campos vêm dos schemas do núcleo (PREOP_COMMON.v2 e `<código>.diagnosis.vN`).
+ * Lado dominante, tabagismo, diabetes e nível de atividade são do cadastro do paciente (só leitura aqui).
  */
-import { diagnosisSchemaId, type PreopAssessment } from "@workspace/clinical/web";
+import { diagnosisSchemaId, semCamposDoCadastro, type PreopAssessment } from "@workspace/clinical/web";
 
 type Obj = Record<string, any>;
 
@@ -39,7 +40,11 @@ function isObj(v: unknown): v is Obj {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-/** Estado a partir do `dadosClinicos.avaliacaoPreop` gravado (v1 sem o bloco → vazio). */
+/**
+ * Estado a partir do `dadosClinicos.avaliacaoPreop` gravado (v1 sem o bloco → vazio).
+ * Registros antigos com lado dominante, tabagismo, diabetes ou nível de atividade no bloco comum: esses campos
+ * são descartados (agora vêm do cadastro do paciente) e não voltam a ser enviados.
+ */
 export function preopStateFromPayload(raw: unknown): PreopState {
   if (!isObj(raw)) return emptyPreopState();
   const bySchema: Record<string, Obj> = {};
@@ -48,7 +53,7 @@ export function preopStateFromPayload(raw: unknown): PreopState {
     const schema = diagnosisSchemaId(e.codigo);
     if (schema && isObj(e.dados)) bySchema[schema] = e.dados;
   }
-  return { comum: isObj(raw.comum) ? raw.comum : {}, bySchema };
+  return { comum: isObj(raw.comum) ? semCamposDoCadastro(raw.comum) : {}, bySchema };
 }
 
 const hasData = (o: Obj | undefined): o is Obj => !!o && Object.values(o).some((v) => v !== undefined && v !== "");

@@ -19,6 +19,7 @@
  */
 import type { ClinicalPayload } from '../../surgery/payload';
 import { preopFor } from '../../surgery/payload';
+import { perfilClinicoDe, type PerfilClinicoPaciente } from '../../patient/profile';
 import { AVISO_NIVEIS_EVIDENCIA } from '../vocab';
 import type {
   AlgorithmDef, CitRef, Cond, EntradaDef, NivelEvidencia, Proveniencia, Referencia, TipoEstudo,
@@ -108,7 +109,6 @@ const c = (ref: string, nota?: string): CitRef => (nota ? { ref, nota } : { ref 
 // Entradas (spec §3). Nenhuma tem valor padrão: ausente fica ausente.
 // ---------------------------------------------------------------------------------------------
 const DX = 'avaliacaoPreop[SH_RCT]';
-const COMUM = 'avaliacaoPreop.comum';
 const pre = (e: Omit<EntradaDef, 'momento'>): EntradaDef => ({ ...e, momento: 'preop' });
 const manual = { de: 'manual' } as const;
 
@@ -143,9 +143,9 @@ const ENTRADAS: EntradaDef[] = [
   pre({ id: 'subescapular_status', rotulo: 'Subescapular', def: { tipo: 'enum', valores: ['integro', 'parcial_reparavel', 'completo_reparavel', 'irreparavel'], rotulos: { integro: 'Íntegro', parcial_reparavel: 'Lesão parcial reparável', completo_reparavel: 'Lesão completa reparável', irreparavel: 'Irreparável' } }, origem: manual }),
   pre({ id: 'redondo_menor_trofismo', rotulo: 'Trofismo do redondo menor', def: { tipo: 'enum', valores: ['normal', 'atrofico'], rotulos: { normal: 'Normal', atrofico: 'Atrófico' } }, origem: manual }),
   pre({ id: 'deltoide_funcional', rotulo: 'Deltoide / nervo axilar funcional', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${DX}.deltoide_funcional` } }),
-  pre({ id: 'nivel_atividade', rotulo: 'Nível de atividade / demanda', def: { tipo: 'enum', valores: ['sedentario', 'recreativo', 'competitivo', 'trabalhador_bracal'], rotulos: { sedentario: 'Sedentário', recreativo: 'Recreativo', competitivo: 'Competitivo', trabalhador_bracal: 'Trabalhador braçal' } }, origem: { de: 'payload', caminho: `${COMUM}.nivel_atividade` } }),
-  pre({ id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex_tabagista', 'atual'], rotulos: { nunca: 'Nunca fumou', ex_tabagista: 'Ex-tabagista', atual: 'Tabagista atual' } }, origem: { de: 'payload', caminho: `${COMUM}.tabagismo` } }),
-  pre({ id: 'diabetes', rotulo: 'Diabetes', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${COMUM}.diabetes` } }),
+  pre({ id: 'nivel_atividade', rotulo: 'Nível de atividade / demanda', def: { tipo: 'enum', valores: ['sedentario', 'recreativo', 'competitivo', 'trabalhador_bracal'], rotulos: { sedentario: 'Sedentário', recreativo: 'Recreativo', competitivo: 'Competitivo', trabalhador_bracal: 'Trabalhador braçal' } }, origem: { de: 'paciente', campo: 'nivelAtividade' } }),
+  pre({ id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex_tabagista', 'atual'], rotulos: { nunca: 'Nunca fumou', ex_tabagista: 'Ex-tabagista', atual: 'Tabagista atual' } }, origem: { de: 'paciente', campo: 'tabagismo' } }),
+  pre({ id: 'diabetes', rotulo: 'Diabetes', def: { tipo: 'booleano' }, origem: { de: 'paciente', campo: 'diabetes' } }),
   pre({ id: 'imc', rotulo: 'IMC', def: { tipo: 'numero', unidade: 'kg/m²', min: 10, max: 80 }, origem: manual }),
   pre({ id: 'dmo_baixa', rotulo: 'Densidade mineral óssea baixa', def: { tipo: 'booleano' }, origem: manual }),
   pre({ id: 'csa_graus', rotulo: 'Ângulo crítico do ombro (CSA)', def: { tipo: 'numero', unidade: 'graus', min: 0, max: 90 }, origem: manual }),
@@ -181,7 +181,7 @@ const PENDENTE = 'Pendente de decisão do cirurgião.';
 
 export const MANGUITO_ROTADOR: AlgorithmDef = {
   id: 'SH_RCT_DECISAO',
-  versao: '0.1.1',
+  versao: '0.1.2',
   patologias: ['SH_RCT', 'SH_RCT_PARTIAL', 'SH_RCT_FULL', 'SH_RCT_MASSIVE', 'SH_RCT_SUBSCAP', 'SH_RCT_REVISION'],
   titulo: 'Lesões do manguito rotador (rascunho)',
   escopo: 'Lesão sintomática do manguito rotador confirmada por imagem, avaliação pré-operatória. Rascunho a partir da spec verificada v0.1; não revisado.',
@@ -717,7 +717,8 @@ export interface EntradaMapeada {
 export interface OpcoesMapeamentoManguito {
   /** Código da patologia (qualquer código do grupo SH_RCT usa o mesmo schema de diagnóstico). */
   codigo?: string;
-  paciente?: { idade?: number | null };
+  /** Idade (derivada da data de nascimento) e cadastro do paciente (tabagismo, diabetes, nível de atividade). */
+  paciente?: { idade?: number | null } & PerfilClinicoPaciente;
   /** Entradas informadas manualmente. Só preenchem campos que o payload não trouxe. */
   manual?: Record<string, unknown>;
 }
@@ -759,11 +760,11 @@ export function mapearEntradaManguito(
   const entrada: Record<string, unknown> = {};
   const proveniencia: Record<string, ProvenienciaCampo> = {};
   const dx = preopFor(payload, opts.codigo ?? 'SH_RCT')?.dados ?? {};
-  const comum = payload.avaliacaoPreop?.comum ?? {};
 
   const ler = (caminho: string): unknown => {
-    const [base, rel] = caminho.startsWith(`${DX}.`) ? [dx, caminho.slice(DX.length + 1)] : [comum, caminho.slice(COMUM.length + 1)];
-    let v: unknown = base;
+    if (!caminho.startsWith(`${DX}.`)) return undefined;
+    let v: unknown = dx;
+    const rel = caminho.slice(DX.length + 1);
     for (const k of rel.split('.')) v = v !== null && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined;
     return v;
   };
@@ -775,9 +776,19 @@ export function mapearEntradaManguito(
         entrada[e.id] = v;
         proveniencia[e.id] = { origem: 'payload', caminho: e.origem.caminho };
       }
-    } else if (e.origem.de === 'paciente' && e.origem.campo === 'idade' && presente(opts.paciente?.idade)) {
-      entrada[e.id] = opts.paciente!.idade;
-      proveniencia[e.id] = { origem: 'paciente', caminho: 'idade' };
+    } else if (e.origem.de === 'paciente' && e.origem.campo === 'idade') {
+      if (presente(opts.paciente?.idade)) {
+        entrada[e.id] = opts.paciente!.idade;
+        proveniencia[e.id] = { origem: 'paciente', caminho: 'idade' };
+      }
+    } else if (e.origem.de === 'paciente') {
+      // Cadastro do paciente (lado dominante, tabagismo, diabetes, nível de atividade): só valores válidos
+      const campo = e.origem.campo as keyof PerfilClinicoPaciente;
+      const v = perfilClinicoDe(opts.paciente)[campo];
+      if (presente(v)) {
+        entrada[e.id] = v;
+        proveniencia[e.id] = { origem: 'paciente', caminho: `paciente.${campo}`, nota: 'cadastro do paciente' };
+      }
     }
   }
   for (const [k, v] of Object.entries(opts.manual ?? {})) {

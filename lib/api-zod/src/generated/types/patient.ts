@@ -5,6 +5,9 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
+import type { PatientLadoDominante } from './patientLadoDominante';
+import type { PatientNivelAtividade } from './patientNivelAtividade';
+import type { PatientTabagismo } from './patientTabagismo';
 
 export interface Patient {
   id: number;
@@ -18,8 +21,17 @@ export interface Patient {
   telefone?: string | null;
   /** @nullable */
   lado?: string | null;
+  /**
+     * Lado dominante (cadastro do paciente)
+     * @nullable
+     */
+  ladoDominante?: PatientLadoDominante;
   /** @nullable */
-  nivelAtividade?: string | null;
+  tabagismo?: PatientTabagismo;
+  /** @nullable */
+  diabetes?: boolean | null;
+  /** @nullable */
+  nivelAtividade?: PatientNivelAtividade;
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;

@@ -13,6 +13,11 @@ export const patientsTable = pgTable("patients", {
   sexo: text("sexo"),
   telefone: text("telefone"),
   lado: text("lado"),
+  // Perfil clínico do paciente (cadastro, não por cirurgia). Valores validados na API com os enums de
+  // @workspace/clinical (patient/profile.ts); null = não informado.
+  ladoDominante: text("lado_dom"),
+  tabagismo: text("tabagismo"),
+  diabetes: boolean("diabetes"),
   nivelAtividade: text("nivel_atividade"),
   beightonScore: integer("beighton_score"),
   anamnese: text("anamnese"),

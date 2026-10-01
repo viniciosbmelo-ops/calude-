@@ -59,7 +59,7 @@ const mapearInstabilidade: MapeadorEntrada = (ctx) => {
 const mapearManguito: MapeadorEntrada = (ctx) => {
   const idade = idadeDe(ctx);
   const r = mapearEntradaManguito(ctx.payload, {
-    ...(idade !== undefined ? { paciente: { idade } } : {}),
+    paciente: { ...(ctx.paciente ?? {}), ...(idade !== undefined ? { idade } : {}) },
     ...(ctx.manual ? { manual: ctx.manual } : {}),
   });
   const proveniencia: Record<string, ProvenienciaEntrada> = {};
@@ -85,6 +85,7 @@ const mapearBiceps: MapeadorEntrada = (ctx) => {
   const r = mapearEntradaBicepsDistal(ctx.payload, {
     ...(idade !== undefined ? { idade } : {}),
     ...(ctx.lado ? { lado: ctx.lado } : {}),
+    ...(ctx.paciente ? { paciente: ctx.paciente } : {}),
   });
   const proveniencia: Record<string, ProvenienciaEntrada> = {};
   for (const [id, p] of Object.entries(r.proveniencia)) proveniencia[id] = id === 'idade' ? PACIENTE_IDADE : p;

@@ -16,12 +16,16 @@ import { ARTHRO_STRUCTURES, PATHOLOGY_BY_CODE, Region } from '../catalog/patholo
 import { CASE_TYPE_BY_KEY, diagnosisSchemaId, intraopSchemaId } from '../catalog/caseTypes';
 import type { SchemaRegistry, ValidationIssue } from '../schemaRegistry';
 import { coreRegionIssues, isOpenOnly } from './coreOptions';
+import { semCamposDoCadastro } from '../patient/profile';
 
 export const CLINICAL_PAYLOAD_VERSION = 2;
 /** Versões de payload aceitas na leitura (a v1 não tem `avaliacaoPreop`). */
 export const SUPPORTED_PAYLOAD_VERSIONS = [1, 2] as const;
-/** Schema dos campos comuns da avaliação pré-operatória. */
-export const PREOP_COMMON_SCHEMA = 'PREOP_COMMON.v1';
+/**
+ * Schema dos campos comuns da avaliação pré-operatória. A v2 tem só a data da avaliação: lado dominante,
+ * tabagismo, diabetes e nível de atividade passaram para o cadastro do paciente (ver patient/profile.ts).
+ */
+export const PREOP_COMMON_SCHEMA = 'PREOP_COMMON.v2';
 /** Limite de sub-blocos por patologia na avaliação pré-operatória. */
 export const MAX_PREOP_BLOCKS = 10;
 export const MAX_FREE_TEXT = 4000;
@@ -66,7 +70,8 @@ export interface PreopPathologyAssessment {
 
 /**
  * Avaliação pré-operatória (payload v2). Tudo opcional; a validação cobre só tipo e faixa.
- * `comum` segue PREOP_COMMON.v1 (data da avaliação, lado dominante, tabagismo, diabetes, nível de atividade).
+ * `comum` segue PREOP_COMMON.v2 (data da avaliação). Lado dominante, tabagismo, diabetes e nível de atividade
+ * ficam no cadastro do paciente; payloads gravados com eles (v1 do schema) são lidos sem esses campos.
  * `patologias` tem no máximo um sub-bloco por schema de diagnóstico.
  */
 export interface PreopAssessment {
@@ -203,7 +208,9 @@ export function parseClinicalPayload(raw: unknown): ClinicalPayload {
 
 /**
  * Forma do bloco `avaliacaoPreop` (rascunho). Tipos e faixas dos campos ficam para a finalização
- * (schemas PREOP_COMMON.v1 e `<código>.diagnosis.vN`), como nos dados intraoperatórios.
+ * (schemas PREOP_COMMON.v2 e `<código>.diagnosis.vN`), como nos dados intraoperatórios.
+ * Campos comuns que passaram para o cadastro do paciente (lado dominante, tabagismo, diabetes, nível de
+ * atividade) são descartados: payloads antigos continuam válidos e não duplicam o cadastro.
  * Bloco vazio (sem campos comuns nem sub-blocos) é omitido: o payload fica igual ao de um v1.
  */
 function parsePreopAssessment(raw: unknown, regiao: Region): PreopAssessment | undefined {
@@ -211,7 +218,7 @@ function parsePreopAssessment(raw: unknown, regiao: Region): PreopAssessment | u
   if (!isObj(raw)) throw new ClinicalPayloadError('avaliacaoPreop deve ser um objeto.');
   const comumRaw = raw.comum ?? {};
   if (!isObj(comumRaw)) throw new ClinicalPayloadError('avaliacaoPreop.comum deve ser um objeto.');
-  const comum = { ...comumRaw };
+  const comum = semCamposDoCadastro(comumRaw);
   const list = raw.patologias ?? [];
   if (!Array.isArray(list) || list.length > MAX_PREOP_BLOCKS) throw new ClinicalPayloadError(`avaliacaoPreop.patologias: lista de até ${MAX_PREOP_BLOCKS} itens.`);
   const seen = new Set<string>();

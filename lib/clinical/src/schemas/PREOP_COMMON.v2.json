@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "PREOP_COMMON.v2",
+  "x-note": "Avaliação pré-operatória: campos comuns próprios da cirurgia, todos opcionais; o schema valida só tipo e faixa, sem interpretação clínica. Lado dominante, tabagismo, diabetes e nível de atividade ficam no cadastro do paciente (v1 os tinha aqui; payloads antigos são aceitos e esses campos descartados na leitura).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "data_avaliacao": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}

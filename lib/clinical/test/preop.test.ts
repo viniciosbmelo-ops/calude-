@@ -28,7 +28,9 @@ const v1 = () => ({
   implantes: [{ categoria: 'anchor', fabricante: 'Fabricante A', modelo: 'Âncora all-suture', quantidade: 2 }]
 });
 
-const comum = { data_avaliacao: '2026-08-30', lado_dominante: 'R', tabagismo: 'ex_tabagista', diabetes: false, nivel_atividade: 'trabalhador_bracal' };
+const comum = { data_avaliacao: '2026-08-30' };
+/** Campos que PREOP_COMMON.v1 tinha e que passaram para o cadastro do paciente. */
+const comumLegado = { lado_dominante: 'R', tabagismo: 'ex_tabagista', diabetes: false, nivel_atividade: 'trabalhador_bracal' };
 const rct = {
   inicio: 'agudo_sobre_cronico', semanas_desde_lesao: 10, tipo_rotura_rm: 'completa', tendoes_rm: ['SSP', 'ISP'], tamanho_ap_mm_rm: 28,
   retracao_patte_rm: 2, goutallier: { SSP: 2, ISP: 1, SSC: 0, TM: 0 }, tangent_sign: false, hamada: 2, distancia_acromioumeral_mm: 7.5,
@@ -86,7 +88,11 @@ describe('catálogo: avaliação pré-operatória dos primeiros algoritmos', () 
     expect(prop('SH_RCT.diagnosis.v1', 'hamada').enum).toEqual([1, 2, 3, 4, 5]);
     expect(prop('SH_RCT.diagnosis.v1', 'retracao_patte_rm').enum).toEqual([1, 2, 3]);
     expect(prop('SH_FX_PROX_HUM.diagnosis.v1', 'neer_partes').enum).toEqual([1, 2, 3, 4]);
-    expect(prop(PREOP_COMMON_SCHEMA, 'nivel_atividade').enum).toEqual(['sedentario', 'recreativo', 'competitivo', 'trabalhador_bracal']);
+  });
+  test('PREOP_COMMON.v2: só a data da avaliação (os demais campos comuns estão no cadastro do paciente)', () => {
+    expect(PREOP_COMMON_SCHEMA).toBe('PREOP_COMMON.v2');
+    expect(Object.keys((reg.get(PREOP_COMMON_SCHEMA) as any).properties)).toEqual(['data_avaliacao']);
+    expect(reg.get('PREOP_COMMON.v1')).toBeUndefined();
   });
 });
 
@@ -122,11 +128,29 @@ describe('payload v2 com avaliação pré-operatória', () => {
     expect(parseClinicalPayload(JSON.parse(JSON.stringify(p)))).toEqual(p);
     expect(validateClinicalPayload(reg, p, cols)).toEqual([]);
   });
+  test('payload antigo com lado dominante, tabagismo, diabetes e nível de atividade no bloco comum continua lido e válido', () => {
+    const raw = v2();
+    Object.assign(raw.avaliacaoPreop.comum, comumLegado);
+    const p = parseClinicalPayload(raw);
+    // Os campos do cadastro são descartados; o restante do bloco fica intacto
+    expect(p.avaliacaoPreop!.comum).toEqual(comum);
+    expect(p.avaliacaoPreop!.patologias).toHaveLength(3);
+    expect(validateClinicalPayload(reg, p, cols)).toEqual([]);
+    expect(parseClinicalPayload(JSON.parse(JSON.stringify(p)))).toEqual(p);
+    // Valores inválidos nesses campos antigos também não impedem a leitura nem a finalização
+    const ruim = v2();
+    Object.assign(ruim.avaliacaoPreop.comum, { nivel_atividade: 'atleta_elite', diabetes: 'sim' });
+    expect(validateClinicalPayload(reg, parseClinicalPayload(ruim), cols)).toEqual([]);
+    // Bloco comum só com campos antigos e sem sub-blocos: o bloco some (payload igual ao v1)
+    const soLegado = parseClinicalPayload({ ...v1(), versao: 2, avaliacaoPreop: { comum: comumLegado, patologias: [] } });
+    expect(soLegado).toEqual(parseClinicalPayload(v1()));
+  });
   test('não altera o objeto recebido', () => {
     const raw = v2();
+    Object.assign(raw.avaliacaoPreop.comum, comumLegado);
     const copy = structuredClone(raw);
     const p = parseClinicalPayload(raw);
-    p.avaliacaoPreop!.comum.diabetes = true;
+    p.avaliacaoPreop!.comum.data_avaliacao = '2026-01-01';
     p.avaliacaoPreop!.patologias[0].dados.hamada = 5;
     expect(raw).toEqual(copy);
   });
@@ -172,10 +196,10 @@ describe('validação de tipo e faixa na finalização', () => {
   };
   const fields = (groups: ReturnType<typeof issuesOf>, scope: string) => groups.find((g) => g.scope === scope)?.issues.map((i) => i.field) ?? [];
 
-  test('campos comuns: data, enum, booleano e campo desconhecido', () => {
-    const g = issuesOf((p) => { Object.assign(p.avaliacaoPreop.comum, { data_avaliacao: '2026-13-40', nivel_atividade: 'atleta_elite', diabetes: 'sim', peso: 80 }); });
+  test('campos comuns: data e campo desconhecido', () => {
+    const g = issuesOf((p) => { Object.assign(p.avaliacaoPreop.comum, { data_avaliacao: '2026-13-40', peso: 80 }); });
     expect(g.map((x) => x.scope)).toEqual(['avaliação pré-operatória']);
-    expect(fields(g, 'avaliação pré-operatória')).toEqual(expect.arrayContaining(['data_avaliacao', 'nivel_atividade', 'diabetes', 'peso']));
+    expect(fields(g, 'avaliação pré-operatória').sort()).toEqual(['data_avaliacao', 'peso']);
   });
   test('percentual 0–100, mm ≥ 0, inteiros e classificações fora da faixa', () => {
     const g = issuesOf((p) => {

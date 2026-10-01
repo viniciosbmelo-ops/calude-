@@ -1144,8 +1144,18 @@ components:
           type: ["string", "null"]
         lado:
           type: ["string", "null"]
+        ladoDominante:
+          type: ["string", "null"]
+          enum: ["R", "L", "ambidestro", null]
+          description: Lado dominante (cadastro do paciente)
+        tabagismo:
+          type: ["string", "null"]
+          enum: ["nunca", "ex_tabagista", "atual", null]
+        diabetes:
+          type: ["boolean", "null"]
         nivelAtividade:
           type: ["string", "null"]
+          enum: ["sedentario", "recreativo", "competitivo", "trabalhador_bracal", null]
         beightonScore:
           type: ["integer", "null"]
         createdAt:
@@ -1169,8 +1179,18 @@ components:
           type: ["string", "null"]
         lado:
           type: ["string", "null"]
+        ladoDominante:
+          type: ["string", "null"]
+          enum: ["R", "L", "ambidestro", null]
+          description: Lado dominante (cadastro do paciente)
+        tabagismo:
+          type: ["string", "null"]
+          enum: ["nunca", "ex_tabagista", "atual", null]
+        diabetes:
+          type: ["boolean", "null"]
         nivelAtividade:
           type: ["string", "null"]
+          enum: ["sedentario", "recreativo", "competitivo", "trabalhador_bracal", null]
         beightonScore:
           type: ["integer", "null"]
         createdAt:
@@ -1198,8 +1218,18 @@ components:
           type: string
         lado:
           type: string
+        ladoDominante:
+          type: string
+          enum: ["R", "L", "ambidestro"]
+          description: Lado dominante (cadastro do paciente)
+        tabagismo:
+          type: string
+          enum: ["nunca", "ex_tabagista", "atual"]
+        diabetes:
+          type: boolean
         nivelAtividade:
           type: string
+          enum: ["sedentario", "recreativo", "competitivo", "trabalhador_bracal"]
         beightonScore:
           type: integer
         planoSaude:
@@ -1233,8 +1263,18 @@ components:
           type: string
         lado:
           type: string
+        ladoDominante:
+          type: ["string", "null"]
+          enum: ["R", "L", "ambidestro", null]
+          description: Lado dominante (cadastro do paciente); null limpa o valor
+        tabagismo:
+          type: ["string", "null"]
+          enum: ["nunca", "ex_tabagista", "atual", null]
+        diabetes:
+          type: ["boolean", "null"]
         nivelAtividade:
-          type: string
+          type: ["string", "null"]
+          enum: ["sedentario", "recreativo", "competitivo", "trabalhador_bracal", null]
         beightonScore:
           type: integer
         anamnese:

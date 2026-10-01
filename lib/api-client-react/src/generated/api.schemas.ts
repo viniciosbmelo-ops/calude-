@@ -206,6 +206,44 @@ export type AdminDoctorWithStats = DoctorWithStats & ({
   lastActivityAt: string | null;
 });
 
+/**
+ * Lado dominante (cadastro do paciente)
+ * @nullable
+ */
+export type PatientLadoDominante = typeof PatientLadoDominante[keyof typeof PatientLadoDominante] | null;
+
+
+export const PatientLadoDominante = {
+  R: 'R',
+  L: 'L',
+  ambidestro: 'ambidestro',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PatientTabagismo = typeof PatientTabagismo[keyof typeof PatientTabagismo] | null;
+
+
+export const PatientTabagismo = {
+  nunca: 'nunca',
+  ex_tabagista: 'ex_tabagista',
+  atual: 'atual',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PatientNivelAtividade = typeof PatientNivelAtividade[keyof typeof PatientNivelAtividade] | null;
+
+
+export const PatientNivelAtividade = {
+  sedentario: 'sedentario',
+  recreativo: 'recreativo',
+  competitivo: 'competitivo',
+  trabalhador_bracal: 'trabalhador_bracal',
+} as const;
+
 export interface Patient {
   id: number;
   doctorId: number;
@@ -218,12 +256,59 @@ export interface Patient {
   telefone?: string | null;
   /** @nullable */
   lado?: string | null;
+  /**
+     * Lado dominante (cadastro do paciente)
+     * @nullable
+     */
+  ladoDominante?: PatientLadoDominante;
   /** @nullable */
-  nivelAtividade?: string | null;
+  tabagismo?: PatientTabagismo;
+  /** @nullable */
+  diabetes?: boolean | null;
+  /** @nullable */
+  nivelAtividade?: PatientNivelAtividade;
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;
 }
+
+/**
+ * Lado dominante (cadastro do paciente)
+ * @nullable
+ */
+export type PatientWithSurgeriesLadoDominante = typeof PatientWithSurgeriesLadoDominante[keyof typeof PatientWithSurgeriesLadoDominante] | null;
+
+
+export const PatientWithSurgeriesLadoDominante = {
+  R: 'R',
+  L: 'L',
+  ambidestro: 'ambidestro',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PatientWithSurgeriesTabagismo = typeof PatientWithSurgeriesTabagismo[keyof typeof PatientWithSurgeriesTabagismo] | null;
+
+
+export const PatientWithSurgeriesTabagismo = {
+  nunca: 'nunca',
+  ex_tabagista: 'ex_tabagista',
+  atual: 'atual',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PatientWithSurgeriesNivelAtividade = typeof PatientWithSurgeriesNivelAtividade[keyof typeof PatientWithSurgeriesNivelAtividade] | null;
+
+
+export const PatientWithSurgeriesNivelAtividade = {
+  sedentario: 'sedentario',
+  recreativo: 'recreativo',
+  competitivo: 'competitivo',
+  trabalhador_bracal: 'trabalhador_bracal',
+} as const;
 
 /**
  * @nullable
@@ -275,13 +360,53 @@ export interface PatientWithSurgeries {
   telefone?: string | null;
   /** @nullable */
   lado?: string | null;
+  /**
+     * Lado dominante (cadastro do paciente)
+     * @nullable
+     */
+  ladoDominante?: PatientWithSurgeriesLadoDominante;
   /** @nullable */
-  nivelAtividade?: string | null;
+  tabagismo?: PatientWithSurgeriesTabagismo;
+  /** @nullable */
+  diabetes?: boolean | null;
+  /** @nullable */
+  nivelAtividade?: PatientWithSurgeriesNivelAtividade;
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;
   surgeries: Surgery[];
 }
+
+/**
+ * Lado dominante (cadastro do paciente)
+ */
+export type CreatePatientBodyLadoDominante = typeof CreatePatientBodyLadoDominante[keyof typeof CreatePatientBodyLadoDominante];
+
+
+export const CreatePatientBodyLadoDominante = {
+  R: 'R',
+  L: 'L',
+  ambidestro: 'ambidestro',
+} as const;
+
+export type CreatePatientBodyTabagismo = typeof CreatePatientBodyTabagismo[keyof typeof CreatePatientBodyTabagismo];
+
+
+export const CreatePatientBodyTabagismo = {
+  nunca: 'nunca',
+  ex_tabagista: 'ex_tabagista',
+  atual: 'atual',
+} as const;
+
+export type CreatePatientBodyNivelAtividade = typeof CreatePatientBodyNivelAtividade[keyof typeof CreatePatientBodyNivelAtividade];
+
+
+export const CreatePatientBodyNivelAtividade = {
+  sedentario: 'sedentario',
+  recreativo: 'recreativo',
+  competitivo: 'competitivo',
+  trabalhador_bracal: 'trabalhador_bracal',
+} as const;
 
 export interface CreatePatientBody {
   nome: string;
@@ -291,7 +416,11 @@ export interface CreatePatientBody {
   sexo?: string;
   telefone?: string;
   lado?: string;
-  nivelAtividade?: string;
+  /** Lado dominante (cadastro do paciente) */
+  ladoDominante?: CreatePatientBodyLadoDominante;
+  tabagismo?: CreatePatientBodyTabagismo;
+  diabetes?: boolean;
+  nivelAtividade?: CreatePatientBodyNivelAtividade;
   beightonScore?: number;
   planoSaude?: string;
   indicadoPor?: string;
@@ -301,6 +430,44 @@ export interface CreatePatientBody {
   cep?: string;
 }
 
+/**
+ * Lado dominante (cadastro do paciente); null limpa o valor
+ * @nullable
+ */
+export type UpdatePatientBodyLadoDominante = typeof UpdatePatientBodyLadoDominante[keyof typeof UpdatePatientBodyLadoDominante] | null;
+
+
+export const UpdatePatientBodyLadoDominante = {
+  R: 'R',
+  L: 'L',
+  ambidestro: 'ambidestro',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdatePatientBodyTabagismo = typeof UpdatePatientBodyTabagismo[keyof typeof UpdatePatientBodyTabagismo] | null;
+
+
+export const UpdatePatientBodyTabagismo = {
+  nunca: 'nunca',
+  ex_tabagista: 'ex_tabagista',
+  atual: 'atual',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdatePatientBodyNivelAtividade = typeof UpdatePatientBodyNivelAtividade[keyof typeof UpdatePatientBodyNivelAtividade] | null;
+
+
+export const UpdatePatientBodyNivelAtividade = {
+  sedentario: 'sedentario',
+  recreativo: 'recreativo',
+  competitivo: 'competitivo',
+  trabalhador_bracal: 'trabalhador_bracal',
+} as const;
+
 export interface UpdatePatientBody {
   nome?: string;
   cpf?: string;
@@ -309,7 +476,17 @@ export interface UpdatePatientBody {
   sexo?: string;
   telefone?: string;
   lado?: string;
-  nivelAtividade?: string;
+  /**
+     * Lado dominante (cadastro do paciente); null limpa o valor
+     * @nullable
+     */
+  ladoDominante?: UpdatePatientBodyLadoDominante;
+  /** @nullable */
+  tabagismo?: UpdatePatientBodyTabagismo;
+  /** @nullable */
+  diabetes?: boolean | null;
+  /** @nullable */
+  nivelAtividade?: UpdatePatientBodyNivelAtividade;
   beightonScore?: number;
   anamnese?: string | null;
   laudos?: string | null;

@@ -6,7 +6,11 @@
  * false ou lista vazia. O motor trata a ausência como "indeterminado".
  */
 import {
+  CAMPOS_PERFIL_CLINICO,
   PATHOLOGY_BY_CODE,
+  perfilClinicoDe,
+  type CampoPerfilClinico,
+  type PerfilClinicoPaciente,
   TRANSICOES_STATUS,
   type AlgorithmDef,
   type EntradaDef,
@@ -155,6 +159,8 @@ function getPath(o: unknown, path: string[]): unknown {
 
 export interface RegistroContexto {
   preop?: PreopAssessment;
+  /** Cadastro do paciente (lado dominante, tabagismo, diabetes, nível de atividade): origens `paciente`. */
+  paciente?: PerfilClinicoPaciente;
   geral?: Obj;
   procedimentos?: readonly { codigo: string | null; dados: Obj }[];
 }
@@ -186,12 +192,24 @@ export function resolveCaminho(caminho: string, ctx: RegistroContexto): unknown 
   return undefined;
 }
 
-/** Pré-preenchimento do formulário a partir do registro: só origens `payload`/`intraop` com valor válido. */
+/** Valor de uma origem `paciente` no cadastro (só os campos do perfil clínico; idade fica com o servidor). */
+export function resolvePaciente(campo: string, ctx: RegistroContexto): unknown {
+  const perfil = perfilClinicoDe(ctx.paciente);
+  return (CAMPOS_PERFIL_CLINICO as readonly string[]).includes(campo) ? perfil[campo as CampoPerfilClinico] : undefined;
+}
+
+/**
+ * Pré-preenchimento do formulário a partir do registro: origens `payload`/`intraop` (caminho no registro da
+ * cirurgia) e `paciente` (cadastro do paciente), só com valor válido.
+ */
 export function prefillFromRegistro(def: Pick<AlgorithmDef, "entradas">, ctx: RegistroContexto): FormValues {
   const out: FormValues = {};
   for (const e of def.entradas) {
-    if (e.origem.de !== "payload" && e.origem.de !== "intraop") continue;
-    const v = toFieldValue(e, resolveCaminho(e.origem.caminho, ctx));
+    const bruto = e.origem.de === "payload" || e.origem.de === "intraop"
+      ? resolveCaminho(e.origem.caminho, ctx)
+      : e.origem.de === "paciente" ? resolvePaciente(e.origem.campo, ctx) : undefined;
+    if (bruto === undefined) continue;
+    const v = toFieldValue(e, bruto);
     if (v !== undefined) out[e.id] = v;
   }
   return out;

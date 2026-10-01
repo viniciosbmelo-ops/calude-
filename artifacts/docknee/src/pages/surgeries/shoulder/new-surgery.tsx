@@ -10,7 +10,7 @@ import { useListPatients } from "@workspace/api-client-react";
 import {
   ALL_SCHEMAS, CASE_TYPE_BY_KEY, caseTypesFor, diagnosesFor, diagnosisText, intraopSchemaId, procedureName,
   CLINICAL_PAYLOAD_VERSION, coreRegionIssues, coreSchemaForRegion, inapplicableCoreFields, isArthroscopic,
-  withoutInapplicableCore, withoutOtherRegionOptions, type ClinicalImplant, type ClinicalMapEntry, type IssueGroup, type Region, type ValidationIssue,
+  perfilClinicoDe, withoutInapplicableCore, withoutOtherRegionOptions, type ClinicalImplant, type ClinicalMapEntry, type IssueGroup, type Region, type ValidationIssue,
 } from "@workspace/clinical/web";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -204,7 +204,9 @@ export default function NewShoulderSurgery() {
     preop: buildPreopPayload(preop, preopBlocks),
     geral: effectiveGeral,
     procedimentos: tipos.map((k) => ({ codigo: procs[k]?.codigo ?? null, dados: procs[k]?.dados ?? {} })),
-  }), [preop, preopBlocks, effectiveGeral, tipos, procs]);
+    // Lado dominante, tabagismo, diabetes e nível de atividade: cadastro do paciente
+    paciente: perfilClinicoDe(selectedPatient),
+  }), [preop, preopBlocks, effectiveGeral, tipos, procs, selectedPatient]);
 
   const buildPayload = () => {
     const procedimentos = tipos.map((key) => ({ tipoCaso: key, codigo: procs[key]?.codigo ?? null, dados: procs[key]?.dados ?? {} }));
@@ -476,7 +478,7 @@ export default function NewShoulderSurgery() {
               <SurgeryPreopFollowupCard draftId={draftId ?? null} patientPhone={selectedPatient?.telefone ?? undefined} ensureCurrentDraft={ensureDraft} ready={draftLoaded} showFollowup={!tipos.some((k) => k.endsWith("_FRACTURE"))} />
 
               <Section title={t("preopTitle")} pending={preopPending > 0 ? preopPending : undefined} open={Boolean(serverIssues?.some((g) => g.scope.startsWith("avaliação pré-operatória")))} t={t}>
-                <PreopAssessmentForm blocks={preopBlocks} state={preop} onChange={setPreop} side={sideCode} region={region} />
+                <PreopAssessmentForm blocks={preopBlocks} state={preop} onChange={setPreop} side={sideCode} region={region} patient={selectedPatient} />
               </Section>
 
               <DecisionRegistroPanel caseCodes={decisionCaseCodes} context={decisionContext} patientId={patientId} surgeryId={draftId} />
