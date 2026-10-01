@@ -7,11 +7,17 @@
  */
 import type { AvaliarApoioDecisaoBodyEntrada } from './avaliarApoioDecisaoBodyEntrada';
 import type { AvaliarApoioDecisaoBodyModo } from './avaliarApoioDecisaoBodyModo';
+import type { AvaliarApoioDecisaoBodyParametros } from './avaliarApoioDecisaoBodyParametros';
 
 export interface AvaliarApoioDecisaoBody {
   /** Input values keyed by the algorithm input ids; absent inputs stay unknown */
   entrada: AvaliarApoioDecisaoBodyEntrada;
   modo: AvaliarApoioDecisaoBodyModo;
   patientId?: number;
+  /** When given, the server maps the surgery record to the inputs; `entrada` only fills what the record lacks */
   surgeryId?: number;
+  /** Admin only. Stores the run in mode `revisao` (not linkable to a patient or surgery) */
+  revisao?: boolean;
+  /** Threshold overrides (parameter id → value). Applied only for an admin in mode `revisao`; ignored otherwise */
+  parametros?: AvaliarApoioDecisaoBodyParametros;
 }

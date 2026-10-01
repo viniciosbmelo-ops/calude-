@@ -16,6 +16,7 @@
 import type { ClinicalPayload } from '../../surgery/payload';
 import { preopFor } from '../../surgery/payload';
 import type { AlgorithmDef, Cond, OrigemEntrada } from '../types';
+import { AVISO_NIVEIS_EVIDENCIA } from '../vocab';
 
 export const FX_UMERO_PROXIMAL_CODIGO = 'SH_FX_PROX_HUM';
 
@@ -27,7 +28,7 @@ export const MENSAGEM_FIXA_IDOSO =
   + 'reoperações (RR 2,06; GRADE baixo).';
 
 /** Caminho no payload v2 dos campos do schema SH_FX_PROX_HUM.diagnosis.v1. */
-const PAYLOAD = `avaliacaoPreop[${FX_UMERO_PROXIMAL_CODIGO}].dados.`;
+const PAYLOAD = `avaliacaoPreop[${FX_UMERO_PROXIMAL_CODIGO}].`;
 const doPayload = (campo: string): OrigemEntrada => ({ de: 'payload', caminho: PAYLOAD + campo });
 const MANUAL: OrigemEntrada = { de: 'manual' };
 
@@ -437,6 +438,7 @@ export const FX_UMERO_PROXIMAL: AlgorithmDef = {
   avisosGerais: [
     'Rascunho, não revisado pelo cirurgião. Apoio à decisão baseado em literatura. A decisão final é do cirurgião com o paciente.',
     'A evidência forte (ECR e Cochrane) vem de adultos mais velhos, trauma de baixa energia e fratura deslocada do colo cirúrgico; não se aplica a jovens com alta energia, fratura-luxação, head-split ou tuberosidade maior isolada.',
+    AVISO_NIVEIS_EVIDENCIA,
   ],
   referenciasGerais: [{ ref: 'Handoll2022' }],
 };

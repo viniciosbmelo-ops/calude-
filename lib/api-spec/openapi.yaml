@@ -584,8 +584,16 @@ paths:
       description: |
         The server evaluates the input with the clinical engine and stores the execution
         (insert-only audit trail). Any client-sent result is ignored. The output is always a
-        suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only)
-        is stored with mode `revisao` and cannot be linked to a patient or surgery.
+        suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only),
+        or any version with `revisao: true` (admins only), is stored with mode `revisao` and
+        cannot be linked to a patient or surgery.
+
+        With `surgeryId`, the server loads the surgery's clinical data and the patient's birth
+        date (owner only), maps them to the algorithm inputs and merges the client `entrada` as
+        manual values: a manual value never overrides the record, and each divergence is
+        returned and stored in `conflitos`. Client `parametros` (threshold overrides) are
+        applied only for an admin in mode `revisao`; otherwise they are ignored. The resolved
+        parameters are always stored in `resultado.parametros`.
       parameters:
         - name: algoritmoId
           in: path
@@ -618,6 +626,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Algorithm, patient or surgery not found or not visible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Review mode requested by a non-admin
           content:
             application/json:
               schema:
@@ -1785,6 +1799,15 @@ components:
           type: integer
         surgeryId:
           type: integer
+          description: When given, the server maps the surgery record to the inputs; `entrada` only fills what the record lacks
+        revisao:
+          type: boolean
+          description: Admin only. Stores the run in mode `revisao` (not linkable to a patient or surgery)
+        parametros:
+          type: object
+          additionalProperties:
+            type: number
+          description: Threshold overrides (parameter id → value). Applied only for an admin in mode `revisao`; ignored otherwise
       required: [entrada, modo]
 
     ResultadoApoioDecisao:
@@ -1827,7 +1850,38 @@ components:
           items:
             type: object
             additionalProperties: true
+        parametros:
+          type: array
+          description: Resolved parameters (value used and origin `padrao` or `contexto`)
+          items:
+            type: object
+            additionalProperties: true
       required: [rotulo, algoritmo, motor, modo, opcoes, avisos, faltantes, trace, referencias]
+
+    ApoioDecisaoProveniencia:
+      type: object
+      properties:
+        de:
+          type: string
+          enum: [payload, intraop, paciente, derivada, manual]
+        caminho:
+          type: string
+        nota:
+          type: string
+      required: [de]
+
+    ApoioDecisaoConflito:
+      type: object
+      properties:
+        entrada:
+          type: string
+        usado: {}
+        origemUsada:
+          type: string
+        descartado: {}
+        origemDescartada:
+          type: string
+      required: [entrada, usado, origemUsada, descartado, origemDescartada]
 
     ApoioDecisaoExecucao:
       type: object
@@ -1839,7 +1893,20 @@ components:
           enum: [preop, registro, revisao]
         resultado:
           $ref: "#/components/schemas/ResultadoApoioDecisao"
-      required: [execucaoId, modo, resultado]
+        proveniencia:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ApoioDecisaoProveniencia"
+          description: Origin of each input used (record path, patient, derived or manual)
+        conflitos:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApoioDecisaoConflito"
+          description: Manual values that diverged from the record and were discarded
+        parametrosIgnorados:
+          type: boolean
+          description: True when the client sent parameter overrides that were not applied
+      required: [execucaoId, modo, resultado, proveniencia, conflitos, parametrosIgnorados]
 
     RegistrarEscolhaApoioDecisaoBody:
       type: object

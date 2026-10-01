@@ -20,6 +20,8 @@ import { ClinicalGuardError } from '../../errors';
 import { glenoidBoneLossPct, glenoidTrack, trackStatus } from '../../instability/metrics';
 import { preopFor, type ClinicalPayload } from '../../surgery/payload';
 import type { AlgorithmDef, Cond, EntradaDef, Proveniencia, RegraDef } from '../types';
+import { AVISO_NIVEIS_EVIDENCIA } from '../vocab';
+import { idadeEmAnos } from '../mapping';
 
 export const SH_INST_ANT_CODIGO = 'SH_INST_ANT';
 const P = `avaliacaoPreop[${SH_INST_ANT_CODIGO}]`;
@@ -482,7 +484,7 @@ export const INSTABILIDADE_ANTERIOR: AlgorithmDef = {
     'Glenoid track calculado como 0,83·D − d (fórmula citada em vídeo técnico; a derivação original requer texto completo) e DTD = GT − HSI, positiva quando on-track. Coeficiente e convenção de sinal pendentes de decisão do cirurgião (D5).',
     'Populações: parte dos números vem de coortes militares ou de futebol americano universitário; a transposição para civis é decisão do cirurgião (D13). A definição de recorrência varia entre as fontes (só luxação, ou luxação + subluxação + apreensão).',
     'Aconselhamento: artrose radiográfica em 40,7% (IC 32,6–49,2) com seguimento médio de 139 meses, grau ≥II em 10,5%; Bankart artroscópico 47,2% e Latarjet 30,3%, com intervalos sobrepostos e sem diferença significativa afirmada no resumo.',
-    'Nível de evidência das referências atribuído pelo desenho de estudo descrito nos resumos; conferir na revisão.',
+    AVISO_NIVEIS_EVIDENCIA,
   ],
   referenciasGerais: [{ ref: 'Colson2026' }, { ref: 'Mazzocca2025' }, { ref: 'DiGiacomo2014' }, { ref: 'Yamamoto2007' }],
 };
@@ -515,19 +517,8 @@ export interface OpcoesMapeamento {
   manual?: Record<string, unknown>;
 }
 
-const DATA_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** Idade em anos completos entre duas datas ISO. Data inválida ou ordem invertida → undefined. */
-export function idadeEmAnos(nascimento: string | undefined, referencia: string | undefined): number | undefined {
-  const a = nascimento ? DATA_RE.exec(nascimento) : null;
-  const b = referencia ? DATA_RE.exec(referencia) : null;
-  if (!a || !b) return undefined;
-  const [ya, ma, da] = a.slice(1).map(Number);
-  const [yb, mb, db] = b.slice(1).map(Number);
-  let idade = yb - ya;
-  if (mb < ma || (mb === ma && db < da)) idade--;
-  return idade >= 0 ? idade : undefined;
-}
+/** Idade em anos completos entre duas datas ISO (mesma função do mapeamento no servidor). */
+export { idadeEmAnos };
 
 const presente = (v: unknown) => v !== undefined && v !== null && !(typeof v === 'string' && v.trim() === '');
 

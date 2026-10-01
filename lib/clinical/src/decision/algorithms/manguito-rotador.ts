@@ -19,6 +19,7 @@
  */
 import type { ClinicalPayload } from '../../surgery/payload';
 import { preopFor } from '../../surgery/payload';
+import { AVISO_NIVEIS_EVIDENCIA } from '../vocab';
 import type {
   AlgorithmDef, CitRef, Cond, EntradaDef, NivelEvidencia, Proveniencia, Referencia, TipoEstudo,
 } from '../types';
@@ -106,7 +107,7 @@ const c = (ref: string, nota?: string): CitRef => (nota ? { ref, nota } : { ref 
 // ---------------------------------------------------------------------------------------------
 // Entradas (spec §3). Nenhuma tem valor padrão: ausente fica ausente.
 // ---------------------------------------------------------------------------------------------
-const DX = 'avaliacaoPreop.patologias[SH_RCT.diagnosis.v1].dados';
+const DX = 'avaliacaoPreop[SH_RCT]';
 const COMUM = 'avaliacaoPreop.comum';
 const pre = (e: Omit<EntradaDef, 'momento'>): EntradaDef => ({ ...e, momento: 'preop' });
 const manual = { de: 'manual' } as const;
@@ -688,6 +689,7 @@ export const MANGUITO_ROTADOR: AlgorithmDef = {
     'Rascunho: algoritmo gerado da spec verificada v0.1 e ainda não revisado pelo cirurgião.',
     'Idade é contínua: nenhuma sugestão usa corte etário; faixas citadas descrevem as populações dos estudos.',
     'Itens marcados "requer texto completo" (mm de Hamada, definições de Goutallier/Patte/Thomazeau/Fuchs, pesos do escore de Park, força dos itens da CPG AAOS 2025, definição de pseudoparalisia) não geram sugestão automática.',
+    AVISO_NIVEIS_EVIDENCIA,
   ],
   referenciasGerais: [c('Hurley2026a'), c('Hurley2026b')],
 };

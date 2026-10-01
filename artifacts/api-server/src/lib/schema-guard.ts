@@ -123,6 +123,7 @@ export const REQUIRED_COLUMNS: RequiredColumn[] = [
   // Apoio à decisão — versão travada por hash e escolha do cirurgião
   { table: "apoio_decisao_execucoes", column: "algoritmo_hash" },
   { table: "apoio_decisao_execucoes", column: "resultado" },
+  { table: "apoio_decisao_execucoes", column: "conflitos" },
   { table: "apoio_decisao_escolhas", column: "concordancia" },
   { table: "apoio_decisao_status", column: "algoritmo_hash" },
 ];

@@ -311,7 +311,7 @@ describe('mapeamento payload → entrada', () => {
       lacerto_fibroso: 'integro', ocupacao: 'manual_pesado', demanda_funcional: 'alta', prioridade_supinacao: 'alta',
       tabagismo: 'ex', diabetes: false, membro_dominante: true, idade: 52,
     });
-    expect(proveniencia.dias_desde_lesao).toEqual({ de: 'payload', caminho: 'avaliacaoPreop.patologias[EL_DBR].dados.dias_desde_lesao_preop' });
+    expect(proveniencia.dias_desde_lesao).toEqual({ de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].dias_desde_lesao_preop' });
     expect(proveniencia.demanda_funcional.de).toBe('derivada');
     expect(proveniencia.idade.de).toBe('paciente');
     expect(proveniencia.lacerto_fibroso.nota).toContain('RM');

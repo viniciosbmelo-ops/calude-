@@ -19,7 +19,9 @@ import {
   createDecisionRegistry,
   evaluate,
   hashDefinition,
+  idadeEmAnos,
   type AlgorithmDef,
+  type MapeadorEntrada,
 } from "@workspace/clinical";
 import app from "../app";
 import { hashPassword, signToken } from "../lib/auth";
@@ -57,13 +59,53 @@ function fakeDef(versao: string, extra = ""): AlgorithmDef {
 const V1 = fakeDef("1.0.0");
 const V2 = fakeDef("2.0.0");
 const V3_STALE = fakeDef("3.0.0");
-const LOCK = {
+const LOCK: Record<string, string> = {
   [algorithmKey(V1)]: hashDefinition(V1),
   [algorithmKey(V2)]: hashDefinition(V2),
   // Lock gravado para um conteúdo anterior: o código mudou sem subir a versão
   [algorithmKey(V3_STALE)]: hashDefinition(fakeDef("3.0.0", " (antigo)")),
 };
-const registry = createDecisionRegistry([V1, V2, V3_STALE], LOCK);
+
+// Segundo algoritmo FALSO: limiar configurável (parâmetro) e mapeador do registro cirúrgico.
+const ALG_P = `TESTE_PAR_${randomUUID().slice(0, 8)}`;
+const VP: AlgorithmDef = {
+  ...fakeDef("1.0.0"),
+  id: ALG_P,
+  titulo: "Exemplo de teste com parâmetro",
+  entradas: [
+    { id: "temperatura", rotulo: "Temperatura", def: { tipo: "numero", unidade: "°C", min: -30, max: 50 }, origem: { de: "payload", caminho: "avaliacaoPreop.comum.temperatura_local" }, momento: "preop" },
+    { id: "solo", rotulo: "Solo", def: { tipo: "enum", valores: ["seco", "umido"] }, origem: { de: "manual" }, momento: "preop" },
+    { id: "idade", rotulo: "Idade", def: { tipo: "numero", unidade: "anos", min: 0, max: 120, inteiro: true }, origem: { de: "paciente", campo: "idade" }, momento: "preop" },
+  ],
+  parametros: [{
+    id: "limiar_calor", rotulo: "Limiar de calor", unidade: "°C", min: 20, max: 40, padrao: 30,
+    status: "pendente_decisao_cirurgiao", nota: "Limiar fictício.", referencias: [{ ref: "Alfa2001" }],
+  }],
+  regras: [{
+    id: "R.CALOR", titulo: "Calor",
+    quando: { all: [{ campo: "temperatura", op: ">=", param: "limiar_calor" }, { campo: "solo", op: "==", valor: "seco" }] },
+    efeitos: [{ opcao: "regar", efeito: "favorece", forca: "moderada" }],
+    motivo: "Temperatura {temperatura}.",
+    referencias: [{ ref: "Alfa2001" }],
+  }],
+};
+const mapearVP: MapeadorEntrada = (ctx) => {
+  const entrada: Record<string, unknown> = {};
+  const proveniencia: Record<string, { de: "payload" | "paciente"; caminho: string }> = {};
+  const t = ctx.payload.avaliacaoPreop?.comum?.temperatura_local;
+  if (typeof t === "number") {
+    entrada.temperatura = t;
+    proveniencia.temperatura = { de: "payload", caminho: "avaliacaoPreop.comum.temperatura_local" };
+  }
+  const idade = idadeEmAnos(ctx.dataNascimento, ctx.dataReferencia);
+  if (idade !== undefined) {
+    entrada.idade = idade;
+    proveniencia.idade = { de: "paciente", caminho: "paciente.dataNascimento" };
+  }
+  return { entrada, proveniencia };
+};
+LOCK[algorithmKey(VP)] = hashDefinition(VP);
+const registry = createDecisionRegistry([V1, V2, V3_STALE, VP], LOCK, { [algorithmKey(VP)]: mapearVP });
 
 let fullServer: Server;
 let server: Server;
@@ -145,7 +187,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db.delete(apoioDecisaoStatusTable).where(eq(apoioDecisaoStatusTable.algoritmoId, ALG_ID));
+  await db.delete(apoioDecisaoStatusTable).where(inArray(apoioDecisaoStatusTable.algoritmoId, [ALG_ID, ALG_P]));
   const ids = [doctorId, otherDoctorId, adminId].filter(Boolean);
   if (ids.length) await db.delete(doctorsTable).where(inArray(doctorsTable.id, ids));
   if (flagBefore) await db.update(featureFlagsTable).set({ enabled: flagBefore.enabled }).where(eq(featureFlagsTable.id, flagBefore.id));
@@ -169,6 +211,7 @@ describe.sequential("apoio à decisão: API", () => {
     const doc = await (await call("/api/apoio-decisao/algoritmos", "GET", authDoctor)).json();
     expect(doc).toEqual({ moduloAtivo: false, algoritmos: [] });
     const adm = await (await call("/api/apoio-decisao/algoritmos", "GET", authAdmin)).json();
+    adm.algoritmos = adm.algoritmos.filter((a: { id: string }) => a.id === ALG_ID);
     expect(adm.algoritmos.map((a: { versao: string; status: string; hashConfereLock: boolean }) => [a.versao, a.status, a.hashConfereLock]))
       .toEqual([["1.0.0", "rascunho", true], ["2.0.0", "rascunho", true], ["3.0.0", "rascunho", false]]);
     expect(adm.algoritmos[0].hash).toBe(hashDefinition(V1));
@@ -240,13 +283,17 @@ describe.sequential("apoio à decisão: API", () => {
     const body = await res.json();
     execucaoId = body.execucaoId;
     const esperado = evaluate(V1, entrada, { status: "ativo", hash: hashDefinition(V1), modo: "preop" });
-    expect(body).toEqual({ execucaoId, modo: "preop", resultado: esperado });
+    expect(body).toEqual({
+      execucaoId, modo: "preop", resultado: esperado,
+      proveniencia: { temperatura: { de: "manual" }, solo: { de: "manual" } }, conflitos: [], parametrosIgnorados: false,
+    });
     expect(body.resultado.rotulo).toBe("Sugestão");
 
     const [row] = await db.select().from(apoioDecisaoExecucoesTable).where(eq(apoioDecisaoExecucoesTable.id, execucaoId));
     expect(row).toMatchObject({
       doctorId, patientId, surgeryId, algoritmoId: ALG_ID, algoritmoVersao: "1.0.0", algoritmoHash: hashDefinition(V1),
-      statusNoMomento: "ativo", modo: "preop", entrada, proveniencia: { temperatura: "manual", solo: "manual" },
+      statusNoMomento: "ativo", modo: "preop", entrada,
+      proveniencia: { temperatura: { de: "manual" }, solo: { de: "manual" } }, conflitos: [],
     });
     expect(row.resultado).toEqual(esperado);
   });
@@ -299,7 +346,7 @@ describe.sequential("apoio à decisão: API", () => {
     const doc = await (await call("/api/apoio-decisao/algoritmos", "GET", authDoctor)).json();
     expect(doc.algoritmos.map((a: { versao: string }) => a.versao)).toEqual(["2.0.0"]);
     const adm = await (await call("/api/apoio-decisao/algoritmos", "GET", authAdmin)).json();
-    expect(adm.algoritmos.find((a: { versao: string }) => a.versao === "1.0.0").status).toBe("aposentado");
+    expect(adm.algoritmos.find((a: { id: string; versao: string }) => a.id === ALG_ID && a.versao === "1.0.0").status).toBe("aposentado");
   });
 
   it("histórico de status: só admin, mais recente primeiro, com o hash de cada linha", async () => {
@@ -336,5 +383,104 @@ describe.sequential("apoio à decisão: API", () => {
     await db.delete(patientsTable).where(eq(patientsTable.id, patientId));
     expect(await db.select().from(apoioDecisaoExecucoesTable).where(eq(apoioDecisaoExecucoesTable.id, execucaoId))).toEqual([]);
     expect(await db.select().from(apoioDecisaoEscolhasTable).where(eq(apoioDecisaoEscolhasTable.execucaoId, execucaoId))).toEqual([]);
+  });
+});
+
+describe.sequential("apoio à decisão: parâmetros (governança) e mapeamento do registro", () => {
+  const avaliarP = `/api/apoio-decisao/algoritmos/${ALG_P}/1.0.0/avaliar`;
+  const statusP = `/api/apoio-decisao/algoritmos/${ALG_P}/1.0.0/status`;
+  let pid: number;
+  let sid: number;
+  let sidOutro: number;
+
+  const linha = async (id: number) =>
+    (await db.select().from(apoioDecisaoExecucoesTable).where(eq(apoioDecisaoExecucoesTable.id, id)))[0];
+  const parametro = (r: { parametros: { id: string; valor: number; origem: string }[] }) =>
+    r.parametros.map((p) => ({ id: p.id, valor: p.valor, origem: p.origem }));
+
+  beforeAll(async () => {
+    const [p, op] = await db.insert(patientsTable).values([
+      { doctorId, nome: "DS Map Patient", dataNascimento: "1980-06-15" },
+      { doctorId: otherDoctorId, nome: "DS Map Other" },
+    ]).returning();
+    pid = p.id;
+    const dados = { versao: 2, regiao: "shoulder", geral: {}, procedimentos: [], mapaArtroscopico: [], implantes: [], avaliacaoPreop: { comum: { temperatura_local: 34 }, patologias: [] } };
+    const [s, so] = await db.insert(surgeriesTable).values([
+      { doctorId, patientId: pid, regiao: "shoulder", dataCirurgia: "2026-03-01", dadosClinicos: dados },
+      { doctorId: otherDoctorId, patientId: op.id, regiao: "shoulder", dadosClinicos: dados },
+    ]).returning();
+    sid = s.id;
+    sidOutro = so.id;
+    const h = hashDefinition(VP);
+    expect((await call(statusP, "POST", authAdmin, { status: "revisado", hash: h })).status).toBe(201);
+    expect((await call(statusP, "POST", authAdmin, { status: "ativo", hash: h })).status).toBe(201);
+    await setFlag(true);
+  });
+
+  it("parâmetros do cliente são ignorados para quem não é admin; o padrão usado fica gravado", async () => {
+    const res = await call(avaliarP, "POST", authDoctor, { entrada: { temperatura: 25, solo: "seco" }, modo: "preop", parametros: { limiar_calor: 20 } });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.modo).toBe("preop");
+    expect(body.parametrosIgnorados).toBe(true);
+    expect(body.resultado.opcoes).toEqual([]);
+    expect(parametro(body.resultado)).toEqual([{ id: "limiar_calor", valor: 30, origem: "padrao" }]);
+    const row = await linha(body.execucaoId);
+    expect(parametro(row.resultado as never)).toEqual([{ id: "limiar_calor", valor: 30, origem: "padrao" }]);
+    expect(row.algoritmoHash).toBe(hashDefinition(VP));
+  });
+
+  it("admin fora do modo revisão também não altera o limiar", async () => {
+    const body = await (await call(avaliarP, "POST", authAdmin, { entrada: { temperatura: 25, solo: "seco" }, modo: "preop", parametros: { limiar_calor: 20 } })).json();
+    expect(body.modo).toBe("preop");
+    expect(body.parametrosIgnorados).toBe(true);
+    expect(parametro(body.resultado)).toEqual([{ id: "limiar_calor", valor: 30, origem: "padrao" }]);
+  });
+
+  it("modo revisão: só admin; o limiar do admin é aplicado e gravado na execução", async () => {
+    const neg = await call(avaliarP, "POST", authDoctor, { entrada: {}, modo: "preop", revisao: true });
+    expect(neg.status).toBe(403);
+    expect((await neg.json()).code).toBe("REVIEW_ADMIN_ONLY");
+    const res = await call(avaliarP, "POST", authAdmin, { entrada: { temperatura: 25, solo: "seco" }, modo: "preop", revisao: true, parametros: { limiar_calor: 20 } });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.modo).toBe("revisao");
+    expect(body.parametrosIgnorados).toBe(false);
+    expect(body.resultado.opcoes.map((o: { opcao: string }) => o.opcao)).toEqual(["regar"]);
+    expect(parametro(body.resultado)).toEqual([{ id: "limiar_calor", valor: 20, origem: "contexto" }]);
+    const row = await linha(body.execucaoId);
+    expect(row.modo).toBe("revisao");
+    expect(parametro(row.resultado as never)).toEqual([{ id: "limiar_calor", valor: 20, origem: "contexto" }]);
+    const fora = await call(avaliarP, "POST", authAdmin, { entrada: {}, modo: "preop", revisao: true, parametros: { limiar_calor: 99 } });
+    expect(fora.status).toBe(422);
+    const vinculada = await call(avaliarP, "POST", authAdmin, { entrada: {}, modo: "preop", revisao: true, surgeryId: sid });
+    expect((await vinculada.json()).code).toBe("REVIEW_RUN_NOT_LINKABLE");
+  });
+
+  it("com surgeryId, a entrada vem do registro; o manual só preenche lacunas e divergências são gravadas", async () => {
+    const res = await call(avaliarP, "POST", authDoctor, { entrada: { temperatura: 10, solo: "seco", idade: 30 }, modo: "preop", surgeryId: sid });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.resultado.entrada).toEqual({ temperatura: 34, solo: "seco", idade: 45 });
+    expect(body.resultado.opcoes.map((o: { opcao: string }) => o.opcao)).toEqual(["regar"]);
+    const proveniencia = {
+      temperatura: { de: "payload", caminho: "avaliacaoPreop.comum.temperatura_local" },
+      solo: { de: "manual" },
+      idade: { de: "paciente", caminho: "paciente.dataNascimento" },
+    };
+    const conflitos = [
+      { entrada: "temperatura", usado: 34, origemUsada: "payload", descartado: 10, origemDescartada: "manual" },
+      { entrada: "idade", usado: 45, origemUsada: "paciente", descartado: 30, origemDescartada: "manual" },
+    ];
+    expect(body.proveniencia).toEqual(proveniencia);
+    expect(body.conflitos).toEqual(conflitos);
+    const row = await linha(body.execucaoId);
+    expect(row).toMatchObject({ surgeryId: sid, patientId: pid, entrada: { temperatura: 34, solo: "seco", idade: 45 }, proveniencia, conflitos });
+  });
+
+  it("posse: a cirurgia de outro médico não é lida nem vinculada", async () => {
+    const res = await call(avaliarP, "POST", authDoctor, { entrada: { solo: "seco" }, modo: "preop", surgeryId: sidOutro });
+    expect(res.status).toBe(404);
+    expect((await res.json()).code).toBe("SURGERY_NOT_FOUND");
   });
 });

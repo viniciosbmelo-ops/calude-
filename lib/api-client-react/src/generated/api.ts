@@ -2041,8 +2041,16 @@ export const getAvaliarApoioDecisaoUrl = (algoritmoId: string,
 /**
  * The server evaluates the input with the clinical engine and stores the execution
  * (insert-only audit trail). Any client-sent result is ignored. The output is always a
- * suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only)
- * is stored with mode `revisao` and cannot be linked to a patient or surgery.
+ * suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only),
+ * or any version with `revisao: true` (admins only), is stored with mode `revisao` and
+ * cannot be linked to a patient or surgery.
+ *
+ * With `surgeryId`, the server loads the surgery's clinical data and the patient's birth
+ * date (owner only), maps them to the algorithm inputs and merges the client `entrada` as
+ * manual values: a manual value never overrides the record, and each divergence is
+ * returned and stored in `conflitos`. Client `parametros` (threshold overrides) are
+ * applied only for an admin in mode `revisao`; otherwise they are ignored. The resolved
+ * parameters are always stored in `resultado.parametros`.
  * @summary Evaluate a decision-support algorithm on the server and store the execution
  */
 export const avaliarApoioDecisao = async (algoritmoId: string,

@@ -9,6 +9,7 @@ import type { ResultadoApoioDecisaoAlgoritmo } from './resultadoApoioDecisaoAlgo
 import type { ResultadoApoioDecisaoAvisosItem } from './resultadoApoioDecisaoAvisosItem';
 import type { ResultadoApoioDecisaoFaltantesItem } from './resultadoApoioDecisaoFaltantesItem';
 import type { ResultadoApoioDecisaoOpcoesItem } from './resultadoApoioDecisaoOpcoesItem';
+import type { ResultadoApoioDecisaoParametrosItem } from './resultadoApoioDecisaoParametrosItem';
 import type { ResultadoApoioDecisaoReferenciasItem } from './resultadoApoioDecisaoReferenciasItem';
 import type { ResultadoApoioDecisaoRotulo } from './resultadoApoioDecisaoRotulo';
 import type { ResultadoApoioDecisaoTraceItem } from './resultadoApoioDecisaoTraceItem';
@@ -26,5 +27,7 @@ export interface ResultadoApoioDecisao {
   faltantes: ResultadoApoioDecisaoFaltantesItem[];
   trace: ResultadoApoioDecisaoTraceItem[];
   referencias: ResultadoApoioDecisaoReferenciasItem[];
+  /** Resolved parameters (value used and origin `padrao` or `contexto`) */
+  parametros?: ResultadoApoioDecisaoParametrosItem[];
   [key: string]: unknown;
  }

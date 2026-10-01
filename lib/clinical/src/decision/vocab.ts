@@ -7,6 +7,13 @@ import type { Efeito, Forca, StatusAlgoritmo } from './types';
 /** Rótulo fixo de todo resultado do motor. */
 export const ROTULO_SUGESTAO = 'Sugestão' as const;
 
+/**
+ * Aviso obrigatório em todo algoritmo registrado (teste estrutural): os níveis de evidência das
+ * referências foram atribuídos pela equipe a partir do desenho de estudo e ainda não foram conferidos.
+ */
+export const AVISO_NIVEIS_EVIDENCIA =
+  'Níveis de evidência atribuídos pela equipe, pendentes de revisão do cirurgião.';
+
 export const AVISO_DECISAO_DO_CIRURGIAO = 'Sugestão baseada em literatura. A decisão é do cirurgião.';
 
 export const FORCA_ROTULO: Record<Forca, string> = {

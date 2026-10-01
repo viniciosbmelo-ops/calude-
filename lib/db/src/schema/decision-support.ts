@@ -28,8 +28,11 @@ export const apoioDecisaoExecucoesTable = pgTable("apoio_decisao_execucoes", {
   /** preop | registro | revisao (revisão = avaliação de versão não ativa por admin). */
   modo: text("modo").notNull(),
   entrada: jsonb("entrada").notNull(),
+  /** id da entrada → { de, caminho?, nota? }: registro (payload/paciente/derivada) ou manual. */
   proveniencia: jsonb("proveniencia").notNull(),
-  /** Resultado completo, sempre recalculado no servidor. */
+  /** Divergências manual × registro (o registro prevalece); [] quando não há. Nulo só em linhas antigas. */
+  conflitos: jsonb("conflitos"),
+  /** Resultado completo, sempre recalculado no servidor (inclui `parametros`: limiares usados e a origem). */
   resultado: jsonb("resultado").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

@@ -307,8 +307,8 @@ describe('mapeamento payload → entradas', () => {
       idade: 77, neer_partes: 3, hertel_calcar_mm: 6, dti: 1.3, cominuicao_medial: true, espessura_cortical_mm: 4,
       dobradica_medial_desviada_mm: 5, desvio_tuberosidade_maior_mm: 0, deslocada: true, mecanismo_energia: 'baixa',
     });
-    expect(proveniencia.neer_partes).toEqual({ de: 'payload', caminho: 'avaliacaoPreop[SH_FX_PROX_HUM].dados.neer_partes' });
-    expect(proveniencia.hertel_calcar_mm).toEqual({ de: 'payload', caminho: 'avaliacaoPreop[SH_FX_PROX_HUM].dados.extensao_metafisaria_posteromedial_mm' });
+    expect(proveniencia.neer_partes).toEqual({ de: 'payload', caminho: 'avaliacaoPreop[SH_FX_PROX_HUM].neer_partes' });
+    expect(proveniencia.hertel_calcar_mm).toEqual({ de: 'payload', caminho: 'avaliacaoPreop[SH_FX_PROX_HUM].extensao_metafisaria_posteromedial_mm' });
     expect(proveniencia.idade).toEqual({ de: 'paciente', campo: 'idade' });
     expect(proveniencia.mecanismo_energia).toEqual({ de: 'manual' });
     expect(proveniencia.deslocada).toMatchObject({ de: 'derivada', dependeDe: ['neer_partes'] });

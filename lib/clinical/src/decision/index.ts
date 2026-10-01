@@ -1,4 +1,4 @@
-/** Apoio à decisão: motor genérico, governança e registro. Sem conteúdo clínico nesta fase. */
+/** Apoio à decisão: motor genérico, governança, registro e mapeamento do registro cirúrgico. */
 export * from './types';
 export { avaliarCond, camposDe } from './conditions';
 export type { CondResultado, Parametros } from './conditions';
@@ -10,9 +10,13 @@ export {
 } from './governance';
 export type { LinhaStatus } from './governance';
 export {
-  DECISION_ALGORITHMS, DECISION_VERSION_LOCK, createDecisionRegistry, decisionRegistry,
+  DECISION_ALGORITHMS, DECISION_MAPPERS, DECISION_VERSION_LOCK, createDecisionRegistry, decisionRegistry,
 } from './registry';
+export { montarEntrada, idadeEmAnos, dataReferenciaDe } from './mapping';
+export type {
+  ContextoMapeamento, ConflitoMapeamento, EntradaMontada, MapeadorEntrada, ProvenienciaEntrada, ResultadoMapeador,
+} from './mapping';
 export type { AlgoritmoRegistrado, DecisionRegistry } from './registry';
-export { ROTULO_SUGESTAO, AVISO_DECISAO_DO_CIRURGIAO, FORCA_ROTULO, EFEITO_ROTULO, STATUS_ROTULO } from './vocab';
+export { ROTULO_SUGESTAO, AVISO_DECISAO_DO_CIRURGIAO, AVISO_NIVEIS_EVIDENCIA, FORCA_ROTULO, EFEITO_ROTULO, STATUS_ROTULO } from './vocab';
 export { concordancia } from './choice';
 export type { Concordancia, EscolhaCirurgiao } from './choice';

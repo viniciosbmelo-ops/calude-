@@ -313,7 +313,7 @@ describe('mapeamento payload → entrada', () => {
       tabagismo: 'atual', diabetes: false, nivel_atividade: 'recreativo', idade: 63.5,
       artrose_glenoumeral: 'ausente', reparabilidade_estimada: 'provavel_irreparavel', gfdi: 2, massiva: true,
     });
-    expect(proveniencia.tipo_rotura).toEqual({ origem: 'payload', caminho: 'avaliacaoPreop.patologias[SH_RCT.diagnosis.v1].dados.tipo_rotura_rm' });
+    expect(proveniencia.tipo_rotura).toEqual({ origem: 'payload', caminho: 'avaliacaoPreop[SH_RCT].tipo_rotura_rm' });
     expect(proveniencia.goutallier_isp.caminho).toMatch(/goutallier\.ISP$/);
     expect(proveniencia.tabagismo).toEqual({ origem: 'payload', caminho: 'avaliacaoPreop.comum.tabagismo' });
     expect(proveniencia.idade).toEqual({ origem: 'paciente', caminho: 'idade' });

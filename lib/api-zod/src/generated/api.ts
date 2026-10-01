@@ -879,8 +879,16 @@ export const ListApoioDecisaoAlgoritmosResponse = zod.object({
 /**
  * The server evaluates the input with the clinical engine and stores the execution
  * (insert-only audit trail). Any client-sent result is ignored. The output is always a
- * suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only)
- * is stored with mode `revisao` and cannot be linked to a patient or surgery.
+ * suggestion labelled "Sugestão". Evaluating a version that is not `ativo` (admins only),
+ * or any version with `revisao: true` (admins only), is stored with mode `revisao` and
+ * cannot be linked to a patient or surgery.
+ *
+ * With `surgeryId`, the server loads the surgery's clinical data and the patient's birth
+ * date (owner only), maps them to the algorithm inputs and merges the client `entrada` as
+ * manual values: a manual value never overrides the record, and each divergence is
+ * returned and stored in `conflitos`. Client `parametros` (threshold overrides) are
+ * applied only for an admin in mode `revisao`; otherwise they are ignored. The resolved
+ * parameters are always stored in `resultado.parametros`.
  * @summary Evaluate a decision-support algorithm on the server and store the execution
  */
 export const AvaliarApoioDecisaoParams = zod.object({
@@ -892,7 +900,9 @@ export const AvaliarApoioDecisaoBody = zod.object({
   "entrada": zod.record(zod.string(), zod.unknown()).describe('Input values keyed by the algorithm input ids; absent inputs stay unknown'),
   "modo": zod.enum(['preop', 'registro']),
   "patientId": zod.number().optional(),
-  "surgeryId": zod.number().optional()
+  "surgeryId": zod.number().optional().describe('When given, the server maps the surgery record to the inputs; `entrada` only fills what the record lacks'),
+  "revisao": zod.boolean().optional().describe('Admin only. Stores the run in mode `revisao` (not linkable to a patient or surgery)'),
+  "parametros": zod.record(zod.string(), zod.number()).optional().describe('Threshold overrides (parameter id → value). Applied only for an admin in mode `revisao`; ignored otherwise')
 })
 
 export const AvaliarApoioDecisaoResponse = zod.object({
@@ -907,8 +917,22 @@ export const AvaliarApoioDecisaoResponse = zod.object({
   "avisos": zod.array(zod.record(zod.string(), zod.unknown())),
   "faltantes": zod.array(zod.record(zod.string(), zod.unknown())),
   "trace": zod.array(zod.record(zod.string(), zod.unknown())),
-  "referencias": zod.array(zod.record(zod.string(), zod.unknown()))
-}).describe('Engine output (ResultadoApoio in @workspace\/clinical). Never a decision.')
+  "referencias": zod.array(zod.record(zod.string(), zod.unknown())),
+  "parametros": zod.array(zod.record(zod.string(), zod.unknown())).optional().describe('Resolved parameters (value used and origin `padrao` or `contexto`)')
+}).describe('Engine output (ResultadoApoio in @workspace\/clinical). Never a decision.'),
+  "proveniencia": zod.record(zod.string(), zod.object({
+  "de": zod.enum(['payload', 'intraop', 'paciente', 'derivada', 'manual']),
+  "caminho": zod.string().optional(),
+  "nota": zod.string().optional()
+})).describe('Origin of each input used (record path, patient, derived or manual)'),
+  "conflitos": zod.array(zod.object({
+  "entrada": zod.string(),
+  "usado": zod.unknown(),
+  "origemUsada": zod.string(),
+  "descartado": zod.unknown(),
+  "origemDescartada": zod.string()
+})).describe('Manual values that diverged from the record and were discarded'),
+  "parametrosIgnorados": zod.boolean().describe('True when the client sent parameter overrides that were not applied')
 })
 
 
@@ -1034,7 +1058,8 @@ export const ListExecucoesApoioDecisaoCirurgiaResponse = zod.object({
   "avisos": zod.array(zod.record(zod.string(), zod.unknown())),
   "faltantes": zod.array(zod.record(zod.string(), zod.unknown())),
   "trace": zod.array(zod.record(zod.string(), zod.unknown())),
-  "referencias": zod.array(zod.record(zod.string(), zod.unknown()))
+  "referencias": zod.array(zod.record(zod.string(), zod.unknown())),
+  "parametros": zod.array(zod.record(zod.string(), zod.unknown())).optional().describe('Resolved parameters (value used and origin `padrao` or `contexto`)')
 }).describe('Engine output (ResultadoApoio in @workspace\/clinical). Never a decision.'),
   "escolha": zod.union([zod.object({
   "id": zod.number(),

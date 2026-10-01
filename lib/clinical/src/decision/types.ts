@@ -226,8 +226,8 @@ export interface ResultadoApoio {
   /** Entradas recebidas mas descartadas (ex.: intraoperatórias no modo `preop`). */
   entradasDescartadas: string[];
   avisosGerais: string[];
-  /** Só quando a definição declara parâmetros: valor efetivamente usado e de onde veio. */
-  parametros?: ParametroResultado[];
+  /** Parâmetros resolvidos: valor efetivamente usado e de onde veio (vazio quando a definição não declara). */
+  parametros: ParametroResultado[];
 }
 
 export interface ParametroResultado {

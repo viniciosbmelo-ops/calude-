@@ -731,12 +731,22 @@ export const AvaliarApoioDecisaoBodyModo = {
   registro: 'registro',
 } as const;
 
+/**
+ * Threshold overrides (parameter id → value). Applied only for an admin in mode `revisao`; ignored otherwise
+ */
+export type AvaliarApoioDecisaoBodyParametros = {[key: string]: number};
+
 export interface AvaliarApoioDecisaoBody {
   /** Input values keyed by the algorithm input ids; absent inputs stay unknown */
   entrada: AvaliarApoioDecisaoBodyEntrada;
   modo: AvaliarApoioDecisaoBodyModo;
   patientId?: number;
+  /** When given, the server maps the surgery record to the inputs; `entrada` only fills what the record lacks */
   surgeryId?: number;
+  /** Admin only. Stores the run in mode `revisao` (not linkable to a patient or surgery) */
+  revisao?: boolean;
+  /** Threshold overrides (parameter id → value). Applied only for an admin in mode `revisao`; ignored otherwise */
+  parametros?: AvaliarApoioDecisaoBodyParametros;
 }
 
 export type ResultadoApoioDecisaoRotulo = typeof ResultadoApoioDecisaoRotulo[keyof typeof ResultadoApoioDecisaoRotulo];
@@ -758,6 +768,8 @@ export type ResultadoApoioDecisaoTraceItem = { [key: string]: unknown };
 
 export type ResultadoApoioDecisaoReferenciasItem = { [key: string]: unknown };
 
+export type ResultadoApoioDecisaoParametrosItem = { [key: string]: unknown };
+
 /**
  * Engine output (ResultadoApoio in @workspace/clinical). Never a decision.
  */
@@ -771,8 +783,35 @@ export interface ResultadoApoioDecisao {
   faltantes: ResultadoApoioDecisaoFaltantesItem[];
   trace: ResultadoApoioDecisaoTraceItem[];
   referencias: ResultadoApoioDecisaoReferenciasItem[];
+  /** Resolved parameters (value used and origin `padrao` or `contexto`) */
+  parametros?: ResultadoApoioDecisaoParametrosItem[];
   [key: string]: unknown;
  }
+
+export type ApoioDecisaoProvenienciaDe = typeof ApoioDecisaoProvenienciaDe[keyof typeof ApoioDecisaoProvenienciaDe];
+
+
+export const ApoioDecisaoProvenienciaDe = {
+  payload: 'payload',
+  intraop: 'intraop',
+  paciente: 'paciente',
+  derivada: 'derivada',
+  manual: 'manual',
+} as const;
+
+export interface ApoioDecisaoProveniencia {
+  de: ApoioDecisaoProvenienciaDe;
+  caminho?: string;
+  nota?: string;
+}
+
+export interface ApoioDecisaoConflito {
+  entrada: string;
+  usado: unknown;
+  origemUsada: string;
+  descartado: unknown;
+  origemDescartada: string;
+}
 
 export type ApoioDecisaoExecucaoModo = typeof ApoioDecisaoExecucaoModo[keyof typeof ApoioDecisaoExecucaoModo];
 
@@ -783,10 +822,21 @@ export const ApoioDecisaoExecucaoModo = {
   revisao: 'revisao',
 } as const;
 
+/**
+ * Origin of each input used (record path, patient, derived or manual)
+ */
+export type ApoioDecisaoExecucaoProveniencia = {[key: string]: ApoioDecisaoProveniencia};
+
 export interface ApoioDecisaoExecucao {
   execucaoId: number;
   modo: ApoioDecisaoExecucaoModo;
   resultado: ResultadoApoioDecisao;
+  /** Origin of each input used (record path, patient, derived or manual) */
+  proveniencia: ApoioDecisaoExecucaoProveniencia;
+  /** Manual values that diverged from the record and were discarded */
+  conflitos: ApoioDecisaoConflito[];
+  /** True when the client sent parameter overrides that were not applied */
+  parametrosIgnorados: boolean;
 }
 
 export interface RegistrarEscolhaApoioDecisaoBody {

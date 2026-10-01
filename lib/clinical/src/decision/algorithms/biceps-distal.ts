@@ -17,6 +17,7 @@
 import type { ClinicalPayload } from '../../surgery/payload';
 import { preopFor } from '../../surgery/payload';
 import type { AlgorithmDef, Cond, Proveniencia } from '../types';
+import { AVISO_NIVEIS_EVIDENCIA } from '../vocab';
 
 export const BICEPS_DISTAL_CODIGO = 'EL_DBR';
 export const LIMIAR_CRONICA_PARAM = 'limiar_cronica_dias';
@@ -63,17 +64,17 @@ export const BICEPS_DISTAL: AlgorithmDef = {
     },
   ],
   entradas: [
-    { id: 'dias_desde_lesao', rotulo: 'Dias desde a lesão', def: { tipo: 'numero', unidade: 'dias', min: 0, max: 3650 }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.dias_desde_lesao_preop' }, momento: 'preop' },
-    { id: 'tipo_ruptura', rotulo: 'Tipo de ruptura', def: { tipo: 'enum', valores: ['completa', 'parcial', 'tendinopatia', 'indeterminada'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.tipo_rm' }, momento: 'preop' },
-    { id: 'hook_test', rotulo: 'Hook test', def: { tipo: 'enum', valores: ['anormal', 'normal', 'normal_doloroso', 'nao_realizado'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.hook_test' }, momento: 'preop' },
-    { id: 'pct_ruptura_parcial_rm', rotulo: '% estimado de ruptura parcial na RM', def: { tipo: 'numero', unidade: '%', min: 0, max: 100 }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.partial_pct_rm' }, momento: 'preop' },
+    { id: 'dias_desde_lesao', rotulo: 'Dias desde a lesão', def: { tipo: 'numero', unidade: 'dias', min: 0, max: 3650 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].dias_desde_lesao_preop' }, momento: 'preop' },
+    { id: 'tipo_ruptura', rotulo: 'Tipo de ruptura', def: { tipo: 'enum', valores: ['completa', 'parcial', 'tendinopatia', 'indeterminada'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].tipo_rm' }, momento: 'preop' },
+    { id: 'hook_test', rotulo: 'Hook test', def: { tipo: 'enum', valores: ['anormal', 'normal', 'normal_doloroso', 'nao_realizado'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].hook_test' }, momento: 'preop' },
+    { id: 'pct_ruptura_parcial_rm', rotulo: '% estimado de ruptura parcial na RM', def: { tipo: 'numero', unidade: '%', min: 0, max: 100 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].partial_pct_rm' }, momento: 'preop' },
     { id: 'rm_incidencia_fabs', rotulo: 'RM com incidência FABS', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
-    { id: 'retracao_cm', rotulo: 'Retração na RM', def: { tipo: 'numero', unidade: 'cm', min: 0, max: 30 }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.retracao_cm_rm' }, momento: 'preop' },
-    { id: 'lacerto_fibroso', rotulo: 'Lacerto fibroso', def: { tipo: 'enum', valores: ['integro', 'roto', 'indeterminado'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.lacerto_integro_rm' }, momento: 'preop' },
+    { id: 'retracao_cm', rotulo: 'Retração na RM', def: { tipo: 'numero', unidade: 'cm', min: 0, max: 30 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].retracao_cm_rm' }, momento: 'preop' },
+    { id: 'lacerto_fibroso', rotulo: 'Lacerto fibroso', def: { tipo: 'enum', valores: ['integro', 'roto', 'indeterminado'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].lacerto_integro_rm' }, momento: 'preop' },
     { id: 'membro_dominante', rotulo: 'Lesão no membro dominante', def: { tipo: 'booleano' }, origem: { de: 'derivada', funcao: 'lado_dominante × lado da cirurgia', dependeDe: [] }, momento: 'preop' },
-    { id: 'ocupacao', rotulo: 'Ocupação', def: { tipo: 'enum', valores: ['manual_pesado', 'atleta', 'sedentario', 'outro'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.ocupacao_demanda' }, momento: 'preop' },
+    { id: 'ocupacao', rotulo: 'Ocupação', def: { tipo: 'enum', valores: ['manual_pesado', 'atleta', 'sedentario', 'outro'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].ocupacao_demanda' }, momento: 'preop' },
     { id: 'demanda_funcional', rotulo: 'Demanda funcional', def: { tipo: 'enum', valores: ['alta', 'baixa'] }, origem: { de: 'derivada', funcao: 'ocupacao_demanda ou nivel_atividade', dependeDe: [] }, momento: 'preop' },
-    { id: 'prioridade_supinacao', rotulo: 'Prioridade do paciente para supinação', def: { tipo: 'enum', valores: ['alta', 'baixa', 'nao_informada'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.EL_DBR.necessidade_forca_supinacao' }, momento: 'preop' },
+    { id: 'prioridade_supinacao', rotulo: 'Prioridade do paciente para supinação', def: { tipo: 'enum', valores: ['alta', 'baixa', 'nao_informada'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].necessidade_forca_supinacao' }, momento: 'preop' },
     { id: 'aceita_deficit_supinacao', rotulo: 'Paciente aceita o déficit de supinação', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },
     { id: 'idade', rotulo: 'Idade', def: { tipo: 'numero', unidade: 'anos', min: 0, max: 120, inteiro: true }, origem: { de: 'paciente', campo: 'idade' }, momento: 'preop' },
     { id: 'tabagismo', rotulo: 'Tabagismo', def: { tipo: 'enum', valores: ['nunca', 'ex', 'atual'] }, origem: { de: 'payload', caminho: 'avaliacaoPreop.comum.tabagismo' }, momento: 'preop' },
@@ -514,6 +515,7 @@ export const BICEPS_DISTAL: AlgorithmDef = {
     'Nenhuma sugestão atinge força forte: não há ECR comparando operatório × não operatório, nem ECR em lesões crônicas ou parciais.',
     'O peso da dominância do membro não é quantificado por nenhum estudo verificado: decisão do cirurgião.',
     'Dados de comorbidades (DPOC, obesidade, diabetes) cobrem só 30 dias.',
+    AVISO_NIVEIS_EVIDENCIA,
   ],
   referenciasGerais: [{ ref: 'Looney2022' }, { ref: 'Grewal2012' }],
 };
@@ -543,7 +545,7 @@ export interface ContextoBicepsDistal {
   lado?: string;
 }
 
-const P_DBR = `avaliacaoPreop.patologias[${BICEPS_DISTAL_CODIGO}].dados`;
+const P_DBR = `avaliacaoPreop[${BICEPS_DISTAL_CODIGO}]`;
 const P_COMUM = 'avaliacaoPreop.comum';
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);

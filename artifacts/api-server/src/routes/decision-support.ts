@@ -6,7 +6,10 @@
  * - Toda saída é "Sugestão"; a escolha do cirurgião é registrada à parte.
  * - Governança: conteúdo e versão no código (hash); status no banco (a linha mais recente vale,
  *   sem linha = rascunho). Admin vê tudo; os demais só versões ativas, e só com a flag
- *   `apoio_decisao` ligada (padrão: desligada).
+ *   `apoio_decisao` ligada (padrão: desligada). Limiares diferentes do padrão aprovado só valem
+ *   em revisão feita pelo admin; os parâmetros usados ficam gravados em `resultado.parametros`.
+ * - Com `surgeryId`, a entrada vem do registro (dadosClinicos + nascimento do paciente) pelo mapeador
+ *   do algoritmo; o que o cliente envia só preenche lacunas, e divergências ficam em `conflitos`.
  */
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -31,9 +34,13 @@ import {
   evaluate,
   podeTransitar,
   statusEfetivo,
+  montarEntrada,
   type AlgoritmoRegistrado,
+  type ClinicalPayload,
+  type ContextoMapeamento,
   type DecisionRegistry,
-  type Proveniencia,
+  type EntradaMontada,
+  type ProvenienciaEntrada,
   type ResultadoApoio,
   type StatusAlgoritmo,
 } from "@workspace/clinical";
@@ -84,6 +91,27 @@ function paramStr(v: unknown): string {
 
 function isPositiveInt(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v > 0;
+}
+
+function isObj(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Partes do dadosClinicos usadas pelos mapeadores, só com a forma esperada (rascunho pode estar incompleto). */
+function payloadParaMapeamento(raw: unknown): ContextoMapeamento["payload"] {
+  if (!isObj(raw)) return {};
+  const pre = raw.avaliacaoPreop;
+  const avaliacaoPreop = isObj(pre)
+    ? {
+      comum: isObj(pre.comum) ? pre.comum : {},
+      patologias: Array.isArray(pre.patologias) ? pre.patologias.filter(isObj) as unknown as NonNullable<ClinicalPayload["avaliacaoPreop"]>["patologias"] : [],
+    }
+    : undefined;
+  return {
+    ...(avaliacaoPreop ? { avaliacaoPreop } : {}),
+    ...(isObj(raw.geral) ? { geral: raw.geral } : {}),
+    ...(Array.isArray(raw.procedimentos) ? { procedimentos: raw.procedimentos.filter(isObj) as unknown as ClinicalPayload["procedimentos"] } : {}),
+  };
 }
 
 /** Algoritmo visível ao usuário, com o status efetivo; undefined = não existe ou não visível. */
@@ -146,27 +174,43 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
       res.status(400).json({ error: "Identificador inválido.", code: "INVALID_ID" });
       return;
     }
+    if (body.revisao === true && !req.isAdmin) {
+      res.status(403).json({ error: "Modo revisão restrito ao administrador.", code: "REVIEW_ADMIN_ONLY" });
+      return;
+    }
     const visivel = await algoritmoVisivel(registry, req, paramStr(req.params.algoritmoId), paramStr(req.params.versao));
     if (!visivel) {
       res.status(404).json({ error: "Algoritmo não encontrado.", code: "ALGORITHM_NOT_FOUND" });
       return;
     }
     const { entry, status } = visivel;
-    const modoGravado = status === "ativo" ? body.modo : "revisao";
+    const modoGravado = status === "ativo" && body.revisao !== true ? body.modo : "revisao";
     if (modoGravado === "revisao" && (body.patientId !== undefined || body.surgeryId !== undefined)) {
       res.status(422).json({
-        error: "Versão não ativa: avaliação de revisão não pode ser vinculada a paciente ou cirurgia.",
+        error: "Avaliação de revisão não pode ser vinculada a paciente ou cirurgia.",
         code: "REVIEW_RUN_NOT_LINKABLE",
       });
       return;
     }
+    // Governança: limiares fora do padrão aprovado (hash) só valem em revisão feita pelo admin.
+    const overrides = body.parametros && Object.keys(body.parametros).length ? body.parametros : undefined;
+    const aplicaOverrides = overrides !== undefined && req.isAdmin === true && modoGravado === "revisao";
+    const parametrosIgnorados = overrides !== undefined && !aplicaOverrides;
 
     let patientId: number | null = body.patientId ?? null;
     const surgeryId: number | null = body.surgeryId ?? null;
+    let contexto: Omit<ContextoMapeamento, "manual"> | undefined;
     if (surgeryId !== null) {
       const [s] = await db
-        .select({ patientId: surgeriesTable.patientId })
+        .select({
+          patientId: surgeriesTable.patientId,
+          dadosClinicos: surgeriesTable.dadosClinicos,
+          dataCirurgia: surgeriesTable.dataCirurgia,
+          lado: surgeriesTable.lado,
+          dataNascimento: patientsTable.dataNascimento,
+        })
         .from(surgeriesTable)
+        .innerJoin(patientsTable, and(eq(patientsTable.id, surgeriesTable.patientId), eq(patientsTable.doctorId, req.doctorId!)))
         .where(and(eq(surgeriesTable.id, surgeryId), eq(surgeriesTable.doctorId, req.doctorId!)))
         .limit(1);
       if (!s) {
@@ -178,6 +222,12 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
         return;
       }
       patientId = s.patientId;
+      contexto = {
+        payload: payloadParaMapeamento(s.dadosClinicos),
+        dataNascimento: s.dataNascimento,
+        dataReferencia: s.dataCirurgia,
+        lado: s.lado,
+      };
     } else if (patientId !== null) {
       const [p] = await db
         .select({ id: patientsTable.id })
@@ -191,8 +241,16 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
     }
 
     let resultado: ResultadoApoio;
+    let montada: EntradaMontada;
     try {
-      resultado = evaluate(entry.def, body.entrada, { status, hash: entry.hash, modo: body.modo });
+      // Com cirurgia: registro (mapeador do algoritmo) + manual, sem o manual sobrescrever o registro
+      montada = montarEntrada(entry.def, entry.mapear, contexto, body.entrada);
+      resultado = evaluate(entry.def, montada.entrada, {
+        status,
+        hash: entry.hash,
+        modo: body.modo,
+        ...(aplicaOverrides ? { parametros: overrides } : {}),
+      });
     } catch (err) {
       if (err instanceof ClinicalGuardError) {
         res.status(422).json({ error: err.message, code: err.code, ...(err.field ? { field: err.field } : {}) });
@@ -200,9 +258,9 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
       }
       throw err;
     }
-    // Nesta fase toda entrada chega digitada no painel; a montagem a partir do registro vem depois.
-    const proveniencia: Record<string, Proveniencia> = {};
-    for (const k of Object.keys(resultado.entrada)) proveniencia[k] = "manual";
+    // Proveniência só das entradas efetivamente usadas (o modo preop descarta as intraoperatórias)
+    const proveniencia: Record<string, ProvenienciaEntrada> = {};
+    for (const k of Object.keys(resultado.entrada)) proveniencia[k] = montada.proveniencia[k] ?? { de: "manual" };
 
     const [row] = await db
       .insert(apoioDecisaoExecucoesTable)
@@ -218,10 +276,18 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
         modo: modoGravado,
         entrada: resultado.entrada,
         proveniencia,
+        conflitos: montada.conflitos,
         resultado,
       })
       .returning({ id: apoioDecisaoExecucoesTable.id });
-    res.status(201).json({ execucaoId: row.id, modo: modoGravado, resultado });
+    res.status(201).json({
+      execucaoId: row.id,
+      modo: modoGravado,
+      resultado,
+      proveniencia,
+      conflitos: montada.conflitos,
+      parametrosIgnorados,
+    });
   });
 
   // POST /apoio-decisao/execucoes/:id/escolha — escolha do cirurgião, vinculada à execução

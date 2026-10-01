@@ -5,11 +5,19 @@
  * DocSholder API - Plataforma de Documentação Cirúrgica de Ombro e Cotovelo
  * OpenAPI spec version: 0.1.0
  */
+import type { ApoioDecisaoConflito } from './apoioDecisaoConflito';
 import type { ApoioDecisaoExecucaoModo } from './apoioDecisaoExecucaoModo';
+import type { ApoioDecisaoExecucaoProveniencia } from './apoioDecisaoExecucaoProveniencia';
 import type { ResultadoApoioDecisao } from './resultadoApoioDecisao';
 
 export interface ApoioDecisaoExecucao {
   execucaoId: number;
   modo: ApoioDecisaoExecucaoModo;
   resultado: ResultadoApoioDecisao;
+  /** Origin of each input used (record path, patient, derived or manual) */
+  proveniencia: ApoioDecisaoExecucaoProveniencia;
+  /** Manual values that diverged from the record and were discarded */
+  conflitos: ApoioDecisaoConflito[];
+  /** True when the client sent parameter overrides that were not applied */
+  parametrosIgnorados: boolean;
 }

@@ -266,7 +266,8 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
     entrada: entradaSnapshot,
     entradasDescartadas: descartadas,
     avisosGerais: [...def.avisosGerais],
-    ...(def.parametros?.length ? { parametros } : {}),
+    // Sempre presente (vazio quando não há parâmetros): a execução gravada guarda os limiares usados.
+    parametros,
   };
 }
 
