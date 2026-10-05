@@ -48,6 +48,15 @@ export function isScheduledDateOverdue(scheduledDate: string | null | undefined,
   return Boolean(scheduledDate) && String(scheduledDate).slice(0, 10) < today;
 }
 
+/**
+ * Uma notificação agendada está "a enviar" quando sua data é hoje ou anterior,
+ * sempre no dia de calendário da clínica (`clinicToday`), nunca no dia UTC —
+ * senão, depois das 21h em São Paulo, o questionário de amanhã sairia na véspera.
+ */
+export function isScheduledDateDueToSend(scheduledDate: string | null | undefined, today: string): boolean {
+  return Boolean(scheduledDate) && String(scheduledDate).slice(0, 10) <= today;
+}
+
 export type FollowupOverviewBucket = "respondidos" | "aguardando" | "vencidos" | "agendados";
 
 /**

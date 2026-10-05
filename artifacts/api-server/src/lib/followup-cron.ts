@@ -20,6 +20,7 @@ import {
   isPreoperativePeriod,
 } from "./followup-schedule";
 import { resolveDoctorLocale } from "./locale";
+import { clinicToday } from "./followup-assessment";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -54,7 +55,7 @@ const LEASE_TIMEOUT_MINUTES = 15;
 //      crashes after WhatsApp accepts but before we can write the response.
 //
 // Eligibility:
-//   - status = 'pending'    AND scheduled_date <= today
+//   - status = 'pending'    AND scheduled_date <= today (dia da clínica, America/Sao_Paulo)
 //   - status = 'processing' AND next_attempt_at <= now()  (backoff elapsed or lease expired)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -78,8 +79,9 @@ interface ClaimedNotification {
  */
 export async function claimNextNotification(): Promise<ClaimedNotification | null> {
   while (true) {
-    const today = new Date().toISOString().slice(0, 10);
     const now = new Date();
+    // Dia de calendário da clínica (São Paulo), não o dia UTC.
+    const today = clinicToday(now);
 
     const claimResult = await pool.query<{ id: number; surgeryId: number }>(
       `
@@ -183,7 +185,7 @@ export async function claimNextNotification(): Promise<ClaimedNotification | nul
           .values({
             surgeryId: notif.surgeryId,
             tempo: notif.periodo,
-            dataAvaliacao: new Date().toISOString().slice(0, 10),
+            dataAvaliacao: clinicToday(),
             token,
             escalasEnviadas: filterSupportedFollowupScales(notif.scales),
           })

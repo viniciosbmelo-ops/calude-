@@ -9,7 +9,7 @@ import { filterSupportedFollowupScales, hasFractureProcedure, isPreoperativePeri
 import { resolveDoctorLocale } from "../lib/locale";
 import { localeForDoctorId } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
-import { classifyFollowupNotification, clinicToday, hasRecordedAssessment } from "../lib/followup-assessment";
+import { classifyFollowupNotification, clinicToday, hasRecordedAssessment, isScheduledDateDueToSend } from "../lib/followup-assessment";
 
 const router: IRouter = Router();
 
@@ -110,7 +110,7 @@ async function dispatchNotification(
         .values({
           surgeryId: row.notif.surgeryId,
           tempo: row.notif.periodo,
-          dataAvaliacao: new Date().toISOString().slice(0, 10),
+          dataAvaliacao: clinicToday(),
           token,
           escalasEnviadas: filterSupportedFollowupScales(row.notif.scales),
         })
@@ -183,7 +183,7 @@ router.get("/notifications/pending", requireAuth, async (req, res): Promise<void
       .where(inArray(scheduledNotificationsTable.surgeryId, surgeryIds))
       .orderBy(scheduledNotificationsTable.scheduledDate);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
 
     const pending:   typeof rows = [];
     const upcoming:  typeof rows = [];
@@ -204,7 +204,7 @@ router.get("/notifications/pending", requireAuth, async (req, res): Promise<void
         sent.push(row);
       } else if (status === "failed") {
         failed.push(row);
-      } else if (scheduledDate && scheduledDate <= today) {
+      } else if (isScheduledDateDueToSend(scheduledDate, today)) {
         pending.push(row);
       } else {
         upcoming.push(row);
@@ -224,7 +224,7 @@ router.post("/notifications/dispatch-pending", requireAuth, async (req, res): Pr
   try {
     const doctorId = req.doctorId!;
     const locale = await localeForDoctorId(doctorId);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
     const filterSurgeryId: number | undefined = req.body?.surgeryId ? Number(req.body.surgeryId) : undefined;
 
     const [doctor] = await db

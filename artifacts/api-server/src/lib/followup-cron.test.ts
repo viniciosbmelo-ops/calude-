@@ -195,6 +195,33 @@ describe("claimNextNotification — atomic claim", () => {
     expect(mockPoolQuery.mock.calls[0]![0]).toMatch(/UPDATE scheduled_notifications/);
   });
 
+  it("claims by the clinic's calendar day: at 22:30 in São Paulo, tomorrow's rows are not eligible", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // 2026-10-05 22:30 em São Paulo = 2026-10-06 01:30 UTC.
+      vi.setSystemTime(new Date("2026-10-06T01:30:00Z"));
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] });
+      await claimNextNotification();
+      expect(mockPoolQuery.mock.calls[0]![0]).toMatch(/scheduled_date <= \$1/);
+      expect(mockPoolQuery.mock.calls[0]![1]![0]).toBe("2026-10-05");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("at 00:30 in São Paulo, today's rows are eligible", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // 2026-10-06 00:30 em São Paulo = 2026-10-06 03:30 UTC.
+      vi.setSystemTime(new Date("2026-10-06T03:30:00Z"));
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] });
+      await claimNextNotification();
+      expect(mockPoolQuery.mock.calls[0]![1]![0]).toBe("2026-10-06");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("uses FOR UPDATE SKIP LOCKED to prevent concurrent processing", async () => {
     mockPoolQuery.mockResolvedValueOnce({ rows: [] });
     await claimNextNotification();

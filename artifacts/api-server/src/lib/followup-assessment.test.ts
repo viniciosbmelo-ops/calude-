@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFollowupNotification, clinicToday, isScheduledDateOverdue } from "./followup-assessment";
+import { classifyFollowupNotification, clinicToday, isScheduledDateDueToSend, isScheduledDateOverdue } from "./followup-assessment";
 
 const pending = (scheduledDate: string | null) => ({ status: "pending", scheduledDate, followupId: null });
 
@@ -45,5 +45,24 @@ describe("follow-up overdue classification", () => {
   it("missing dates are never overdue", () => {
     expect(isScheduledDateOverdue(null, today)).toBe(false);
     expect(classifyFollowupNotification(pending(null), false, today)).toBe("agendados");
+  });
+});
+
+describe("follow-up due to send (clinic calendar day)", () => {
+  it("at 22:30 in São Paulo, tomorrow's questionnaire is not due yet", () => {
+    const today = clinicToday(new Date("2026-10-06T01:30:00Z"));
+    expect(isScheduledDateDueToSend("2026-10-06", today)).toBe(false);
+    expect(isScheduledDateDueToSend("2026-10-05", today)).toBe(true);
+    expect(isScheduledDateDueToSend("2026-10-04", today)).toBe(true);
+  });
+
+  it("at 00:30 in São Paulo, today's questionnaire is due", () => {
+    const today = clinicToday(new Date("2026-10-06T03:30:00Z"));
+    expect(isScheduledDateDueToSend("2026-10-06", today)).toBe(true);
+    expect(isScheduledDateDueToSend("2026-10-07", today)).toBe(false);
+  });
+
+  it("rows without a date are never due", () => {
+    expect(isScheduledDateDueToSend(null, "2026-10-05")).toBe(false);
   });
 });
