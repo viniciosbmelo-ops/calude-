@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Send, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Phone, AlertTriangle, Zap, FlaskConical, MessageSquare, Bot, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
-import { cn } from "@/lib/utils";
+import { clinicTodayDateOnly, cn, isDateOnlyOverdue } from "@/lib/utils";
 import {
   reportFollowupPeriodLabel,
   reportScaleLabels,
@@ -243,8 +243,8 @@ function RegenNotifCard({
   const { formatDate, locale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
-  const isOverdue = row.scheduled_date && row.scheduled_date <= today && row.status === "pending";
+  const today = clinicTodayDateOnly();
+  const isOverdue = isDateOnlyOverdue(row.scheduled_date) && row.status === "pending";
   const isToday   = row.scheduled_date === today;
 
   // Send via DocSholder number (Evolution API) — primary
@@ -738,8 +738,9 @@ export default function FollowupCentral() {
   }, []);
 
   const pendingCount = data?.pending.length ?? 0;
-  const overdueCount = data?.pending.filter(r => r.notif.scheduledDate && r.notif.scheduledDate < new Date().toISOString().slice(0, 10)).length ?? 0;
-  const todayCount = data?.pending.filter(r => r.notif.scheduledDate === new Date().toISOString().slice(0, 10)).length ?? 0;
+  const clinicToday = clinicTodayDateOnly();
+  const overdueCount = data?.pending.filter(r => isDateOnlyOverdue(r.notif.scheduledDate)).length ?? 0;
+  const todayCount = data?.pending.filter(r => r.notif.scheduledDate === clinicToday).length ?? 0;
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in space-y-6 px-4 py-6 md:px-8">

@@ -9,7 +9,7 @@ import { filterSupportedFollowupScales, hasFractureProcedure, isPreoperativePeri
 import { resolveDoctorLocale } from "../lib/locale";
 import { localeForDoctorId } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
-import { classifyFollowupNotification, hasRecordedAssessment } from "../lib/followup-assessment";
+import { classifyFollowupNotification, clinicToday, hasRecordedAssessment } from "../lib/followup-assessment";
 
 const router: IRouter = Router();
 
@@ -499,7 +499,7 @@ router.get("/notifications/followup-overview", requireAuth, async (req, res): Pr
     }
 
     const surgeryIds = surgeries.map(s => s.id);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
 
     const rows = await db
       .select({

@@ -13,6 +13,7 @@ import PDFDocument from "pdfkit";
 import { getBaseUrl } from "../lib/base-url";
 import { localeDate, localeForDoctorId, resolveDoctorLocale } from "../lib/locale";
 import { message } from "../lib/locale-catalog";
+import { clinicToday, isScheduledDateOverdue } from "../lib/followup-assessment";
 import { regenPeriodForLocale, regenScaleForLocale } from "../lib/regen-labels";
 import {
   applicationSitesForProductDetails,
@@ -3193,7 +3194,7 @@ router.get("/regen/followup-overview", requireAuth, async (req: any, res) => {
   try {
     const did = req.doctorId;
     const locale = await localeForDoctorId(did);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clinicToday();
 
     const { rows } = await pool.query(
       `SELECT
@@ -3201,7 +3202,7 @@ router.get("/regen/followup-overview", requireAuth, async (req: any, res) => {
          n.case_id,
          n.periodo,
          n.status,
-         n.scheduled_date,
+         to_char(n.scheduled_date, 'YYYY-MM-DD') AS scheduled_date,
          n.sent_at,
          c.patient_name,
          c.patient_phone,
@@ -3227,7 +3228,7 @@ router.get("/regen/followup-overview", requireAuth, async (req: any, res) => {
         respondidos.push(r);
       } else if (r.status === "sent") {
         aguardando.push(r);
-      } else if (r.scheduled_date && r.scheduled_date <= today) {
+      } else if (isScheduledDateOverdue(r.scheduled_date, today)) {
         vencidos.push(r);
       } else {
         agendados.push(r);

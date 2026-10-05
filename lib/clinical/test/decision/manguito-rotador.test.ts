@@ -407,3 +407,38 @@ describe('mapeamento payload → entrada', () => {
     expect(mapearEntradaManguito(payload, { codigo: 'SH_RCT_MASSIVE' }).entrada.tipo_rotura).toBe('completa');
   });
 });
+
+describe('reparabilidade_estimada ausente', () => {
+  // Casos completos (lesão completa, sem artropatia, sem pseudoparalisia, SSC íntegro) sem a estimativa de reparabilidade.
+  const COMPLETO: Entrada = { ...COMPLETA_BASE, tamanho_ap_mm: 25, massiva: false, pseudoparalisia: false, subescapular_status: 'integro' };
+  const CASOS: Record<string, { entrada: Entrada; regraInicio: string }> = {
+    degenerativa: { entrada: { ...COMPLETO, inicio: 'degenerativo', falha_conservador: true, conservador_meses: 6 }, regraInicio: 'N5B.FALHA' },
+    traumatica: { entrada: { ...COMPLETO, inicio: 'traumatico_agudo', semanas_desde_lesao: 2 }, regraInicio: 'N5A' },
+  };
+  const OPCOES_REPARO = ['reparo_artroscopico', 'reparo_fileira_simples', 'reparo_dupla_fileira', 'augmentation', 'reparo_parcial', 'reparo_lesao_parcial'];
+
+  for (const [nome, { entrada, regraInicio }] of Object.entries(CASOS)) {
+    test(`${nome}: regras de reparo ficam indeterminadas, nenhuma opção de reparo e a entrada aparece como faltante`, () => {
+      const r = run(entrada);
+      const regrasReparo = [regraInicio, 'N7.1', 'ZC.TECNICA_MENOR_3CM', 'ZC.AUGMENTATION'];
+      for (const id of regrasReparo) {
+        expect(entradasDaRegra(DEF, id), id).toContain('reparabilidade_estimada');
+        expect(res(r, id), id).toBe('indeterminada');
+      }
+      // Técnica ≥3 cm também espera a estimativa quando o tamanho não a exclui
+      expect(res(run({ ...entrada, tamanho_ap_mm: 35 }), 'ZC.TECNICA_3CM_OU_MAIS')).toBe('indeterminada');
+
+      for (const id of OPCOES_REPARO) expect(op(r, id), id).toBeUndefined();
+
+      const faltante = r.faltantes.find((f) => f.entrada === 'reparabilidade_estimada');
+      expect(faltante).toBeDefined();
+      expect(faltante!.desbloqueia).toEqual(expect.arrayContaining(regrasReparo));
+
+      // Com a estimativa "provavelmente reparável" as mesmas regras se resolvem e o reparo aparece como sugestão
+      const comEstimativa = run({ ...entrada, reparabilidade_estimada: 'provavel_reparavel' });
+      for (const id of regrasReparo) expect(res(comEstimativa, id), id).toBe('disparou');
+      expect(op(comEstimativa, 'reparo_artroscopico')?.sentido).toBe('favorece');
+      expect(comEstimativa.faltantes.some((f) => f.entrada === 'reparabilidade_estimada')).toBe(false);
+    });
+  }
+});

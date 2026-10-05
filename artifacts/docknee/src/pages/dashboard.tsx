@@ -9,7 +9,7 @@ import {
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { capitalizeFirst, cn, formatDateOnly } from "@/lib/utils";
+import { capitalizeFirst, cn, formatDateOnly, isDateOnlyOverdue } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
@@ -731,7 +731,8 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2">
                   {proximosFollowups.map((row) => {
-                    const isOverdue = fuData?.vencidos.some(v => v.notifId === row.notifId);
+                    // Hoje é "a enviar", não vencido: compara datas de calendário no fuso da clínica.
+                    const isOverdue = isDateOnlyOverdue(row.scheduledDate);
                     return (
                       <div key={row.notifId}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -958,7 +959,7 @@ export default function Dashboard() {
                     <div className="shrink-0 text-right">
                       {row.scheduled_date && (
                         <p className={cn("text-xs font-medium mb-1",
-                          row.scheduled_date <= new Date().toISOString().slice(0, 10) && row.status === "pending"
+                          isDateOnlyOverdue(row.scheduled_date) && row.status === "pending"
                             ? "text-red-500" : "text-slate-400")}>
                           {formatDateOnly(row.scheduled_date, locale, undefined, row.scheduled_date)}
                         </p>

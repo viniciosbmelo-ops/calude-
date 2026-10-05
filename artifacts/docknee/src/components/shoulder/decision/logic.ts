@@ -328,6 +328,14 @@ export function groupTrace(trace: readonly TraceItem[]): { grupo: TraceGroup; it
 }
 
 /** Título legível de uma regra (ou critério de escopo), quando a definição está disponível. */
+/**
+ * Códigos internos das regras (ex.: "N4.OFF_TRACK.BANKART_ISOLADO") só aparecem para administradores ou em
+ * execuções de revisão. Continuam gravados no resultado e nas respostas da API; só a exibição muda.
+ */
+export function shouldShowRuleCodes(viewer: { isAdmin?: boolean | null; modo?: string | null }): boolean {
+  return viewer.isAdmin === true || viewer.modo === "revisao";
+}
+
 export function ruleTitle(def: Pick<AlgorithmDef, "regras" | "foraDeEscopo"> | undefined, id: string): string {
   if (!def) return id;
   return def.regras.find((r) => r.id === id)?.titulo ?? def.foraDeEscopo.find((f) => f.id === id)?.texto ?? id;

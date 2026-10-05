@@ -6,11 +6,12 @@
 import { AlertTriangle, BookOpen, CircleHelp, ExternalLink, Info, Scale, ThumbsUp } from "lucide-react";
 import { DECISION_ALGORITHMS, type AlgorithmDef, type Forca, type Referencia, type ResultadoApoio, type SentidoOpcao, type StatusAlgoritmo } from "@workspace/clinical/web";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { decisionSupportMessages } from "@/locales/decision-support";
 import {
   alternativeEvidence, collectControversies, conflictLines, displayDirection, formatTraceValue, groupTrace, motiveTag, orderedMotives,
-  parameterLines, referenceHref, referenceIds, referenceMap, ruleTitle, usedInputLines, valueLabelsOf, type ExecutionMeta, type ProvenanceKind,
+  parameterLines, referenceHref, referenceIds, referenceMap, ruleTitle, shouldShowRuleCodes, usedInputLines, valueLabelsOf, type ExecutionMeta, type ProvenanceKind,
 } from "./logic";
 
 export type DsT = ReturnType<typeof useDsT>;
@@ -119,6 +120,9 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
 }) {
   const t = useDsT();
   const { locale } = useLanguage();
+  const { user } = useAuth();
+  // Códigos internos das regras: só para administradores ou execuções de revisão.
+  const showCodes = shouldShowRuleCodes({ isAdmin: user?.isAdmin, modo });
   // Resultado gravado sem a definição em mãos (cartão da cirurgia): usa a versão registrada no código, se houver.
   const def = defProp ?? DECISION_ALGORITHMS.find((d) => d.id === resultado.algoritmo.id && d.versao === resultado.algoritmo.versao);
   const labels = { yes: t("yes"), no: t("no"), locale };
@@ -236,7 +240,7 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
                         return (
                           <li key={`${m.regra}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
                             <span>{m.texto}</span>
-                            <span className="text-[11px] text-muted-foreground">{m.regra} · {t(`sentido_${tag.sentido}`)}{tag.forca ? <> · {t(`forca_${tag.forca}`)}</> : null}</span>
+                            <span className="text-[11px] text-muted-foreground">{showCodes && <>{m.regra} · </>}{t(`sentido_${tag.sentido}`)}{tag.forca ? <> · {t(`forca_${tag.forca}`)}</> : null}</span>
                           </li>
                         );
                       })}
@@ -254,7 +258,7 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
       {controversias.map((c) => (
         <div key={c.regra} className="rounded-lg border border-amber-400 bg-amber-50/60 p-3 dark:bg-amber-950/30">
           <p className="flex items-center gap-2 text-sm font-semibold"><CircleHelp className="h-4 w-4" />{t("controversyTitle")}</p>
-          <p className="mt-1 text-sm">{c.nota} <span className="text-[11px] text-muted-foreground">({c.regra})</span></p>
+          <p className="mt-1 text-sm">{c.nota}{showCodes && <> <span className="text-[11px] text-muted-foreground">({c.regra})</span></>}</p>
           <div className="mt-2 grid gap-2" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(12rem, 1fr))` }}>
             {c.alternativas.map((a) => (
               <div key={a.opcao} className="rounded-md border bg-background p-2 text-sm">
@@ -337,7 +341,7 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
               <ul className="mt-1 space-y-1 text-sm">
                 {g.itens.map((it) => (
                   <li key={it.regra}>
-                    <span className="font-medium">{ruleTitle(def, it.regra)}</span> <span className="text-[11px] text-muted-foreground">{it.regra}</span>
+                    <span className="font-medium">{ruleTitle(def, it.regra)}</span>{showCodes && <> <span className="text-[11px] text-muted-foreground">{it.regra}</span></>}
                     {Object.keys(it.valores).length > 0 && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         {Object.entries(it.valores).map(([k, v]) => `${entradaRotulo(k)} = ${formatTraceValue(v, locale, rotulosDe(k))}`).join("; ")}

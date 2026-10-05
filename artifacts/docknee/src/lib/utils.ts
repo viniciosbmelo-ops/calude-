@@ -24,6 +24,31 @@ export function formatLocalDate(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Timezone the clinic schedules follow-ups in; "today" for due/overdue is this calendar day. */
+export const CLINIC_TIME_ZONE = "America/Sao_Paulo";
+
+/**
+ * Returns today's calendar date ("YYYY-MM-DD") in the clinic timezone, regardless
+ * of the browser timezone. `new Date().toISOString().slice(0, 10)` is the UTC
+ * date, which is already "tomorrow" after 21:00 in São Paulo.
+ */
+export function clinicTodayDateOnly(now: Date = new Date(), timeZone: string = CLINIC_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/**
+ * A date-only follow-up is overdue only when its calendar date is strictly before
+ * today in the clinic timezone; one scheduled for today is due, not overdue.
+ */
+export function isDateOnlyOverdue(
+  scheduledDate: string | null | undefined,
+  now: Date = new Date(),
+  timeZone: string = CLINIC_TIME_ZONE,
+): boolean {
+  if (!scheduledDate || !parseDateOnly(scheduledDate)) return false;
+  return scheduledDate.trim() < clinicTodayDateOnly(now, timeZone);
+}
+
 const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**
