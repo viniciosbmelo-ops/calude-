@@ -1,3 +1,4 @@
+import { clinicTodayDateOnly } from "@/lib/utils";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -203,7 +204,7 @@ export default function FisioPacienteNovo() {
             onClick={() =>
               setPreview((prev) => [
                 ...prev!,
-                { phase: null, title: t("newFollowup"), requiredAssessments: [], dueDate: new Date().toISOString().slice(0, 10) },
+                { phase: null, title: t("newFollowup"), requiredAssessments: [], dueDate: clinicTodayDateOnly() },
               ])
             }
             data-testid="preview-add"

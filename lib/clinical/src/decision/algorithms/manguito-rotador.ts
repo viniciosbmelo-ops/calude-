@@ -118,7 +118,7 @@ const ENTRADAS: EntradaDef[] = [
   pre({ id: 'inicio', rotulo: 'Início', def: { tipo: 'enum', valores: ['traumatico_agudo', 'agudo_sobre_cronico', 'degenerativo'], rotulos: { traumatico_agudo: 'Traumático agudo', agudo_sobre_cronico: 'Agudo sobre crônico', degenerativo: 'Degenerativo' } }, origem: { de: 'payload', caminho: `${DX}.inicio` } }),
   pre({ id: 'semanas_desde_lesao', rotulo: 'Semanas desde a lesão', def: { tipo: 'numero', unidade: 'semanas', min: 0, max: 2600 }, origem: { de: 'payload', caminho: `${DX}.semanas_desde_lesao` } }),
   pre({ id: 'duracao_sintomas_meses', rotulo: 'Duração dos sintomas', def: { tipo: 'numero', unidade: 'meses', min: 0, max: 600 }, origem: manual }),
-  pre({ id: 'tipo_rotura', rotulo: 'Espessura / tipo da rotura (RM)', def: { tipo: 'enum', valores: ['parcial_articular', 'parcial_bursal', 'parcial_intersticial', 'completa'], rotulos: { parcial_articular: 'Parcial articular', parcial_bursal: 'Parcial bursal', parcial_intersticial: 'Parcial intersticial', completa: 'Completa (espessura total)' } }, origem: { de: 'payload', caminho: `${DX}.tipo_rotura_rm` } }),
+  pre({ id: 'tipo_rotura', rotulo: 'Espessura / tipo da rotura (RM)', def: { tipo: 'enum', valores: ['parcial_articular', 'parcial_bursal', 'parcial_intersticial', 'completa'], rotulos: { parcial_articular: 'Parcial articular', parcial_bursal: 'Parcial bursal', parcial_intersticial: 'Parcial intersticial', completa: 'Completa (espessura total)' } }, origem: { de: 'payload', caminho: `${DX}.tipo_rotura_rm` }, critica: true }),
   pre({ id: 'ellman', rotulo: 'Grau de Ellman (registrado)', def: { tipo: 'numero', min: 1, max: 3, inteiro: true }, origem: { de: 'payload', caminho: `${DX}.ellman_rm` } }),
   pre({ id: 'parcial_profundidade_pct', rotulo: 'Profundidade da lesão parcial', def: { tipo: 'numero', unidade: '% da espessura', min: 0, max: 100 }, origem: manual }),
   pre({ id: 'tendoes', rotulo: 'Tendões envolvidos', def: { tipo: 'lista', valores: ['SSP', 'ISP', 'SSC', 'TM'], rotulos: { SSP: 'Supraespinal (SSP)', ISP: 'Infraespinal (ISP)', SSC: 'Subescapular (SSC)', TM: 'Redondo menor (TM)' } }, origem: { de: 'payload', caminho: `${DX}.tendoes_rm` } }),
@@ -152,7 +152,7 @@ const ENTRADAS: EntradaDef[] = [
   pre({ id: 'conservador_meses', rotulo: 'Tratamento conservador realizado', def: { tipo: 'numero', unidade: 'meses', min: 0, max: 600 }, origem: { de: 'payload', caminho: `${DX}.tratamento_conservador_meses` } }),
   pre({ id: 'falha_conservador', rotulo: 'Falha do tratamento conservador', def: { tipo: 'booleano' }, origem: manual }),
   pre({ id: 'reparo_previo', rotulo: 'Cirurgia prévia do manguito', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${DX}.reparo_previo` } }),
-  pre({ id: 'reparabilidade_estimada', rotulo: 'Reparabilidade estimada pelo cirurgião (pré-op)', def: { tipo: 'enum', valores: ['provavel_reparavel', 'provavel_irreparavel'], rotulos: { provavel_reparavel: 'Provavelmente reparável', provavel_irreparavel: 'Provavelmente irreparável' } }, origem: manual }),
+  pre({ id: 'reparabilidade_estimada', rotulo: 'Reparabilidade estimada pelo cirurgião (pré-op)', def: { tipo: 'enum', valores: ['provavel_reparavel', 'provavel_irreparavel'], rotulos: { provavel_reparavel: 'Provavelmente reparável', provavel_irreparavel: 'Provavelmente irreparável' } }, origem: manual, critica: true }),
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -181,7 +181,7 @@ const PENDENTE = 'Pendente de decisão do cirurgião.';
 
 export const MANGUITO_ROTADOR: AlgorithmDef = {
   id: 'SH_RCT_DECISAO',
-  versao: '0.1.2',
+  versao: '0.1.3',
   patologias: ['SH_RCT', 'SH_RCT_PARTIAL', 'SH_RCT_FULL', 'SH_RCT_MASSIVE', 'SH_RCT_SUBSCAP', 'SH_RCT_REVISION'],
   titulo: 'Lesões do manguito rotador (rascunho)',
   escopo: 'Lesão sintomática do manguito rotador confirmada por imagem, avaliação pré-operatória. Rascunho a partir da spec verificada v0.1; não revisado.',

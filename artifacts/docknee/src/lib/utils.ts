@@ -49,6 +49,12 @@ export function isDateOnlyOverdue(
   return scheduledDate.trim() < clinicTodayDateOnly(now, timeZone);
 }
 
+/** Adds `days` calendar days to a "YYYY-MM-DD" date, independent of any timezone. */
+export function addCalendarDays(dateOnly: string, days: number): string {
+  const [y, m, d] = dateOnly.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
+}
+
 const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**

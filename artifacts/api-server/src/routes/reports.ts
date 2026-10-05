@@ -7,6 +7,7 @@ import { describeAccessGeography, type AccessType } from "../lib/accessGeography
 import { serializeDoctor } from "../lib/doctorSerializer";
 import { isHiddenFracturePreoperative } from "../lib/followup-schedule";
 import { hasRecordedAssessment } from "../lib/followup-assessment";
+import { ageOn, clinicDayStart, clinicToday, monthRange, weekRange } from "../lib/clinic-time";
 
 const router: IRouter = Router();
 
@@ -357,7 +358,7 @@ router.get("/reports/admin", requireAdmin, async (req, res): Promise<void> => {
 
   // Access stats from audit logs
   const agora = new Date();
-  const inicioDia  = new Date(agora); inicioDia.setHours(0, 0, 0, 0);
+  const inicioDia  = clinicDayStart(clinicToday(agora)); // meia-noite em São Paulo
   const inicioSemana = new Date(agora); inicioSemana.setDate(agora.getDate() - 7);
   const inicio30dias = new Date(agora); inicio30dias.setDate(agora.getDate() - 30);
 
@@ -447,13 +448,13 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
   if (idadeMin) {
     const idadeMinInt = parseInt(idadeMin, 10);
     if (!isNaN(idadeMinInt) && idadeMinInt >= 0 && idadeMinInt <= 120) {
-      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') <= (CURRENT_DATE - INTERVAL '${sql.raw(String(idadeMinInt))} years')` as any);
+      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') <= (${clinicToday()}::date - INTERVAL '${sql.raw(String(idadeMinInt))} years')` as any);
     }
   }
   if (idadeMax) {
     const idadeMaxInt = parseInt(idadeMax, 10);
     if (!isNaN(idadeMaxInt) && idadeMaxInt >= 0 && idadeMaxInt <= 120) {
-      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') >= (CURRENT_DATE - INTERVAL '${sql.raw(String(idadeMaxInt))} years')` as any);
+      conditions.push(sql`${patientsTable.dataNascimento} IS NOT NULL AND TO_DATE(${patientsTable.dataNascimento}, 'YYYY-MM-DD') >= (${clinicToday()}::date - INTERVAL '${sql.raw(String(idadeMaxInt))} years')` as any);
     }
   }
 
@@ -511,6 +512,7 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
     .where(whereClause)
     .orderBy(sql`${surgeriesTable.createdAt} DESC`, sql`${followupTable.createdAt} ASC`);
 
+  const today = clinicToday();
   const now = new Date();
   const data = rows
     .filter((row) => isCompletedSurgery({ status: row.surgeryStatus }))
@@ -524,7 +526,8 @@ router.get("/reports/followups", requireAuth, async (req, res): Promise<void> =>
     followupFalha, followupFalhaType, followupObservacoes, followupCreatedAt, surgeryCreatedAt,
     ...rest }) => {
     let idade: number | null = null;
-    if (patientDatNasc) {
+    if (patientDatNasc) idade = ageOn(String(patientDatNasc), today);
+    if (patientDatNasc && idade === null) {
       const dob = new Date(patientDatNasc);
       if (!isNaN(dob.getTime())) {
         idade = now.getFullYear() - dob.getFullYear();
@@ -575,28 +578,18 @@ router.get("/reports/consultas", requireAuth, async (req, res): Promise<void> =>
   const doctorId = req.doctorId!;
   const { tipo, plano, periodo } = req.query as Record<string, string>;
 
-  // Calcular intervalo de datas pelo período
-  const now = new Date();
+  // Calcular intervalo de datas pelo período, no calendário da clínica (não UTC)
+  const today = clinicToday();
   let dateFrom: string | null = null;
   let dateTo: string | null = null;
 
   if (periodo === "dia") {
-    dateFrom = now.toISOString().slice(0, 10);
+    dateFrom = today;
     dateTo = dateFrom;
   } else if (periodo === "semana") {
-    const day = now.getDay(); // 0=Dom
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - day);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    dateFrom = weekStart.toISOString().slice(0, 10);
-    dateTo = weekEnd.toISOString().slice(0, 10);
+    ({ from: dateFrom, to: dateTo } = weekRange(today)); // domingo a sábado
   } else if (periodo === "mes") {
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    dateFrom = `${y}-${String(m).padStart(2, "0")}-01`;
-    const lastDay = new Date(y, m, 0).getDate();
-    dateTo = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    ({ from: dateFrom, to: dateTo } = monthRange(today));
   }
 
   // Buscar agendamentos com plano do paciente

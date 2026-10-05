@@ -93,7 +93,7 @@ describe.each(DECISION_ALGORITHMS.map((def) => ({ nome: algorithmKey(def), def }
 });
 
 describe('montarEntrada: registro prevalece sobre o manual', () => {
-  const inst = decisionRegistry.get('SH_INST_ANT', '0.1.1')!;
+  const inst = decisionRegistry.get('SH_INST_ANT', '0.1.2')!;
   const payload = {
     avaliacaoPreop: {
       comum: { data_avaliacao: '2026-03-10' },
@@ -125,7 +125,7 @@ describe('montarEntrada: registro prevalece sobre o manual', () => {
   });
 
   test('manguito: derivada do registro (GFDI) prevalece sobre GFDI manual', () => {
-    const rct = decisionRegistry.get('SH_RCT_DECISAO', '0.1.2')!;
+    const rct = decisionRegistry.get('SH_RCT_DECISAO', '0.1.3')!;
     const p = { avaliacaoPreop: { comum: {}, patologias: [{ codigo: 'SH_RCT_FULL', schema: 'SH_RCT.diagnosis.v1', dados: { goutallier: { SSP: 2, ISP: 2, SSC: 2 } } }] } };
     const m = montarEntrada(rct.def, rct.mapear, { payload: p }, { gfdi: 3.5 });
     expect(m.entrada.gfdi).toBe(2);
@@ -136,7 +136,7 @@ describe('montarEntrada: registro prevalece sobre o manual', () => {
     // Campos antigos no bloco comum (payload anterior à mudança) não são lidos
     const legado = { comum: { tabagismo: 'nunca', diabetes: false, nivel_atividade: 'sedentario', lado_dominante: 'R' }, patologias: [] };
 
-    const rct = decisionRegistry.get('SH_RCT_DECISAO', '0.1.2')!;
+    const rct = decisionRegistry.get('SH_RCT_DECISAO', '0.1.3')!;
     const m = montarEntrada(rct.def, rct.mapear, { payload: { avaliacaoPreop: legado }, paciente }, { tabagismo: 'nunca' });
     expect(m.entrada).toMatchObject({ tabagismo: 'atual', diabetes: true, nivel_atividade: 'competitivo' });
     for (const [id, campo] of [['tabagismo', 'tabagismo'], ['diabetes', 'diabetes'], ['nivel_atividade', 'nivelAtividade']]) {
@@ -145,7 +145,7 @@ describe('montarEntrada: registro prevalece sobre o manual', () => {
     expect(m.conflitos).toEqual([{ entrada: 'tabagismo', usado: 'atual', origemUsada: 'paciente', descartado: 'nunca', origemDescartada: 'manual' }]);
     expect(montarEntrada(rct.def, rct.mapear, { payload: { avaliacaoPreop: legado } }).entrada).toEqual({});
 
-    const dbr = decisionRegistry.get('EL_DBR_APOIO', '0.1.2')!;
+    const dbr = decisionRegistry.get('EL_DBR_APOIO', '0.1.3')!;
     const b = montarEntrada(dbr.def, dbr.mapear, { payload: { avaliacaoPreop: legado }, paciente, lado: 'Esquerdo' });
     expect(b.entrada).toMatchObject({ tabagismo: 'atual', diabetes: true, membro_dominante: true, demanda_funcional: 'alta' });
     expect(b.proveniencia.tabagismo).toEqual({ de: 'paciente', caminho: 'paciente.tabagismo', nota: 'cadastro do paciente' });

@@ -29,16 +29,8 @@ export function hasRecordedAssessment(followup: {
     || Boolean(followup.falhaType);
 }
 
-/** Fuso da clínica: "hoje" para vencido/agendado é o dia de calendário aqui. */
-export const CLINIC_TIME_ZONE = "America/Sao_Paulo";
-
-/**
- * Data de hoje ("YYYY-MM-DD") no fuso da clínica. `new Date().toISOString()`
- * usa UTC, que já é "amanhã" a partir das 21h em São Paulo.
- */
-export function clinicToday(now: Date = new Date(), timeZone: string = CLINIC_TIME_ZONE): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-}
+// "Hoje" no fuso da clínica vive em lib/clinic-time.ts; reexportado aqui para os imports existentes.
+export { CLINIC_TIME_ZONE, clinicToday } from "./clinic-time";
 
 /**
  * Uma data agendada (somente data) está vencida apenas quando é anterior a hoje;

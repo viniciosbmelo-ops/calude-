@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, ChevronDown, RotateCcw, FileDown, Mic, MicOff, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { clinicTodayDateOnly, cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { aiAssistantMessages } from "@/locales/ai-assistant";
@@ -201,7 +201,7 @@ function generateReportPDF(
     addFooter(doc, pageW, pageH, 1, 1, copy("pdfGeneratedAt", { date: new Intl.DateTimeFormat(locale).format(new Date()) }));
     return {
       doc,
-      filename: `assistente-ia-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `assistente-ia-relatorio-${clinicTodayDateOnly()}.pdf`,
     };
   }
 
@@ -450,7 +450,7 @@ function generateReportPDF(
 
   return {
     doc,
-    filename: `assistente-ia-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `assistente-ia-relatorio-${clinicTodayDateOnly()}.pdf`,
   };
 }
 

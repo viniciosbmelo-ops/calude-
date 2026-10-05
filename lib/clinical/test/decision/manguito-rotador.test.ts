@@ -149,6 +149,16 @@ describe('casos-ouro por ramo', () => {
     expect(semEstimativa.faltantes.find((f) => f.entrada === 'reparabilidade_estimada')!.desbloqueia).toContain('N5B.FALHA');
   });
 
+  test('lesão completa sem reparabilidade estimada: faltante crítico (aviso destacado), sem tornar o campo obrigatório', () => {
+    const r = run(COMPLETA_BASE);
+    const f = r.faltantes.find((x) => x.entrada === 'reparabilidade_estimada')!;
+    expect(f.critica).toBe(true);
+    expect(f.desbloqueia).toEqual(expect.arrayContaining(['N7.1']));
+    expect(r.trace.find((t) => t.regra === 'N7.1')!.resultado).toBe('indeterminada');
+    // Com a estimativa informada, nenhum faltante crítico
+    expect(run(GOLDEN.reparavelPequena).faltantes.filter((x) => x.critica)).toEqual([]);
+  });
+
   test('reparável <3 cm: zona de técnica simples vs dupla, ambas controversas', () => {
     const r = run(GOLDEN.reparavelPequena);
     expect(disparadas(r)).toEqual(expect.arrayContaining(['N7.1', 'ZC.TECNICA_MENOR_3CM', 'ZC.AUGMENTATION', 'N7.3', 'N7.FATORES_PRESENTES', 'N7.CSA']));

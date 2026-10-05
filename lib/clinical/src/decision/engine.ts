@@ -18,8 +18,9 @@ import type {
  * 1.2.0: sentido líquido honesto (cautela ≥ favor → cautela; zona cinzenta → 'alternativa'), rótulos de enum
  * e números com vírgula no texto interpolado das regras.
  * 1.2.1: unidade '%' colada ao número no texto interpolado e nas mensagens ("15%", não "15 %").
+ * 1.3.0: faltante de entrada declarada `critica` sai marcado (`critica: true`).
  */
-export const MOTOR_VERSAO = '1.2.1';
+export const MOTOR_VERSAO = '1.3.0';
 
 const RANK: Record<Forca, number> = { forte: 3, moderada: 2, fraca: 1, controversa: 0 };
 
@@ -280,7 +281,10 @@ export function evaluate(def: AlgorithmDef, entrada: Record<string, unknown>, ct
     .map(([id, regras]) => {
       const e = porId.get(id);
       const unidade = e?.def.tipo === 'numero' ? e.def.unidade : undefined;
-      return { entrada: id, rotulo: e?.rotulo ?? id, ...(unidade ? { unidade } : {}), desbloqueia: [...regras] };
+      return {
+        entrada: id, rotulo: e?.rotulo ?? id, ...(unidade ? { unidade } : {}), desbloqueia: [...regras],
+        ...(e?.critica ? { critica: true as const } : {}),
+      };
     })
     .sort((a, b) => b.desbloqueia.length - a.desbloqueia.length
       || (ordemEntrada.get(a.entrada) ?? 1e9) - (ordemEntrada.get(b.entrada) ?? 1e9));

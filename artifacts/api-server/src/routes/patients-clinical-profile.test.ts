@@ -87,7 +87,7 @@ describe.sequential("cadastro do paciente: perfil clínico", () => {
     }
   });
 
-  it("LGPD: acesso e portabilidade incluem o perfil; anonimização o mantém", async () => {
+  it("LGPD: acesso e portabilidade incluem o perfil; anonimização o apaga", async () => {
     await call(`/api/patients/${id}`, "PATCH", PERFIL);
     const dados = await (await call("/api/lgpd/dados", "GET")).json();
     expect(dados.dados.pacientes.find((p: { id: number }) => p.id === id)).toMatchObject(PERFIL);
@@ -98,7 +98,14 @@ describe.sequential("cadastro do paciente: perfil clínico", () => {
     expect((await call(`/api/lgpd/anonimizar-paciente/${id}`, "POST")).status).toBe(200);
     const [row] = await db.select().from(patientsTable).where(eq(patientsTable.id, id));
     expect(row.nome).toMatch(/^Paciente Anonimizado/);
-    expect(row).toMatchObject(PERFIL);
+    expect(row).toMatchObject({ ladoDominante: null, tabagismo: null, diabetes: null, nivelAtividade: null });
+  });
+
+  it("exclusão do paciente remove a linha com o perfil clínico", async () => {
+    const created = await (await call("/api/patients", "POST", { nome: "Paciente Excluir", ...PERFIL })).json();
+    expect((await call(`/api/patients/${created.id}`, "DELETE")).status).toBeLessThan(300);
+    const rows = await db.select().from(patientsTable).where(eq(patientsTable.id, created.id));
+    expect(rows).toHaveLength(0);
   });
 
   it("CSV: campos ausentes ficam vazios", () => {

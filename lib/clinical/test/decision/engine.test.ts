@@ -104,7 +104,8 @@ describe('evaluate: resultado e agregação', () => {
     // 1.1.0: o resultado gravado sempre traz `parametros` (lista vazia quando a definição não declara)
     // 1.2.0: sentido líquido honesto ('alternativa' para zona cinzenta), rótulos de enum e vírgula decimal no texto
     // 1.2.1: '%' colado ao número no texto interpolado ("15%")
-    expect(MOTOR_VERSAO).toBe('1.2.1');
+    // 1.3.0: faltante de entrada `critica` sai marcado
+    expect(MOTOR_VERSAO).toBe('1.3.0');
     expect(Array.isArray(r.parametros)).toBe(true);
     expect(r.modo).toBe('preop');
     expect(r.avisosGerais).toEqual(FAKE.avisosGerais);
@@ -246,6 +247,19 @@ describe('evaluate: resultado e agregação', () => {
     // R.CALOR: solo=umido já torna o "all" falso → não depende mais da temperatura
     const r2 = evaluate(FAKE, { solo: 'umido', area_coberta: false });
     expect(r2.faltantes.find((f) => f.entrada === 'temperatura')!.desbloqueia).toEqual(['R.FRIO', 'R.MORNO']);
+  });
+
+  test('faltante de entrada `critica` sai marcado; entrada presente ou não crítica, não', () => {
+    const def = clone(FAKE);
+    def.entradas.find((e) => e.id === 'temperatura')!.critica = true;
+    const r = evaluate(def, { solo: 'seco', geada: false, chuva: 0, ferramentas: [], area_coberta: false });
+    expect(r.faltantes).toEqual([
+      { entrada: 'temperatura', rotulo: 'Temperatura', unidade: '°C', desbloqueia: ['R.CALOR', 'R.FRIO', 'R.MORNO'], critica: true },
+    ]);
+    expect(evaluate(def, { temperatura: 10 }).faltantes.some((f) => f.critica)).toBe(false);
+    expect(evaluate(FAKE, {}).faltantes.some((f) => 'critica' in f)).toBe(false);
+    // A marca entra no hash: mudar a criticidade exige nova versão
+    expect(hashDefinition(def)).not.toBe(hashDefinition(FAKE));
   });
 
   test('regra de aviso gera aviso, não opção', () => {

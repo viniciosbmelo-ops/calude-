@@ -22,6 +22,7 @@ import {
 } from "../lib/surgery-schedule-sync";
 import { sendWhatsAppText, buildFollowupMessage } from "../lib/whatsapp";
 import { getBaseUrl } from "../lib/base-url";
+import { clinicToday } from "../lib/clinic-time";
 import { randomUUID } from "crypto";
 import { z } from "zod/v4";
 import { resolveDoctorLocale } from "../lib/locale";
@@ -143,7 +144,7 @@ async function ensureFollowupForNotification(
       .values({
         surgeryId,
         tempo: notification.periodo,
-        dataAvaliacao: new Date().toISOString().slice(0, 10),
+        dataAvaliacao: clinicToday(),
         token: randomUUID(),
         escalasEnviadas: filterSupportedFollowupScales(notification.scales),
       })

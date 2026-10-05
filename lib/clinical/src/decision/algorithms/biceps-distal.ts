@@ -38,7 +38,7 @@ const AVISO_RM_PCT = 'A estimativa do % rompido por RM é pouco reprodutível (c
 
 export const BICEPS_DISTAL: AlgorithmDef = {
   id: 'EL_DBR_APOIO',
-  versao: '0.1.2',
+  versao: '0.1.3',
   patologias: [BICEPS_DISTAL_CODIGO],
   titulo: 'Ruptura do tendão distal do bíceps (rascunho)',
   escopo: 'Suspeita ou diagnóstico de ruptura completa (aguda ou tardia/crônica) ou parcial do tendão distal do bíceps, do diagnóstico ao pós-operatório.',
@@ -67,7 +67,7 @@ export const BICEPS_DISTAL: AlgorithmDef = {
   ],
   entradas: [
     { id: 'dias_desde_lesao', rotulo: 'Dias desde a lesão', def: { tipo: 'numero', unidade: 'dias', min: 0, max: 3650 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].dias_desde_lesao_preop' }, momento: 'preop' },
-    { id: 'tipo_ruptura', rotulo: 'Tipo de ruptura', def: { tipo: 'enum', valores: ['completa', 'parcial', 'tendinopatia', 'indeterminada'], rotulos: { completa: 'Completa', parcial: 'Parcial', tendinopatia: 'Tendinopatia (sem ruptura)', indeterminada: 'Indeterminada' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].tipo_rm' }, momento: 'preop' },
+    { id: 'tipo_ruptura', rotulo: 'Tipo de ruptura', def: { tipo: 'enum', valores: ['completa', 'parcial', 'tendinopatia', 'indeterminada'], rotulos: { completa: 'Completa', parcial: 'Parcial', tendinopatia: 'Tendinopatia (sem ruptura)', indeterminada: 'Indeterminada' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].tipo_rm' }, momento: 'preop', critica: true },
     { id: 'hook_test', rotulo: 'Hook test', def: { tipo: 'enum', valores: ['anormal', 'normal', 'normal_doloroso', 'nao_realizado'], rotulos: { anormal: 'Anormal', normal: 'Normal', normal_doloroso: 'Normal e doloroso', nao_realizado: 'Não realizado' } }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].hook_test' }, momento: 'preop' },
     { id: 'pct_ruptura_parcial_rm', rotulo: '% estimado de ruptura parcial na RM', def: { tipo: 'numero', unidade: '%', min: 0, max: 100 }, origem: { de: 'payload', caminho: 'avaliacaoPreop[EL_DBR].partial_pct_rm' }, momento: 'preop' },
     { id: 'rm_incidencia_fabs', rotulo: 'RM com incidência FABS', def: { tipo: 'booleano' }, origem: { de: 'manual' }, momento: 'preop' },

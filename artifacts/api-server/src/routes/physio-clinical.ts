@@ -22,6 +22,7 @@ import { buildRedFlagMessage } from "../services/redFlagAlerts";
 import { requirePhysio } from "../middlewares/requireAuth";
 import { enforcePatientLimit, physioWriteGuard } from "../middlewares/physioPlanGuard";
 import { claimPatientSlot } from "../lib/physioBilling";
+import { addDays, clinicDayBounds, clinicToday } from "../lib/clinic-time";
 import { z } from "zod/v4";
 import {
   generateFollowupsPreview,
@@ -705,10 +706,10 @@ router.post("/physio/invites/accept", enforcePatientLimit, async (req, res): Pro
 
 router.get("/physio/dashboard", async (req, res): Promise<void> => {
   const physioId = req.physioId!;
-  const today = new Date().toISOString().slice(0, 10);
-  const in7 = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const startOfDay = new Date(`${today}T00:00:00`);
-  const endOfDay = new Date(`${today}T23:59:59.999`);
+  // Dia de calendário da clínica (não UTC); a agenda de hoje vai da meia-noite à meia-noite em São Paulo
+  const today = clinicToday();
+  const in7 = addDays(today, 7);
+  const { start: startOfDay, end: endOfDay } = clinicDayBounds(today);
 
   const followupBase = {
     id: physioFollowupsTable.id,

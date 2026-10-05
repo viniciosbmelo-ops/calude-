@@ -9,7 +9,7 @@ import {
 } from "@workspace/clinical/web";
 import { decisionSupportMessages } from "@/locales/decision-support";
 import {
-  alternativeEvidence, displayDirection, formatDecimal, formatInputValue, formatTraceValue, motiveTag, orderedMotives,
+  alternativeEvidence, criticalMissing, displayDirection, formatDecimal, formatInputValue, formatTraceValue, motiveTag, orderedMotives,
   parameterLines, usedInputLines, valueLabel,
 } from "./logic";
 
@@ -185,5 +185,43 @@ describe("textos do apoio à decisão", () => {
     expect(pt.unlocksMany).toBe("libera {n} regras");
     expect(es.unlocksOne).toBe("libera 1 regla");
     expect(es.unlocksMany).toBe("libera {n} reglas");
+  });
+});
+
+describe("dado crítico ausente: aviso destacado", () => {
+  const pt = decisionSupportMessages["pt-BR"] as Record<string, string>;
+  const es = decisionSupportMessages.es as Record<string, string>;
+
+  it("manguito: lesão completa sem reparabilidade estimada gera o aviso; com ela, não", () => {
+    const def = DECISION_ALGORITHMS.find((d) => d.id === "SH_RCT_DECISAO")!;
+    const base = { lesao_sintomatica_confirmada: true, tipo_rotura: "completa", hamada: 2, artrose_glenoumeral: "ausente" };
+    const sem = criticalMissing(evaluate(def, base), def);
+    expect(sem.map((c) => c.entrada)).toEqual(["reparabilidade_estimada"]);
+    expect(sem[0].regras).toBeGreaterThan(0);
+    expect(criticalMissing(evaluate(def, { ...base, reparabilidade_estimada: "provavel_reparavel" }), def)).toEqual([]);
+    expect(pt.critical_reparabilidade_estimada).toBe("Informe a reparabilidade estimada para que as opções de reparo sejam avaliadas.");
+    expect(es.critical_reparabilidade_estimada).toBe("Informe la reparabilidad estimada para que se evalúen las opciones de reparación.");
+  });
+
+  it("resultado gravado antes da marca: usa a definição; faltante que não desbloqueia regra não gera aviso", () => {
+    const def = { entradas: [{ id: "x", rotulo: "X", def: { tipo: "booleano" }, origem: { de: "manual" }, momento: "preop", critica: true }] as EntradaDef[] };
+    expect(criticalMissing({ faltantes: [{ entrada: "x", rotulo: "X", desbloqueia: ["R1"] }] }, def)).toEqual([{ entrada: "x", rotulo: "X", regras: 1 }]);
+    expect(criticalMissing({ faltantes: [{ entrada: "x", rotulo: "X", desbloqueia: ["R1"] }] })).toEqual([]);
+    expect(criticalMissing({ faltantes: [{ entrada: "x", rotulo: "X", desbloqueia: [], critica: true }] })).toEqual([]);
+  });
+
+  it("toda entrada crítica registrada tem texto próprio em pt-BR e es; textos só sugerem informar", () => {
+    const criticas = DECISION_ALGORITHMS.flatMap((d) => d.entradas.filter((e) => e.critica).map((e) => e.id));
+    expect(criticas.length).toBeGreaterThan(0);
+    for (const id of criticas) {
+      expect(pt[`critical_${id}`], id).toMatch(/^Informe /);
+      expect(es[`critical_${id}`], id).toMatch(/^Informe /);
+    }
+    for (const k of ["criticalMissingTitle", "criticalMissingGeneric", "criticalMissingNote"]) {
+      expect(pt[k], k).toBeTruthy();
+      expect(es[k], k).toBeTruthy();
+    }
+    const ptCrit = Object.keys(pt).filter((k) => k.startsWith("critical")).sort();
+    expect(Object.keys(es).filter((k) => k.startsWith("critical")).sort()).toEqual(ptCrit);
   });
 });

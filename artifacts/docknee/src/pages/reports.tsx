@@ -10,7 +10,7 @@ import { operationalPatientRecordMessages } from "@/locales/operational-patient-
 import { PATIENT_CLINICAL_OPTIONS, PATIENT_CLINICAL_VALUE_KEYS } from "@/lib/patient-clinical";
 import { CASE_TYPE_BY_KEY, CASE_TYPES } from "@workspace/clinical/web";
 import { documentText } from "@/locales/document-locales";
-import { formatDateOnly, sortByPtBrName } from "@/lib/utils";
+import { clinicTodayDateOnly, formatDateOnly, sortByPtBrName } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -500,7 +500,7 @@ export default function Reports() {
       pdf.addImage(imgData, "PNG", 10, topMargin, imgW, safeImgH);
       const result = await sharePdfOrDownload(
         pdf,
-        `relatorio_docsholder_${new Date().toISOString().slice(0, 10)}.pdf`,
+        `relatorio_docsholder_${clinicTodayDateOnly()}.pdf`,
         setPdfShareUrl,
       );
       toast(result.deferred

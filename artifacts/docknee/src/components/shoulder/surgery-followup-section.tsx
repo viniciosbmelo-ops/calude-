@@ -3,6 +3,7 @@
  * registradas. Dor (VAS), retorno ao esporte, falha, complicações e as escalas do
  * médico (Constant/Rowe) aplicáveis à cirurgia pelo catálogo de patologias.
  */
+import { clinicTodayDateOnly } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Bell, BellOff, CheckCheck, Clock, Copy, Loader2, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -307,7 +308,7 @@ export function SurgeryFollowupSection({ surgeryId, surgeryDate, patientPhone, f
 
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h3 className="text-base font-medium">{t("ts_postoperativeEvaluations")}</h3>
-        <Button size="sm" className="gap-1" onClick={() => { setForm({ ...EMPTY_FORM, dataAvaliacao: new Date().toISOString().slice(0, 10) }); setScaleDrafts(emptyDrafts(clinicianScales)); setFormError(null); setFormOpen(true); }}>
+        <Button size="sm" className="gap-1" onClick={() => { setForm({ ...EMPTY_FORM, dataAvaliacao: clinicTodayDateOnly() }); setScaleDrafts(emptyDrafts(clinicianScales)); setFormError(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4" /> {t("newEvaluation")}
         </Button>
       </div>

@@ -38,7 +38,7 @@ import {
   getRegenPlanningPayload,
   removeProductFromPlanning,
 } from "@/lib/regen-case-payload";
-import { cn, formatDateOnly, sortByPtBrName } from "@/lib/utils";
+import { clinicTodayDateOnly, cn, formatDateOnly, sortByPtBrName } from "@/lib/utils";
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import OrientacoesInline from "@/components/OrientacoesInline";
@@ -726,7 +726,7 @@ export default function RegenNovo() {
 
   /* ── Step 1: Dados Básicos ── */
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
-  const [dataCaso,        setDataCaso]        = useState(new Date().toISOString().slice(0, 10));
+  const [dataCaso,        setDataCaso]        = useState(() => clinicTodayDateOnly());
   const [lado,            setLado]            = useState("");
   const [hospital,        setHospital]        = useState("");
   const [weightKg,        setWeightKg]        = useState("");
@@ -836,7 +836,7 @@ export default function RegenNovo() {
 
       if (draft && draftId) {
         setCaseId(draftId);
-        setDataCaso(draft.data_caso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+        setDataCaso(draft.data_caso?.slice(0, 10) ?? clinicTodayDateOnly());
         setLado(draft.lado_articulacao ?? "");
         setHospital(draft.hospital_local ?? "");
         setWeightKg(draft.weight_kg != null ? String(draft.weight_kg) : "");

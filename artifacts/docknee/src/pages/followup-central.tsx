@@ -99,7 +99,7 @@ export function formatCentralFollowupValues(locale: Locale, periodo: string, sca
 
 function StatusChip({ status, scheduledDate }: { status: string; scheduledDate: string | null }) {
   const t = useScopedTranslations(operationalCoreMessages);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = clinicTodayDateOnly();
   if (status === "sent" || status === "completed") return <Badge className="bg-green-100 text-green-800 border-green-200 gap-1"><CheckCircle2 className="h-3 w-3" /> {t("followupSent")}</Badge>;
   if (status === "failed") return <Badge className="bg-red-100 text-red-800 border-red-200 gap-1"><XCircle className="h-3 w-3" /> {t("followupFailed")}</Badge>;
   if (scheduledDate && scheduledDate < today) return <Badge className="bg-orange-100 text-orange-800 border-orange-200 gap-1"><AlertTriangle className="h-3 w-3" /> {t("followupOverdue")}</Badge>;

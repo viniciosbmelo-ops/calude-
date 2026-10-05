@@ -336,6 +336,28 @@ export function shouldShowRuleCodes(viewer: { isAdmin?: boolean | null; modo?: s
   return viewer.isAdmin === true || viewer.modo === "revisao";
 }
 
+/** Faltante crítico: a ausência deixa indeterminados os ramos principais (aviso destacado no topo do resultado). */
+export interface CriticalMissing {
+  entrada: string;
+  rotulo: string;
+  /** Regras que ficariam avaliáveis com o dado. */
+  regras: number;
+}
+
+/**
+ * Entradas críticas que faltam e desbloqueariam regras. A marca vem do resultado (motor ≥1.3.0) ou, em resultado
+ * gravado antes dela, da definição da mesma versão quando disponível. Só sugere informar o dado: nunca o exige.
+ */
+export function criticalMissing(
+  res: Pick<ResultadoApoio, "faltantes">,
+  def?: Pick<AlgorithmDef, "entradas">,
+): CriticalMissing[] {
+  const criticaNaDef = new Set((def?.entradas ?? []).filter((e) => e.critica).map((e) => e.id));
+  return res.faltantes
+    .filter((f) => f.desbloqueia.length > 0 && (f.critica === true || criticaNaDef.has(f.entrada)))
+    .map((f) => ({ entrada: f.entrada, rotulo: f.rotulo, regras: f.desbloqueia.length }));
+}
+
 export function ruleTitle(def: Pick<AlgorithmDef, "regras" | "foraDeEscopo"> | undefined, id: string): string {
   if (!def) return id;
   return def.regras.find((r) => r.id === id)?.titulo ?? def.foraDeEscopo.find((f) => f.id === id)?.texto ?? id;

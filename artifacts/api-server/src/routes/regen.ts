@@ -3072,8 +3072,8 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
     }
     locale = await localeForDoctorId(rows[0].doctor_id);
 
-    // Use provided date or today
-    const base = baseDate ? new Date(baseDate) : new Date();
+    // Use provided date or today (dia de calendário da clínica, não UTC)
+    const base = baseDate ? new Date(baseDate) : new Date(`${clinicToday()}T00:00:00Z`);
 
     // Check if notifications already exist — only add missing ones
     const { rows: existing } = await client.query(
@@ -3086,7 +3086,7 @@ router.post("/regen/cases/:id/notifications/init", requireAuth, async (req: any,
 
     for (const slot of toInsert) {
       const scheduledDate = new Date(base);
-      scheduledDate.setDate(scheduledDate.getDate() + slot.days);
+      scheduledDate.setUTCDate(scheduledDate.getUTCDate() + slot.days);
       await client.query(
         `INSERT INTO regen_followup_notifications (case_id, periodo, days_after_procedure, scheduled_date, scales)
          VALUES ($1, $2, $3, $4, $5)`,

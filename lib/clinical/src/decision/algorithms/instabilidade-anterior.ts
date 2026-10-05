@@ -39,7 +39,7 @@ const entradas: EntradaDef[] = [
   { id: 'tipo_episodio', rotulo: 'Tipo de episódio', def: { tipo: 'enum', valores: TIPO_EPISODIO, rotulos: {
     primeiro_episodio: 'Primeiro episódio', recorrente: 'Recorrente',
     falha_pos_estabilizacao_partes_moles: 'Falha após estabilização de partes moles', falha_pos_transferencia_coracoide: 'Falha após transferência do coracoide (Latarjet/Bristow)',
-  } }, origem: { de: 'derivada', funcao: 'tipoEpisodio(episodes, prior_surgery, n_cirurgias_estabilizacao_previas)', dependeDe: [] }, momento: 'preop' },
+  } }, origem: { de: 'derivada', funcao: 'tipoEpisodio(episodes, prior_surgery, n_cirurgias_estabilizacao_previas)', dependeDe: [] }, momento: 'preop', critica: true },
   { id: 'instabilidade_voluntaria', rotulo: 'Instabilidade voluntária', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.voluntary` }, momento: 'preop' },
   { id: 'esporte_competitivo', rotulo: 'Esporte competitivo', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.sport_competitive` }, momento: 'preop' },
   { id: 'esporte_contato_ou_arremesso', rotulo: 'Esporte de contato ou com arremesso/elevação forçada', def: { tipo: 'booleano' }, origem: { de: 'payload', caminho: `${P}.sport_contact_or_forced_overhead` }, momento: 'preop' },
@@ -384,7 +384,7 @@ const regras: RegraDef[] = [
 
 export const INSTABILIDADE_ANTERIOR: AlgorithmDef = {
   id: 'SH_INST_ANT',
-  versao: '0.1.1',
+  versao: '0.1.2',
   patologias: [SH_INST_ANT_CODIGO],
   titulo: 'Instabilidade glenoumeral anterior: apoio à decisão cirúrgica (rascunho)',
   escopo: 'Instabilidade glenoumeral anterior traumática unidirecional (primeiro episódio, recorrente, falha após estabilização de partes moles ou após transferência do coracoide). Instabilidade posterior, multidirecional e voluntária ficam fora.',

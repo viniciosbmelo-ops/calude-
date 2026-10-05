@@ -1,3 +1,4 @@
+import { clinicTodayDateOnly } from "@/lib/utils";
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -197,7 +198,7 @@ export default function FisioPacienteDetalhe() {
   const isOutro = patient.diagnosisCode === "outro";
   const pending = followups.filter((f) => f.status === "pending");
   const doneOrSkipped = followups.filter((f) => f.status !== "pending");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = clinicTodayDateOnly();
 
   return (
     <FisioShell>

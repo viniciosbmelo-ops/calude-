@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { decisionSupportMessages } from "@/locales/decision-support";
 import {
-  alternativeEvidence, collectControversies, conflictLines, displayDirection, formatTraceValue, groupTrace, motiveTag, orderedMotives,
+  alternativeEvidence, collectControversies, conflictLines, criticalMissing, displayDirection, formatTraceValue, groupTrace, motiveTag, orderedMotives,
   parameterLines, referenceHref, referenceIds, referenceMap, ruleTitle, shouldShowRuleCodes, usedInputLines, valueLabelsOf, type ExecutionMeta, type ProvenanceKind,
 } from "./logic";
 
@@ -136,6 +136,13 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
   const entradaRotulo = (id: string) => def?.entradas.find((e) => e.id === id)?.rotulo ?? id;
   const rotulosDe = (id: string) => valueLabelsOf(def?.entradas.find((e) => e.id === id));
   const titulo = def?.titulo ?? resultado.algoritmo.id;
+  const criticos = criticalMissing(resultado, def);
+  const criticalText = (c: { entrada: string; rotulo: string; regras: number }) => {
+    const key = `critical_${c.entrada}`;
+    return key in decisionSupportMessages["pt-BR"]
+      ? t(key as "critical_reparabilidade_estimada")
+      : t("criticalMissingGeneric", { rotulo: c.rotulo, n: c.regras });
+  };
 
   return (
     <section className="space-y-4" aria-label={t("suggestionLabel")}>
@@ -152,6 +159,17 @@ export function DecisionResultView({ resultado, def: defProp, execucaoId, modo, 
           {execucaoId !== undefined && <> · {t("executionId", { id: execucaoId })}</>}
         </p>
       </div>
+
+      {/* Dado crítico ausente: destaque no topo; só sugere informar (o campo não é obrigatório) */}
+      {criticos.length > 0 && (
+        <div role="note" data-testid="critical-missing" className="rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-100">
+          <p className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4 shrink-0" />{t("criticalMissingTitle")}</p>
+          <ul className="mt-1 space-y-1">
+            {criticos.map((c) => <li key={c.entrada}>{criticalText(c)}</li>)}
+          </ul>
+          <p className="mt-1 text-xs opacity-80">{t("criticalMissingNote")}</p>
+        </div>
+      )}
 
       {/* Conflitos com o registro salvo: informativo, o registro prevaleceu */}
       {conflitos.length > 0 && (

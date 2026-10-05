@@ -402,18 +402,23 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
 
   const anonHash = createHash("sha256").update(`${patientId}-${Date.now()}`).digest("hex").slice(0, 8);
 
-  // Perfil clínico (lado dominante, tabagismo, diabetes, nível de atividade) é mantido: dado clínico, não identificador
+  // Perfil clínico do cadastro (lado dominante, tabagismo, diabetes, nível de atividade) também é apagado:
+  // tabagismo e diabetes são dados de saúde sensíveis (Art. 11) e, numa base pequena, ajudam a reidentificar.
   await db.update(patientsTable).set({
     nome: `Paciente Anonimizado #${anonHash}`,
     cpf: null,
     email: null,
     telefone: null,
     dataNascimento: null,
+    ladoDominante: null,
+    tabagismo: null,
+    diabetes: null,
+    nivelAtividade: null,
   }).where(eq(patientsTable.id, patientId));
 
   res.json({
     mensagem: "Dados pessoais do paciente anonimizados com sucesso",
-    nota: "Dados clínicos mantidos para fins científicos conforme LGPD Art. 16",
+    nota: "Dados clínicos das cirurgias mantidos para fins científicos conforme LGPD Art. 16; perfil clínico do cadastro (tabagismo, diabetes, lado dominante, nível de atividade) apagado",
     anonHash,
   });
 });

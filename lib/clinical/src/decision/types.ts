@@ -74,6 +74,12 @@ export interface EntradaDef {
   origem: OrigemEntrada;
   /** Momento clínico em que o dado existe. No modo `preop`, entradas `intraop` são descartadas. */
   momento: 'preop' | 'intraop';
+  /**
+   * Entrada crítica: sem ela os ramos principais do algoritmo ficam indeterminados. Não torna o dado obrigatório
+   * (cirurgias costumam ser registradas retrospectivamente); quando falta e desbloquearia regras, o faltante sai
+   * marcado e a tela mostra um aviso destacado no topo do resultado. Entra no hash da definição.
+   */
+  critica?: true;
 }
 
 // ---- Condições (declarativas, serializáveis) ----
@@ -219,6 +225,8 @@ export interface FaltanteResultado {
   unidade?: string;
   /** Regras (e critérios de escopo) que ficariam avaliáveis com esta entrada. */
   desbloqueia: string[];
+  /** Copiado de `EntradaDef.critica`: a ausência bloqueia ramos principais (aviso destacado na tela). */
+  critica?: true;
 }
 
 export interface ResultadoApoio {

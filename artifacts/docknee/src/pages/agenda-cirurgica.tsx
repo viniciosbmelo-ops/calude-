@@ -14,7 +14,7 @@ import {
   Plus, Pencil, Trash2, Settings, Send, Calendar, Clock, Hospital, User,
   CreditCard, Package, Phone, X, ChevronDown, ChevronUp, MessageSquare, FileDown
 } from "lucide-react";
-import { cn, sortByPtBrName } from "@/lib/utils";
+import { addCalendarDays, clinicTodayDateOnly, cn, sortByPtBrName } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useLanguage, type Locale } from "@/lib/i18n";
 import { useScopedTranslations } from "@/lib/i18n";
@@ -106,12 +106,9 @@ function fmtDateFull(d: string, locale: Locale) {
   return new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(parseLocalDate(d));
 }
 
-function todayStr() { return new Date().toISOString().split("T")[0]; }
-function weekEnd() {
-  const d = new Date();
-  d.setDate(d.getDate() + 7);
-  return d.toISOString().split("T")[0];
-}
+// Dia de calendário da clínica (não o dia UTC, que já é "amanhã" após as 21h em São Paulo)
+function todayStr() { return clinicTodayDateOnly(); }
+function weekEnd() { return addCalendarDays(clinicTodayDateOnly(), 7); }
 
 function buildWaMsg(c: CirurgiaAgendada, locale: Locale) {
   const codigos = parsedJson<CodigoCbhpm[]>(c.codigosCbhpm, []);
@@ -321,7 +318,7 @@ export function generateAgendaPDF(items: CirurgiaAgendada[], titulo: string, doc
 
   return {
     doc,
-    filename: `agenda-cirurgica-${new Date().toISOString().split("T")[0]}.pdf`,
+    filename: `agenda-cirurgica-${todayStr()}.pdf`,
   };
 }
 

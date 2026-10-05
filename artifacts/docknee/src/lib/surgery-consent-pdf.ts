@@ -1,3 +1,4 @@
+import { clinicTodayDateOnly } from "@/lib/utils";
 import jsPDF from "jspdf";
 import type { Locale } from "./i18n";
 import { documentDate, documentText } from "@/locales/document-locales";
@@ -378,7 +379,7 @@ async function generateSurgicalConsentPDFLegacy(
 
   return {
     doc,
-    filename: `termo_consentimento_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `termo_consentimento_${safeName}_${clinicTodayDateOnly()}.pdf`,
   };
 }
 
@@ -606,6 +607,6 @@ export async function generateSurgicalConsentPDF(
 
   return {
     doc,
-    filename: `termo_consentimento_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `termo_consentimento_${safeName}_${clinicTodayDateOnly()}.pdf`,
   };
 }

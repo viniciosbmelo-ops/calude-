@@ -1,7 +1,7 @@
 /**
  * Perfil clínico do paciente (lado dominante, tabagismo, diabetes, nível de atividade) nas exportações LGPD.
- * São dados de saúde do titular: entram no acesso (Art. 18) e na portabilidade. Na anonimização são mantidos,
- * como os demais dados clínicos (Art. 16), porque não identificam o paciente.
+ * São dados de saúde do titular: entram no acesso (Art. 18) e na portabilidade. Na anonimização são apagados
+ * (tabagismo e diabetes são dados sensíveis e, numa base pequena, ajudam a reidentificar o paciente).
  */
 export interface PatientClinicalColumns {
   ladoDominante: string | null;

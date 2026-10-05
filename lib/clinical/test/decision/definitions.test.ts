@@ -15,6 +15,23 @@ const TODOS: { nome: string; def: AlgorithmDef; lock: Readonly<Record<string, st
   { nome: `${algorithmKey(FAKE)} (teste)`, def: FAKE, lock: FAKE_LOCK },
 ];
 
+/**
+ * Entradas críticas (aviso destacado quando faltam): só as que, ausentes, deixam indeterminados os ramos principais.
+ * Mudar esta lista exige nova versão do algoritmo (a marca entra no hash).
+ */
+describe('entradas críticas', () => {
+  const ESPERADAS: Record<string, string[]> = {
+    SH_INST_ANT: ['tipo_episodio'],
+    SH_RCT_DECISAO: ['tipo_rotura', 'reparabilidade_estimada'],
+    FX_UMERO_PROXIMAL: ['deslocada', 'fratura_luxacao', 'head_split'],
+    EL_DBR_APOIO: ['tipo_ruptura'],
+  };
+  test.each(DECISION_ALGORITHMS.map((d) => [d.id, d] as const))('%s', (id, def) => {
+    expect(def.entradas.filter((e) => e.critica).map((e) => e.id)).toEqual(ESPERADAS[id]);
+    for (const e of def.entradas.filter((x) => x.critica)) expect(e.momento, e.id).toBe('preop');
+  });
+});
+
 describe.each(TODOS)('estrutura de $nome', ({ def, lock }) => {
   const refs = new Map(def.referencias.map((r) => [r.id, r]));
 

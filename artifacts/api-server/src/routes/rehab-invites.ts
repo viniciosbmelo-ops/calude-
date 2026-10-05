@@ -15,6 +15,7 @@ import { and, eq, desc, asc, gte, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getBaseUrl } from "../lib/base-url";
+import { clinicToday } from "../lib/clinic-time";
 import { mapSurgeryToProtocol, patientInitials, PROTOCOL_LABELS, surgeryProcedureLabel } from "../services/surgeryProtocolMap";
 
 const router: IRouter = Router();
@@ -146,7 +147,7 @@ router.get("/patients/:patientId/rehab", requireAuth, async (req, res): Promise<
 
     const protocolFollowups = followups.filter((f) => f.source === "protocol");
     const doneCount = protocolFollowups.filter((f) => f.status === "done").length;
-    const todayISO = now.toISOString().slice(0, 10);
+    const todayISO = clinicToday(now);
     const nextPending = followups.find((f) => f.status === "pending" && f.dueDate >= todayISO)
       ?? followups.find((f) => f.status === "pending");
 
