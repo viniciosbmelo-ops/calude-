@@ -123,6 +123,14 @@ function interpolar(texto: string, valores: Record<string, unknown>, porId: Map<
   return texto.replace(/\{([A-Za-z0-9_]+)\}/g, (m, id: string) => (id in valores ? formatar(valores[id], porId.get(id)) : m));
 }
 
+/**
+ * Interpola um texto de regra (`{id}` → valor formatado) como o motor faz. Placeholder sem valor fica como está.
+ * Exposto para reescrever textos já gravados (ex.: anonimização) sem reavaliar o algoritmo.
+ */
+export function interpolarTexto(def: AlgorithmDef, texto: string, valores: Record<string, unknown>): string {
+  return interpolar(texto, valores, new Map(def.entradas.map((e) => [e.id, e])));
+}
+
 const refsIds = (cs: { ref: string }[]) => cs.map((c) => c.ref);
 const sortUniq = (xs: string[]) => [...new Set(xs)].sort();
 

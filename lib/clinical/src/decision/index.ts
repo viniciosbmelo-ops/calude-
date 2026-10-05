@@ -2,7 +2,12 @@
 export * from './types';
 export { avaliarCond, camposDe } from './conditions';
 export type { CondResultado, Parametros } from './conditions';
-export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, rotuloDoValor, numeroPtBr, comUnidade, MOTOR_VERSAO } from './engine';
+export { evaluate, normalizarEntrada, entradasDaRegra, resolverParametros, rotuloDoValor, numeroPtBr, comUnidade, interpolarTexto, MOTOR_VERSAO } from './engine';
+export {
+  CAMPOS_PERFIL_PACIENTE, CAMPOS_PERFIL_PACIENTE_POR_ALGORITMO, camposPerfilPacienteDe, camposPerfilPaciente,
+  anonimizarExecucao, TEXTO_ANONIMIZADO,
+} from './anonimizacao';
+export type { ExecucaoAnonimizavel, ExecucaoAnonimizada } from './anonimizacao';
 export { canonicalJson, sha256Hex, hashDefinition, algorithmKey } from './hash';
 export { validateDefinition, entradasUsadas } from './validate';
 export {

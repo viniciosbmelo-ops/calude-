@@ -2,6 +2,7 @@ import { patientClinicalCsvExtra, patientClinicalExport } from "../lib/patient-c
 import { Router, type IRouter } from "express";
 import { createHash } from "node:crypto";
 import {
+  apoioDecisaoExecucoesTable,
   auditLogsTable,
   consentimentosTable,
   db,
@@ -10,9 +11,13 @@ import {
   patientAttachmentsTable,
   patientsTable,
   preConsultQuestionnairesTable,
+  regenAiInteractionsTable,
+  regenCasesTable,
   surgeriesTable,
 } from "@workspace/db";
-import { eq, and, gte, inArray, isNotNull } from "drizzle-orm";
+import { anonimizarExecucao } from "@workspace/clinical";
+import { eq, and, gte, inArray, isNotNull, or } from "drizzle-orm";
+import { limparJsonRegen, limparPlanoOtimizacao } from "../lib/regen-anonymization";
 import { requireAuth } from "../middlewares/requireAuth";
 import { isHiddenFracturePreoperative } from "../lib/followup-schedule";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -402,24 +407,82 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
 
   const anonHash = createHash("sha256").update(`${patientId}-${Date.now()}`).digest("hex").slice(0, 8);
 
-  // Perfil clínico do cadastro (lado dominante, tabagismo, diabetes, nível de atividade) também é apagado:
-  // tabagismo e diabetes são dados de saúde sensíveis (Art. 11) e, numa base pequena, ajudam a reidentificar.
-  await db.update(patientsTable).set({
-    nome: `Paciente Anonimizado #${anonHash}`,
-    cpf: null,
-    email: null,
-    telefone: null,
-    dataNascimento: null,
-    ladoDominante: null,
-    tabagismo: null,
-    diabetes: null,
-    nivelAtividade: null,
-  }).where(eq(patientsTable.id, patientId));
+  const agora = new Date();
+  const nomeAnonimo = `Paciente Anonimizado #${anonHash}`;
+
+  // Tudo numa transação: cadastro, histórico do apoio à decisão e casos regenerativos.
+  const { execucoes, casosRegen } = await db.transaction(async (tx) => {
+    // Perfil clínico do cadastro (lado dominante, tabagismo, diabetes, nível de atividade) também é apagado:
+    // tabagismo e diabetes são dados de saúde sensíveis (Art. 11) e, numa base pequena, ajudam a reidentificar.
+    await tx.update(patientsTable).set({
+      nome: nomeAnonimo,
+      cpf: null,
+      email: null,
+      telefone: null,
+      dataNascimento: null,
+      ladoDominante: null,
+      tabagismo: null,
+      diabetes: null,
+      nivelAtividade: null,
+    }).where(eq(patientsTable.id, patientId));
+
+    // Apoio à decisão: execuções do paciente ou das cirurgias dele perdem as entradas do perfil do paciente
+    // (e a idade); algoritmo, versão, hash, motor, status, modo, opções/forças e a escolha do cirurgião ficam.
+    const cirurgias = tx.select({ id: surgeriesTable.id }).from(surgeriesTable)
+      .where(and(eq(surgeriesTable.patientId, patientId), eq(surgeriesTable.doctorId, req.doctorId!)));
+    const execs = await tx.select().from(apoioDecisaoExecucoesTable).where(and(
+      eq(apoioDecisaoExecucoesTable.doctorId, req.doctorId!),
+      or(eq(apoioDecisaoExecucoesTable.patientId, patientId), inArray(apoioDecisaoExecucoesTable.surgeryId, cirurgias)),
+    ));
+    for (const e of execs) {
+      const a = anonimizarExecucao(e, agora);
+      await tx.update(apoioDecisaoExecucoesTable).set({
+        entrada: a.entrada,
+        proveniencia: a.proveniencia,
+        conflitos: a.conflitos,
+        resultado: a.resultado,
+      }).where(eq(apoioDecisaoExecucoesTable.id, e.id));
+    }
+
+    // Regenerativa: o caso se liga ao paciente só por `patient_id` (vínculo opcional, sem FK; a rota confere que o
+    // paciente é do médico ao gravar). Só casos vinculados a ESTE paciente e deste médico são limpos; casos legados
+    // sem vínculo não são adivinhados por nome.
+    const casos = await tx.select({
+      id: regenCasesTable.id,
+      anamneseRegen: regenCasesTable.anamneseRegen,
+      planoOtimizacao: regenCasesTable.planoOtimizacao,
+    }).from(regenCasesTable).where(and(
+      eq(regenCasesTable.patientId, patientId),
+      eq(regenCasesTable.doctorId, req.doctorId!),
+    ));
+    for (const c of casos) {
+      await tx.update(regenCasesTable).set({
+        patientName: nomeAnonimo,
+        patientDob: null,
+        patientPhone: null,
+        dm: null,
+        hba1c: null,
+        anamneseRegen: limparJsonRegen(c.anamneseRegen ?? {}),
+        planoOtimizacao: limparPlanoOtimizacao(c.planoOtimizacao ?? {}),
+        updatedAt: agora,
+      }).where(eq(regenCasesTable.id, c.id));
+    }
+    if (casos.length > 0) {
+      // Resumos de IA do caso: texto livre gerado com nome, nascimento e diabetes. A linha (modelo, revisão) fica.
+      const marca = { anonimizado: true, anonimizadoEm: agora.toISOString() };
+      await tx.update(regenAiInteractionsTable)
+        .set({ rawOutput: marca, acceptedOutput: marca, reviewNote: null })
+        .where(inArray(regenAiInteractionsTable.caseId, casos.map((c) => c.id)));
+    }
+    return { execucoes: execs.length, casosRegen: casos.length };
+  });
 
   res.json({
     mensagem: "Dados pessoais do paciente anonimizados com sucesso",
-    nota: "Dados clínicos das cirurgias mantidos para fins científicos conforme LGPD Art. 16; perfil clínico do cadastro (tabagismo, diabetes, lado dominante, nível de atividade) apagado",
+    nota: "Dados clínicos das cirurgias mantidos para fins científicos conforme LGPD Art. 16; perfil clínico do cadastro (tabagismo, diabetes, lado dominante, nível de atividade) apagado, também das execuções do apoio à decisão e dos casos regenerativos do paciente",
     anonHash,
+    execucoesApoioDecisao: execucoes,
+    casosRegen,
   });
 });
 
