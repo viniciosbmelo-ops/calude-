@@ -38,6 +38,7 @@ import patientOrientationsRouter from "./patient-orientations";
 import adminWhatsappRouter from "./admin-whatsapp";
 import decisionSupportRouter from "./decision-support";
 import { subscriptionWriteGuard } from "../middlewares/subscriptionWriteGuard";
+import { decisionSupportWriteGuard } from "../lib/decision-support-protection";
 
 const router: IRouter = Router();
 
@@ -79,6 +80,8 @@ router.use(totpRouter);
 router.use(preConsultRouter);
 router.use(patientOrientationsRouter);
 router.use(adminWhatsappRouter);
+// Sem os gatilhos só de inserção no banco (lib/db/pre-push/0002), gravação do apoio à decisão → 503.
+router.use("/apoio-decisao", decisionSupportWriteGuard);
 router.use(decisionSupportRouter);
 
 export default router;

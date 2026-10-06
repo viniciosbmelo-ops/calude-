@@ -28,7 +28,6 @@ BEGIN
   WITH legado AS (
     SELECT s.patient_id,
            s.dados_clinicos -> 'avaliacaoPreop' -> 'comum' AS comum,
-           row_number() OVER () AS _ ,
            (CASE WHEN s.data_cirurgia ~ '^\d{4}-\d{2}-\d{2}' THEN left(s.data_cirurgia, 10) END) AS data_ord,
            s.created_at, s.id
       FROM surgeries s
@@ -38,7 +37,7 @@ BEGIN
        AND p.nome NOT LIKE 'Paciente Anonimizado #%'
   ),
   valores AS (
-    SELECT DISTINCT ON (patient_id) patient_id,
+    SELECT l.patient_id,
       (SELECT l2.comum ->> 'lado_dominante' FROM legado l2
         WHERE l2.patient_id = l.patient_id AND l2.comum ->> 'lado_dominante' IN ('R', 'L', 'ambidestro')
         ORDER BY l2.data_ord DESC NULLS LAST, l2.created_at DESC, l2.id DESC LIMIT 1) AS lado_dom,
@@ -52,7 +51,7 @@ BEGIN
         WHERE l2.patient_id = l.patient_id
           AND l2.comum ->> 'nivel_atividade' IN ('sedentario', 'recreativo', 'competitivo', 'trabalhador_bracal')
         ORDER BY l2.data_ord DESC NULLS LAST, l2.created_at DESC, l2.id DESC LIMIT 1) AS nivel_atividade
-    FROM legado l
+    FROM (SELECT DISTINCT patient_id FROM legado) l
   )
   UPDATE patients p
      SET lado_dom        = coalesce(p.lado_dom, v.lado_dom),

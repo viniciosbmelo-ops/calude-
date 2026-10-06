@@ -4,6 +4,7 @@ import { validateSecrets } from "./lib/validate-secrets";
 import { startFollowupCron } from "./lib/followup-cron";
 import { initStripe } from "./lib/initStripe";
 import { assertRequiredSchema } from "./lib/schema-guard";
+import { checkDecisionSupportProtection } from "./lib/decision-support-protection";
 import { db, doctorsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./lib/auth";
@@ -87,6 +88,9 @@ if (Number.isNaN(port) || port <= 0) {
 export async function startServer(): Promise<void> {
   // ── 1. Read-only schema assertion (no DDL) ─────────────────────────────────
   await assertRequiredSchema();
+  // Gatilhos só de inserção do apoio à decisão (não roda no deploy): ausentes → erro no log e gravação do
+  // apoio à decisão em 503; o restante do servidor sobe normalmente.
+  await checkDecisionSupportProtection();
 
   // ── 2. Required reference-data bootstrap ──────────────────────────────────
   await initRegenData();
