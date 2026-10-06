@@ -26,15 +26,20 @@ function normalizePatientName(nome: string): string {
 }
 
 /**
- * LGPD Art. 11: perfil clínico do cadastro (lado dominante, tabagismo, diabetes, nível de atividade)
- * é dado de saúde sensível e fica restrito ao médico. Secretárias não o recebem nas respostas
- * nem conseguem gravá-lo.
+ * LGPD Art. 11: dados de saúde do cadastro (perfil clínico — lado dominante, tabagismo, diabetes,
+ * nível de atividade — e também lado acometido, escore de Beighton, anamnese e laudos) ficam
+ * restritos ao médico. Secretárias não os recebem nas respostas nem conseguem gravá-los; para a
+ * recepção bastam os dados cadastrais/administrativos (nome, contato, convênio, endereço).
  */
 const SENSITIVE_PATIENT_PROFILE_FIELDS = [
   "ladoDominante",
   "tabagismo",
   "diabetes",
   "nivelAtividade",
+  "lado",
+  "beightonScore",
+  "anamnese",
+  "laudos",
 ] as const;
 
 type SensitiveProfileField = (typeof SENSITIVE_PATIENT_PROFILE_FIELDS)[number];
@@ -57,6 +62,18 @@ router.get("/patients", requireDoctorOrSecretary, async (req, res): Promise<void
     .where(eq(patientsTable.doctorId, req.doctorId!))
     .orderBy(sql`lower(${patientsTable.nome}) COLLATE "pt-BR-x-icu"`, patientsTable.id);
 
+  // LGPD Art. 11 (minimização): a secretária não recebe `surgeries` — os registros cirúrgicos
+  // (procedimentos, dadosClinicos, achados, escores, observações) são dado de saúde e o console da
+  // recepção não os usa (agenda cirúrgica tem rota própria, /scheduled-surgeries). A chave é omitida
+  // (não `[]`) para não sugerir "paciente sem cirurgias".
+  if (isSecretaryRequest(req)) {
+    res.json(patients.map((patient) => ({
+      ...stripSensitivePatientProfile(patient),
+      createdAt: patient.createdAt.toISOString(),
+    })));
+    return;
+  }
+
   const result = await Promise.all(patients.map(async (patient) => {
     const surgeries = await db
       .select()
@@ -64,9 +81,8 @@ router.get("/patients", requireDoctorOrSecretary, async (req, res): Promise<void
       .where(eq(surgeriesTable.patientId, patient.id))
       .orderBy(sql`${surgeriesTable.dataCirurgia} DESC NULLS LAST`, desc(surgeriesTable.createdAt));
 
-    const visiblePatient = isSecretaryRequest(req) ? stripSensitivePatientProfile(patient) : patient;
     return {
-      ...visiblePatient,
+      ...patient,
       createdAt: patient.createdAt.toISOString(),
       surgeries: surgeries.map(s => ({
         ...s,

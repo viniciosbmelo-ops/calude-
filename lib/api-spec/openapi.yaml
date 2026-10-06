@@ -198,6 +198,9 @@ paths:
       operationId: listPatients
       tags: [patients]
       summary: List patients for the current doctor
+      description: >-
+        Médico ou secretária. Para a secretária (LGPD Art. 11, minimização) a lista traz apenas dados
+        cadastrais/administrativos: `surgeries` e os campos clínicos do cadastro são omitidos.
       responses:
         "200":
           description: List of patients
@@ -1148,8 +1151,9 @@ components:
           type: ["string", "null"]
           enum: ["R", "L", "ambidestro", null]
           description: >-
-            Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e
-            nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
+            Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes,
+            nivelAtividade, lado, beightonScore, anamnese e laudos são omitidos nas respostas para a secretária
+            e ignorados no POST /patients feito por ela.
         tabagismo:
           type: ["string", "null"]
           enum: ["nunca", "ex_tabagista", "atual", null]
@@ -1199,9 +1203,13 @@ components:
           type: string
         surgeries:
           type: array
+          description: >-
+            Registros cirúrgicos do paciente (dado clínico). LGPD Art. 11: sempre presente para o médico;
+            omitido na resposta de GET /patients para a secretária, que também não recebe os campos clínicos
+            do cadastro (ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore).
           items:
             $ref: "#/components/schemas/Surgery"
-      required: [id, doctorId, nome, createdAt, surgeries]
+      required: [id, doctorId, nome, createdAt]
 
     CreatePatientBody:
       type: object

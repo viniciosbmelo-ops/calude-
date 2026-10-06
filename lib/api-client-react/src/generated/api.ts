@@ -687,6 +687,7 @@ export const getListPatientsUrl = () => {
 }
 
 /**
+ * Médico ou secretária. Para a secretária (LGPD Art. 11, minimização) a lista traz apenas dados cadastrais/administrativos: `surgeries` e os campos clínicos do cadastro são omitidos.
  * @summary List patients for the current doctor
  */
 export const listPatients = async ( options?: RequestInit): Promise<PatientWithSurgeries[]> => {

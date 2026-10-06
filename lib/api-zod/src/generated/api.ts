@@ -226,6 +226,7 @@ export const UpdateDoctorResponse = zod.object({
 
 
 /**
+ * Médico ou secretária. Para a secretária (LGPD Art. 11, minimização) a lista traz apenas dados cadastrais/administrativos: `surgeries` e os campos clínicos do cadastro são omitidos.
  * @summary List patients for the current doctor
  */
 export const ListPatientsResponseItem = zod.object({
@@ -255,7 +256,7 @@ export const ListPatientsResponseItem = zod.object({
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.string()
-}))
+})).optional().describe('Registros cirúrgicos do paciente (dado clínico). LGPD Art. 11: sempre presente para o médico; omitido na resposta de GET \/patients para a secretária, que também não recebe os campos clínicos do cadastro (ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore).')
 })
 export const ListPatientsResponse = zod.array(ListPatientsResponseItem)
 
@@ -292,7 +293,7 @@ export const CreatePatientResponse = zod.object({
   "sexo": zod.string().nullish(),
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
-  "ladoDominante": zod.union([zod.literal('R'),zod.literal('L'),zod.literal('ambidestro'),zod.literal(null)]).nullish().describe('Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST \/patients feito por ela.'),
+  "ladoDominante": zod.union([zod.literal('R'),zod.literal('L'),zod.literal('ambidestro'),zod.literal(null)]).nullish().describe('Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore, anamnese e laudos são omitidos nas respostas para a secretária e ignorados no POST \/patients feito por ela.'),
   "tabagismo": zod.union([zod.literal('nunca'),zod.literal('ex_tabagista'),zod.literal('atual'),zod.literal(null)]).nullish(),
   "diabetes": zod.boolean().nullish(),
   "nivelAtividade": zod.union([zod.literal('sedentario'),zod.literal('recreativo'),zod.literal('competitivo'),zod.literal('trabalhador_bracal'),zod.literal(null)]).nullish(),
@@ -335,7 +336,7 @@ export const GetPatientResponse = zod.object({
   "procedimentoRealizado": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.string()
-}))
+})).optional().describe('Registros cirúrgicos do paciente (dado clínico). LGPD Art. 11: sempre presente para o médico; omitido na resposta de GET \/patients para a secretária, que também não recebe os campos clínicos do cadastro (ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore).')
 })
 
 
@@ -377,7 +378,7 @@ export const UpdatePatientResponse = zod.object({
   "sexo": zod.string().nullish(),
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
-  "ladoDominante": zod.union([zod.literal('R'),zod.literal('L'),zod.literal('ambidestro'),zod.literal(null)]).nullish().describe('Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST \/patients feito por ela.'),
+  "ladoDominante": zod.union([zod.literal('R'),zod.literal('L'),zod.literal('ambidestro'),zod.literal(null)]).nullish().describe('Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore, anamnese e laudos são omitidos nas respostas para a secretária e ignorados no POST \/patients feito por ela.'),
   "tabagismo": zod.union([zod.literal('nunca'),zod.literal('ex_tabagista'),zod.literal('atual'),zod.literal(null)]).nullish(),
   "diabetes": zod.boolean().nullish(),
   "nivelAtividade": zod.union([zod.literal('sedentario'),zod.literal('recreativo'),zod.literal('competitivo'),zod.literal('trabalhador_bracal'),zod.literal(null)]).nullish(),
@@ -481,7 +482,7 @@ export const GetSurgeryResponse = zod.object({
   "sexo": zod.string().nullish(),
   "telefone": zod.string().nullish(),
   "lado": zod.string().nullish(),
-  "ladoDominante": zod.union([zod.literal('R'),zod.literal('L'),zod.literal('ambidestro'),zod.literal(null)]).nullish().describe('Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST \/patients feito por ela.'),
+  "ladoDominante": zod.union([zod.literal('R'),zod.literal('L'),zod.literal('ambidestro'),zod.literal(null)]).nullish().describe('Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore, anamnese e laudos são omitidos nas respostas para a secretária e ignorados no POST \/patients feito por ela.'),
   "tabagismo": zod.union([zod.literal('nunca'),zod.literal('ex_tabagista'),zod.literal('atual'),zod.literal(null)]).nullish(),
   "diabetes": zod.boolean().nullish(),
   "nivelAtividade": zod.union([zod.literal('sedentario'),zod.literal('recreativo'),zod.literal('competitivo'),zod.literal('trabalhador_bracal'),zod.literal(null)]).nullish(),

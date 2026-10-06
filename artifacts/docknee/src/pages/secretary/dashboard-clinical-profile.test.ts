@@ -13,4 +13,11 @@ describe("secretary dashboard: sensitive clinical profile", () => {
       expect(source, token).not.toContain(token);
     }
   });
+
+  it("does not read surgery records from the patient list (the API omits them for secretaries)", () => {
+    expect(source).not.toMatch(/\.surgeries\b/);
+    for (const token of ["dadosClinicos", "diagnostico", "beightonScore", "anamnese", "laudos"]) {
+      expect(source, token).not.toContain(token);
+    }
+  });
 });

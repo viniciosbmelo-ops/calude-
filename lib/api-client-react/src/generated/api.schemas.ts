@@ -207,7 +207,7 @@ export type AdminDoctorWithStats = DoctorWithStats & ({
 });
 
 /**
- * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
+ * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore, anamnese e laudos são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
  * @nullable
  */
 export type PatientLadoDominante = typeof PatientLadoDominante[keyof typeof PatientLadoDominante] | null;
@@ -257,7 +257,7 @@ export interface Patient {
   /** @nullable */
   lado?: string | null;
   /**
-     * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
+     * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore, anamnese e laudos são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
      * @nullable
      */
   ladoDominante?: PatientLadoDominante;
@@ -374,7 +374,8 @@ export interface PatientWithSurgeries {
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;
-  surgeries: Surgery[];
+  /** Registros cirúrgicos do paciente (dado clínico). LGPD Art. 11: sempre presente para o médico; omitido na resposta de GET /patients para a secretária, que também não recebe os campos clínicos do cadastro (ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore). */
+  surgeries?: Surgery[];
 }
 
 /**

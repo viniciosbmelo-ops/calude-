@@ -36,5 +36,6 @@ export interface PatientWithSurgeries {
   /** @nullable */
   beightonScore?: number | null;
   createdAt: string;
-  surgeries: Surgery[];
+  /** Registros cirúrgicos do paciente (dado clínico). LGPD Art. 11: sempre presente para o médico; omitido na resposta de GET /patients para a secretária, que também não recebe os campos clínicos do cadastro (ladoDominante, tabagismo, diabetes, nivelAtividade, lado, beightonScore). */
+  surgeries?: Surgery[];
 }
