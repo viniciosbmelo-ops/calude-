@@ -4,7 +4,9 @@
  * O caso guarda cópias do paciente em colunas (nome, nascimento, telefone, diabetes/HbA1c) e em JSON livre
  * (`anamnese_regen`: tabagismo, cigarros/dia, diabetes, HbA1c…; `plano_otimizacao.gerado`: texto gerado a partir
  * do caso, com cabeçalho e perfil do paciente). Os dados clínicos do procedimento (condição, produtos, lado,
- * locais de aplicação, PROMs, exames, procedimentos) ficam para pesquisa (Art. 16 LGPD).
+ * locais de aplicação, PROMs, exames, procedimentos) ficam para pesquisa (Art. 16 LGPD). Texto livre do caso
+ * (`condition_custom`, `goal_custom`, `hospital_local`) e do procedimento (`notes`, `adverse_event_desc`) é apagado
+ * pela rota de anonimização; no JSON, chaves de texto livre (notas, observações, comentários, *custom) saem.
  */
 
 /** Chaves removidas (em qualquer nível) do JSON do caso: tabagismo, diabetes e cópias de identificação. */
@@ -16,6 +18,9 @@ export const REGEN_CHAVES_SENSIVEIS: readonly RegExp[] = [
   // Identificação
   /^(nome|name)$/i, /patient_?name|nome_?paciente|paciente_?nome|full_?name/i, /cpf/i,
   /telefone|phone|celular|whatsapp/i, /e_?-?mail/i, /nascimento|^dob$|_dob$|birth/i,
+  /endere[cç]o|address|^cep$|^rg$/i,
+  // Texto livre (pode citar nome, contato, hábitos): notas, observações, comentários, campos "outro/custom"
+  /^(notas?|notes?|obs|observa[cç](ao|oes|ão|ões)|coment[aá]rios?|comments?)$/i, /custom$/i,
 ];
 
 export const isChaveSensivelRegen = (chave: string): boolean => REGEN_CHAVES_SENSIVEIS.some((re) => re.test(chave));

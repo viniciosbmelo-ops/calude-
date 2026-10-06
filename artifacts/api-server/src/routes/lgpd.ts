@@ -23,6 +23,7 @@ import {
   regenAiInteractionsTable,
   regenCasesTable,
   regenFollowupNotificationsTable,
+  regenProceduresTable,
   rehabAssessmentsTable,
   rehabInvitesTable,
   scheduledNotificationsTable,
@@ -549,6 +550,9 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
       id: regenCasesTable.id,
       anamneseRegen: regenCasesTable.anamneseRegen,
       planoOtimizacao: regenCasesTable.planoOtimizacao,
+      productDetails: regenCasesTable.productDetails,
+      priorTreatDates: regenCasesTable.priorTreatDates,
+      complianceFlags: regenCasesTable.complianceFlags,
     }).from(regenCasesTable).where(and(
       eq(regenCasesTable.patientId, patientId),
       eq(regenCasesTable.doctorId, doctorId),
@@ -562,10 +566,19 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
         hba1c: null,
         anamneseRegen: limparJsonRegen(c.anamneseRegen ?? {}),
         planoOtimizacao: limparPlanoOtimizacao(c.planoOtimizacao ?? {}),
+        // Texto livre do caso (condição/objetivo "outro", local do atendimento) e chaves livres nos demais JSON.
+        // `co_meds` ({ name, dose } do fármaco) fica: o filtro de chaves tiraria o nome do medicamento.
+        conditionCustom: null,
+        goalCustom: null,
+        hospitalLocal: null,
+        productDetails: limparJsonRegen(c.productDetails ?? {}),
+        priorTreatDates: limparJsonRegen(c.priorTreatDates ?? {}),
+        complianceFlags: limparJsonRegen(c.complianceFlags ?? []),
         updatedAt: agora,
       }).where(eq(regenCasesTable.id, c.id));
     }
     let notificacoesRegen = 0;
+    let procedimentosRegen = 0;
     if (casos.length > 0) {
       const caseIds = casos.map((c) => c.id);
       // Resumos de IA do caso: texto livre gerado com nome, nascimento e diabetes. A linha (modelo, revisão) fica.
@@ -573,6 +586,19 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
       await tx.update(regenAiInteractionsTable)
         .set({ rawOutput: marca, acceptedOutput: marca, reviewNote: null })
         .where(inArray(regenAiInteractionsTable.caseId, caseIds));
+      // Procedimentos: texto livre (notas, descrição do evento adverso) apagado; produto, lote, volume, via, se houve
+      // evento adverso e o resultado de conformidade ficam. Chaves livres no JSON do biológico saem.
+      const procs = await tx.select({ id: regenProceduresTable.id, biologicDetails: regenProceduresTable.biologicDetails })
+        .from(regenProceduresTable)
+        .where(and(inArray(regenProceduresTable.caseId, caseIds), eq(regenProceduresTable.doctorId, doctorId)));
+      for (const pr of procs) {
+        await tx.update(regenProceduresTable).set({
+          notes: null,
+          adverseEventDesc: null,
+          biologicDetails: limparJsonRegen(pr.biologicDetails ?? {}),
+        }).where(eq(regenProceduresTable.id, pr.id));
+      }
+      procedimentosRegen = procs.length;
       // Notas livres dos follow-ups do caso (escalas e respostas ficam).
       notificacoesRegen = (await tx.update(regenFollowupNotificationsTable)
         .set({ notes: null })
@@ -739,6 +765,7 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
       escolhas: escolhas.length,
       casosRegen: casos.length,
       notificacoesRegen,
+      procedimentosRegen,
       fisio: {
         pacientes: fisioPacienteIds.length,
         vinculosRevogados: vinculosFisio.length,
@@ -774,6 +801,7 @@ router.post("/lgpd/anonimizar-paciente/:id", requireAuth, async (req, res): Prom
     escolhasApoioDecisao: resultado.escolhas,
     casosRegen: resultado.casosRegen,
     notificacoesRegen: resultado.notificacoesRegen,
+    procedimentosRegen: resultado.procedimentosRegen,
     fisioterapia: resultado.fisio,
     preConsultas: resultado.preConsultas,
     anexos: resultado.anexos,

@@ -12,12 +12,13 @@ import {
   apoioDecisaoEscolhasTable, apoioDecisaoExecucoesTable, appointmentsTable, careLinksTable, db, doctorsTable,
   patientAttachmentsTable, patientsTable, physioAppointmentsTable, physioDocumentsTable, physioFollowupsTable,
   physioPatientsTable, physiotherapistsTable, preConsultInvitesTable, preConsultQuestionnairesTable,
-  regenCasesTable, regenFollowupNotificationsTable, rehabAssessmentsTable, rehabInvitesTable,
+  regenCasesTable, regenFollowupNotificationsTable, regenProceduresTable, rehabAssessmentsTable, rehabInvitesTable,
   scheduledNotificationsTable, scheduledSurgeriesTable, storageCleanupJobsTable, surgeriesTable,
   whatsappContactsTable, whatsappConversationsTable, whatsappMessagesTable, whatsappOutboxTable,
 } from "@workspace/db";
 import app from "../app";
 import { hashPassword, signPhysioToken, signToken } from "../lib/auth";
+import { isChaveSensivelRegen } from "../lib/regen-anonymization";
 
 /** Colunas de `patients` com dado pessoal: todas devem ficar nulas (o nome vira o pseudônimo). */
 const PII = [
@@ -38,6 +39,7 @@ let pacienteB: number;
 const ids: Record<string, number> = {};
 const outbox: Record<string, number> = {};
 let casoA: string;
+let procRegen: string;
 let contatoA: number;
 let contatoB: number;
 const anexoPath = `/objects/uploads/anon-pii-${randomUUID()}`;
@@ -139,8 +141,16 @@ beforeAll(async () => {
   const [c] = await db.insert(regenCasesTable).values({
     doctorId, patientId: pacienteA, patientName: "Fulano de Tal", conditionCode: "OA_JOELHO",
     planoOtimizacao: { notas: "Fulano, ligar 1199", meta: "IMC<30" },
+    conditionCustom: "Dor do Fulano após queda na casa da sogra", goalCustom: "Voltar a jogar com o filho João",
+    hospitalLocal: "Clínica da Rua X", productDetails: { PRP: { volume: 4, observacoes: "Fulano ansioso" } },
+    coMeds: [{ name: "Metformina", dose: "500mg" }], priorTreatDates: { fisio: "2026-01-01", notas: "tel 1199" },
   }).returning();
   casoA = c.id;
+  const [proc] = await db.insert(regenProceduresTable).values({
+    caseId: c.id, doctorId, productCode: "PRP", lotNumber: "L123", adverseEvent: true,
+    adverseEventDesc: "Fulano desmaiou", notes: "Esposa Maria acompanhou", biologicDetails: { centrifuga: "X", notes: "Fulano" },
+  }).returning();
+  procRegen = proc.id;
   await db.insert(regenFollowupNotificationsTable).values({ caseId: c.id, periodo: "30d", daysAfterProcedure: 30, notes: "Falar com Fulano" });
 
   // Fila de WhatsApp
@@ -175,6 +185,11 @@ afterAll(async () => {
 });
 
 describe.sequential("anonimização do paciente: nenhum dado pessoal sobra e o fisio perde o acesso", () => {
+  it("chaves de texto livre do JSON regenerativo são sensíveis; chaves clínicas não", () => {
+    for (const k of ["notas", "notes", "observacoes", "comentario", "goalCustom", "endereco", "nome"]) expect(isChaveSensivelRegen(k), k).toBe(true);
+    for (const k of ["volume", "cid", "alcool", "sono_horas", "diagnosticosPorRegiao", "fisio"]) expect(isChaveSensivelRegen(k), k).toBe(false);
+  });
+
   it("toda coluna de patients está classificada (PII ou mantida)", () => {
     const colunas = Object.keys(getTableColumns(patientsTable)).sort();
     expect(colunas).toEqual([...PII, ...MANTIDAS].sort());
@@ -188,7 +203,7 @@ describe.sequential("anonimização do paciente: nenhum dado pessoal sobra e o f
     const res = await api(`/api/lgpd/anonimizar-paciente/${pacienteA}`, { method: "POST" });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
-      execucoesApoioDecisao: 1, escolhasApoioDecisao: 1, casosRegen: 1, notificacoesRegen: 1,
+      execucoesApoioDecisao: 1, escolhasApoioDecisao: 1, casosRegen: 1, notificacoesRegen: 1, procedimentosRegen: 1,
       fisioterapia: { pacientes: 1, vinculosRevogados: 1, convitesRevogados: 1, documentosApagados: 1 },
       preConsultas: 1, anexos: 1, consultas: 1, cirurgiasAgendadas: 1,
       whatsappOutbox: 3, whatsappContatos: 1, whatsappConversas: 1, whatsappMensagens: 1,
@@ -256,6 +271,14 @@ describe.sequential("anonimização do paciente: nenhum dado pessoal sobra e o f
     expect(esc).toMatchObject({ outra: "[anonimizado]", justificativa: null, concordancia: "diverge" });
     const [c] = await db.select().from(regenCasesTable).where(eq(regenCasesTable.id, casoA));
     expect(c.planoOtimizacao).toEqual({ meta: "IMC<30" });
+    expect(c).toMatchObject({ conditionCustom: null, goalCustom: null, hospitalLocal: null, conditionCode: "OA_JOELHO" });
+    expect(c.productDetails).toEqual({ PRP: { volume: 4 } });
+    expect(c.coMeds).toEqual([{ name: "Metformina", dose: "500mg" }]);
+    expect(c.priorTreatDates).toEqual({ fisio: "2026-01-01" });
+    const [pr] = await db.select().from(regenProceduresTable).where(eq(regenProceduresTable.id, procRegen));
+    expect(pr).toMatchObject({ notes: null, adverseEventDesc: null, adverseEvent: true, lotNumber: "L123", productCode: "PRP" });
+    expect(pr.biologicDetails).toEqual({ centrifuga: "X" });
+    expect(JSON.stringify([c, pr])).not.toContain("Fulano");
     const [nt] = await db.select().from(regenFollowupNotificationsTable).where(eq(regenFollowupNotificationsTable.caseId, casoA));
     expect(nt.notes).toBeNull();
   });
