@@ -25,6 +25,31 @@ function normalizePatientName(nome: string): string {
   return nome.trim().toLocaleUpperCase("pt-BR");
 }
 
+/**
+ * LGPD Art. 11: perfil clínico do cadastro (lado dominante, tabagismo, diabetes, nível de atividade)
+ * é dado de saúde sensível e fica restrito ao médico. Secretárias não o recebem nas respostas
+ * nem conseguem gravá-lo.
+ */
+const SENSITIVE_PATIENT_PROFILE_FIELDS = [
+  "ladoDominante",
+  "tabagismo",
+  "diabetes",
+  "nivelAtividade",
+] as const;
+
+type SensitiveProfileField = (typeof SENSITIVE_PATIENT_PROFILE_FIELDS)[number];
+
+function isSecretaryRequest(req: { role?: string }): boolean {
+  return req.role === "secretary";
+}
+
+/** Remove (omite) os campos do perfil clínico sensível; os campos são opcionais no contrato. */
+function stripSensitivePatientProfile<T extends object>(value: T): Omit<T, SensitiveProfileField> {
+  const copy = { ...value } as Record<string, unknown>;
+  for (const field of SENSITIVE_PATIENT_PROFILE_FIELDS) delete copy[field];
+  return copy as Omit<T, SensitiveProfileField>;
+}
+
 router.get("/patients", requireDoctorOrSecretary, async (req, res): Promise<void> => {
   const patients = await db
     .select()
@@ -39,8 +64,9 @@ router.get("/patients", requireDoctorOrSecretary, async (req, res): Promise<void
       .where(eq(surgeriesTable.patientId, patient.id))
       .orderBy(sql`${surgeriesTable.dataCirurgia} DESC NULLS LAST`, desc(surgeriesTable.createdAt));
 
+    const visiblePatient = isSecretaryRequest(req) ? stripSensitivePatientProfile(patient) : patient;
     return {
-      ...patient,
+      ...visiblePatient,
       createdAt: patient.createdAt.toISOString(),
       surgeries: surgeries.map(s => ({
         ...s,
@@ -60,8 +86,13 @@ router.post("/patients", requireDoctorOrSecretary, async (req, res): Promise<voi
     return;
   }
 
+  // Secretária: os campos do perfil clínico sensível são ignorados em silêncio (não 403), para que
+  // um formulário antigo ou um valor residual não impeça o cadastro administrativo. O médico os
+  // preenche depois em PATCH /patients/:id (somente médico).
+  const data = isSecretaryRequest(req) ? stripSensitivePatientProfile(parsed.data) : parsed.data;
+
   const [patient] = await db.insert(patientsTable).values({
-    ...parsed.data,
+    ...data,
     nome: normalizePatientName(parsed.data.nome),
     doctorId: req.doctorId!,
   }).returning();
@@ -75,7 +106,8 @@ router.post("/patients", requireDoctorOrSecretary, async (req, res): Promise<voi
     .where(eq(patientsTable.id, patient.id))
     .returning();
 
-  res.status(201).json({ ...updated, createdAt: updated.createdAt.toISOString() });
+  const visible = isSecretaryRequest(req) ? stripSensitivePatientProfile(updated) : updated;
+  res.status(201).json({ ...visible, createdAt: updated.createdAt.toISOString() });
 });
 
 router.get("/patients/:id", requireAuth, async (req, res): Promise<void> => {

@@ -207,7 +207,7 @@ export type AdminDoctorWithStats = DoctorWithStats & ({
 });
 
 /**
- * Lado dominante (cadastro do paciente)
+ * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
  * @nullable
  */
 export type PatientLadoDominante = typeof PatientLadoDominante[keyof typeof PatientLadoDominante] | null;
@@ -257,7 +257,7 @@ export interface Patient {
   /** @nullable */
   lado?: string | null;
   /**
-     * Lado dominante (cadastro do paciente)
+     * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
      * @nullable
      */
   ladoDominante?: PatientLadoDominante;
@@ -378,7 +378,7 @@ export interface PatientWithSurgeries {
 }
 
 /**
- * Lado dominante (cadastro do paciente)
+ * Lado dominante (cadastro do paciente). LGPD Art. 11: quando o POST é feito pela secretária, ladoDominante, tabagismo, diabetes e nivelAtividade são ignorados (não gravados), sem erro.
  */
 export type CreatePatientBodyLadoDominante = typeof CreatePatientBodyLadoDominante[keyof typeof CreatePatientBodyLadoDominante];
 
@@ -416,7 +416,7 @@ export interface CreatePatientBody {
   sexo?: string;
   telefone?: string;
   lado?: string;
-  /** Lado dominante (cadastro do paciente) */
+  /** Lado dominante (cadastro do paciente). LGPD Art. 11: quando o POST é feito pela secretária, ladoDominante, tabagismo, diabetes e nivelAtividade são ignorados (não gravados), sem erro. */
   ladoDominante?: CreatePatientBodyLadoDominante;
   tabagismo?: CreatePatientBodyTabagismo;
   diabetes?: boolean;

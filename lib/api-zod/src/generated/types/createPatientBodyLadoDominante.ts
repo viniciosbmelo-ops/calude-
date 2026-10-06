@@ -7,7 +7,7 @@
  */
 
 /**
- * Lado dominante (cadastro do paciente)
+ * Lado dominante (cadastro do paciente). LGPD Art. 11: quando o POST é feito pela secretária, ladoDominante, tabagismo, diabetes e nivelAtividade são ignorados (não gravados), sem erro.
  */
 export type CreatePatientBodyLadoDominante = typeof CreatePatientBodyLadoDominante[keyof typeof CreatePatientBodyLadoDominante];
 

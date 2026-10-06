@@ -1147,7 +1147,9 @@ components:
         ladoDominante:
           type: ["string", "null"]
           enum: ["R", "L", "ambidestro", null]
-          description: Lado dominante (cadastro do paciente)
+          description: >-
+            Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e
+            nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
         tabagismo:
           type: ["string", "null"]
           enum: ["nunca", "ex_tabagista", "atual", null]
@@ -1221,7 +1223,9 @@ components:
         ladoDominante:
           type: string
           enum: ["R", "L", "ambidestro"]
-          description: Lado dominante (cadastro do paciente)
+          description: >-
+            Lado dominante (cadastro do paciente). LGPD Art. 11: quando o POST é feito pela secretária,
+            ladoDominante, tabagismo, diabetes e nivelAtividade são ignorados (não gravados), sem erro.
         tabagismo:
           type: string
           enum: ["nunca", "ex_tabagista", "atual"]

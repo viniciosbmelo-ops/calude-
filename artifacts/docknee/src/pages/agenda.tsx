@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarDays, Plus, Phone, Pencil, Trash2, User } from "lucide-react";
-import { cn, formatLocalDate, sortByPtBrName } from "@/lib/utils";
+import { addCalendarDays, clinicTodayDateOnly, cn, sortByPtBrName } from "@/lib/utils";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { operationalAgendaMessages } from "@/locales/operational-agenda";
 
@@ -39,11 +39,6 @@ function cleanPhone(phone: string) {
   return d.startsWith("55") ? d : `55${d}`;
 }
 
-const todayStr = formatLocalDate();
-const tomorrowDate = new Date();
-tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-const tomorrowStr = formatLocalDate(tomorrowDate);
-
 async function responseError(response: Response): Promise<string> {
   try {
     const payload = await response.json() as { error?: string; message?: string };
@@ -53,9 +48,14 @@ async function responseError(response: Response): Promise<string> {
   }
 }
 
-function fmtDay(d: string, locale: string, today: string, tomorrow: string) {
-  if (d === todayStr) return today;
-  if (d === tomorrowStr) return tomorrow;
+function fmtDay(
+  d: string,
+  locale: string,
+  labels: { today: string; tomorrow: string },
+  dates: { todayStr: string; tomorrowStr: string },
+) {
+  if (d === dates.todayStr) return labels.today;
+  if (d === dates.tomorrowStr) return labels.tomorrow;
   const [y, mo, day] = d.split("-").map(Number);
   const dt = new Date(y, mo - 1, day);
   return new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }).format(dt);
@@ -69,6 +69,10 @@ export default function AgendaPage() {
   const qc = useQueryClient();
   const { locale } = useLanguage();
   const t = useScopedTranslations(operationalAgendaMessages);
+  // Clinic-day "today"/"tomorrow" are recomputed on each render (not at module load),
+  // so a tab left open past midnight does not keep showing yesterday as "today".
+  const todayStr = clinicTodayDateOnly();
+  const tomorrowStr = addCalendarDays(todayStr, 1);
   const appointmentTypeLabel: Record<string, string> = {
     consulta: t("typeConsulta"), retorno: t("typeRetorno"), "avaliação pré-op": t("typePreop"),
     "avaliação pós-op": t("typePostop"), curativo: t("typeCurativo"), outro: t("typeOutro"),
@@ -255,7 +259,7 @@ export default function AgendaPage() {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">{fmtDay(day, locale, t("today"), t("tomorrow"))}</p>
+                    <p className="text-sm font-semibold text-foreground">{fmtDay(day, locale, { today: t("today"), tomorrow: t("tomorrow") }, { todayStr, tomorrowStr })}</p>
                     <p className="text-xs text-muted-foreground">{appts.length} {appts.length === 1 ? t("appointment") : t("appointmentsCount")}</p>
                   </div>
                   <div className="h-px flex-1 max-w-[40%] bg-border" />

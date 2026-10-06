@@ -17,6 +17,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { useLanguage, useScopedTranslations } from "@/lib/i18n";
 import { consoleMessages } from "@/locales/console";
 
+// LGPD Art. 11: the secretary console never shows or sends the sensitive clinical profile
+// (ladoDominante, tabagismo, diabetes, nivelAtividade); the API also strips/ignores them for this role.
 type Patient = { id: number; nome: string; telefone: string | null; email: string | null; dataNascimento: string | null };
 type Appointment = {
   id: number; patientId: number; data: string; hora: string; tipo: string;

@@ -7,23 +7,24 @@ import type { AddressInfo } from "node:net";
 import { randomUUID } from "crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { db, doctorsTable, patientsTable } from "@workspace/db";
+import { db, doctorsTable, patientsTable, secretariesTable } from "@workspace/db";
 import app from "../app";
-import { hashPassword, signToken } from "../lib/auth";
+import { hashPassword, signSecretaryToken, signToken } from "../lib/auth";
 import { patientClinicalCsvExtra } from "../lib/patient-clinical-export";
 
 let server: Server;
 let baseUrl: string;
 let doctorId: number;
 let auth: string;
+let secretaryAuth: string;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsonResponse = Omit<Response, "json"> & { json(): Promise<any> };
 
-async function call(path: string, method: string, body?: unknown): Promise<JsonResponse> {
+async function call(path: string, method: string, body?: unknown, token: string = auth): Promise<JsonResponse> {
   return fetch(`${baseUrl}${path}`, {
     method,
-    headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
@@ -39,6 +40,10 @@ beforeAll(async () => {
     .returning();
   doctorId = d.id;
   auth = signToken({ doctorId, isAdmin: false, sessionVersion: d.sessionVersion });
+  const [sec] = await db.insert(secretariesTable)
+    .values({ doctorId, nome: "CP Secretary", email: `cp-secretary-${randomUUID()}@example.test`, senhaHash })
+    .returning();
+  secretaryAuth = signSecretaryToken({ doctorId, secretaryId: sec.id, sessionVersion: sec.sessionVersion });
 });
 
 afterAll(async () => {
@@ -111,5 +116,39 @@ describe.sequential("cadastro do paciente: perfil clínico", () => {
   it("CSV: campos ausentes ficam vazios", () => {
     expect(patientClinicalCsvExtra({ ladoDominante: null, tabagismo: null, diabetes: false, nivelAtividade: null }))
       .toBe("ladoDominante=|tabagismo=|diabetes=nao|nivelAtividade=");
+  });
+});
+
+const SENSITIVE_KEYS = ["ladoDominante", "tabagismo", "diabetes", "nivelAtividade"] as const;
+
+describe.sequential("LGPD Art. 11: secretária não vê nem grava o perfil clínico", () => {
+  it("lista da secretária omite os quatro campos; a do médico os mantém", async () => {
+    const created = await (await call("/api/patients", "POST", { nome: "Paciente Sensivel", ...PERFIL })).json();
+    const secList = await call("/api/patients", "GET", undefined, secretaryAuth);
+    expect(secList.status).toBe(200);
+    const secPatient = (await secList.json()).find((p: { id: number }) => p.id === created.id);
+    expect(secPatient).toBeDefined();
+    expect(secPatient.nome).toBe("PACIENTE SENSIVEL");
+    for (const key of SENSITIVE_KEYS) expect(secPatient, key).not.toHaveProperty(key);
+    const docPatient = (await (await call("/api/patients", "GET")).json()).find((p: { id: number }) => p.id === created.id);
+    expect(docPatient).toMatchObject(PERFIL);
+  });
+
+  it("POST da secretária: campos ignorados em silêncio (201, nada gravado, nada devolvido)", async () => {
+    const res = await call("/api/patients", "POST", { nome: "Paciente Recepcao", ...PERFIL }, secretaryAuth);
+    expect(res.status).toBe(201);
+    const created = await res.json();
+    for (const key of SENSITIVE_KEYS) expect(created, key).not.toHaveProperty(key);
+    const [row] = await db.select().from(patientsTable).where(eq(patientsTable.id, created.id));
+    expect(row).toMatchObject({ doctorId, ladoDominante: null, tabagismo: null, diabetes: null, nivelAtividade: null });
+    // O médico vê o cadastro e pode completar o perfil depois.
+    const got = await (await call(`/api/patients/${created.id}`, "GET")).json();
+    expect(got).toMatchObject({ ladoDominante: null, tabagismo: null, diabetes: null, nivelAtividade: null });
+  });
+
+  it("secretária continua sem acesso ao detalhe/edição do paciente", async () => {
+    const created = await (await call("/api/patients", "POST", { nome: "Paciente Detalhe" })).json();
+    expect((await call(`/api/patients/${created.id}`, "GET", undefined, secretaryAuth)).status).toBeGreaterThanOrEqual(401);
+    expect((await call(`/api/patients/${created.id}`, "PATCH", PERFIL, secretaryAuth)).status).toBeGreaterThanOrEqual(401);
   });
 });

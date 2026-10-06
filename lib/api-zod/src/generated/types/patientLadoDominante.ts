@@ -7,7 +7,7 @@
  */
 
 /**
- * Lado dominante (cadastro do paciente)
+ * Lado dominante (cadastro do paciente). LGPD Art. 11: ladoDominante, tabagismo, diabetes e nivelAtividade são omitidos nas respostas para a secretária e ignorados no POST /patients feito por ela.
  * @nullable
  */
 export type PatientLadoDominante = typeof PatientLadoDominante[keyof typeof PatientLadoDominante] | null;
