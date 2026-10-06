@@ -5,7 +5,7 @@ import { PATHOLOGY_BY_CODE } from '../src/catalog/pathologies';
 import { diagnosisSchemaId } from '../src/catalog/caseTypes';
 import { toIssues } from '../src/ajvMessages';
 import {
-  CLINICAL_PAYLOAD_VERSION, ClinicalPayloadError, PREOP_COMMON_SCHEMA, buildReportInput, parseClinicalPayload, preopFor, validateClinicalPayload
+  CLINICAL_PAYLOAD_VERSION, ClinicalPayloadError, MAX_PREOP_BLOCKS, MAX_PREOP_DEPTH, MAX_PREOP_JSON_BYTES, PREOP_COMMON_SCHEMA, buildReportInput, parseClinicalPayload, preopFor, validateClinicalPayload
 } from '../src/surgery/payload';
 import { coreRight, multiProcedure } from './fixtures';
 
@@ -185,6 +185,30 @@ describe('payload v2 com avaliação pré-operatória', () => {
     expect(() => parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: {} }, { codigo: 'SH_RCT_FULL', dados: {} }]))).toThrow(/repetida/);
     expect(() => parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: [] }]))).toThrow(/objeto/);
     expect(() => parseClinicalPayload(withBlocks(Array.from({ length: 11 }, () => ({ codigo: 'SH_RCT', dados: {} }))))).toThrow(/até 10/);
+  });
+  test('limites de tamanho e aninhamento já no rascunho (comum e cada dados)', () => {
+    const withBlocks = (patologias: unknown, extra: Record<string, unknown> = {}) => ({ ...v1(), avaliacaoPreop: { patologias, ...extra } });
+    /** Objeto com `n` níveis de aninhamento (o próprio objeto conta 1). */
+    const aninhado = (n: number): Record<string, unknown> => (n <= 1 ? { x: 1 } : { x: aninhado(n - 1) });
+    const grande = (bytes: number) => ({ texto: 'a'.repeat(bytes) });
+    expect(MAX_PREOP_BLOCKS).toBe(10);
+    // No limite: aceito
+    expect(parseClinicalPayload(withBlocks([], { comum: { ...comum, extra: aninhado(MAX_PREOP_DEPTH - 1) } })).avaliacaoPreop).toBeDefined();
+    expect(parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: { extra: aninhado(MAX_PREOP_DEPTH - 1) } }])).avaliacaoPreop).toBeDefined();
+    expect(parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: grande(MAX_PREOP_JSON_BYTES - 100) }])).avaliacaoPreop).toBeDefined();
+    // Acima: recusado (arrays contam como nível)
+    expect(() => parseClinicalPayload(withBlocks([], { comum: { extra: aninhado(MAX_PREOP_DEPTH) } }))).toThrow(/comum: aninhamento de até 5/);
+    expect(() => parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: { a: [[[[[1]]]]] } }]))).toThrow(/dados: aninhamento/);
+    expect(() => parseClinicalPayload(withBlocks([], { comum: grande(MAX_PREOP_JSON_BYTES) }))).toThrow(/comum: até 64 KB/);
+    expect(() => parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: grande(MAX_PREOP_JSON_BYTES) }]))).toThrow(/dados: até 64 KB/);
+    // Bytes, não caracteres: texto multibyte conta pelo tamanho em UTF-8
+    expect(() => parseClinicalPayload(withBlocks([{ codigo: 'SH_RCT', dados: { t: 'é'.repeat(MAX_PREOP_JSON_BYTES / 2) } }]))).toThrow(/64 KB/);
+    // Aninhamento patológico não estoura a pilha
+    let fundo: Record<string, unknown> = {};
+    for (let i = 0; i < 100000; i++) fundo = { x: fundo };
+    expect(() => parseClinicalPayload(withBlocks([], { comum: fundo }))).toThrow(/aninhamento/);
+    // Campos antigos do cadastro também contam para o limite (são descartados depois)
+    expect(() => parseClinicalPayload(withBlocks([], { comum: { ...comumLegado, tabagismo: grande(MAX_PREOP_JSON_BYTES) } }))).toThrow(/64 KB/);
   });
 });
 

@@ -121,11 +121,15 @@ export const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "surgeries", column: "regiao" },
   { table: "surgeries", column: "dados_clinicos" },
   // Apoio à decisão — versão travada por hash e escolha do cirurgião
-  { table: "apoio_decisao_execucoes", column: "algoritmo_hash" },
-  { table: "apoio_decisao_execucoes", column: "resultado" },
-  { table: "apoio_decisao_execucoes", column: "conflitos" },
-  { table: "apoio_decisao_escolhas", column: "concordancia" },
-  { table: "apoio_decisao_status", column: "algoritmo_hash" },
+  // (todas as colunas lidas/gravadas pela rota e pela anonimização LGPD).
+  ...["id", "doctor_id", "patient_id", "surgery_id", "algoritmo_id", "algoritmo_versao",
+    "algoritmo_hash", "status_no_momento", "motor_versao", "modo", "entrada", "proveniencia",
+    "conflitos", "params_ignorados", "resultado", "created_at"]
+    .map((column) => ({ table: "apoio_decisao_execucoes", column })),
+  ...["id", "execucao_id", "doctor_id", "opcao", "outra", "concordancia", "justificativa", "created_at"]
+    .map((column) => ({ table: "apoio_decisao_escolhas", column })),
+  ...["id", "algoritmo_id", "algoritmo_versao", "algoritmo_hash", "status", "doctor_id", "nota", "created_at"]
+    .map((column) => ({ table: "apoio_decisao_status", column })),
 ];
 
 /**

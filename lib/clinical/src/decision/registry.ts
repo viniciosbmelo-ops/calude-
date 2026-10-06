@@ -11,7 +11,11 @@ import LOCK from './versions.lock.json';
 
 export const DECISION_ALGORITHMS: readonly AlgorithmDef[] = ALGORITMOS_REGISTRADOS.map((a) => a.def);
 
-/** 'ID@versão' → mapeador do registro cirúrgico (fora do hash). */
+/**
+ * 'ID@versão' → mapeador do registro cirúrgico. FORA do hash de conteúdo: mudar um mapeador não muda o hash nem
+ * o status gravado. Mudança de mapeador exige revisão manual e, se altera alguma entrada, nova versão do
+ * algoritmo (ver governance.ts).
+ */
 export const DECISION_MAPPERS: Readonly<Record<string, MapeadorEntrada>> = Object.fromEntries(
   ALGORITMOS_REGISTRADOS.flatMap((a) => (a.mapear ? [[algorithmKey(a.def), a.mapear]] : [])),
 );

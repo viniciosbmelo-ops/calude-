@@ -29,6 +29,10 @@ export const PREOP_COMMON_SCHEMA = 'PREOP_COMMON.v2';
 /** Limite de sub-blocos por patologia na avaliação pré-operatória. */
 export const MAX_PREOP_BLOCKS = 10;
 export const MAX_FREE_TEXT = 4000;
+/** Tamanho máximo (bytes do JSON) de `avaliacaoPreop.comum` e de cada `patologias[].dados`, também no rascunho. */
+export const MAX_PREOP_JSON_BYTES = 64 * 1024;
+/** Profundidade máxima de aninhamento (o próprio objeto conta 1) de `comum` e de cada `patologias[].dados`. */
+export const MAX_PREOP_DEPTH = 5;
 
 export type SurgerySideLabel = 'Direito' | 'Esquerdo';
 
@@ -206,18 +210,44 @@ export function parseClinicalPayload(raw: unknown): ClinicalPayload {
   return out;
 }
 
+/** Profundidade de objetos/arrays aninhados (escalar = 0); para de descer ao passar de `limite`. */
+function profundidade(v: unknown, limite: number): number {
+  if (typeof v !== 'object' || v === null) return 0;
+  if (limite <= 0) return 1;
+  let max = 0;
+  for (const filho of Object.values(v)) {
+    const d = profundidade(filho, limite - 1);
+    if (d > max) max = d;
+    if (max >= limite) break;
+  }
+  return 1 + max;
+}
+
+/** Limita aninhamento e tamanho de um objeto livre da avaliação pré-operatória (rascunho e finalização). */
+function limitarObjetoPreop(obj: Record<string, unknown>, campo: string): void {
+  if (profundidade(obj, MAX_PREOP_DEPTH) > MAX_PREOP_DEPTH) {
+    throw new ClinicalPayloadError(`${campo}: aninhamento de até ${MAX_PREOP_DEPTH} níveis.`);
+  }
+  if (new TextEncoder().encode(JSON.stringify(obj)).length > MAX_PREOP_JSON_BYTES) {
+    throw new ClinicalPayloadError(`${campo}: até ${MAX_PREOP_JSON_BYTES / 1024} KB.`);
+  }
+}
+
 /**
  * Forma do bloco `avaliacaoPreop` (rascunho). Tipos e faixas dos campos ficam para a finalização
  * (schemas PREOP_COMMON.v2 e `<código>.diagnosis.vN`), como nos dados intraoperatórios.
  * Campos comuns que passaram para o cadastro do paciente (lado dominante, tabagismo, diabetes, nível de
  * atividade) são descartados: payloads antigos continuam válidos e não duplicam o cadastro.
  * Bloco vazio (sem campos comuns nem sub-blocos) é omitido: o payload fica igual ao de um v1.
+ * Já no rascunho, `comum` e cada `dados` têm teto de tamanho (MAX_PREOP_JSON_BYTES) e de aninhamento
+ * (MAX_PREOP_DEPTH), e a lista de patologias tem no máximo MAX_PREOP_BLOCKS itens.
  */
 function parsePreopAssessment(raw: unknown, regiao: Region): PreopAssessment | undefined {
   if (raw === undefined || raw === null) return undefined;
   if (!isObj(raw)) throw new ClinicalPayloadError('avaliacaoPreop deve ser um objeto.');
   const comumRaw = raw.comum ?? {};
   if (!isObj(comumRaw)) throw new ClinicalPayloadError('avaliacaoPreop.comum deve ser um objeto.');
+  limitarObjetoPreop(comumRaw, 'avaliacaoPreop.comum');
   const comum = semCamposDoCadastro(comumRaw);
   const list = raw.patologias ?? [];
   if (!Array.isArray(list) || list.length > MAX_PREOP_BLOCKS) throw new ClinicalPayloadError(`avaliacaoPreop.patologias: lista de até ${MAX_PREOP_BLOCKS} itens.`);
@@ -234,6 +264,7 @@ function parsePreopAssessment(raw: unknown, regiao: Region): PreopAssessment | u
     seen.add(schema);
     const dados = e.dados ?? {};
     if (!isObj(dados)) throw new ClinicalPayloadError(`${n}: dados devem ser um objeto.`);
+    limitarObjetoPreop(dados, `${n}: dados`);
     return { codigo: def.code, schema, dados: { ...dados } };
   });
   if (Object.keys(comum).length === 0 && patologias.length === 0) return undefined;

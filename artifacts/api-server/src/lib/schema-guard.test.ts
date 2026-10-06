@@ -28,6 +28,12 @@ vi.mock("./logger", () => ({
   },
 }));
 
+import { getTableConfig } from "drizzle-orm/pg-core";
+import {
+  apoioDecisaoEscolhasTable,
+  apoioDecisaoExecucoesTable,
+  apoioDecisaoStatusTable,
+} from "@workspace/db/schema";
 import {
   assertRequiredSchema,
   REQUIRED_TABLES,
@@ -68,6 +74,25 @@ describe("assertRequiredSchema", () => {
         "apoio_decisao_status",
       ]),
     );
+  });
+
+  it("guards every column of the decision-support tables in the Drizzle schema", () => {
+    for (const table of [
+      apoioDecisaoExecucoesTable,
+      apoioDecisaoEscolhasTable,
+      apoioDecisaoStatusTable,
+    ]) {
+      const { name, columns } = getTableConfig(table);
+      const guarded = new Set(
+        REQUIRED_COLUMNS.filter((c) => c.table === name).map((c) => c.column),
+      );
+      const unguarded = columns.map((c) => c.name).filter((c) => !guarded.has(c));
+      expect({ table: name, unguarded }).toEqual({ table: name, unguarded: [] });
+    }
+    expect(REQUIRED_COLUMNS).toContainEqual({
+      table: "apoio_decisao_execucoes",
+      column: "params_ignorados",
+    });
   });
 
   it("passes when all required tables and columns exist", async () => {

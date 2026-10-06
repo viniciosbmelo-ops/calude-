@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import { randomUUID } from "crypto";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   apoioDecisaoEscolhasTable,
@@ -193,7 +193,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db.delete(apoioDecisaoStatusTable).where(inArray(apoioDecisaoStatusTable.algoritmoId, [ALG_ID, ALG_P]));
+  // Status é só de inserção no banco (lib/db/pre-push/0002): a limpeza do teste usa a válvula de manutenção.
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`SET LOCAL apoio_decisao.manutencao = 'on'`);
+    await tx.delete(apoioDecisaoStatusTable).where(inArray(apoioDecisaoStatusTable.algoritmoId, [ALG_ID, ALG_P]));
+  });
   const ids = [doctorId, otherDoctorId, adminId].filter(Boolean);
   if (ids.length) await db.delete(doctorsTable).where(inArray(doctorsTable.id, ids));
   if (flagBefore) await db.update(featureFlagsTable).set({ enabled: flagBefore.enabled }).where(eq(featureFlagsTable.id, flagBefore.id));
