@@ -149,7 +149,7 @@ describe.sequential("anonimização do paciente: cópias no apoio à decisão e 
     expect(c.patientName).toMatch(/^Paciente Anonimizado #/);
     expect(c).toMatchObject({ patientDob: null, patientPhone: null, dm: null, hba1c: null });
     expect(c.anamneseRegen).toEqual({ alcool: "social", sono_horas: 7, diagnosticosPorRegiao: { joelho_d: { cid: "M17.1" } } });
-    expect(c.planoOtimizacao).toEqual({ notas: "parar de fumar" });
+    expect(c.planoOtimizacao).toEqual({});
     expect(c).toMatchObject({ conditionCode: "OA_JOELHO", ladoArticulacao: "D", plannedProducts: ["PRP"], patientSex: "M", anticoagulant: true });
     const [ia] = await db.select().from(regenAiInteractionsTable).where(eq(regenAiInteractionsTable.caseId, casos.a!));
     expect(ia.rawOutput).toMatchObject({ anonimizado: true });

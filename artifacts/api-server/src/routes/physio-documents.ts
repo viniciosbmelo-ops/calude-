@@ -7,8 +7,9 @@ import {
   physioPatientsTable,
   physiotherapistsTable,
   rehabAssessmentsTable,
+  PHYSIO_PATIENT_ANONYMIZED,
 } from "@workspace/db";
-import { and, eq, desc, isNull } from "drizzle-orm";
+import { and, eq, ne, desc, isNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import PDFDocument from "pdfkit";
 import { requirePhysio } from "../middlewares/requireAuth";
@@ -102,6 +103,7 @@ async function getOwnedPatient(physioId: number, patientId: number) {
     .where(and(
       eq(physioPatientsTable.id, patientId),
       eq(physioPatientsTable.physioId, physioId),
+      ne(physioPatientsTable.status, PHYSIO_PATIENT_ANONYMIZED),
     ))
     .limit(1);
   return patient ?? null;

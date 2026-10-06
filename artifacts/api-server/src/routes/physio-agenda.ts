@@ -3,6 +3,7 @@ import {
   db,
   physioAppointmentsTable,
   physioPatientsTable,
+  PHYSIO_PATIENT_ANONYMIZED,
 } from "@workspace/db";
 import { and, eq, ne, lt, gt, gte, lte } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -58,6 +59,7 @@ async function validatePatientOwnership(physioId: number, physioPatientId: numbe
     .where(and(
       eq(physioPatientsTable.id, physioPatientId),
       eq(physioPatientsTable.physioId, physioId),
+      ne(physioPatientsTable.status, PHYSIO_PATIENT_ANONYMIZED),
     )).limit(1);
   return !!p;
 }

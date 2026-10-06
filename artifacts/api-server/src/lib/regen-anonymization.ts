@@ -31,9 +31,12 @@ export function limparJsonRegen(valor: unknown): unknown {
   );
 }
 
-/** Plano de otimização: o texto gerado (`gerado`) sai inteiro; o restante passa pelo filtro de chaves. */
+/**
+ * Plano de otimização: o texto gerado (`gerado`) e as notas livres do médico (`notas`) saem inteiros (texto livre
+ * pode citar nome, telefone, hábitos); o restante passa pelo filtro de chaves.
+ */
 export function limparPlanoOtimizacao(valor: unknown): unknown {
   if (valor === null || typeof valor !== "object" || Array.isArray(valor)) return limparJsonRegen(valor);
-  const { gerado: _gerado, ...resto } = valor as Record<string, unknown>;
+  const { gerado: _gerado, notas: _notas, ...resto } = valor as Record<string, unknown>;
   return limparJsonRegen(resto);
 }

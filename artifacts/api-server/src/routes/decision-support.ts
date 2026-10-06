@@ -198,96 +198,106 @@ export function createDecisionSupportRouter(registry: DecisionRegistry = decisio
     const aplicaOverrides = overrides !== undefined && req.isAdmin === true && modoGravado === "revisao";
     const parametrosIgnorados = overrides !== undefined && !aplicaOverrides;
 
-    let patientId: number | null = body.patientId ?? null;
-    const surgeryId: number | null = body.surgeryId ?? null;
-    let contexto: Omit<ContextoMapeamento, "manual"> | undefined;
-    if (surgeryId !== null) {
-      const [s] = await db
-        .select({
-          patientId: surgeriesTable.patientId,
-          dadosClinicos: surgeriesTable.dadosClinicos,
-          dataCirurgia: surgeriesTable.dataCirurgia,
-          lado: surgeriesTable.lado,
-          dataNascimento: patientsTable.dataNascimento,
-          // Cadastro do paciente: os algoritmos leem estes campos daqui (não do pré-op da cirurgia)
-          ladoDominante: patientsTable.ladoDominante,
-          tabagismo: patientsTable.tabagismo,
-          diabetes: patientsTable.diabetes,
-          nivelAtividade: patientsTable.nivelAtividade,
+    // Vinculada a paciente: o cadastro é lido FOR SHARE na mesma transação que grava a execução, para que uma
+    // anonimização concorrente (que trava o paciente FOR UPDATE) ou espere esta gravação e a limpe, ou termine antes
+    // e esta leia o cadastro já anonimizado — nunca uma execução nova com o perfil antigo depois da anonimização.
+    const gravada = await db.transaction(async (tx) => {
+      let patientId: number | null = body.patientId ?? null;
+      const surgeryId: number | null = body.surgeryId ?? null;
+      let contexto: Omit<ContextoMapeamento, "manual"> | undefined;
+      if (surgeryId !== null) {
+        const [s] = await tx
+          .select({
+            patientId: surgeriesTable.patientId,
+            dadosClinicos: surgeriesTable.dadosClinicos,
+            dataCirurgia: surgeriesTable.dataCirurgia,
+            lado: surgeriesTable.lado,
+            dataNascimento: patientsTable.dataNascimento,
+            // Cadastro do paciente: os algoritmos leem estes campos daqui (não do pré-op da cirurgia)
+            ladoDominante: patientsTable.ladoDominante,
+            tabagismo: patientsTable.tabagismo,
+            diabetes: patientsTable.diabetes,
+            nivelAtividade: patientsTable.nivelAtividade,
+          })
+          .from(surgeriesTable)
+          .innerJoin(patientsTable, and(eq(patientsTable.id, surgeriesTable.patientId), eq(patientsTable.doctorId, req.doctorId!)))
+          .where(and(eq(surgeriesTable.id, surgeryId), eq(surgeriesTable.doctorId, req.doctorId!)))
+          .limit(1)
+          .for("share", { of: patientsTable });
+        if (!s) {
+          res.status(404).json({ error: "Cirurgia não encontrada.", code: "SURGERY_NOT_FOUND" });
+          return null;
+        }
+        if (patientId !== null && patientId !== s.patientId) {
+          res.status(422).json({ error: "A cirurgia não pertence a este paciente.", code: "PATIENT_SURGERY_MISMATCH" });
+          return null;
+        }
+        patientId = s.patientId;
+        contexto = {
+          payload: payloadParaMapeamento(s.dadosClinicos),
+          dataNascimento: s.dataNascimento,
+          paciente: perfilClinicoDe(s),
+          dataReferencia: s.dataCirurgia,
+          lado: s.lado,
+        };
+      } else if (patientId !== null) {
+        const [p] = await tx
+          .select({ id: patientsTable.id })
+          .from(patientsTable)
+          .where(and(eq(patientsTable.id, patientId), eq(patientsTable.doctorId, req.doctorId!)))
+          .limit(1)
+          .for("share");
+        if (!p) {
+          res.status(404).json({ error: "Paciente não encontrado.", code: "PATIENT_NOT_FOUND" });
+          return null;
+        }
+      }
+
+      let resultado: ResultadoApoio;
+      let montada: EntradaMontada;
+      try {
+        // Com cirurgia: registro (mapeador do algoritmo) + manual, sem o manual sobrescrever o registro
+        montada = montarEntrada(entry.def, entry.mapear, contexto, body.entrada);
+        resultado = evaluate(entry.def, montada.entrada, {
+          status,
+          hash: entry.hash,
+          modo: body.modo,
+          ...(aplicaOverrides ? { parametros: overrides } : {}),
+        });
+      } catch (err) {
+        if (err instanceof ClinicalGuardError) {
+          res.status(422).json({ error: err.message, code: err.code, ...(err.field ? { field: err.field } : {}) });
+          return null;
+        }
+        throw err;
+      }
+      // Proveniência só das entradas efetivamente usadas (o modo preop descarta as intraoperatórias)
+      const proveniencia: Record<string, ProvenienciaEntrada> = {};
+      for (const k of Object.keys(resultado.entrada)) proveniencia[k] = montada.proveniencia[k] ?? { de: "manual" };
+
+      const [row] = await tx
+        .insert(apoioDecisaoExecucoesTable)
+        .values({
+          doctorId: req.doctorId!,
+          patientId,
+          surgeryId,
+          algoritmoId: entry.def.id,
+          algoritmoVersao: entry.def.versao,
+          algoritmoHash: entry.hash,
+          statusNoMomento: status,
+          motorVersao: resultado.motor,
+          modo: modoGravado,
+          entrada: resultado.entrada,
+          proveniencia,
+          conflitos: montada.conflitos,
+          parametrosIgnorados,
+          resultado,
         })
-        .from(surgeriesTable)
-        .innerJoin(patientsTable, and(eq(patientsTable.id, surgeriesTable.patientId), eq(patientsTable.doctorId, req.doctorId!)))
-        .where(and(eq(surgeriesTable.id, surgeryId), eq(surgeriesTable.doctorId, req.doctorId!)))
-        .limit(1);
-      if (!s) {
-        res.status(404).json({ error: "Cirurgia não encontrada.", code: "SURGERY_NOT_FOUND" });
-        return;
-      }
-      if (patientId !== null && patientId !== s.patientId) {
-        res.status(422).json({ error: "A cirurgia não pertence a este paciente.", code: "PATIENT_SURGERY_MISMATCH" });
-        return;
-      }
-      patientId = s.patientId;
-      contexto = {
-        payload: payloadParaMapeamento(s.dadosClinicos),
-        dataNascimento: s.dataNascimento,
-        paciente: perfilClinicoDe(s),
-        dataReferencia: s.dataCirurgia,
-        lado: s.lado,
-      };
-    } else if (patientId !== null) {
-      const [p] = await db
-        .select({ id: patientsTable.id })
-        .from(patientsTable)
-        .where(and(eq(patientsTable.id, patientId), eq(patientsTable.doctorId, req.doctorId!)))
-        .limit(1);
-      if (!p) {
-        res.status(404).json({ error: "Paciente não encontrado.", code: "PATIENT_NOT_FOUND" });
-        return;
-      }
-    }
-
-    let resultado: ResultadoApoio;
-    let montada: EntradaMontada;
-    try {
-      // Com cirurgia: registro (mapeador do algoritmo) + manual, sem o manual sobrescrever o registro
-      montada = montarEntrada(entry.def, entry.mapear, contexto, body.entrada);
-      resultado = evaluate(entry.def, montada.entrada, {
-        status,
-        hash: entry.hash,
-        modo: body.modo,
-        ...(aplicaOverrides ? { parametros: overrides } : {}),
-      });
-    } catch (err) {
-      if (err instanceof ClinicalGuardError) {
-        res.status(422).json({ error: err.message, code: err.code, ...(err.field ? { field: err.field } : {}) });
-        return;
-      }
-      throw err;
-    }
-    // Proveniência só das entradas efetivamente usadas (o modo preop descarta as intraoperatórias)
-    const proveniencia: Record<string, ProvenienciaEntrada> = {};
-    for (const k of Object.keys(resultado.entrada)) proveniencia[k] = montada.proveniencia[k] ?? { de: "manual" };
-
-    const [row] = await db
-      .insert(apoioDecisaoExecucoesTable)
-      .values({
-        doctorId: req.doctorId!,
-        patientId,
-        surgeryId,
-        algoritmoId: entry.def.id,
-        algoritmoVersao: entry.def.versao,
-        algoritmoHash: entry.hash,
-        statusNoMomento: status,
-        motorVersao: resultado.motor,
-        modo: modoGravado,
-        entrada: resultado.entrada,
-        proveniencia,
-        conflitos: montada.conflitos,
-        parametrosIgnorados,
-        resultado,
-      })
-      .returning({ id: apoioDecisaoExecucoesTable.id });
+        .returning({ id: apoioDecisaoExecucoesTable.id });
+      return { row, resultado, montada, proveniencia };
+    });
+    if (!gravada) return;
+    const { row, resultado, montada, proveniencia } = gravada;
     res.status(201).json({
       execucaoId: row.id,
       modo: modoGravado,

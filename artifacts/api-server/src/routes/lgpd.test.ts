@@ -7,17 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 
-// ── Re-implement csvCell locally to test it in isolation ─────────────────────
-// (The route file doesn't export it, so we test the specification here and
-//  verify the lgpd.ts implementation matches via typecheck.)
-
-function csvCell(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const s = String(value)
-    .replace(/[\x00-\x1F\x7F]/g, " ")
-    .replace(/"/g, '""');
-  return `"${s}"`;
-}
+import { csvCell } from "../lib/csv-cell";
 
 describe("csvCell safety", () => {
   it("wraps values in double quotes", () => {
@@ -44,16 +34,24 @@ describe("csvCell safety", () => {
     expect(result).not.toContain("\t");
   });
 
-  it("prevents CSV formula injection (=, +, -, @)", () => {
-    // Formula chars like = are kept but the value is wrapped in double-quotes,
-    // which causes Excel/LibreOffice to treat them as text rather than formulas.
-    // Single-quotes and ! are not control chars so they pass through unmodified.
-    const result = csvCell("=cmd|' /C calc'!A0");
-    // Must be quoted
-    expect(result.startsWith('"')).toBe(true);
-    expect(result.endsWith('"')).toBe(true);
-    // No control characters should be present
-    expect(result).not.toMatch(/[\x00-\x1F\x7F]/);
+  it("prevents CSV formula injection (=, +, -, @, tab, CR) with a leading apostrophe", () => {
+    expect(csvCell("=cmd|' /C calc'!A0")).toBe(`"'=cmd|' /C calc'!A0"`);
+    expect(csvCell("+1+1")).toBe(`"'+1+1"`);
+    expect(csvCell("-2+3")).toBe(`"'-2+3"`);
+    expect(csvCell("@SUM(A1)")).toBe(`"'@SUM(A1)"`);
+    expect(csvCell("\t=1")).toBe(`"' =1"`);
+    expect(csvCell("\r=1")).toBe(`"' =1"`);
+    expect(csvCell('=HYPERLINK("http://x")')).toBe(`"'=HYPERLINK(""http://x"")"`);
+    for (const v of ["=1", "+1", "-1", "@a", "\t1", "\r1"]) {
+      expect(csvCell(v)).not.toMatch(/[\x00-\x1F\x7F]/);
+      expect(csvCell(v).startsWith(`"'`)).toBe(true);
+    }
+  });
+
+  it("leaves safe text and numbers untouched", () => {
+    expect(csvCell("Paciente = ok")).toBe('"Paciente = ok"');
+    expect(csvCell("a-b")).toBe('"a-b"');
+    expect(csvCell(-5)).toBe('"-5"');
   });
 
   it("returns empty string for null", () => {

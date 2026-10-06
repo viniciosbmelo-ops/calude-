@@ -14,9 +14,10 @@ import {
   doctorsTable,
   whatsappOutboxTable,
   whatsappDeliveryAuditTable,
+  PHYSIO_PATIENT_ANONYMIZED,
 } from "@workspace/db";
 import crypto from "crypto";
-import { and, or, eq, sql, desc, asc, lt, gt, gte, lte, inArray } from "drizzle-orm";
+import { and, or, eq, ne, sql, desc, asc, lt, gt, gte, lte, inArray } from "drizzle-orm";
 import { mapSurgeryToProtocol, PROTOCOL_LABELS, surgeryProcedureLabel } from "../services/surgeryProtocolMap";
 import { buildRedFlagMessage } from "../services/redFlagAlerts";
 import { requirePhysio } from "../middlewares/requireAuth";
@@ -55,6 +56,8 @@ async function getOwnedPatient(physioId: number, patientId: number) {
     .where(and(
       eq(physioPatientsTable.id, patientId),
       eq(physioPatientsTable.physioId, physioId),
+      // Paciente anonimizado pelo médico (LGPD): o fisio perde o acesso; a linha fica só para estatística.
+      ne(physioPatientsTable.status, PHYSIO_PATIENT_ANONYMIZED),
     ))
     .limit(1);
   return patient ?? null;
@@ -174,7 +177,10 @@ router.post("/physio/patients", enforcePatientLimit, async (req, res): Promise<v
 
 router.get("/physio/patients", async (req, res): Promise<void> => {
   const status = typeof req.query.status === "string" ? req.query.status : null;
-  const conditions = [eq(physioPatientsTable.physioId, req.physioId!)];
+  const conditions = [
+    eq(physioPatientsTable.physioId, req.physioId!),
+    ne(physioPatientsTable.status, PHYSIO_PATIENT_ANONYMIZED),
+  ];
   if (status) conditions.push(eq(physioPatientsTable.status, status));
 
   const rows = await db.select({

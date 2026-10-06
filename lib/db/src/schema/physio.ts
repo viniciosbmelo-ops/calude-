@@ -69,6 +69,11 @@ export const rehabProtocolsTable = pgTable("rehab_protocols", {
 ]);
 
 // ── 5. Pacientes do fisioterapeuta ──────────────────────────────────────────
+/**
+ * Status gravado quando o médico anonimiza o paciente de origem (LGPD): a linha fica só para estatística
+ * (avaliações sem identificação) e nenhuma rota do fisio a lista ou abre.
+ */
+export const PHYSIO_PATIENT_ANONYMIZED = "anonymized";
 export const physioPatientsTable = pgTable("physio_patients", {
   id: serial("id").primaryKey(),
   physioId: integer("physio_id").notNull().references(() => physiotherapistsTable.id, { onDelete: "cascade" }),
@@ -83,7 +88,7 @@ export const physioPatientsTable = pgTable("physio_patients", {
   protocolId: integer("protocol_id").references(() => rehabProtocolsTable.id), // NULL quando 'outro'
   protocolStartDate: date("protocol_start_date"), // data cirurgia OU início tratamento
   protocolCustomized: boolean("protocol_customized").notNull().default(false),
-  status: text("status").notNull().default("active"), // active | discharged | abandoned
+  status: text("status").notNull().default("active"), // active | discharged | abandoned | anonymized
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   unique("physio_patients_physio_care_link_unique").on(t.physioId, t.careLinkId),
