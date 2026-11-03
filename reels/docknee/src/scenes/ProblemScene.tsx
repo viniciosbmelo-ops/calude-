@@ -7,6 +7,8 @@ import {
   useCurrentFrame,
 } from "remotion";
 import { COLORS, FONT, SAFE, clamp } from "../theme";
+import { PROBLEM_BEATS } from "../timeline";
+import { beatPulse, useSceneClock, type SceneClockProps } from "./common";
 
 const Background: React.FC = () => {
   const frame = useCurrentFrame();
@@ -31,11 +33,13 @@ const StruckWord: React.FC<{ lines: string[]; size: number }> = ({
         alignItems: "center",
         paddingLeft: SAFE.side,
         paddingRight: SAFE.side,
-        opacity: interpolate(frame, [0, 4], [0, 1], clamp),
-        scale: interpolate(frame, [0, 9], [1.6, 1], {
+        opacity: interpolate(frame, [0, 3], [0, 1], clamp),
+        scale: interpolate(frame, [0, 8], [1.6, 1], {
           ...clamp,
           easing: Easing.spring({ damping: 14, stiffness: 200 }),
         }),
+        // little shake when the strike hits (on the off-beat)
+        translate: `${frame >= 15 && frame < 21 ? Math.sin(frame * 3) * 10 : 0}px 0px`,
       }}
     >
       {lines.map((line, i) => (
@@ -61,8 +65,8 @@ const StruckWord: React.FC<{ lines: string[]; size: number }> = ({
               height: 14,
               borderRadius: 7,
               backgroundColor: COLORS.blue,
-              opacity: frame >= 14 + i * 3 ? 1 : 0,
-              width: interpolate(frame, [14 + i * 3, 22 + i * 3], ["0%", "105%"], {
+              opacity: frame >= 15 + i * 3 ? 1 : 0,
+              width: interpolate(frame, [15 + i * 3, 21 + i * 3], ["0%", "105%"], {
                 ...clamp,
                 easing: Easing.bezier(0.65, 0, 0.35, 1),
               }),
@@ -93,7 +97,7 @@ const Punchline: React.FC = () => {
       }}
     >
       {lines.map((l, i) => {
-        const s = i * 4;
+        const s = i * 3;
         return (
           <div
             key={l.text}
@@ -119,20 +123,23 @@ const Punchline: React.FC = () => {
   );
 };
 
-export const ProblemScene: React.FC = () => {
+export const ProblemScene: React.FC<SceneClockProps> = (clock) => {
+  const { f, abs } = useSceneClock(clock);
+  const [a, b, c, d] = PROBLEM_BEATS.map((x) => x + clock.lead);
+  const pulse = beatPulse(abs);
   return (
-    <AbsoluteFill>
+    <AbsoluteFill style={{ scale: 1 + pulse * 0.015 + Math.max(0, f - 60) * 0.0008 }}>
       <Background />
-      <Sequence  durationInFrames={30} layout="absolute-fill" name="Papel">
+      <Sequence from={a} durationInFrames={b - a} layout="absolute-fill" name="Papel">
         <StruckWord lines={["Papel."]} size={170} />
       </Sequence>
-      <Sequence from={30} durationInFrames={30} layout="absolute-fill" name="Planilha">
+      <Sequence from={b} durationInFrames={c - b} layout="absolute-fill" name="Planilha">
         <StruckWord lines={["Planilha."]} size={150} />
       </Sequence>
-      <Sequence from={60} durationInFrames={36} layout="absolute-fill" name="Foto solta">
+      <Sequence from={c} durationInFrames={d - c} layout="absolute-fill" name="Foto solta">
         <StruckWord lines={["Foto solta", "no celular."]} size={130} />
       </Sequence>
-      <Sequence from={96} layout="absolute-fill" name="Punchline">
+      <Sequence from={d} layout="absolute-fill" name="Punchline">
         <Punchline />
       </Sequence>
     </AbsoluteFill>

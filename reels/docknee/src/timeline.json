@@ -1,0 +1,270 @@
+{
+  "fps": 30,
+  "bpm": 120,
+  "framesPerBeat": 15,
+  "framesPerBar": 60,
+  "firstDownbeat": 30,
+  "totalFrames": 1800,
+  "scenes": [
+    {
+      "id": "hook",
+      "start": 0,
+      "end": 90
+    },
+    {
+      "id": "problem",
+      "start": 90,
+      "end": 210,
+      "tIn": {
+        "type": "whip",
+        "frames": 12
+      }
+    },
+    {
+      "id": "reveal",
+      "start": 210,
+      "end": 270,
+      "tIn": {
+        "type": "zoomThrough",
+        "frames": 16
+      }
+    },
+    {
+      "id": "f1",
+      "start": 270,
+      "end": 465,
+      "tIn": {
+        "type": "barWipe",
+        "frames": 14
+      }
+    },
+    {
+      "id": "c1",
+      "start": 465,
+      "end": 510,
+      "tIn": {
+        "type": "whip",
+        "frames": 10
+      }
+    },
+    {
+      "id": "f2",
+      "start": 510,
+      "end": 705,
+      "tIn": {
+        "type": "chevron",
+        "frames": 14
+      }
+    },
+    {
+      "id": "c2",
+      "start": 705,
+      "end": 750,
+      "tIn": {
+        "type": "zoomThrough",
+        "frames": 12
+      }
+    },
+    {
+      "id": "f3",
+      "start": 750,
+      "end": 945,
+      "tIn": {
+        "type": "barWipe",
+        "frames": 14
+      }
+    },
+    {
+      "id": "c3",
+      "start": 945,
+      "end": 990,
+      "tIn": {
+        "type": "whip",
+        "frames": 10
+      }
+    },
+    {
+      "id": "f4",
+      "start": 990,
+      "end": 1185,
+      "tIn": {
+        "type": "chevron",
+        "frames": 14
+      }
+    },
+    {
+      "id": "c4",
+      "start": 1185,
+      "end": 1230,
+      "tIn": {
+        "type": "zoomThrough",
+        "frames": 12
+      }
+    },
+    {
+      "id": "f5",
+      "start": 1230,
+      "end": 1440,
+      "tIn": {
+        "type": "barWipe",
+        "frames": 14
+      }
+    },
+    {
+      "id": "credA",
+      "start": 1440,
+      "end": 1530,
+      "tIn": {
+        "type": "chevron",
+        "frames": 14
+      }
+    },
+    {
+      "id": "credB",
+      "start": 1530,
+      "end": 1650,
+      "tIn": {
+        "type": "whip",
+        "frames": 10
+      }
+    },
+    {
+      "id": "cta",
+      "start": 1650,
+      "end": 1800,
+      "tIn": {
+        "type": "iris",
+        "frames": 16
+      }
+    }
+  ],
+  "featureBeats": {
+    "caption1": 30,
+    "punch": 45,
+    "pan": 105,
+    "caption2": 105,
+    "pullBack": 165
+  },
+  "hookWords": [
+    0,
+    8,
+    15,
+    23,
+    30,
+    38
+  ],
+  "problemBeats": [
+    0,
+    30,
+    60,
+    90
+  ],
+  "cutawayWord": 8,
+  "credBeats": {
+    "a1": 8,
+    "a2": 23,
+    "b1": 8,
+    "b2": 38
+  },
+  "ctaBeats": [
+    0,
+    15,
+    30,
+    45,
+    60
+  ],
+  "risers": [
+    {
+      "start": 150,
+      "end": 210
+    },
+    {
+      "start": 1590,
+      "end": 1650
+    }
+  ],
+  "impacts": [
+    210,
+    1650
+  ],
+  "dings": [
+    210
+  ],
+  "featureMarks": {
+    "f1": [
+      {
+        "x": 0.4,
+        "y": 0.56,
+        "at": 50
+      },
+      {
+        "x": 0.65,
+        "y": 0.43,
+        "at": 110
+      }
+    ],
+    "f2": [
+      {
+        "x": 0.314,
+        "y": 0.536,
+        "at": 45
+      },
+      {
+        "x": 0.348,
+        "y": 0.602,
+        "at": 60
+      },
+      {
+        "x": 0.38,
+        "y": 0.67,
+        "at": 75
+      },
+      {
+        "x": 0.417,
+        "y": 0.745,
+        "at": 120
+      },
+      {
+        "x": 0.456,
+        "y": 0.822,
+        "at": 135
+      }
+    ],
+    "f3": [
+      {
+        "x": 0.585,
+        "y": 0.5,
+        "at": 53
+      },
+      {
+        "x": 0.705,
+        "y": 0.5,
+        "at": 60
+      },
+      {
+        "x": 0.2,
+        "y": 0.72,
+        "at": 120
+      }
+    ],
+    "f4": [
+      {
+        "x": 0.53,
+        "y": 0.54,
+        "at": 53
+      },
+      {
+        "x": 0.72,
+        "y": 0.47,
+        "at": 120
+      }
+    ],
+    "f5": [
+      {
+        "x": 0.455,
+        "y": 0.605,
+        "at": 53
+      }
+    ]
+  }
+}

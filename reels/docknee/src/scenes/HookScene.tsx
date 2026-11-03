@@ -1,13 +1,8 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  Easing,
-  Img,
-  interpolate,
-  staticFile,
-  useCurrentFrame,
-} from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, staticFile } from "remotion";
 import { COLORS, FONT, SAFE, clamp } from "../theme";
+import { HOOK_WORDS } from "../timeline";
+import { LightSweep, beatPulse, useSceneClock, type SceneClockProps } from "./common";
 
 const WORDS: { text: string; accent?: boolean }[] = [
   { text: "Quanto" },
@@ -18,18 +13,20 @@ const WORDS: { text: string; accent?: boolean }[] = [
   { text: "cirurgia?", accent: true },
 ];
 
-const FIRST_WORD_AT = 3;
-const WORD_GAP = 4;
-
-export const HookScene: React.FC = () => {
-  const frame = useCurrentFrame();
+export const HookScene: React.FC<SceneClockProps> = (clock) => {
+  const { f, abs } = useSceneClock(clock);
+  const pulse = beatPulse(abs);
+  // Camera: slow push, plus a punch on the first downbeat (frame 30) and the bar at 60.
+  const punch =
+    interpolate(f, [30, 36], [0, 0.05], { ...clamp, easing: Easing.bezier(0.16, 1, 0.3, 1) }) +
+    interpolate(f, [60, 66], [0, 0.05], { ...clamp, easing: Easing.bezier(0.16, 1, 0.3, 1) });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: COLORS.navyDeep }}>
+    <AbsoluteFill style={{ backgroundColor: COLORS.navyDeep, overflow: "hidden" }}>
       <AbsoluteFill
         style={{
-          scale: interpolate(frame, [0, 110], [1.04, 1.16], clamp),
-          transformOrigin: "60% 60%",
+          scale: interpolate(f, [0, 100], [1.06, 1.18], clamp) + punch,
+          transformOrigin: "62% 62%",
         }}
       >
         <Img
@@ -40,9 +37,10 @@ export const HookScene: React.FC = () => {
       <AbsoluteFill
         style={{
           background:
-            "linear-gradient(180deg, rgba(6,16,42,0.92) 0%, rgba(6,16,42,0.75) 38%, rgba(6,16,42,0.05) 62%, rgba(6,16,42,0.0) 80%, rgba(6,16,42,0.45) 100%)",
+            "linear-gradient(180deg, rgba(6,16,42,0.94) 0%, rgba(6,16,42,0.78) 36%, rgba(6,16,42,0.05) 60%, rgba(6,16,42,0) 80%, rgba(6,16,42,0.5) 100%)",
         }}
       />
+      <LightSweep f={f} period={90} opacity={0.1} />
       <div
         style={{
           position: "absolute",
@@ -55,7 +53,7 @@ export const HookScene: React.FC = () => {
           rowGap: 4,
           fontFamily: FONT,
           fontWeight: 800,
-          fontSize: 104,
+          fontSize: 106,
           lineHeight: 1.08,
           letterSpacing: -2,
           color: COLORS.white,
@@ -63,28 +61,44 @@ export const HookScene: React.FC = () => {
         }}
       >
         {WORDS.map((w, i) => {
-          const start = FIRST_WORD_AT + i * WORD_GAP;
+          const start = HOOK_WORDS[i];
           return (
             <span
               key={w.text}
               style={{
+                position: "relative",
                 display: "inline-block",
                 color: w.accent ? COLORS.blue : COLORS.white,
-                opacity: interpolate(frame, [start, start + 3], [0, 1], clamp),
-                scale: interpolate(frame, [start, start + 8], [0.4, 1], {
+                opacity: interpolate(f, [start, start + 2], [0, 1], clamp),
+                scale:
+                  interpolate(f, [start, start + 7], [0.4, 1], {
+                    ...clamp,
+                    easing: Easing.spring({ damping: 11, stiffness: 200 }),
+                  }) + (w.accent && f > start + 7 ? pulse * 0.04 : 0),
+                translate: interpolate(f, [start, start + 7], ["0px 40px", "0px 0px"], {
                   ...clamp,
-                  easing: Easing.spring({ damping: 12, stiffness: 180 }),
+                  easing: Easing.bezier(0.16, 1, 0.3, 1),
                 }),
-                translate: interpolate(
-                  frame,
-                  [start, start + 8],
-                  ["0px 40px", "0px 0px"],
-                  { ...clamp, easing: Easing.bezier(0.16, 1, 0.3, 1) },
-                ),
                 transformOrigin: "50% 80%",
               }}
             >
               {w.text}
+              {i === WORDS.length - 1 ? (
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    bottom: -4,
+                    height: 12,
+                    borderRadius: 6,
+                    backgroundColor: COLORS.white,
+                    width: `${interpolate(f, [60, 68], [0, 100], {
+                      ...clamp,
+                      easing: Easing.bezier(0.65, 0, 0.35, 1),
+                    })}%`,
+                  }}
+                />
+              ) : null}
             </span>
           );
         })}
